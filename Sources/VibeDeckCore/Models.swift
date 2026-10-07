@@ -3,7 +3,7 @@ import Foundation
 public enum SchemaURL {
     /// Base URL where the Cloudflare Worker serves the JSON Schemas.
     /// Run `scripts/set-schema-url.sh <url>` after deploying the worker to change it everywhere.
-    public static let base = "https://vibedeck-schema.SUBDOMAIN.workers.dev/v1"
+    public static let base = "https://vibedeck-schema.alanreisanjo.workers.dev/v1"
     public static let project = "\(base)/project.schema.json"
     public static let reviewGroup = "\(base)/review-group.schema.json"
 }

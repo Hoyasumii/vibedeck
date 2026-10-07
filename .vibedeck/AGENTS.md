@@ -13,7 +13,7 @@ vibedeck.json                 # declara o projeto: nome, links, tipos de revisã
   reviews/<slug>.json         # um grupo (tema) de itens de revisão por arquivo
 ```
 
-Schemas: https://vibedeck-schema.SUBDOMAIN.workers.dev/v1/project.schema.json e https://vibedeck-schema.SUBDOMAIN.workers.dev/v1/review-group.schema.json
+Schemas: https://vibedeck-schema.alanreisanjo.workers.dev/v1/project.schema.json e https://vibedeck-schema.alanreisanjo.workers.dev/v1/review-group.schema.json
 
 ## Itens de revisão
 

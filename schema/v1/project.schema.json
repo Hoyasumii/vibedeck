@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://vibedeck-schema.SUBDOMAIN.workers.dev/v1/project.schema.json",
+  "$id": "https://vibedeck-schema.alanreisanjo.workers.dev/v1/project.schema.json",
   "title": "VibeDeck project",
   "description": "Declares a VibeDeck project. Lives at <repo>/vibedeck.json; docs and review groups live in <repo>/.vibedeck/.",
   "type": "object",

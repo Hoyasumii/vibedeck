@@ -1,5 +1,5 @@
 {
-  "$schema" : "https://vibedeck-schema.SUBDOMAIN.workers.dev/v1/review-group.schema.json",
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/review-group.schema.json",
   "createdAt" : "2026-10-07T17:24:51Z",
   "id" : "91E1DE50-910E-4B35-91BF-F2CC87E8F63C",
   "items" : [

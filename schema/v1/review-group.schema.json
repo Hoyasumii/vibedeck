@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://vibedeck-schema.SUBDOMAIN.workers.dev/v1/review-group.schema.json",
+  "$id": "https://vibedeck-schema.alanreisanjo.workers.dev/v1/review-group.schema.json",
   "title": "VibeDeck review group",
   "description": "A theme grouping review items (things to disable, hide, fix...). Lives at <repo>/.vibedeck/reviews/<slug>.json.",
   "type": "object",
