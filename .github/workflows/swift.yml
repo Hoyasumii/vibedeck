@@ -16,4 +16,6 @@ jobs:
       - uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: latest-stable
-      - run: scripts/test.sh
+      # Full Xcode toolchain here, so a plain `swift test` builds and links the test bundle
+      # (scripts/test.sh is tuned for a local CLT-only setup).
+      - run: swift test
