@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibedeck-schema.SUBDOMAIN.workers.dev/v1/project.schema.json",
+  "title": "VibeDeck project",
+  "description": "Declares a VibeDeck project. Lives at <repo>/vibedeck.json; docs and review groups live in <repo>/.vibedeck/.",
+  "type": "object",
+  "required": ["version", "id", "name"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "const": 1 },
+    "id": { "type": "string", "format": "uuid" },
+    "name": { "type": "string", "minLength": 1 },
+    "description": { "type": "string" },
+    "links": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/link" }
+    },
+    "reviewKinds": {
+      "description": "Kinds of review items available in this project.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/reviewKind" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "link": {
+      "type": "object",
+      "required": ["id", "title", "url"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "title": { "type": "string" },
+        "url": { "type": "string", "format": "uri" },
+        "tags": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "reviewKind": {
+      "type": "object",
+      "required": ["id", "label"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9_-]+$" },
+        "label": { "type": "string" },
+        "symbol": { "type": "string", "description": "SF Symbol name used by the app." }
+      },
+      "additionalProperties": false
+    }
+  }
+}

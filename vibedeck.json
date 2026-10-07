@@ -1,0 +1,41 @@
+{
+  "$schema" : "https://vibedeck-schema.SUBDOMAIN.workers.dev/v1/project.schema.json",
+  "id" : "82283A6D-4139-4386-A516-606A89BE658C",
+  "links" : [
+
+  ],
+  "name" : "vibedeck",
+  "reviewKinds" : [
+    {
+      "id" : "disable",
+      "label" : "Inativar",
+      "symbol" : "nosign"
+    },
+    {
+      "id" : "hide",
+      "label" : "Ocultar",
+      "symbol" : "eye.slash"
+    },
+    {
+      "id" : "fix",
+      "label" : "Corrigir",
+      "symbol" : "wrench.and.screwdriver"
+    },
+    {
+      "id" : "change",
+      "label" : "Alterar",
+      "symbol" : "pencil"
+    },
+    {
+      "id" : "remove",
+      "label" : "Remover",
+      "symbol" : "trash"
+    },
+    {
+      "id" : "note",
+      "label" : "Nota",
+      "symbol" : "note.text"
+    }
+  ],
+  "version" : 1
+}

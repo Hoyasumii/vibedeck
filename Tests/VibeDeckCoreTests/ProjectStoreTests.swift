@@ -1,0 +1,88 @@
+import Foundation
+import Testing
+@testable import VibeDeckCore
+
+private func tempDir() throws -> URL {
+    let url = FileManager.default.temporaryDirectory.appending(path: "vibedeck-tests-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+    return url
+}
+
+@Suite struct ProjectStoreTests {
+    @Test func initAndDetect() throws {
+        let dir = try tempDir()
+        #expect(!ProjectStore.isProject(dir))
+        let store = try ProjectStore.initialize(at: dir, name: "Demo")
+        #expect(ProjectStore.isProject(dir))
+        #expect(FileManager.default.fileExists(atPath: store.agentsURL.path))
+        let nested = dir.appending(path: "src/components")
+        try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
+        #expect(ProjectStore.find(from: nested)?.root.path == store.root.path)
+        #expect(throws: VibeDeckError.alreadyAProject(store.root.path)) { try ProjectStore.initialize(at: dir) }
+        let project = try store.loadProject()
+        #expect(project.name == "Demo")
+        #expect(project.reviewKinds == ReviewKind.defaults)
+        #expect(project.schema == SchemaURL.project)
+    }
+
+    @Test func projectRoundTrip() throws {
+        let store = try ProjectStore.initialize(at: tempDir())
+        try store.updateProject { $0.links.append(Link(title: "Figma", url: "https://figma.com/x", tags: ["design"])) }
+        let raw = try String(contentsOf: store.manifestURL, encoding: .utf8)
+        #expect(raw.contains("\"$schema\""))
+        #expect(raw.contains("https://figma.com/x"))
+        #expect(try store.loadProject().links.first?.tags == ["design"])
+    }
+
+    @Test func lenientDecodingOfHandWrittenFiles() throws {
+        let store = try ProjectStore.initialize(at: tempDir())
+        let handWritten = #"{"title":"Feito pela IA","items":[{"title":"Esconder banner","kind":"hide","createdAt":"2026-10-07T12:00:00.123Z"}]}"#
+        try Data(handWritten.utf8).write(to: store.groupURL("ia"))
+        let group = try store.loadGroup("ia")
+        #expect(group.items.count == 1)
+        #expect(group.items[0].status == .open)
+        #expect(group.items[0].priority == .normal)
+    }
+
+    @Test func docs() throws {
+        let store = try ProjectStore.initialize(at: tempDir())
+        let slug = try store.createDoc(title: "Visão Geral")
+        #expect(slug == "visao-geral")
+        #expect(try store.createDoc(title: "Visão Geral") == "visao-geral-2")
+        try store.writeDoc(slug, "---\ntitle: Overview\n---\nbody")
+        #expect(try store.listDocs().map(\.title).contains("Overview"))
+        #expect(try store.readDoc(slug).hasSuffix("body"))
+        try store.deleteDoc(slug)
+        #expect(throws: VibeDeckError.docNotFound(slug)) { try store.readDoc(slug) }
+    }
+
+    @Test func reviewGroupsAndItems() throws {
+        let store = try ProjectStore.initialize(at: tempDir())
+        let (slug, _) = try store.addItem(ReviewItem(kind: "disable", title: "Inativar botão salvar"), toGroup: "Tela de Login")
+        #expect(slug == "tela-de-login")
+        try store.addItem(ReviewItem(kind: "hide", title: "Ocultar banner", author: .ai), toGroup: "tela de login")
+        let group = try store.loadGroup(slug)
+        #expect(group.items.map(\.kind) == ["disable", "hide"])
+        #expect(try store.listGroups().count == 1)
+
+        let id = group.items[1].id.uuidString
+        let updated = try store.updateItem(String(id.prefix(8))) { $0.status = .done }
+        #expect(updated.status == .done)
+        #expect(try store.loadGroup(slug).openCount == 1)
+
+        try store.deleteItem(id)
+        #expect(try store.loadGroup(slug).items.count == 1)
+        #expect(throws: VibeDeckError.itemNotFound(id)) { try store.findItem(id) }
+    }
+
+    @Test func slugs() {
+        #expect(Slug.make("Ação: Inativar Botão!") == "acao-inativar-botao")
+        #expect(Slug.make("   ") == "untitled")
+    }
+
+    @Test func markdownTitle() {
+        #expect(Markdown.title(of: "# Hello\ntext") == "Hello")
+        #expect(Markdown.title(of: "---\ntitle: \"Front\"\n---\n# Heading") == "Front")
+        #expect(Markdown.title(of: "no heading") == nil)
+    }
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibedeck-schema.SUBDOMAIN.workers.dev/v1/review-group.schema.json",
+  "title": "VibeDeck review group",
+  "description": "A theme grouping review items (things to disable, hide, fix...). Lives at <repo>/.vibedeck/reviews/<slug>.json.",
+  "type": "object",
+  "required": ["id", "title", "createdAt", "items"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": { "type": "string", "format": "uuid" },
+    "title": { "type": "string", "minLength": 1 },
+    "description": { "type": "string" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "items": { "type": "array", "items": { "$ref": "#/$defs/item" } }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "item": {
+      "type": "object",
+      "required": ["id", "kind", "title", "status", "priority", "author", "createdAt", "updatedAt"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "kind": { "type": "string", "description": "One of the project's reviewKinds ids (default: disable, hide, fix, change, remove, note)." },
+        "title": { "type": "string", "minLength": 1 },
+        "details": { "type": "string" },
+        "status": { "enum": ["open", "in_progress", "done", "wontfix"] },
+        "priority": { "enum": ["low", "normal", "high"] },
+        "target": {
+          "type": "object",
+          "properties": {
+            "file": { "type": "string" },
+            "route": { "type": "string" },
+            "component": { "type": "string" },
+            "selector": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "author": { "enum": ["human", "ai"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

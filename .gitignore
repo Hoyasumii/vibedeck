@@ -1,0 +1,9 @@
+.build/
+build/
+.swiftpm/
+worker/node_modules/
+worker/.wrangler/
+worker/public/
+.DS_Store
+worker/.dev.vars
+.env*

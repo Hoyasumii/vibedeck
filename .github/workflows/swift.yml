@@ -1,0 +1,19 @@
+name: Swift
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["worker/**", ".github/workflows/worker.yml"]
+  pull_request:
+    paths-ignore: ["worker/**", ".github/workflows/worker.yml"]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - run: scripts/test.sh
