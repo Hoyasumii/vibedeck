@@ -45,7 +45,10 @@ struct ReviewGroupView: View {
         .inspector(isPresented: $showInspector) {
             Group {
                 if let item = selectedItem {
-                    ReviewItemInspector(item: item, kinds: model.project.reviewKinds) { action, change in
+                    ReviewItemInspector(
+                        item: item, kinds: model.project.reviewKinds, topics: model.topics,
+                        required: model.requiredTopics(for: item), problems: model.verificationProblems(for: item)
+                    ) { action, change in
                         model.mutateItem(slug, item.id, action, undo: undo, change)
                     }
                     .id(item.id)
@@ -75,15 +78,10 @@ struct ReviewGroupView: View {
     // MARK: Sections
 
     private var header: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(alignment: .top, spacing: 16) {
-                titleBlock
-                statusPicker
-            }
-            VStack(alignment: .leading, spacing: 10) {
-                titleBlock
-                statusPicker
-            }
+        // A single HStack (not ViewThatFits): see IdeaView.header.
+        HStack(alignment: .top, spacing: 16) {
+            titleBlock
+            statusPicker
         }
         .padding(.horizontal, 20)
         .padding(.top, 16)
@@ -102,6 +100,8 @@ struct ReviewGroupView: View {
             }
             .textFieldStyle(.plain)
             .foregroundStyle(.secondary)
+            TagsField(tags: group.tags) { tags in model.mutateGroup(slug, "Editar tags", undo: undo) { $0.tags = tags } }
+                .padding(.top, 6)
         }
         .frame(minWidth: 220, maxWidth: .infinity, alignment: .leading)
     }
@@ -301,6 +301,9 @@ struct ReviewItemRow: View {
                     if let where_ = targetText {
                         Text(where_).font(.caption.monospaced()).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
                     }
+                    if !item.rules.isEmpty {
+                        Image(systemName: "checkmark.shield").font(.caption).foregroundStyle(.secondary).help("Ligado a regras: \(item.rules.joined(separator: ", "))")
+                    }
                     if item.author == .ai {
                         Image(systemName: "sparkles").font(.caption).foregroundStyle(.purple).help("Criado por IA")
                     }
@@ -359,6 +362,10 @@ struct FilterChip: View {
 struct ReviewItemInspector: View {
     let item: ReviewItem
     let kinds: [ReviewKind]
+    let topics: [ProjectModel.Entry<RuleTopic>]
+    /// Topic slugs gating this item (explicit + global + matching target file).
+    let required: [String]
+    let problems: [String]
     let mutate: (String, @escaping (inout ReviewItem) -> Void) -> Void
 
     var body: some View {
@@ -389,6 +396,7 @@ struct ReviewItemInspector: View {
                 targetField("Componente", \.component)
                 targetField("Seletor", \.selector)
             }
+            rulesSection
             Section {
                 LabeledContent("Autor", value: item.author == .ai ? "IA" : "Humano")
                 LabeledContent("Criado", value: item.createdAt.formatted(date: .abbreviated, time: .shortened))
@@ -399,6 +407,45 @@ struct ReviewItemInspector: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    @ViewBuilder
+    private var rulesSection: some View {
+        Section {
+            if topics.isEmpty {
+                Text("Nenhum tópico de regras no projeto.").foregroundStyle(.secondary)
+            }
+            ForEach(topics) { topic in
+                let explicit = item.rules.contains(topic.slug)
+                let automatic = !explicit && required.contains(topic.slug)
+                Toggle(isOn: Binding(get: { explicit || automatic }, set: { on in
+                    mutate(on ? "Ligar regras" : "Desligar regras") { item in
+                        if on { item.rules.append(topic.slug) } else { item.rules.removeAll { $0 == topic.slug } }
+                    }
+                })) {
+                    Text(topic.value.title)
+                    if automatic {
+                        Text(topic.value.isGlobal ? "Vale para toda tarefa" : "Casa com o arquivo do item").font(.caption)
+                    }
+                }
+                .disabled(automatic)
+            }
+            if !required.isEmpty {
+                if problems.isEmpty {
+                    Label("Regras verificadas", systemImage: "checkmark.seal.fill").foregroundStyle(.green)
+                } else {
+                    ForEach(problems, id: \.self) { problem in
+                        Label(problem, systemImage: "exclamationmark.triangle").font(.callout).foregroundStyle(.orange)
+                    }
+                }
+            }
+        } header: {
+            Text("Regras")
+        } footer: {
+            if !required.isEmpty {
+                Text("Agentes só podem concluir este item depois de um check aprovado.").font(.caption).foregroundStyle(.secondary)
+            }
+        }
     }
 
     private func binding<V: Equatable>(_ keyPath: WritableKeyPath<ReviewItem, V>, _ action: String) -> Binding<V> {

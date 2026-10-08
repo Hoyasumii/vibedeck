@@ -85,4 +85,36 @@ private func tempDir() throws -> URL {
         #expect(Markdown.title(of: "---\ntitle: \"Front\"\n---\n# Heading") == "Front")
         #expect(Markdown.title(of: "no heading") == nil)
     }
+
+    @Test func markdownTags() {
+        #expect(Markdown.tags(of: "# Hello") == [])
+        #expect(Markdown.tags(of: "---\ntags: [ui, \"api\"]\n---\n# H") == ["ui", "api"])
+        #expect(Markdown.tags(of: "---\ntitle: T\ntags: a, b\n---\n") == ["a", "b"])
+
+        let added = Markdown.settingTags(["x", "y"], in: "# Doc\n\nbody")
+        #expect(added == "---\ntags: [x, y]\n---\n# Doc\n\nbody")
+        #expect(Markdown.tags(of: added) == ["x", "y"])
+        #expect(Markdown.title(of: added) == "Doc")
+
+        let replaced = Markdown.settingTags(["z"], in: "---\ntitle: Front\ntags: [x]\n---\n# H")
+        #expect(replaced == "---\ntitle: Front\ntags: [z]\n---\n# H")
+        #expect(Markdown.settingTags([], in: replaced) == "---\ntitle: Front\n---\n# H")
+        #expect(Markdown.settingTags([], in: added) == "# Doc\n\nbody")
+    }
+
+    @Test func tagsOnGroupsTopicsAndDocs() throws {
+        let store = try ProjectStore.initialize(at: tempDir())
+        let (group, _) = try store.createGroup(title: "Login")
+        #expect(!(try String(contentsOf: store.groupURL(group), encoding: .utf8)).contains("tags"))
+        try store.updateGroup(group) { $0.tags = ["ui"] }
+        #expect(try store.loadGroup(group).tags == ["ui"])
+
+        let (topic, _) = try store.createTopic(title: "API", tags: ["backend"])
+        #expect(try store.loadTopic(topic).tags == ["backend"])
+
+        let doc = try store.createDoc(title: "Sobre", body: "texto")
+        try store.setDocTags(doc, ["intro"])
+        #expect(try store.listDocs().first?.tags == ["intro"])
+        #expect(try store.readDoc(doc).hasSuffix("# Sobre\n\ntexto"))
+    }
 }

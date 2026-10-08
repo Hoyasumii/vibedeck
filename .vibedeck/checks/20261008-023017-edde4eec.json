@@ -1,0 +1,24 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-08T02:30:17.484Z",
+  "failures" : [
+
+  ],
+  "files" : [
+    "Sources/VibeDeckApp/IdeaView.swift",
+    "Sources/VibeDeckApp/ReviewGroupView.swift"
+  ],
+  "id" : "EDDE4EEC-C681-48C9-9411-67B215DBF150",
+  "passed" : true,
+  "results" : [
+
+  ],
+  "task" : "Corrige crash ao abrir o app: ViewThatFits nos headers de IdeaView/ReviewGroupView (com .inspector) fazia o min size da coluna de detalhe oscilar e o AppKit abortava no update constraints. Trocado por HStack único.",
+  "topics" : [
+
+  ],
+  "warnings" : [
+
+  ]
+}

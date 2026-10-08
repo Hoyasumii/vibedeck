@@ -11,9 +11,9 @@ struct WelcomeView: View {
     var body: some View {
         VStack(spacing: 28) {
             VStack(spacing: 8) {
-                Image(systemName: "rectangle.stack.badge.person.crop")
-                    .font(.system(size: 52, weight: .light))
-                    .foregroundStyle(.tint)
+                Image(nsImage: NSApp.applicationIconImage)
+                    .resizable()
+                    .frame(width: 96, height: 96)
                 Text("VibeDeck").font(.largeTitle.weight(.semibold))
                 Text("Links, docs e pontos de revisão dos seus projetos — em arquivos que a IA também lê.")
                     .foregroundStyle(.secondary)

@@ -6,6 +6,7 @@ import SwiftUI
 struct MarkdownEditor: NSViewRepresentable {
     @Binding var text: String
     let undoManager: UndoManager
+    var autoFocus = true
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -29,7 +30,7 @@ struct MarkdownEditor: NSViewRepresentable {
         textView.typingAttributes = MarkdownHighlighter.baseAttributes
         textView.string = text
         scrollView.drawsBackground = false
-        DispatchQueue.main.async { textView.window?.makeFirstResponder(textView) }
+        if autoFocus { DispatchQueue.main.async { textView.window?.makeFirstResponder(textView) } }
         return scrollView
     }
 

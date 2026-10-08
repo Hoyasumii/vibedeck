@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "title": "VibeDeck idea",
+  "description": "A future idea for the project, with draft rules (not enforced until promoted). Lives at <repo>/.vibedeck/ideas/<slug>.json.",
+  "type": "object",
+  "required": ["id", "title", "status", "rules", "author", "createdAt", "updatedAt"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": { "type": "string", "format": "uuid" },
+    "title": { "type": "string", "minLength": 1 },
+    "body": { "type": "string", "description": "Markdown." },
+    "status": { "enum": ["new", "exploring", "approved", "discarded", "done"] },
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "rules": { "type": "array", "items": { "$ref": "rule-topic.schema.json#/$defs/rule" } },
+    "promotedTopic": { "type": "string", "description": "Slug of the rule topic created from this idea." },
+    "author": { "enum": ["human", "ai"] },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}

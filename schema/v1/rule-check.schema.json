@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "title": "VibeDeck rule check",
+  "description": "A recorded verification of the applicable rules. Written by the CLI/MCP at <repo>/.vibedeck/checks/<timestamp>-<id>.json.",
+  "type": "object",
+  "required": ["id", "task", "files", "topics", "results", "passed", "warnings", "failures", "author", "createdAt"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": { "type": "string", "format": "uuid" },
+    "task": { "type": "string" },
+    "files": { "type": "array", "items": { "type": "string" } },
+    "topics": { "type": "array", "items": { "type": "string" }, "description": "Slugs of the topics that applied." },
+    "reviewItem": { "type": "string", "format": "uuid" },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["topic", "ruleId", "verdict"],
+        "properties": {
+          "topic": { "type": "string" },
+          "ruleId": { "type": "string", "format": "uuid" },
+          "verdict": { "enum": ["pass", "fail", "na"] },
+          "note": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "passed": { "type": "boolean", "description": "False when any must rule failed." },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "failures": { "type": "array", "items": { "type": "string" } },
+    "author": { "enum": ["human", "ai"] },
+    "createdAt": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}

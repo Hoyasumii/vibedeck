@@ -10,6 +10,7 @@
     "id": { "type": "string", "format": "uuid" },
     "title": { "type": "string", "minLength": 1 },
     "description": { "type": "string" },
+    "tags": { "type": "array", "items": { "type": "string" } },
     "createdAt": { "type": "string", "format": "date-time" },
     "items": { "type": "array", "items": { "$ref": "#/$defs/item" } }
   },
@@ -35,6 +36,7 @@
           },
           "additionalProperties": false
         },
+        "rules": { "type": "array", "items": { "type": "string" }, "description": "Slugs of rule topics that must pass a check before the item is done." },
         "author": { "enum": ["human", "ai"] },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }

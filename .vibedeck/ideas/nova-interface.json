@@ -1,0 +1,31 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-07T23:35:31Z",
+  "id" : "18B88C52-22E1-4368-882C-6655E15F0167",
+  "promotedTopic" : "nova-interface",
+  "rules" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-07T23:36:18Z",
+      "details" : "Ela deve ter implementado as Regras e as Ideias",
+      "id" : "665C84E0-E21B-46F8-A99D-DE6BAC75439F",
+      "severity" : "must",
+      "text" : "O artefato de design deve ser atualizado com as novas funcionalidades antes da implementação"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-07T23:40:22Z",
+      "details" : "A nova interface deve ter muitas animações e transições",
+      "id" : "AEFA8D33-8D49-4E34-A921-6902DFB0426D",
+      "severity" : "should",
+      "text" : "Interface Fluída"
+    }
+  ],
+  "status" : "new",
+  "tags" : [
+    "ui"
+  ],
+  "title" : "Nova Interface",
+  "updatedAt" : "2026-10-08T02:35:04Z"
+}

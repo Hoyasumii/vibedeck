@@ -1,0 +1,159 @@
+import SwiftUI
+import VibeDeckCore
+
+struct IdeaView: View {
+    let slug: String
+    let openTopic: (String) -> Void
+    @Environment(ProjectModel.self) private var model
+    @Environment(\.undoManager) private var undo
+    @State private var showRules = true
+    @State private var text = ""
+    @State private var savedText = ""
+    @State private var loaded = false
+    @State private var saveTask: Task<Void, Never>?
+
+    private var idea: Idea { model.idea(slug) ?? Idea(title: slug) }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            header
+            Divider()
+            MarkdownEditor(text: $text, undoManager: model.undoManager(forDoc: "idea:\(slug)"), autoFocus: false)
+                .overlay(alignment: .topLeading) {
+                    if text.isEmpty {
+                        Text("Descreva a ideia em markdown: problema, proposta, dúvidas…")
+                            .foregroundStyle(.tertiary)
+                            .padding(.horizontal, 33).padding(.vertical, 24)
+                            .allowsHitTesting(false)
+                    }
+                }
+        }
+        .inspector(isPresented: $showRules) {
+            VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Regras da ideia").font(.headline)
+                    Text(idea.promotedTopic == nil
+                         ? "Rascunho: só passam a valer depois de promovidas."
+                         : "Promovida: novas regras entram no tópico ao sincronizar.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 14)
+                RuleListEditor(
+                    rules: idea.rules,
+                    emptyTitle: "Sem regras",
+                    emptyHint: "Como essa ideia deve se comportar quando existir?"
+                ) { action, change in
+                    model.mutateIdea(slug, action, undo: undo) { change(&$0.rules) }
+                }
+            }
+            .inspectorColumnWidth(min: 260, ideal: 320, max: 440)
+        }
+        .navigationTitle(idea.title)
+        .navigationSubtitle("\(idea.status.label) · \(idea.rules.count) regra(s)")
+        .toolbar {
+            ToolbarItem { promoteButton }
+            ToolbarItem {
+                Button { showRules.toggle() } label: { Label("Regras", systemImage: "checkmark.shield") }
+                    .keyboardShortcut("i", modifiers: [.command, .option])
+                    .help("Mostrar/ocultar regras da ideia (⌥⌘I)")
+            }
+        }
+        .onAppear(perform: load)
+        .onChange(of: text) { _, _ in scheduleSave() }
+        .onChange(of: idea.body) { _, new in
+            // External edit (CLI/MCP): adopt it unless the user has unsaved typing.
+            let disk = new ?? ""
+            if text == savedText, disk != text { text = disk; savedText = disk }
+        }
+        .onDisappear(perform: flush)
+        .onReceive(NotificationCenter.default.publisher(for: .vibedeckFlushPendingSaves)) { _ in flush() }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            CommitTextField("Ideia", value: idea.title) { title in
+                guard !title.isEmpty else { return }
+                model.mutateIdea(slug, "Renomear ideia", undo: undo) { $0.title = title }
+            }
+            .font(.title2.weight(.semibold))
+            .textFieldStyle(.plain)
+
+            // A single HStack (not ViewThatFits): switching layouts changes the detail column's
+            // min width mid-layout, which loops NavigationSplitView/inspector sizing and crashes AppKit.
+            HStack(spacing: 12) { statusPicker; tagsField; promotedBadge }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
+    }
+
+    private var statusPicker: some View {
+        Picker("Status", selection: Binding(get: { idea.status }, set: { s in model.mutateIdea(slug, "Alterar status", undo: undo) { $0.status = s } })) {
+            ForEach(IdeaStatus.allCases, id: \.self) { Label($0.label, systemImage: $0.symbol).tag($0) }
+        }
+        .labelsHidden()
+        .fixedSize()
+    }
+
+    private var tagsField: some View {
+        TagsField(tags: idea.tags) { tags in model.mutateIdea(slug, "Editar tags", undo: undo) { $0.tags = tags } }
+    }
+
+    @ViewBuilder
+    private var promotedBadge: some View {
+        if let topic = idea.promotedTopic {
+            Button { openTopic(topic) } label: {
+                Label("Tópico: \(model.topic(topic)?.title ?? topic)", systemImage: "checkmark.shield")
+                    .lineLimit(1)
+            }
+            .buttonStyle(.glass)
+            .fixedSize()
+            .help("Abrir o tópico de regras criado a partir desta ideia")
+        }
+    }
+
+    private var promoteButton: some View {
+        Button {
+            flush()
+            if let topic = model.promoteIdea(slug) { openTopic(topic) }
+        } label: {
+            Label(idea.promotedTopic == nil ? "Promover para Regras" : "Sincronizar regras", systemImage: "arrow.up.forward.square")
+        }
+        .disabled(idea.rules.isEmpty)
+        .help(idea.promotedTopic == nil
+              ? "Cria um tópico de regras ativo com as regras desta ideia"
+              : "Leva regras novas desta ideia para o tópico já criado")
+    }
+
+    // MARK: Persistence (debounced, like DocView)
+
+    private func load() {
+        guard !loaded else { return }
+        text = idea.body ?? ""
+        savedText = text
+        loaded = true
+    }
+
+    private func scheduleSave() {
+        guard loaded, text != savedText else { return }
+        saveTask?.cancel()
+        saveTask = Task {
+            try? await Task.sleep(for: .milliseconds(600))
+            guard !Task.isCancelled else { return }
+            save()
+        }
+    }
+
+    private func save() {
+        let body = text
+        // The text view keeps its own undo history; don't duplicate it in the window's.
+        model.mutateIdea(slug, "Editar texto", undo: nil) { $0.body = body.isEmpty ? nil : body }
+        savedText = body
+    }
+
+    private func flush() {
+        saveTask?.cancel()
+        if loaded, text != savedText { save() }
+    }
+}

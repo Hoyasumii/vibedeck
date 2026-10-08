@@ -104,6 +104,8 @@ struct LinksView: View {
 
 struct TagChips: View {
     let tags: [String]
+    /// When set, chips are clickable (e.g. to filter by that tag).
+    var onTap: ((String) -> Void)? = nil
 
     var body: some View {
         GlassEffectContainer(spacing: 4) {
@@ -112,10 +114,37 @@ struct TagChips: View {
                     Text(tag)
                         .font(.caption)
                         .padding(.horizontal, 7).padding(.vertical, 2)
-                        .glassEffect(.regular, in: .capsule)
+                        .glassEffect(onTap == nil ? .regular : .regular.interactive(), in: .capsule)
+                        .onTapGesture { onTap?(tag) }
+                        .help(onTap == nil ? "" : "Filtrar por #\(tag)")
                 }
             }
         }
+    }
+}
+
+/// Comma-separated tag editor in a glass capsule; commits on submit/blur.
+struct TagsField: View {
+    let tags: [String]
+    let onCommit: ([String]) -> Void
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "number").foregroundStyle(.secondary)
+            CommitTextField("tags, separadas, por vírgula", value: tags.joined(separator: ", ")) { text in
+                onCommit(Tags.parse(text))
+            }
+            .textFieldStyle(.plain)
+        }
+        .padding(.horizontal, 10).padding(.vertical, 5)
+        .glassEffect(.regular, in: .capsule)
+        .frame(minWidth: 180, maxWidth: 360)
+    }
+}
+
+enum Tags {
+    static func parse(_ text: String) -> [String] {
+        text.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
     }
 }
 
@@ -143,7 +172,7 @@ private struct LinkEditor: View {
                     if saved.title.trimmingCharacters(in: .whitespaces).isEmpty {
                         saved.title = URL(string: saved.url)?.host() ?? saved.url
                     }
-                    saved.tags = tagsText.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+                    saved.tags = Tags.parse(tagsText)
                     onSave(saved)
                     dismiss()
                 }

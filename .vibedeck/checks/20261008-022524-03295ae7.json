@@ -1,0 +1,26 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-08T02:25:24.820Z",
+  "failures" : [
+
+  ],
+  "files" : [
+    "Sources/VibeDeckApp/ProjectModel.swift",
+    "Sources/VibeDeckApp/ProjectWindow.swift",
+    "Sources/VibeDeckApp/SectionListView.swift",
+    "Sources/VibeDeckApp/TabBar.swift"
+  ],
+  "id" : "03295AE7-2A4A-4839-AF38-188D5F1F7C30",
+  "passed" : true,
+  "results" : [
+
+  ],
+  "task" : "Accordion da sidebar independente da seleção (chevron só expande/recolhe, várias seções abertas, persistido) + abas no detalhe via menu de contexto \"Abrir em Nova Aba\" (sidebar e tabela da seção), com persistência e poda de abas apagadas.",
+  "topics" : [
+
+  ],
+  "warnings" : [
+
+  ]
+}

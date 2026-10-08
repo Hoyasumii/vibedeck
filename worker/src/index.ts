@@ -24,6 +24,9 @@ export default {
           schemas: {
             project: `${base}/project.schema.json`,
             reviewGroup: `${base}/review-group.schema.json`,
+            ruleTopic: `${base}/rule-topic.schema.json`,
+            idea: `${base}/idea.schema.json`,
+            ruleCheck: `${base}/rule-check.schema.json`,
           },
         },
         { headers: CORS },

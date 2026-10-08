@@ -6,6 +6,9 @@ public enum SchemaURL {
     public static let base = "https://vibedeck-schema.alanreisanjo.workers.dev/v1"
     public static let project = "\(base)/project.schema.json"
     public static let reviewGroup = "\(base)/review-group.schema.json"
+    public static let ruleTopic = "\(base)/rule-topic.schema.json"
+    public static let idea = "\(base)/idea.schema.json"
+    public static let ruleCheck = "\(base)/rule-check.schema.json"
 }
 
 // MARK: - Project
@@ -160,6 +163,8 @@ public struct ReviewItem: Codable, Equatable, Hashable, Identifiable, Sendable {
     public var status: ReviewStatus
     public var priority: ReviewPriority
     public var target: ReviewTarget?
+    /// Slugs of rule topics that must pass a check before the item can be marked done.
+    public var rules: [String]
     public var author: Author
     public var createdAt: Date
     public var updatedAt: Date
@@ -167,7 +172,7 @@ public struct ReviewItem: Codable, Equatable, Hashable, Identifiable, Sendable {
     public init(
         kind: String, title: String, details: String? = nil,
         status: ReviewStatus = .open, priority: ReviewPriority = .normal,
-        target: ReviewTarget? = nil, author: Author = .human, now: Date = .now
+        target: ReviewTarget? = nil, rules: [String] = [], author: Author = .human, now: Date = .now
     ) {
         self.id = UUID()
         self.kind = kind
@@ -176,13 +181,14 @@ public struct ReviewItem: Codable, Equatable, Hashable, Identifiable, Sendable {
         self.status = status
         self.priority = priority
         self.target = (target?.isEmpty ?? true) ? nil : target
+        self.rules = rules
         self.author = author
         self.createdAt = now
         self.updatedAt = now
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, kind, title, details, status, priority, target, author, createdAt, updatedAt
+        case id, kind, title, details, status, priority, target, rules, author, createdAt, updatedAt
     }
 
     public init(from decoder: Decoder) throws {
@@ -194,9 +200,25 @@ public struct ReviewItem: Codable, Equatable, Hashable, Identifiable, Sendable {
         status = try c.decodeIfPresent(ReviewStatus.self, forKey: .status) ?? .open
         priority = try c.decodeIfPresent(ReviewPriority.self, forKey: .priority) ?? .normal
         target = try c.decodeIfPresent(ReviewTarget.self, forKey: .target)
+        rules = try c.decodeIfPresent([String].self, forKey: .rules) ?? []
         author = try c.decodeIfPresent(Author.self, forKey: .author) ?? .human
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? .now
         updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(kind, forKey: .kind)
+        try c.encode(title, forKey: .title)
+        try c.encodeIfPresent(details, forKey: .details)
+        try c.encode(status, forKey: .status)
+        try c.encode(priority, forKey: .priority)
+        try c.encodeIfPresent(target, forKey: .target)
+        if !rules.isEmpty { try c.encode(rules, forKey: .rules) }
+        try c.encode(author, forKey: .author)
+        try c.encode(createdAt, forKey: .createdAt)
+        try c.encode(updatedAt, forKey: .updatedAt)
     }
 }
 
@@ -205,20 +227,22 @@ public struct ReviewGroup: Codable, Equatable, Identifiable, Sendable {
     public var id: UUID
     public var title: String
     public var description: String?
+    public var tags: [String]
     public var createdAt: Date
     public var items: [ReviewItem]
 
-    public init(title: String, description: String? = nil, now: Date = .now) {
+    public init(title: String, description: String? = nil, tags: [String] = [], now: Date = .now) {
         self.schema = SchemaURL.reviewGroup
         self.id = UUID()
         self.title = title
         self.description = description
+        self.tags = tags
         self.createdAt = now
         self.items = []
     }
 
     enum CodingKeys: String, CodingKey {
-        case schema = "$schema", id, title, description, createdAt, items
+        case schema = "$schema", id, title, description, tags, createdAt, items
     }
 
     public init(from decoder: Decoder) throws {
@@ -227,8 +251,20 @@ public struct ReviewGroup: Codable, Equatable, Identifiable, Sendable {
         id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
         title = try c.decode(String.self, forKey: .title)
         description = try c.decodeIfPresent(String.self, forKey: .description)
+        tags = try c.decodeIfPresent([String].self, forKey: .tags) ?? []
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? .now
         items = try c.decodeIfPresent([ReviewItem].self, forKey: .items) ?? []
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encodeIfPresent(schema, forKey: .schema)
+        try c.encode(id, forKey: .id)
+        try c.encode(title, forKey: .title)
+        try c.encodeIfPresent(description, forKey: .description)
+        if !tags.isEmpty { try c.encode(tags, forKey: .tags) }
+        try c.encode(createdAt, forKey: .createdAt)
+        try c.encode(items, forKey: .items)
     }
 
     public var openCount: Int { items.filter { !$0.status.isClosed }.count }
@@ -239,6 +275,7 @@ public struct ReviewGroup: Codable, Equatable, Identifiable, Sendable {
 public struct DocInfo: Equatable, Hashable, Identifiable, Sendable {
     public var slug: String
     public var title: String
+    public var tags: [String] = []
     public var modified: Date
     public var id: String { slug }
 }

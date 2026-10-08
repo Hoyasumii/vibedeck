@@ -6,9 +6,9 @@ import VibeDeckCore
 struct VibeDeckCLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "vibedeck",
-        abstract: "Gerencia projetos VibeDeck (links, docs e itens de revisão) a partir do terminal.",
-        version: "0.1.0",
-        subcommands: [Init.self, Status.self, Links.self, Docs.self, Review.self, MCPServe.self]
+        abstract: "Gerencia projetos VibeDeck (links, docs, revisões, regras e ideias) a partir do terminal.",
+        version: "0.2.0",
+        subcommands: [Init.self, Status.self, Links.self, Docs.self, Review.self, Rules.self, Ideas.self, Tag.self, MCPCommand.self]
     )
 }
 
@@ -21,6 +21,10 @@ struct RootOptions: ParsableArguments {
     }
 
     func store() throws -> ProjectStore { try ProjectStore.locate(from: startURL) }
+}
+
+func hashtags(_ tags: [String]) -> String {
+    tags.isEmpty ? "" : "  #" + tags.joined(separator: " #")
 }
 
 func printJSON<T: Encodable>(_ value: T) throws {
@@ -53,6 +57,8 @@ struct Status: ParsableCommand {
         let project: Project
         let docs: [String]
         let groups: [GroupSummary]
+        let ruleTopics: [String]
+        let ideas: [String]
     }
 
     struct GroupSummary: Encodable {
@@ -67,10 +73,13 @@ struct Status: ParsableCommand {
         let project = try store.loadProject()
         let docs = try store.listDocs()
         let groups = try store.listGroups()
+        let topics = try store.listTopics()
+        let ideas = try store.listIdeas()
         if json {
             try printJSON(Summary(
                 root: store.root.path, project: project, docs: docs.map(\.slug),
-                groups: groups.map { GroupSummary(slug: $0.slug, title: $0.group.title, open: $0.group.openCount, total: $0.group.items.count) }
+                groups: groups.map { GroupSummary(slug: $0.slug, title: $0.group.title, open: $0.group.openCount, total: $0.group.items.count) },
+                ruleTopics: topics.map(\.slug), ideas: ideas.map(\.slug)
             ))
             return
         }
@@ -80,6 +89,8 @@ struct Status: ParsableCommand {
         for (slug, group) in groups {
             print("  • \(group.title) [\(slug)] — \(group.openCount) aberto(s) de \(group.items.count)")
         }
+        let ruleCount = topics.reduce(0) { $0 + $1.topic.rules.count }
+        print("Tópicos de regras: \(topics.count) (\(ruleCount) regra(s))  Ideias: \(ideas.count) (\(ideas.filter { !$0.idea.status.isClosed }.count) abertas)")
     }
 }
 
@@ -137,7 +148,7 @@ struct Docs: ParsableCommand {
     struct List: ParsableCommand {
         @OptionGroup var options: RootOptions
         func run() throws {
-            for doc in try options.store().listDocs() { print("\(doc.slug)\t\(doc.title)") }
+            for doc in try options.store().listDocs() { print("\(doc.slug)\t\(doc.title)\(hashtags(doc.tags))") }
         }
     }
 
@@ -180,7 +191,7 @@ struct Review: ParsableCommand {
     struct Groups: ParsableCommand {
         @OptionGroup var options: RootOptions
         func run() throws {
-            for (slug, g) in try options.store().listGroups() { print("\(slug)\t\(g.title)\t\(g.openCount)/\(g.items.count)") }
+            for (slug, g) in try options.store().listGroups() { print("\(slug)\t\(g.title)\t\(g.openCount)/\(g.items.count)\(hashtags(g.tags))") }
         }
     }
 
@@ -229,6 +240,7 @@ struct Review: ParsableCommand {
         @Option var route: String?
         @Option var component: String?
         @Option var selector: String?
+        @Option(parsing: .upToNextOption, help: "Tópicos de regras que o item precisa cumprir.") var rules: [String] = []
         @Flag(help: "Marca o item como criado por IA.") var ai = false
 
         func run() throws {
@@ -238,6 +250,7 @@ struct Review: ParsableCommand {
             let item = ReviewItem(
                 kind: kind, title: title, details: details, priority: priority,
                 target: ReviewTarget(file: file, route: route, component: component, selector: selector),
+                rules: try rules.map { try store.resolveTopicSlug($0) },
                 author: ai ? .ai : .human
             )
             let (slug, _) = try store.addItem(item, toGroup: group)
@@ -254,9 +267,17 @@ struct Review: ParsableCommand {
         @Option var kind: String?
         @Option var title: String?
         @Option var details: String?
+        @Option(parsing: .upToNextOption, help: "Substitui os tópicos de regras do item.") var rules: [String] = []
+        @Flag(help: "Conclui sem check de regras aprovado (só humanos).") var force = false
 
         func run() throws {
-            let item = try options.store().updateItem(id) { item in
+            let store = try options.store()
+            if !rules.isEmpty {
+                let slugs = try rules.map { try store.resolveTopicSlug($0) }
+                try store.updateItem(id) { $0.rules = slugs }
+            }
+            if status == .done, !force { try store.ensureVerified(id) }
+            let item = try store.updateItem(id) { item in
                 if let status { item.status = status }
                 if let priority { item.priority = priority }
                 if let kind { item.kind = kind }
@@ -271,5 +292,277 @@ struct Review: ParsableCommand {
         @OptionGroup var options: RootOptions
         @Argument var id: String
         func run() throws { try options.store().deleteItem(id) }
+    }
+}
+
+// MARK: - rules
+
+extension RuleSeverity: ExpressibleByArgument {}
+extension IdeaStatus: ExpressibleByArgument {}
+
+private func printRules(_ rules: [Rule], indent: String = "  ") {
+    for r in rules {
+        let mark = r.severity == .must ? "●" : "○"
+        print("\(indent)\(r.id.uuidString.prefix(8))  \(mark) \(r.text)\(r.author == .ai ? "  ✨" : "")")
+    }
+}
+
+struct Rules: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Tópicos de regras que toda tarefa precisa cumprir antes de ser concluída.",
+        subcommands: [List.self, Show.self, New.self, Add.self, Remove.self, For.self, Check.self, Checks.self],
+        defaultSubcommand: List.self
+    )
+
+    struct List: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws {
+            let topics = try options.store().listTopics()
+            if json { return try printJSON(topics.map { TopicChecklist(slug: $0.slug, topic: $0.topic) }) }
+            for (slug, t) in topics {
+                let scope = t.isGlobal ? "global" : t.paths.joined(separator: ", ")
+                print("\(slug)\t\(t.title)\t\(t.rules.count) regra(s)\t[\(scope)]\(hashtags(t.tags))")
+            }
+        }
+    }
+
+    struct Show: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Argument(help: "Tópico (slug, id ou título).") var topic: String
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws {
+            let store = try options.store()
+            let slug = try store.resolveTopicSlug(topic)
+            let t = try store.loadTopic(slug)
+            if json { return try printJSON(TopicChecklist(slug: slug, topic: t)) }
+            print("\(t.title) [\(slug)] — \(t.isGlobal ? "global" : t.paths.joined(separator: ", "))")
+            if let d = t.description { print(d) }
+            printRules(t.rules)
+        }
+    }
+
+    struct New: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Cria um tópico. Sem --path, vale para toda tarefa.")
+        @OptionGroup var options: RootOptions
+        @Argument var title: String
+        @Option var description: String?
+        @Option(name: .customLong("path"), help: "Glob de escopo (repetível), ex.: 'Sources/App/**'.") var paths: [String] = []
+        @Option(parsing: .upToNextOption) var tags: [String] = []
+
+        func run() throws { print(try options.store().createTopic(title: title, description: description, tags: tags, paths: paths).slug) }
+    }
+
+    struct Add: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Adiciona uma regra a um tópico (cria o tópico se não existir).")
+        @OptionGroup var options: RootOptions
+        @Argument var topic: String
+        @Argument var text: String
+        @Option var details: String?
+        @Flag(help: "Regra recomendada (não bloqueia).") var should = false
+        @Flag(help: "Marca a regra como criada por IA.") var ai = false
+
+        func run() throws {
+            let rule = Rule(text: text, details: details, severity: should ? .should : .must, author: ai ? .ai : .human)
+            let (slug, _) = try options.store().addRule(rule, toTopic: topic)
+            print("\(rule.id.uuidString)\t\(slug)")
+        }
+    }
+
+    struct Remove: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Argument(help: "Id ou prefixo da regra.") var id: String
+        func run() throws { try options.store().deleteRule(id) }
+    }
+
+    struct For: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Regras aplicáveis a um conjunto de arquivos.")
+        @OptionGroup var options: RootOptions
+        @Argument(help: "Arquivos alterados.") var files: [String] = []
+        @Option(parsing: .upToNextOption, help: "Tópicos extras.") var topics: [String] = []
+        @Option(help: "Id do item de revisão relacionado.") var item: String?
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws {
+            let store = try options.store()
+            var files = files, topics = topics
+            if let item {
+                let (_, group, index) = try store.findItem(item)
+                topics += group.items[index].rules
+                if let file = group.items[index].target?.file { files.append(file) }
+            }
+            let applicable = try store.applicableTopics(files: files, explicit: topics)
+            if json { return try printJSON(applicable.map { TopicChecklist(slug: $0.slug, topic: $0.topic) }) }
+            if applicable.isEmpty { return print("Nenhuma regra aplicável.") }
+            for (slug, t) in applicable {
+                print("## \(t.title) [\(slug)]")
+                printRules(t.rules)
+            }
+        }
+    }
+
+    struct Check: ParsableCommand {
+        static let configuration = CommandConfiguration(
+            abstract: "Registra a verificação das regras aplicáveis.",
+            discussion: "Lê de stdin (ou --results) um JSON: [{\"ruleId\": \"ab12\", \"verdict\": \"pass|fail|na\", \"note\": \"...\"}]"
+        )
+        @OptionGroup var options: RootOptions
+        @Option(help: "Resumo do que foi feito.") var task: String
+        @Option(name: .customLong("file"), help: "Arquivo alterado (repetível).") var files: [String] = []
+        @Option(parsing: .upToNextOption, help: "Tópicos extras.") var topics: [String] = []
+        @Option(help: "Id do item de revisão relacionado.") var item: String?
+        @Option(help: "JSON dos resultados (padrão: stdin).") var results: String?
+        @Flag(help: "Marca o check como feito por IA.") var ai = false
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws {
+            let raw = results.map { Data($0.utf8) } ?? FileHandle.standardInput.readDataToEndOfFile()
+            let answers = try JSONDecoder().decode([RuleAnswer].self, from: raw.isEmpty ? Data("[]".utf8) : raw)
+            let check = try options.store().submitCheck(
+                task: task, files: files, topics: topics, reviewItem: item, answers: answers, author: ai ? .ai : .human
+            )
+            if json { return try printJSON(check) }
+            print(check.passed ? "✅ Aprovado (\(check.results.count) regra(s))" : "❌ Reprovado")
+            for f in check.failures { print("  ✗ \(f)") }
+            for w in check.warnings { print("  ⚠ \(w)") }
+            if !check.passed { throw ExitCode.failure }
+        }
+    }
+
+    struct Checks: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Histórico de verificações.")
+        @OptionGroup var options: RootOptions
+        @Option(help: "Filtra por tópico.") var topic: String?
+        @Option var limit = 20
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws {
+            let store = try options.store()
+            let slug = try topic.map { try store.resolveTopicSlug($0) }
+            let checks = try store.listChecks().filter { slug == nil || $0.topics.contains(slug!) }.prefix(limit)
+            if json { return try printJSON(Array(checks)) }
+            for c in checks {
+                let item = c.reviewItem.map { "  item \($0.uuidString.prefix(8))" } ?? ""
+                print("\(c.createdAt.formatted(date: .numeric, time: .shortened))  \(c.passed ? "✅" : "❌")  \(c.task)\(item)")
+            }
+        }
+    }
+}
+
+// MARK: - ideas
+
+struct Ideas: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Ideias futuras do projeto (brainstorm), com regras rascunho.",
+        subcommands: [List.self, Show.self, New.self, Set.self, AddRule.self, Promote.self],
+        defaultSubcommand: List.self
+    )
+
+    struct List: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Option(help: "Filtra por status.") var status: IdeaStatus?
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws {
+            let ideas = try options.store().listIdeas().filter { status == nil || $0.idea.status == status }
+            if json { return try printJSON(ideas.map(\.idea)) }
+            for (slug, idea) in ideas {
+                let tags = idea.tags.isEmpty ? "" : "  #" + idea.tags.joined(separator: " #")
+                print("\(slug)\t[\(idea.status.rawValue)] \(idea.title)  (\(idea.rules.count) regra(s))\(tags)")
+            }
+        }
+    }
+
+    struct Show: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Argument var idea: String
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws {
+            let store = try options.store()
+            let idea = try store.loadIdea(store.resolveIdeaSlug(self.idea))
+            if json { return try printJSON(idea) }
+            print("\(idea.title) — \(idea.status.label)")
+            if let body = idea.body, !body.isEmpty { print("\n\(body)\n") }
+            if !idea.rules.isEmpty { print("Regras rascunho:"); printRules(idea.rules) }
+            if let t = idea.promotedTopic { print("Promovida para o tópico: \(t)") }
+        }
+    }
+
+    struct New: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Argument var title: String
+        @Option var body: String?
+        @Option(parsing: .upToNextOption) var tags: [String] = []
+        @Flag(help: "Marca a ideia como criada por IA.") var ai = false
+
+        func run() throws {
+            print(try options.store().createIdea(title: title, body: body, tags: tags, author: ai ? .ai : .human).slug)
+        }
+    }
+
+    struct Set: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Argument var idea: String
+        @Option var status: IdeaStatus?
+        @Option var title: String?
+        @Option var body: String?
+
+        func run() throws {
+            let (slug, idea) = try options.store().updateIdea(self.idea) { idea in
+                if let status { idea.status = status }
+                if let title { idea.title = title }
+                if let body { idea.body = body }
+            }
+            print("\(slug)\t[\(idea.status.rawValue)] \(idea.title)")
+        }
+    }
+
+    struct AddRule: ParsableCommand {
+        static let configuration = CommandConfiguration(commandName: "add-rule", abstract: "Adiciona uma regra rascunho à ideia.")
+        @OptionGroup var options: RootOptions
+        @Argument var idea: String
+        @Argument var text: String
+        @Flag(help: "Regra recomendada (não bloqueia).") var should = false
+        @Flag(help: "Marca a regra como criada por IA.") var ai = false
+
+        func run() throws {
+            let rule = Rule(text: text, severity: should ? .should : .must, author: ai ? .ai : .human)
+            try options.store().addRule(rule, toIdea: idea)
+            print(rule.id.uuidString)
+        }
+    }
+
+    struct Promote: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Transforma as regras da ideia em um tópico de regras ativo.")
+        @OptionGroup var options: RootOptions
+        @Argument var idea: String
+        func run() throws { print(try options.store().promoteIdea(idea)) }
+    }
+}
+
+// MARK: - tag
+
+struct Tag: ParsableCommand {
+    static let configuration = CommandConfiguration(abstract: "Define as tags de um doc, grupo de revisão, tópico de regras ou ideia (sem tags: remove todas).")
+
+    enum Kind: String, ExpressibleByArgument, CaseIterable { case doc, review, rules, idea }
+
+    @OptionGroup var options: RootOptions
+    @Argument(help: "doc, review, rules ou idea.") var kind: Kind
+    @Argument(help: "Slug, id ou título.") var ref: String
+    @Argument(help: "Tags (substituem as atuais).") var tags: [String] = []
+
+    func run() throws {
+        let store = try options.store()
+        switch kind {
+        case .doc: try store.setDocTags(ref, tags)
+        case .review: try store.updateGroup(ref) { $0.tags = tags }
+        case .rules: try store.updateTopic(ref) { $0.tags = tags }
+        case .idea: try store.updateIdea(ref) { $0.tags = tags }
+        }
+        print(tags.isEmpty ? "Tags removidas." : "Tags: " + tags.joined(separator: ", "))
     }
 }

@@ -1,0 +1,13 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "human",
+  "body" : "# VibeDeck\n\n> adasd\n",
+  "createdAt" : "2026-10-07T23:39:14Z",
+  "id" : "7E2A1D57-02EA-4EC6-A362-DAC7B416F431",
+  "rules" : [
+
+  ],
+  "status" : "new",
+  "title" : "Site do Projeto",
+  "updatedAt" : "2026-10-08T02:39:06Z"
+}

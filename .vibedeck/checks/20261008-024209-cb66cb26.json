@@ -1,0 +1,23 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-08T02:42:09.020Z",
+  "failures" : [
+
+  ],
+  "files" : [
+    "Sources/VibeDeckApp/TabBar.swift"
+  ],
+  "id" : "CB66CB26-2443-4AC6-B1CC-8F329E63B9DA",
+  "passed" : true,
+  "results" : [
+
+  ],
+  "task" : "Fechar aba com clique do botão do meio do mouse (TabBar)",
+  "topics" : [
+
+  ],
+  "warnings" : [
+
+  ]
+}

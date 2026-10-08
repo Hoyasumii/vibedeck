@@ -1,0 +1,12 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-07T23:50:57Z",
+  "id" : "5D7E4EFD-6F7D-4E47-A5FA-DE5F4E519851",
+  "rules" : [
+
+  ],
+  "status" : "new",
+  "title" : "Suporte a Idiomas",
+  "updatedAt" : "2026-10-07T23:50:57Z"
+}

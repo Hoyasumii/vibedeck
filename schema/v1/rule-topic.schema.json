@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "title": "VibeDeck rule topic",
+  "description": "Behaviors a topic must have; agents verify them before calling a task done. Lives at <repo>/.vibedeck/rules/<slug>.json.",
+  "type": "object",
+  "required": ["id", "title", "rules", "createdAt"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": { "type": "string", "format": "uuid" },
+    "title": { "type": "string", "minLength": 1 },
+    "description": { "type": "string" },
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "paths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Globs relative to the project root (*, ?, **). Empty or absent: the topic applies to every task."
+    },
+    "rules": { "type": "array", "items": { "$ref": "#/$defs/rule" } },
+    "sourceIdea": { "type": "string", "format": "uuid", "description": "Idea this topic was promoted from." },
+    "createdAt": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "rule": {
+      "type": "object",
+      "required": ["id", "text", "severity", "author", "createdAt"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "text": { "type": "string", "minLength": 1, "description": "The expected behavior, short and verifiable." },
+        "details": { "type": "string", "description": "How to verify it." },
+        "severity": { "enum": ["must", "should"], "description": "must blocks completion; should only warns." },
+        "author": { "enum": ["human", "ai"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

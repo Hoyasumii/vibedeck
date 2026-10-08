@@ -2,7 +2,24 @@
   "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/project.schema.json",
   "id" : "82283A6D-4139-4386-A516-606A89BE658C",
   "links" : [
-
+    {
+      "id" : "0A708007-1A32-4187-AFDF-44F51E9B1920",
+      "tags" : [
+        "artefato",
+        "claude"
+      ],
+      "title" : "Logo e Interface Multiplataforma",
+      "url" : "https://claude.ai/artifact/M9YGSGjtpf3mkMVd4TP1hr#artboard-e259634e05c3"
+    },
+    {
+      "id" : "A563DDA5-760E-4B46-8CEF-14C6DBD5D09D",
+      "tags" : [
+        "claude",
+        "docs"
+      ],
+      "title" : "Design System",
+      "url" : "https://claude.ai/artifact/DNxAfvZGkEYiTaRqZDDQAq"
+    }
   ],
   "name" : "vibedeck",
   "reviewKinds" : [

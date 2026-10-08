@@ -1,0 +1,23 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-08T02:39:54.833Z",
+  "failures" : [
+
+  ],
+  "files" : [
+    "Sources/VibeDeckApp/ProjectWindow.swift"
+  ],
+  "id" : "9D2040B3-CB9A-4977-B698-3DCCCBA0FA1B",
+  "passed" : true,
+  "results" : [
+
+  ],
+  "task" : "Remove título duplicado do projeto no cabeçalho da sidebar (mantém o da toolbar)",
+  "topics" : [
+
+  ],
+  "warnings" : [
+
+  ]
+}
