@@ -26,6 +26,7 @@ export default {
             reviewGroup: `${base}/review-group.schema.json`,
             ruleTopic: `${base}/rule-topic.schema.json`,
             idea: `${base}/idea.schema.json`,
+            agent: `${base}/agent.schema.json`,
             ruleCheck: `${base}/rule-check.schema.json`,
           },
         },

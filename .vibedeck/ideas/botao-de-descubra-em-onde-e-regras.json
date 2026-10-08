@@ -1,0 +1,13 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "human",
+  "body" : "A ideia do botão descubra, é perguntar pro claude, as informações que ele consegue puxar com base no que você falou, e ele vai preencher pra você. Dentro do Aplicativo.",
+  "createdAt" : "2026-10-08T04:11:49Z",
+  "id" : "732148CD-AFC5-4C37-ADB0-E561BAA46248",
+  "rules" : [
+
+  ],
+  "status" : "new",
+  "title" : "Botão de Descubra em \"Onde\" e \"Regras\" nas Revisões",
+  "updatedAt" : "2026-10-08T04:12:36Z"
+}

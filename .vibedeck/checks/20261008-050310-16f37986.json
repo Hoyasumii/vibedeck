@@ -1,0 +1,403 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-08T05:03:10.347Z",
+  "failures" : [
+
+  ],
+  "files" : [
+    "README.md",
+    "Sources/VibeDeckApp/ClaudePanel.swift",
+    "Sources/VibeDeckApp/ClaudeSession.swift",
+    "Sources/VibeDeckCore/ClaudeStream.swift",
+    "Tests/VibeDeckCoreTests/ClaudeStreamTests.swift"
+  ],
+  "id" : "16F37986-B9B7-47E4-B23E-8B270494C119",
+  "passed" : true,
+  "results" : [
+    {
+      "note" : "ProjectStore intocado",
+      "ruleId" : "5FA116B6-6FBE-45F9-8C5D-29E7548F6C2F",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem escrita de arquivo no Core",
+      "ruleId" : "857149E6-8C34-46A8-9C30-439EBE78309D",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "JSON só do protocolo stdin/stdout",
+      "ruleId" : "99BF0D79-2F65-419A-87DA-0B4F37E4FEF5",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem modelos de arquivo",
+      "ruleId" : "5ED22D96-FE5F-4683-8611-E3D264113B67",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem modelos de arquivo",
+      "ruleId" : "C6D79B9C-1F50-4AE3-8CD1-8CAE5C4F6B6F",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "57ADA275-8A0F-42BA-9E14-BA3B34AB8235",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem mudança de modelo",
+      "ruleId" : "4133C155-F789-428E-9ED5-5EAC37C19700",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem buscas",
+      "ruleId" : "B0277971-459D-4CCB-9E9D-5990F1574F5B",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem slugs",
+      "ruleId" : "7F7C6B09-EBCB-4CA0-BAAF-6B18D36F15C1",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "BC028BE5-D7E0-4DA3-BB5C-E8A628EBFA8A",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "64E65B59-8D5B-40DE-B381-CAF2B1BDC785",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "8D874A06-515D-41B5-A094-DC8B83BB40B6",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "35D8D7C3-1224-45CC-8A80-66D0B6291C33",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "64334D9C-327B-4811-B088-8B785EF4E0FE",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem erros novos de usuário",
+      "ruleId" : "EA5E6F7D-1587-4FC5-87D9-51CE6F130C7B",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "swift test: 38 tests in 5 suites passed",
+      "ruleId" : "97510532-2FCF-44BD-9D01-75086E554EB9",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "planModeApproval cobre status/permissionMode, ExitPlanMode, approvePlan e setPermissionMode; e2e: modo plan na hora, mudanças v1→v2, aprovar+aceitar edições, arquivo com v2",
+      "ruleId" : "91774D06-91B5-4945-9EC6-CDEFC57332FA",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "DFE3361B-6AFE-4ED3-A741-4FC0818D197D",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "B659FD25-792B-4C0E-BD08-6082ACFCC80A",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "A2B13B15-C59E-4189-8905-3A309C89DF28",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem edição manual",
+      "ruleId" : "9D6F362B-9F0E-4661-97B3-6158B160D478",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Sem dados editados",
+      "ruleId" : "9F92A765-76E7-4EA0-A66A-78AE12EE4C8F",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nada criado/apagado",
+      "ruleId" : "AC4BA963-CDEE-419C-B057-9140643E115D",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Normal/Planejar/Aceitar edições, Plano pronto para aprovação, Aprovar, Pedir mudanças, ajudas e mensagens ao Claude em pt-BR",
+      "ruleId" : "0E5AEC71-405E-4113-AB27-615313AB2B5F",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "README: seletor de modo e aprovação do plano",
+      "ruleId" : "306A20B6-E1FA-4BE4-96E8-2B854A3D0BC6",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Sem commit",
+      "ruleId" : "4095F087-1E04-46C0-9AA4-A60C8C16A72B",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem frame no root",
+      "ruleId" : "EE65A0A5-71DA-431A-A4B7-567144D40423",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Sem ViewThatFits",
+      "ruleId" : "9A4878F2-54AD-4B93-9E8B-9D7683C8F9F2",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Só maxHeight em subview do cartão; coluna inalterada",
+      "ruleId" : "047D2216-D1C9-4AFC-AA0A-D789DC1E8A60",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Sem mutação de dados",
+      "ruleId" : "00E57961-FE6D-4AFC-BB1A-3DC70152D38D",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "8385BC07-3F91-46DC-8BBD-6F62C4851DD9",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "B065B5AF-B93F-4698-8E43-BB4369E74351",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Campo de mudanças não grava no modelo",
+      "ruleId" : "3D508DEA-D43E-4E33-91B7-F46039B6B53D",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "329A929F-62CC-4A7D-99A3-A299F495A08C",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "335DA4F8-7DBF-4120-8878-42130C661D69",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "A999B857-E236-4893-97A9-07257A538B57",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhum atalho novo além de Return/Esc nos cartões",
+      "ruleId" : "DC9EED4D-8823-4FD1-83ED-3B820A83E8B4",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Sem coluna nova",
+      "ruleId" : "492100C1-EFE3-488F-8368-08CE17A797DA",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "SF Symbols, glassEffect, Menu/Picker nativos, MarkdownUI",
+      "ruleId" : "B382469C-4D35-4314-BEC2-50BCEC7C6855",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "1A4EF162-82B1-4940-8251-A2102964C3E8",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Modo não é dado do projeto; plano fica em ~/.claude/plans (Claude Code)",
+      "ruleId" : "9E02C127-7793-4588-A770-0E817687B02F",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "116AEA24-9A0B-431B-9FC1-8ABE22683898",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "F7531E2B-4846-4C63-BE0F-3DFA1771CCCC",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "BE018170-5258-45AA-876E-5B761B643714",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "257D96B2-3561-47D2-AB56-33FA0900B331",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "54A2D6B0-BC39-4555-A4E9-DB8D418D55CB",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "6E22946D-DF9C-4D59-B403-1BB9F3F0FFB5",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "C637A278-87F1-4586-BB2F-0864EDB552CB",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "C9BEE6A5-C314-4547-AE52-52D116B11220",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem conceito novo",
+      "ruleId" : "B9E9DD35-4A5F-4FA3-BDDF-014238B8CB50",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Tudo dentro do painel, que só existe com ClaudeCode.isInstalled",
+      "ruleId" : "A31D4912-A7FA-4E2A-B1C2-CC27D577177B",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "3901FA3E-16BD-4E00-A844-DAB5A87BDFC1",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "8D5FCA3B-9398-45CD-AF1E-03A04F22526C",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "9BBFB48C-17CC-4FD9-8D7C-F1FD71529D95",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "34D2EA32-DD0D-4405-93F6-FDABEBA7CC1B",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "3D22A05A-9E61-433B-A8E2-00BFA2A968EE",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Intocado",
+      "ruleId" : "365080A7-DD8F-4EBE-9CDF-979D07F6A5C3",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Este check",
+      "ruleId" : "EA7C01E6-5CC5-4199-94B6-11536B1ABDFA",
+      "topic" : "fluxo-padrao",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Itens abertos só da tela lateral; não afetam",
+      "ruleId" : "8F28F353-95A9-4EEC-8223-383AF2FF6140",
+      "topic" : "fluxo-padrao",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Sem item",
+      "ruleId" : "3A31B517-334E-484C-9205-0513AF158AE8",
+      "topic" : "fluxo-padrao",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem conceito novo",
+      "ruleId" : "95C0C917-663D-47F0-A4BD-C93E1B7F2D0C",
+      "topic" : "fluxo-padrao",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhuma ideia nova",
+      "ruleId" : "09C9F3A9-5B74-496C-8A2D-F93C4294CAD2",
+      "topic" : "fluxo-padrao",
+      "verdict" : "na"
+    }
+  ],
+  "task" : "Modo de planejamento no painel do Claude: seletor Normal/Planejar/Aceitar edições (set_permission_mode e --permission-mode), cartão de aprovação do plano (ExitPlanMode) com Aprovar / Aprovar e aceitar edições / Pedir mudanças, evento de mudança de modo; testes e e2e com claude real.",
+  "topics" : [
+    "core-e-formato-de-dados",
+    "geral",
+    "interface-do-app",
+    "conceitos-do-produto",
+    "dinamicas-da-interface",
+    "fluxo-padrao"
+  ],
+  "warnings" : [
+
+  ]
+}

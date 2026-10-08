@@ -1,0 +1,24 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-08T03:03:23.881Z",
+  "failures" : [
+
+  ],
+  "files" : [
+    "Sources/VibeDeckApp/ProjectWindow.swift",
+    "Sources/VibeDeckApp/WelcomeView.swift"
+  ],
+  "id" : "04D2DF8D-5C30-48AF-83B1-29A3C1FB3F70",
+  "passed" : true,
+  "results" : [
+
+  ],
+  "task" : "Esconde o fundo do toolbar na janela de boas-vindas e na coluna de detalhe, para o header ter a mesma cor do conteúdo e das barras laterais",
+  "topics" : [
+
+  ],
+  "warnings" : [
+
+  ]
+}

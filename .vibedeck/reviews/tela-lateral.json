@@ -1,0 +1,32 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/review-group.schema.json",
+  "createdAt" : "2026-10-08T03:54:38Z",
+  "id" : "230F4BA7-EBFF-44E3-9113-BE7AFB022EBC",
+  "items" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-08T03:55:30Z",
+      "details" : "Quando o painel da esquerda fica com muito conteúdo, tanto o título acaba se misturando com o conteúdo no scroll, como também, o caminho que mostra também fica impossível de ver",
+      "id" : "E4CF1CBA-8510-49B8-8A0F-0020B863B30B",
+      "kind" : "fix",
+      "priority" : "high",
+      "rules" : [
+        "dinamicas-da-interface"
+      ],
+      "status" : "done",
+      "title" : "Melhorar Visualização do Painel Lateral",
+      "updatedAt" : "2026-10-08T05:21:49Z"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-08T04:25:10Z",
+      "id" : "29A79BF8-7B92-471E-A610-C7460311CD16",
+      "kind" : "fix",
+      "priority" : "normal",
+      "status" : "done",
+      "title" : "Agora apareceu o título com um contorno de botão",
+      "updatedAt" : "2026-10-08T05:22:03Z"
+    }
+  ],
+  "title" : "Tela Lateral"
+}

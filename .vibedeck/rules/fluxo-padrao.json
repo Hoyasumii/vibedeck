@@ -1,0 +1,56 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "createdAt" : "2026-10-08T03:32:48Z",
+  "description" : "O caminho humano → IA → regras → check → done que o produto inteiro sustenta.",
+  "id" : "CAD17832-86AB-439F-A0F0-8BFF0B4F3A6E",
+  "paths" : [
+    "Sources/**",
+    "schema/**"
+  ],
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-08T03:33:31Z",
+      "details" : "rules_for com os arquivos alterados (e o item) → verificar cada regra de verdade → submit_rule_check com pass/fail/na para todas → se passed=false, corrigir e reenviar. O produto (AGENTS.md, instruções do MCP, CLI) sempre comunica esse fluxo.\nVerificar: AGENTS.md e instruções do MCP continuam descrevendo os passos.",
+      "id" : "EA7C01E6-5CC5-4199-94B6-11536B1ABDFA",
+      "severity" : "must",
+      "text" : "Nenhuma tarefa está concluída sem check aprovado"
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-08T03:33:31Z",
+      "details" : "Itens abertos com target apontando para a área indicam o que o humano quer (ou não quer) ali. O produto precisa permitir listar por status e alvo (review list --status open, list_review_items).\nVerificar: a listagem por status/alvo continua disponível no CLI e no MCP.",
+      "id" : "8F28F353-95A9-4EEC-8223-383AF2FF6140",
+      "severity" : "must",
+      "text" : "Antes de mexer numa área, ler os itens de revisão abertos dela"
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-08T03:33:31Z",
+      "details" : "Ao começar, in_progress; ao terminar, done. Se o item tem regras (campo rules ou target.file casando um tópico), done é bloqueado sem check aprovado para o item (humano pode forçar com --force no CLI).\nVerificar: tentar marcar done sem check falha com mensagem em pt-BR.",
+      "id" : "3A31B517-334E-484C-9205-0513AF158AE8",
+      "severity" : "must",
+      "text" : "Item em trabalho fica in_progress; com regras, só vai a done após check aprovado"
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-08T03:33:31Z",
+      "details" : "Humano usa o app, agente usa CLI/MCP, sobre os mesmos arquivos. Links, docs, revisões, regras, checks, ideias e tags precisam ter pelo menos listar/ler/criar nos três.\nVerificar: conceito ou operação nova aparece no app, no CLI e no MCP.",
+      "id" : "95C0C917-663D-47F0-A4BD-C93E1B7F2D0C",
+      "severity" : "must",
+      "text" : "Todo conceito é acessível pelo app, pelo CLI e pelo MCP"
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-08T03:33:31Z",
+      "details" : "Em vez de implementar algo fora do pedido, o agente registra com add_idea (author=ai) para o humano avaliar depois: new → exploring → approved → promover.\nVerificar: o add_idea continua disponível e as instruções do MCP o mencionam.",
+      "id" : "09C9F3A9-5B74-496C-8A2D-F93C4294CAD2",
+      "severity" : "should",
+      "text" : "Ideias que surgem durante o trabalho são registradas"
+    }
+  ],
+  "tags" : [
+    "conceitos"
+  ],
+  "title" : "Fluxo padrão"
+}

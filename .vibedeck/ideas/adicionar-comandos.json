@@ -1,0 +1,13 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "human",
+  "body" : "Mesmo fluxo dos agentes",
+  "createdAt" : "2026-10-08T03:36:46Z",
+  "id" : "23B9F1E8-71BD-401E-8CA6-BB023B1F9083",
+  "rules" : [
+
+  ],
+  "status" : "new",
+  "title" : "Adicionar Comandos",
+  "updatedAt" : "2026-10-08T04:27:49Z"
+}

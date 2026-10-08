@@ -147,7 +147,7 @@ struct MCPHandler: Sendable {
            (avise o usuário sobre warnings de regras "should").
 
         Leia os itens de revisão abertos antes de mexer numa área; ao concluir um item, marque status=done
-        (bloqueado sem check aprovado quando o item tem regras). Itens, regras e ideias criados por você são author=ai.
+        (bloqueado sem check aprovado quando o item tem regras). Itens, regras, ideias e agentes criados por você são author=ai.
         Ideias (list_ideas) são planos futuros, não regras ativas; registre ideias novas com add_idea.
         Guia completo: .vibedeck/AGENTS.md.
         """
@@ -189,6 +189,15 @@ struct MCPHandler: Sendable {
     ]
 
     static let tools: [Tool] = [
+        Tool(name: "claude_usage", description: "Último uso dos limites do Claude Code (sessão de 5h e semana, em %, com horário de reset), registrado pela statusline (`vibedeck usage install`).",
+             inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "cloud_check", description: "Compara a branch padrão local com a do GitHub (origin). Uma sessão do Claude Code na nuvem só vê o GitHub: se as branches forem diferentes (blocked=true), não dá para usar a nuvem até sincronizar.",
+             inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "start_cloud_session", description: "Cria uma sessão do Claude Code na nuvem (claude.ai/code) com a tarefa dada, sobre o repositório no GitHub, e devolve o link. Recusa se a branch local for diferente da do GitHub, ou se houver alterações não commitadas sem allow_dirty. Só faça isso quando o usuário pedir.",
+             inputSchema: schema([
+                 "description": ("string", "O que a sessão deve fazer"),
+                 "allow_dirty": ("boolean", "Cria mesmo com alterações não commitadas, que a nuvem não vê (padrão: não)"),
+             ], required: ["description"])),
         Tool(name: "get_project", description: "Retorna vibedeck.json (nome, links, reviewKinds) e um resumo dos docs e grupos de revisão.", inputSchema: schema([:]),
              annotations: .init(readOnlyHint: true)),
         Tool(name: "list_docs", description: "Lista os documentos markdown do projeto (slug e título).", inputSchema: schema([:]),
@@ -301,13 +310,50 @@ struct MCPHandler: Sendable {
                  "details": ("string", "Detalhes"),
                  "severity": ("string", "must ou should"),
              ], required: ["idea", "text"], enums: ["severity": severities])),
-        Tool(name: "set_tags", description: "Substitui as tags de um doc, grupo de revisão, tópico de regras ou ideia (lista vazia remove).",
+        // Agents
+        Tool(name: "list_agents", description: "Lista os agentes do VibeDeck (nome, modelo e próximos passos). Não são os agentes do provedor de IA.",
+             inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "get_agent", description: "Retorna um agente completo (prompt e próximos passos).", inputSchema: schema(["agent": ("string", "Slug, id ou título")], required: ["agent"]),
+             annotations: .init(readOnlyHint: true)),
+        Tool(name: "add_agent", description: "Cria um agente do VibeDeck. Marcado author=ai.",
+             inputSchema: schema([
+                 "title": ("string", "Nome do agente"),
+                 "summary": ("string", "Quando usar"),
+                 "model": ("string", "Modelo (ex.: sonnet, opus)"),
+                 "tools": ("array", "Ferramentas"),
+                 "prompt": ("string", "Prompt do agente (markdown)"),
+                 "tags": ("array", "Tags"),
+             ], required: ["title"])),
+        Tool(name: "update_agent", description: "Atualiza um agente (use add_agent_next_step para o fluxo).",
+             inputSchema: schema([
+                 "agent": ("string", "Slug, id ou título"),
+                 "title": ("string", "Novo nome"),
+                 "summary": ("string", "Nova descrição"),
+                 "model": ("string", "Novo modelo"),
+                 "tools": ("array", "Substitui as ferramentas"),
+                 "prompt": ("string", "Novo prompt"),
+                 "tags": ("array", "Substitui as tags"),
+             ], required: ["agent"])),
+        Tool(name: "add_agent_next_step", description: "Adiciona um próximo passo ao agente: outro agente (ou comando) do VibeDeck que atua sobre o resultado. Forma um fluxo.",
+             inputSchema: schema([
+                 "agent": ("string", "Agente de origem (slug, id ou título)"),
+                 "target": ("string", "Agente (slug, id ou título) ou comando do VibeDeck"),
+                 "kind": ("string", "agent (padrão) ou command"),
+                 "note": ("string", "Quando/como executar"),
+             ], required: ["agent", "target"], enums: ["kind": ["agent", "command"]])),
+        Tool(name: "agent_flow", description: "JSON do fluxo de um agente (prompt + próximos passos encadeados) para orquestrar a IA.",
+             inputSchema: schema(["agent": ("string", "Slug, id ou título")], required: ["agent"]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "import_agents", description: "Importa agentes do Claude Code (.claude/agents do projeto e do usuário) como agentes do VibeDeck. Marcados como author=ai.",
+             inputSchema: schema(["overwrite": ("boolean", "Sobrescreve existentes (padrão: não)")])),
+        Tool(name: "set_tags", description: "Substitui as tags de um doc, grupo de revisão, tópico de regras, ideia ou agente (lista vazia remove).",
              inputSchema: schema([
                  "kind": ("string", "Tipo do item"),
                  "ref": ("string", "Slug, id ou título"),
                  "tags": ("array", "Novas tags"),
-             ], required: ["kind", "ref", "tags"], enums: ["kind": ["doc", "review_group", "rule_topic", "idea"]])),
+             ], required: ["kind", "ref", "tags"], enums: ["kind": ["doc", "review_group", "rule_topic", "idea", "agent"]])),
         Tool(name: "promote_idea", description: "Transforma as regras de uma ideia em um tópico de regras ativo. Só faça isso quando o usuário pedir.",
+             inputSchema: schema(["idea": ("string", "Slug, id ou título")], required: ["idea"])),
+        Tool(name: "unpromote_idea", description: "Desfaz promote_idea: apaga o tópico de regras criado pela ideia e remove o vínculo (as regras rascunho ficam na ideia; Aprovada volta para Explorando). Só faça isso quando o usuário pedir.",
              inputSchema: schema(["idea": ("string", "Slug, id ou título")], required: ["idea"])),
     ]
 
@@ -466,6 +512,7 @@ struct MCPHandler: Sendable {
             case "review_group": try store.updateGroup(ref) { $0.tags = tags }
             case "rule_topic": try store.updateTopic(ref) { $0.tags = tags }
             case "idea": try store.updateIdea(ref) { $0.tags = tags }
+            case "agent": try store.updateAgent(ref) { $0.tags = tags }
             case let other: throw MCPError.invalidParams("Tipo inválido: \(other)")
             }
             return tags.isEmpty ? "Tags removidas." : "Tags: " + tags.joined(separator: ", ")
@@ -508,9 +555,71 @@ struct MCPHandler: Sendable {
             let (slug, saved) = try store.addRule(rule, toIdea: req("idea"))
             return try json(["idea": slug, "ruleId": saved.id.uuidString, "text": saved.text])
 
+        case "claude_usage":
+            guard let usage = ClaudeCode.loadUsage() else {
+                return "Nenhum uso registrado. O usuário precisa ligar a statusline com `vibedeck usage install`."
+            }
+            return try json(usage)
+
+        case "cloud_check":
+            return try json(CloudSession.check(root: store.root))
+
+        case "start_cloud_session":
+            let result = try CloudSession.launch(root: store.root, description: try req("description"), allowDirty: args["allow_dirty"]?.boolValue ?? false)
+            return try json(CloudStart(sync: result.sync, url: result.url?.absoluteString, output: result.output))
+
+        case "list_agents":
+            return try json(store.listAgents().map {
+                AgentRow(slug: $0.slug, title: $0.agent.title, model: $0.agent.model, tags: $0.agent.tags, nextSteps: $0.agent.nextSteps)
+            })
+
+        case "get_agent":
+            let slug = try store.resolveAgentSlug(req("agent"))
+            return try json(SlugAnd(slug: slug, value: store.loadAgent(slug)))
+
+        case "add_agent":
+            let (slug, agent) = try store.createAgent(
+                title: req("title"), summary: str("summary"), model: str("model"), tools: list("tools") ?? [],
+                prompt: str("prompt") ?? "", tags: list("tags") ?? [], author: .ai)
+            return try json(SlugAnd(slug: slug, value: agent))
+
+        case "update_agent":
+            let tags = list("tags"), tools = list("tools")
+            let (slug, agent) = try store.updateAgent(req("agent")) { a in
+                if let t = str("title") { a.title = t }
+                if let v = str("summary") { a.summary = v }
+                if let v = str("model") { a.model = v }
+                if let v = str("prompt") { a.prompt = v }
+                if let tools { a.tools = tools }
+                if let tags { a.tags = tags }
+            }
+            return try json(SlugAnd(slug: slug, value: agent))
+
+        case "add_agent_next_step":
+            let kind = try str("kind").map { k in
+                guard let v = NextStepKind(rawValue: k) else { throw MCPError.invalidParams("Tipo inválido: \(k)") }
+                return v
+            } ?? .agent
+            let (slug, agent) = try store.addNextStep(to: req("agent"), kind: kind, target: req("target"), note: str("note"))
+            return try json(SlugAnd(slug: slug, value: agent))
+
+        case "agent_flow":
+            let slug = try store.resolveAgentSlug(req("agent"))
+            return try AgentFlow.json(from: slug, agents: store.listAgents()) ?? ""
+
+        case "import_agents":
+            let slugs = try store.importClaudeAgents(overwrite: args["overwrite"]?.boolValue ?? false, author: .ai)
+            return try json(slugs)
+
         case "promote_idea":
             let topic = try store.promoteIdea(req("idea"))
             return "Ideia promovida para o tópico de regras: \(topic)"
+
+        case "unpromote_idea":
+            let ref = try req("idea")
+            guard try store.loadIdea(store.resolveIdeaSlug(ref)).promotedTopic != nil else { return "A ideia não estava promovida." }
+            let topic = try store.unpromoteIdea(ref)
+            return topic.map { "Ideia despromovida; tópico removido: \($0)" } ?? "Ideia despromovida (o tópico já não existia)."
 
         default:
             throw MCPError.methodNotFound("Tool desconhecida: \(name)")
@@ -531,6 +640,9 @@ struct MCPHandler: Sendable {
         list += try store.listIdeas().map {
             Resource(name: "Ideia: \($0.idea.title)", uri: "vibedeck://ideas/\($0.slug)", description: $0.idea.status.label, mimeType: "application/json")
         }
+        list += try store.listAgents().map {
+            Resource(name: "Agente: \($0.agent.title)", uri: "vibedeck://agents/\($0.slug)", description: $0.agent.model, mimeType: "application/json")
+        }
         return list
     }
 
@@ -549,6 +661,9 @@ struct MCPHandler: Sendable {
         }
         if let slug = uri.stripping("vibedeck://ideas/") {
             return .text(try String(contentsOf: store.ideaURL(slug), encoding: .utf8), uri: uri, mimeType: "application/json")
+        }
+        if let slug = uri.stripping("vibedeck://agents/") {
+            return .text(try String(contentsOf: store.agentURL(slug), encoding: .utf8), uri: uri, mimeType: "application/json")
         }
         throw MCPError.invalidParams("URI desconhecida: \(uri)")
     }
@@ -620,6 +735,20 @@ private struct IdeaRow: Encodable {
     let tags: [String]
     let rules: Int
     let promotedTopic: String?
+}
+
+private struct CloudStart: Encodable {
+    let sync: CloudSync
+    let url: String?
+    let output: String
+}
+
+private struct AgentRow: Encodable {
+    let slug: String
+    let title: String
+    let model: String?
+    let tags: [String]
+    let nextSteps: [NextStep]
 }
 
 private struct SlugAnd<T: Encodable>: Encodable {

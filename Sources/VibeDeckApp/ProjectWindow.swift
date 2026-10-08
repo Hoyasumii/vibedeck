@@ -3,6 +3,7 @@ import VibeDeckCore
 
 struct ProjectWindow: View {
     @State private var model: ProjectModel
+    @State private var claude: ClaudeSession
     @State private var selection: SidebarItem?
     /// Open tabs; `selection` always mirrors `tabs[activeTab]`.
     @State private var tabs: [SidebarItem] = [.links]
@@ -10,13 +11,17 @@ struct ProjectWindow: View {
     /// Sidebar sections whose children are shown. Toggled by the chevron, independent of selection.
     @State private var expanded = Set<SidebarSection>()
     @State private var newName: NewNamePrompt?
+    /// Follows `claude.isPanelVisible`, but only after the window has been widened to fit the panel.
+    @State private var window = WeakWindow()
 
     init(root: URL) {
-        _model = State(initialValue: ProjectModel(store: ProjectStore(root: root)))
+        let model = ProjectModel(store: ProjectStore(root: root))
+        _model = State(initialValue: model)
+        _claude = State(initialValue: ClaudeSession(root: root, projectId: model.project.id))
     }
 
     enum NewNamePrompt: Identifiable {
-        case doc, group, topic, idea
+        case doc, group, topic, idea, agent
         var id: Self { self }
 
         init(_ section: SidebarSection) {
@@ -25,6 +30,7 @@ struct ProjectWindow: View {
             case .groups: self = .group
             case .topics: self = .topic
             case .ideas: self = .idea
+            case .agents: self = .agent
             }
         }
 
@@ -34,6 +40,7 @@ struct ProjectWindow: View {
             case .group: "Novo grupo de revisão"
             case .topic: "Novo tópico de regras"
             case .idea: "Nova ideia"
+            case .agent: "Novo agente"
             }
         }
 
@@ -43,6 +50,7 @@ struct ProjectWindow: View {
             case .group: "Tema (ex.: Tela de login)"
             case .topic: "Tópico (ex.: Interface, API, Acessibilidade)"
             case .idea: "Ideia (ex.: Modo offline)"
+            case .agent: "Nome do agente (ex.: Revisor de código)"
             }
         }
     }
@@ -53,6 +61,21 @@ struct ProjectWindow: View {
     private var expandedKey: String { "expanded.\(model.project.id.uuidString)" }
 
     var body: some View {
+        // The Claude panel is a plain trailing column, not an `.inspector`: Ideas, Rules, Reviews and
+        // Agents each host their own inspector, and nesting two in one split view crashes/hangs AppKit.
+        HStack(spacing: 0) {
+            splitView
+            if claude.isPanelVisible {
+                Divider()
+                ClaudePanel()
+                    .frame(width: 340)
+            }
+        }
+        .environment(model)
+        .environment(claude)
+    }
+
+    private var splitView: some View {
         NavigationSplitView {
             sidebar
                 .navigationSplitViewColumnWidth(min: 200, ideal: 240, max: 320)
@@ -63,13 +86,30 @@ struct ProjectWindow: View {
                             .lineLimit(1)
                             .help(model.project.description ?? model.project.name)
                     }
+                    // Plain title, not a glass capsule like the toolbar buttons.
                     .sharedBackgroundVisibility(.hidden)
                     ToolbarSpacer(.flexible)
                 }
         } detail: {
             detail
         }
+        .toolbar {
+            if ClaudeCode.isInstalled {
+                ToolbarItem(placement: .primaryAction) {
+                    Button { claude.isPanelVisible.toggle() } label: { Label("Claude", systemImage: "sparkles") }
+                        .help(claude.isPanelVisible ? "Ocultar o Claude (⇧⌘C)" : "Conversar com o Claude Code (⇧⌘C)")
+                }
+            }
+        }
+        .background(WindowReader { window.value = $0; makeRoomForPanel() })
+        .onChange(of: claude.isPanelVisible, initial: true) { _, visible in
+            // Widen first: opening the inspector in a window narrower than all columns' minimums
+            // leaves AppKit's split view unsolvable (hangs, columns overlapping, panel off-window).
+            if visible { makeRoomForPanel() }
+        }
         .environment(model)
+        .environment(claude)
+        .focusedSceneValue(\.claudeSession, ClaudeCode.isInstalled ? claude : nil)
         .task {
             model.startWatching()
             restoreState()
@@ -91,7 +131,11 @@ struct ProjectWindow: View {
             UserDefaults.standard.set(new.map(\.rawValue), forKey: expandedKey)
         }
         .onChange(of: tabs.map(model.exists)) { pruneTabs() }
-        .onDisappear { model.stopWatching() }
+        .onDisappear {
+            model.stopWatching()
+            claude.stop()
+            claude.terminal.terminate()
+        }
         .sheet(item: $newName) { prompt in
             NamePromptSheet(title: prompt.title, placeholder: prompt.placeholder) { name in
                 switch prompt {
@@ -99,6 +143,7 @@ struct ProjectWindow: View {
                 case .group: if let slug = model.createGroup(title: name) { selection = .group(slug) }
                 case .topic: if let slug = model.createTopic(title: name) { selection = .topic(slug) }
                 case .idea: if let slug = model.createIdea(title: name) { selection = .idea(slug) }
+                case .agent: if let slug = model.createAgent(title: name) { selection = .agent(slug) }
                 }
             }
         }
@@ -108,6 +153,15 @@ struct ProjectWindow: View {
     }
 
     private var sidebar: some View {
+        // The footer sits below the list (not in a safe-area inset) so rows never scroll under it.
+        VStack(spacing: 0) {
+            sidebarList
+            Divider()
+            sidebarFooter
+        }
+    }
+
+    private var sidebarList: some View {
         List(selection: $selection) {
             Section {
                 Label("Links", systemImage: "link")
@@ -136,7 +190,13 @@ struct ProjectWindow: View {
         }
         .animation(.snappy(duration: 0.25), value: expanded)
         .listStyle(.sidebar)
-        .safeAreaInset(edge: .bottom) {
+        // Hard edge under the title so scrolled rows don't blend into it.
+        .scrollEdgeEffectStyle(.hard, for: .top)
+    }
+
+    private var sidebarFooter: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if ClaudeCode.isInstalled { ClaudeUsageView() }
             HStack {
                 Image(systemName: "folder")
                 Text(model.store.root.path(percentEncoded: false))
@@ -144,11 +204,11 @@ struct ProjectWindow: View {
             }
             .font(.caption)
             .foregroundStyle(.secondary)
-            .padding(10)
-            .frame(maxWidth: .infinity, alignment: .leading)
             .onTapGesture { NSWorkspace.shared.activateFileViewerSelecting([model.store.manifestURL]) }
             .help("Mostrar vibedeck.json no Finder")
         }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func openInNewTabButton(_ item: SidebarItem) -> some View {
@@ -161,6 +221,7 @@ struct ProjectWindow: View {
         case .docs:
             ForEach(model.docs) { doc in
                 Label(doc.title, systemImage: "doc.text")
+                    .help(doc.title)
                     .tag(SidebarItem.doc(doc.slug))
                     .contextMenu {
                         openInNewTabButton(.doc(doc.slug))
@@ -175,6 +236,7 @@ struct ProjectWindow: View {
         case .groups:
             ForEach(model.groups) { entry in
                 Label(entry.group.title, systemImage: "checklist")
+                    .help(entry.group.title)
                     .badge(entry.group.openCount)
                     .tag(SidebarItem.group(entry.slug))
                     .contextMenu {
@@ -192,7 +254,7 @@ struct ProjectWindow: View {
                 Label(entry.value.title, systemImage: entry.value.isGlobal ? "checkmark.shield" : "scope")
                     .badge(entry.value.rules.count)
                     .tag(SidebarItem.topic(entry.slug))
-                    .help(entry.value.isGlobal ? "Vale para toda tarefa" : entry.value.paths.joined(separator: ", "))
+                    .help(entry.value.isGlobal ? "\(entry.value.title) — vale para toda tarefa" : "\(entry.value.title) — \(entry.value.paths.joined(separator: ", "))")
                     .contextMenu {
                         openInNewTabButton(.topic(entry.slug))
                         Divider()
@@ -208,7 +270,7 @@ struct ProjectWindow: View {
                 Label(entry.value.title, systemImage: entry.value.status.symbol)
                     .foregroundStyle(entry.value.status.isClosed ? .secondary : .primary)
                     .tag(SidebarItem.idea(entry.slug))
-                    .help(entry.value.status.label)
+                    .help("\(entry.value.title) — \(entry.value.status.label)")
                     .contextMenu {
                         openInNewTabButton(.idea(entry.slug))
                         Divider()
@@ -217,10 +279,30 @@ struct ProjectWindow: View {
                                 Button(status.label) { model.mutateIdea(entry.slug, "Alterar status", undo: nil) { $0.status = status } }
                             }
                         }
+                        if ClaudeCode.isInstalled {
+                            Button("Perguntar ao Claude sobre esta ideia") {
+                                claude.ask("Leia a ideia \"\(entry.value.title)\" (get_idea com \"\(entry.slug)\") e me ajude a refiná-la: aponte lacunas, riscos e regras que ela deveria ter. Se precisar de decisões minhas, me pergunte.")
+                            }
+                        }
                         Button("Mostrar no Finder") { NSWorkspace.shared.activateFileViewerSelecting([model.store.ideaURL(entry.slug)]) }
                         Button("Mover para o Lixo", role: .destructive) {
                             if selection == .idea(entry.slug) { selection = .section(.ideas) }
                             model.deleteIdea(entry.slug)
+                        }
+                    }
+            }
+        case .agents:
+            ForEach(model.agents) { entry in
+                Label(entry.value.title, systemImage: "person.crop.rectangle")
+                    .tag(SidebarItem.agent(entry.slug))
+                    .help("\(entry.value.title) — \(entry.value.model ?? "modelo herdado")")
+                    .contextMenu {
+                        openInNewTabButton(.agent(entry.slug))
+                        Divider()
+                        Button("Mostrar no Finder") { NSWorkspace.shared.activateFileViewerSelecting([model.store.agentURL(entry.slug)]) }
+                        Button("Mover para o Lixo", role: .destructive) {
+                            if selection == .agent(entry.slug) { selection = .section(.agents) }
+                            model.deleteAgent(entry.slug)
                         }
                     }
             }
@@ -237,6 +319,25 @@ struct ProjectWindow: View {
                     TabBar(tabs: tabs, active: activeTab, onSelect: activateTab, onClose: closeTab)
                 }
             }
+            // No separate toolbar strip: the title area takes the same tone as the sidebars.
+            .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+    }
+
+    // MARK: Window
+
+    /// Window width that fits sidebar, a usable detail column and the Claude panel.
+    private static let widthWithPanel: CGFloat = 1080
+
+    private func makeRoomForPanel() {
+        guard claude.isPanelVisible, let window = window.value, !window.styleMask.contains(.fullScreen),
+              let screen = (window.screen ?? NSScreen.main)?.visibleFrame else { return }
+        let width = min(Self.widthWithPanel, screen.width)
+        guard window.frame.width < width else { return }
+        var frame = window.frame
+        frame.size.width = width
+        // Grow to the right, sliding left when that would leave the screen.
+        frame.origin.x = max(min(frame.origin.x, screen.maxX - width), screen.minX)
+        window.setFrame(frame, display: true)
     }
 
     // MARK: Tabs
@@ -322,6 +423,12 @@ struct ProjectWindow: View {
             } else {
                 ContentUnavailableView("Ideia não encontrada", systemImage: "questionmark.folder")
             }
+        case .agent(let slug):
+            if model.agent(slug) != nil {
+                AgentView(slug: slug) { selection = .agent($0) }
+            } else {
+                ContentUnavailableView("Agente não encontrado", systemImage: "questionmark.folder")
+            }
         }
     }
 }
@@ -390,5 +497,30 @@ struct NamePromptSheet: View {
         guard !trimmed.isEmpty else { return }
         onSubmit(trimmed)
         dismiss()
+    }
+}
+
+final class WeakWindow {
+    weak var value: NSWindow?
+}
+
+/// Hands over the hosting `NSWindow` once the view is in one.
+private struct WindowReader: NSViewRepresentable {
+    let onWindow: (NSWindow) -> Void
+
+    func makeNSView(context: Context) -> NSView { ReaderView(onWindow: onWindow) }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    private final class ReaderView: NSView {
+        let onWindow: (NSWindow) -> Void
+        init(onWindow: @escaping (NSWindow) -> Void) {
+            self.onWindow = onWindow
+            super.init(frame: .zero)
+        }
+        required init?(coder: NSCoder) { fatalError() }
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if let window { DispatchQueue.main.async { self.onWindow(window) } }
+        }
     }
 }

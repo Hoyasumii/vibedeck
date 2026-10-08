@@ -1,0 +1,20 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "human",
+  "body" : "A ideia do MD Viewer melhorado é simples:\n- O mesmo textarea que é escrito o markdown, é o mesmo textarea que é renderizado o markdown\n- É semelhante com o Typora",
+  "createdAt" : "2026-10-08T03:15:27Z",
+  "id" : "7DAA596A-E122-481B-9E02-97698E92F112",
+  "rules" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-08T03:16:45Z",
+      "details" : "O mesmo textarea que é escrito o markdown, é o mesmo textarea que é renderizado o markdown",
+      "id" : "0DD08791-BEDE-416F-9AD4-766540952496",
+      "severity" : "must",
+      "text" : "Semelhança com o Typora"
+    }
+  ],
+  "status" : "new",
+  "title" : "Melhorar o MD Viewer",
+  "updatedAt" : "2026-10-08T03:16:59Z"
+}

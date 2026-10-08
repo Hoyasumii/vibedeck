@@ -1,0 +1,33 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "human",
+  "body" : "O conceito de agentes envolve o vibedeck ler o diretório do serviço de IA que está sendo usado(claude code no meu caso), e vai carregar o arquivo de agentes.\nA meta é poder exibir:\n- Nome do Agente\n- Modelo do Agente\n- Prompt\nNo fim, o usuário ainda pode selecionar um próximo passo, que invoca um novo agente, que vai atuar sobre os resultados do que o agente fez, ou se vai atuar sobre um comando com base no que o agente fez.",
+  "createdAt" : "2026-10-08T03:36:34Z",
+  "id" : "107ABE67-AAC4-4B67-9B43-95D948956A5D",
+  "rules" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-08T04:02:57Z",
+      "id" : "2DE0C8F8-E72D-45DA-93F8-3E7DCB82E9AE",
+      "severity" : "must",
+      "text" : "A ideia do \"Próximo passo\" nos Agentes, é poder criar um fluxo"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-08T04:03:50Z",
+      "id" : "E4D5945F-D62C-4034-AB96-514B63E61BA2",
+      "severity" : "must",
+      "text" : "A seleção de agentes e comandos se baseiam nos agentes e comandos do vibedeck, e não do provedor de IA."
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-08T04:04:50Z",
+      "id" : "4EA7DB6F-8857-4725-96B1-1C5A3B989FB5",
+      "severity" : "must",
+      "text" : "A ideia é criar um JSON em prompt, que orquestra o funcionamento da IA com base em JSON"
+    }
+  ],
+  "status" : "done",
+  "title" : "Agentes",
+  "updatedAt" : "2026-10-08T04:32:31Z"
+}

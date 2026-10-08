@@ -1,7 +1,7 @@
 import SwiftUI
 import VibeDeckCore
 
-/// List page for a sidebar section (Docs, Revisões, Regras, Ideias): its children in a table,
+/// List page for a sidebar section (Docs, Revisões, Regras, Ideias, Agentes): its children in a table,
 /// filterable by free text and by tags (`#tag` tokens or the tag bar).
 struct SectionListView: View {
     let section: SidebarSection
@@ -14,6 +14,7 @@ struct SectionListView: View {
     @State private var search = ""
     @State private var tokens: [TagToken] = []
     @State private var editingTags: SectionRow?
+    @State private var importedCount: Int?
 
     struct TagToken: Identifiable, Hashable {
         var tag: String
@@ -56,9 +57,20 @@ struct SectionListView: View {
             Text("#\(token.tag)")
         }
         .toolbar {
+            if section == .agents, ClaudeCode.isInstalled {
+                ToolbarItem {
+                    Button { importedCount = model.importClaudeAgents() } label: { Label("Importar do Claude Code", systemImage: "square.and.arrow.down") }
+                        .help("Importa os agentes de .claude/agents (projeto e usuário)")
+                }
+            }
             ToolbarItem {
                 Button(action: onAdd) { Label("Novo", systemImage: "plus") }
             }
+        }
+        .alert("Importação concluída", isPresented: Binding(get: { importedCount != nil }, set: { if !$0 { importedCount = nil } })) {
+            Button("OK") { importedCount = nil }
+        } message: {
+            Text(importedCount == 0 ? "Nenhum agente novo encontrado." : "\(importedCount ?? 0) agente(s) importado(s).")
         }
         .sheet(item: $editingTags) { row in
             TagsEditor(title: row.title, tags: row.tags) { model.setTags($0, for: row.id, undo: undo) }

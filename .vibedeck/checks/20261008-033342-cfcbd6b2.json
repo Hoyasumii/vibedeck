@@ -1,0 +1,61 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-08T03:33:42.541Z",
+  "failures" : [
+
+  ],
+  "files" : [
+    ".vibedeck/docs/conceitos-do-vibedeck.md",
+    ".vibedeck/rules/conceitos-do-produto.json",
+    ".vibedeck/rules/dinamicas-da-interface.json",
+    ".vibedeck/rules/fluxo-padrao.json"
+  ],
+  "id" : "CFCBD6B2-F36A-4D79-BEBF-CF453F6AEB9D",
+  "passed" : true,
+  "results" : [
+    {
+      "note" : "AGENTS.md e checks não foram tocados à mão (git status limpo para AGENTS.md).",
+      "ruleId" : "9D6F362B-9F0E-4661-97B3-6158B160D478",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Tudo criado via MCP (write_doc, add_rule_topic, add_rule); vibedeck status carrega 9 tópicos sem erro.",
+      "ruleId" : "9F92A765-76E7-4EA0-A66A-78AE12EE4C8F",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nada removido; as 21 regras novas têm author=ai.",
+      "ruleId" : "AC4BA963-CDEE-419C-B057-9140643E115D",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Doc, títulos, descrições e regras em pt-BR.",
+      "ruleId" : "0E5AEC71-405E-4113-AB27-615313AB2B5F",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhum comportamento documentado no README mudou; só dados do projeto.",
+      "ruleId" : "306A20B6-E1FA-4BE4-96E8-2B854A3D0BC6",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhum commit feito.",
+      "ruleId" : "4095F087-1E04-46C0-9AA4-A60C8C16A72B",
+      "topic" : "geral",
+      "verdict" : "na"
+    }
+  ],
+  "task" : "Registrar conceitos do VibeDeck: doc conceitos-do-vibedeck + tópicos Conceitos do produto, Dinâmicas da interface e Fluxo padrão (21 regras)",
+  "topics" : [
+    "geral"
+  ],
+  "warnings" : [
+
+  ]
+}

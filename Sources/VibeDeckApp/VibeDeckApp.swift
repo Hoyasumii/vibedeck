@@ -30,12 +30,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
+extension FocusedValues {
+    /// The Claude session of the focused project window (nil when Claude Code isn't installed).
+    @Entry var claudeSession: ClaudeSession?
+}
+
 extension Notification.Name {
     static let vibedeckFlushPendingSaves = Notification.Name("vibedeckFlushPendingSaves")
 }
 
 struct AppCommands: Commands {
     @Environment(\.openWindow) private var openWindow
+    @FocusedValue(\.claudeSession) private var claude
 
     var body: some Commands {
         CommandGroup(after: .newItem) {
@@ -47,6 +53,12 @@ struct AppCommands: Commands {
                 ForEach(RecentProjects.shared.urls, id: \.self) { url in
                     Button(url.lastPathComponent) { openWindow(value: url) }
                 }
+            }
+        }
+        CommandGroup(after: .sidebar) {
+            if let claude {
+                Button(claude.isPanelVisible ? "Ocultar Claude" : "Mostrar Claude") { claude.isPanelVisible.toggle() }
+                    .keyboardShortcut("c", modifiers: [.command, .shift])
             }
         }
     }

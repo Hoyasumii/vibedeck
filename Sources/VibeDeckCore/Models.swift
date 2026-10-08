@@ -8,6 +8,7 @@ public enum SchemaURL {
     public static let reviewGroup = "\(base)/review-group.schema.json"
     public static let ruleTopic = "\(base)/rule-topic.schema.json"
     public static let idea = "\(base)/idea.schema.json"
+    public static let agent = "\(base)/agent.schema.json"
     public static let ruleCheck = "\(base)/rule-check.schema.json"
 }
 

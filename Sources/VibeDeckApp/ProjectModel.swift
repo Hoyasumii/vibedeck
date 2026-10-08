@@ -4,7 +4,7 @@ import SwiftUI
 import VibeDeckCore
 
 enum SidebarSection: String, CaseIterable, Hashable {
-    case docs, groups, topics, ideas
+    case docs, groups, topics, ideas, agents
 
     var title: String {
         switch self {
@@ -12,6 +12,7 @@ enum SidebarSection: String, CaseIterable, Hashable {
         case .groups: "Revisões"
         case .topics: "Regras"
         case .ideas: "Ideias"
+        case .agents: "Agentes"
         }
     }
 
@@ -21,6 +22,7 @@ enum SidebarSection: String, CaseIterable, Hashable {
         case .groups: "checklist"
         case .topics: "checkmark.shield"
         case .ideas: "sparkle"
+        case .agents: "person.crop.rectangle.stack"
         }
     }
 
@@ -30,6 +32,7 @@ enum SidebarSection: String, CaseIterable, Hashable {
         case .groups: "Sem grupos de revisão"
         case .topics: "Sem tópicos de regras"
         case .ideas: "Sem ideias"
+        case .agents: "Sem agentes"
         }
     }
 }
@@ -41,6 +44,7 @@ enum SidebarItem: Hashable {
     case group(String)
     case topic(String)
     case idea(String)
+    case agent(String)
 
     var storageKey: String {
         switch self {
@@ -50,6 +54,7 @@ enum SidebarItem: Hashable {
         case .group(let slug): "group:\(slug)"
         case .topic(let slug): "topic:\(slug)"
         case .idea(let slug): "idea:\(slug)"
+        case .agent(let slug): "agent:\(slug)"
         }
     }
 
@@ -64,6 +69,7 @@ enum SidebarItem: Hashable {
         else if key.hasPrefix("group:") { self = .group(String(key.dropFirst(6))) }
         else if key.hasPrefix("topic:") { self = .topic(String(key.dropFirst(6))) }
         else if key.hasPrefix("idea:") { self = .idea(String(key.dropFirst(5))) }
+        else if key.hasPrefix("agent:") { self = .agent(String(key.dropFirst(6))) }
         else { return nil }
     }
 
@@ -76,6 +82,7 @@ enum SidebarItem: Hashable {
         case .group: .groups
         case .topic: .topics
         case .idea: .ideas
+        case .agent: .agents
         }
     }
 }
@@ -102,6 +109,7 @@ final class ProjectModel {
     var groups: [GroupEntry] = []
     var topics: [Entry<RuleTopic>] = []
     var ideas: [Entry<Idea>] = []
+    var agents: [Entry<Agent>] = []
     /// All recorded rule checks, newest first.
     var checks: [RuleCheck] = []
     var errorMessage: String?
@@ -130,10 +138,13 @@ final class ProjectModel {
         self.project = (try? store.loadProject()) ?? Project(name: store.root.lastPathComponent)
         try? store.ensureDirectories()
         try? store.refreshAgentsGuideIfNeeded()
+        // Topics deleted while the app was closed unpromote their ideas.
+        _ = try? store.releaseOrphanedIdeas()
         reloadDocs()
         reloadGroups()
         reloadTopics()
         reloadIdeas()
+        reloadAgents()
         reloadChecks()
     }
 
@@ -155,7 +166,7 @@ final class ProjectModel {
 
     private func handleExternalChanges(_ urls: [URL]) {
         var docsChanged = false, groupsChanged = false, projectChanged = false
-        var topicsChanged = false, ideasChanged = false, checksChanged = false
+        var topicsChanged = false, ideasChanged = false, agentsChanged = false, checksChanged = false
         for url in Set(urls.map { $0.resolvingSymlinksInPath().path }) {
             let current = FileManager.default.contents(atPath: url)
             if let current, current == lastWritten[url] { continue }
@@ -171,15 +182,20 @@ final class ProjectModel {
                 topicsChanged = true
             } else if url.contains("/ideas/") {
                 ideasChanged = true
+            } else if url.contains("/agents/") {
+                agentsChanged = true
             } else if url.contains("/checks/") {
                 checksChanged = true
             }
         }
+        // A topic deleted outside the app (Finder, rm, CLI) unpromotes the idea it came from.
+        if topicsChanged, let released = try? store.releaseOrphanedIdeas(), !released.isEmpty { ideasChanged = true }
         if projectChanged, let p = try? store.loadProject(), p != project { project = p }
         if docsChanged { reloadDocs() }
         if groupsChanged { reloadGroups() }
         if topicsChanged { reloadTopics() }
         if ideasChanged { reloadIdeas() }
+        if agentsChanged { reloadAgents() }
         if checksChanged { reloadChecks() }
     }
 
@@ -191,6 +207,11 @@ final class ProjectModel {
     func reloadIdeas() {
         let list = ((try? store.listIdeas()) ?? []).map { Entry(slug: $0.slug, value: $0.idea) }
         if list != ideas { ideas = list }
+    }
+
+    func reloadAgents() {
+        let list = ((try? store.listAgents()) ?? []).map { Entry(slug: $0.slug, value: $0.agent) }
+        if list != agents { agents = list }
     }
 
     func reloadChecks() {
@@ -352,7 +373,19 @@ final class ProjectModel {
     }
 
     func deleteTopic(_ slug: String) {
-        trash(store.topicURL(slug)) { reloadTopics() }
+        trash(store.topicURL(slug)) {
+            reloadTopics()
+            releaseOrphanedIdeas()
+        }
+    }
+
+    /// Unpromotes ideas whose topic is gone and refreshes them.
+    private func releaseOrphanedIdeas() {
+        do {
+            if try !store.releaseOrphanedIdeas().isEmpty { reloadIdeas() }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     func mutateTopic(_ slug: String, _ actionName: String, undo: UndoManager?, _ change: @escaping (inout RuleTopic) -> Void) {
@@ -398,6 +431,40 @@ final class ProjectModel {
         }
     }
 
+    // MARK: Agents
+
+    func agent(_ slug: String) -> Agent? {
+        agents.first { $0.slug == slug }?.value
+    }
+
+    func createAgent(title: String) -> String? {
+        create { try store.createAgent(title: title) } url: { store.agentURL($0) } reload: { reloadAgents() }
+    }
+
+    func deleteAgent(_ slug: String) {
+        trash(store.agentURL(slug)) { reloadAgents() }
+    }
+
+    func mutateAgent(_ slug: String, _ actionName: String, undo: UndoManager?, _ change: @escaping (inout Agent) -> Void) {
+        mutate(\.agents, slug, url: store.agentURL(slug), actionName, undo: undo) { agent in
+            let before = agent
+            change(&agent)
+            if agent != before { agent.updatedAt = .now }
+        }
+    }
+
+    /// Imports Claude Code agents as VibeDeck agents. Returns how many were created.
+    func importClaudeAgents() -> Int {
+        do {
+            let slugs = try store.importClaudeAgents()
+            reloadAgents()
+            return slugs.count
+        } catch {
+            errorMessage = error.localizedDescription
+            return 0
+        }
+    }
+
     /// Promotes the idea's rules to an enforced topic. Returns the topic slug.
     func promoteIdea(_ slug: String) -> String? {
         do {
@@ -411,6 +478,33 @@ final class ProjectModel {
         }
     }
 
+    /// Deletes the idea's topic and releases the idea (draft rules stay). Undo restores both files.
+    func unpromoteIdea(_ slug: String, undo: UndoManager?) {
+        do {
+            let idea = try store.loadIdea(slug)
+            let topicSlug = idea.promotedTopic.flatMap { try? store.resolveTopicSlug($0) }
+            let topic = try topicSlug.map { try store.loadTopic($0) }
+            try store.unpromoteIdea(slug)
+            reloadTopics()
+            reloadIdeas()
+            undo?.registerUndo(withTarget: self) { model in
+                do {
+                    if let topicSlug, let topic { try model.store.saveTopic(topic, slug: topicSlug) }
+                    try model.store.saveIdea(idea, slug: slug)
+                } catch {
+                    model.errorMessage = error.localizedDescription
+                }
+                model.reloadTopics()
+                model.reloadIdeas()
+                undo?.registerUndo(withTarget: model) { $0.unpromoteIdea(slug, undo: undo) }
+                undo?.setActionName("Despromover ideia")
+            }
+            undo?.setActionName("Despromover ideia")
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     // MARK: Sections
 
     func count(_ section: SidebarSection) -> Int {
@@ -419,6 +513,7 @@ final class ProjectModel {
         case .groups: groups.count
         case .topics: topics.count
         case .ideas: ideas.count
+        case .agents: agents.count
         }
     }
 
@@ -447,6 +542,12 @@ final class ProjectModel {
                            detail: $0.value.status.label, count: "\($0.value.rules.count) regra(s)",
                            tags: $0.value.tags, dimmed: $0.value.status.isClosed)
             }
+        case .agents:
+            agents.map {
+                SectionRow(id: .agent($0.slug), title: $0.value.title, symbol: "person.crop.rectangle",
+                           detail: $0.value.model ?? "Modelo herdado",
+                           count: $0.value.nextSteps.isEmpty ? "" : "\($0.value.nextSteps.count) próximo(s) passo(s)", tags: $0.value.tags)
+            }
         }
     }
 
@@ -456,6 +557,7 @@ final class ProjectModel {
         case .group(let slug): store.groupURL(slug)
         case .topic(let slug): store.topicURL(slug)
         case .idea(let slug): store.ideaURL(slug)
+        case .agent(let slug): store.agentURL(slug)
         case .links, .section: nil
         }
     }
@@ -469,6 +571,7 @@ final class ProjectModel {
         case .group(let slug): group(slug)?.title ?? slug
         case .topic(let slug): topic(slug)?.title ?? slug
         case .idea(let slug): idea(slug)?.title ?? slug
+        case .agent(let slug): agent(slug)?.title ?? slug
         }
     }
 
@@ -481,6 +584,7 @@ final class ProjectModel {
         case .group: "checklist"
         case .topic(let slug): topic(slug)?.isGlobal == false ? "scope" : "checkmark.shield"
         case .idea(let slug): idea(slug)?.status.symbol ?? "sparkle"
+        case .agent: "person.crop.rectangle"
         }
     }
 
@@ -492,6 +596,7 @@ final class ProjectModel {
         case .group(let slug): group(slug) != nil
         case .topic(let slug): topic(slug) != nil
         case .idea(let slug): idea(slug) != nil
+        case .agent(let slug): agent(slug) != nil
         }
     }
 
@@ -501,6 +606,7 @@ final class ProjectModel {
         case .group(let slug): deleteGroup(slug)
         case .topic(let slug): deleteTopic(slug)
         case .idea(let slug): deleteIdea(slug)
+        case .agent(let slug): deleteAgent(slug)
         case .links, .section: break
         }
     }
@@ -511,6 +617,7 @@ final class ProjectModel {
         case .group(let slug): mutateGroup(slug, "Editar tags", undo: undo) { $0.tags = tags }
         case .topic(let slug): mutateTopic(slug, "Editar tags", undo: undo) { $0.tags = tags }
         case .idea(let slug): mutateIdea(slug, "Editar tags", undo: undo) { $0.tags = tags }
+        case .agent(let slug): mutateAgent(slug, "Editar tags", undo: undo) { $0.tags = tags }
         case .links, .section: break
         }
     }

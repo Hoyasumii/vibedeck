@@ -1,0 +1,60 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "createdAt" : "2026-10-08T03:15:16Z",
+  "description" : "Regras que valem para qualquer tarefa no repositório.",
+  "id" : "7DF6C218-5618-4617-85FF-C4E41F667C9D",
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-08T03:15:16Z",
+      "details" : "O AGENTS.md é regenerado a partir de Sources/VibeDeckCore/AgentsGuide.swift (refreshAgentsGuideIfNeeded reescreve quando difere), então editar à mão se perde. Para mudar o guia, mude AgentsGuide.swift. Os checks são histórico de auditoria e só são criados por submit_rule_check / `vibedeck rules check`.\nVerificar: `git diff --stat .vibedeck/AGENTS.md .vibedeck/checks` não mostra edições manuais (só arquivos novos de check).",
+      "id" : "9D6F362B-9F0E-4661-97B3-6158B160D478",
+      "severity" : "must",
+      "text" : "Não editar .vibedeck/AGENTS.md nem .vibedeck/checks/*.json à mão"
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-08T03:15:16Z",
+      "details" : "Prefira `vibedeck ...` ou as ferramentas MCP. Se editar vibedeck.json ou .vibedeck/{reviews,rules,ideas}/*.json à mão: mantenha o $schema, ids em UUID (não invente formatos), datas ISO 8601 e os enums válidos (status, priority, severity, kind dos reviewKinds).\nVerificar: o arquivo valida contra schema/v1/<tipo>.schema.json e `vibedeck status` carrega sem erro.",
+      "id" : "9F92A765-76E7-4EA0-A66A-78AE12EE4C8F",
+      "severity" : "must",
+      "text" : "Dados do projeto mudam via CLI/MCP; se for à mão, seguir o schema"
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-08T03:15:16Z",
+      "details" : "Objetos com author \"human\" só são removidos pelo usuário. Itens criados por agente usam --ai no CLI; as ferramentas MCP add_* já marcam ai.\nVerificar: no diff de .vibedeck/, nenhum objeto com \"author\": \"human\" sumiu, e todo objeto novo criado pela IA tem \"author\": \"ai\".",
+      "id" : "AC4BA963-CDEE-419C-B057-9140643E115D",
+      "severity" : "must",
+      "text" : "Não apagar itens, regras ou ideias de humanos; o que a IA cria é author=ai"
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-08T03:15:16Z",
+      "details" : "Vale para rótulos e mensagens da UI, errorDescription de VibeDeckError, abstract/help do ArgumentParser em CLI.swift, descrições de ferramentas e instruções do servidor em MCPServer.swift e o AGENTS.md gerado. Comentários de código e identificadores podem ficar em inglês (padrão atual do Core e do app).\nVerificar: as strings novas/alteradas no diff estão em português.",
+      "id" : "0E5AEC71-405E-4113-AB27-615313AB2B5F",
+      "severity" : "must",
+      "text" : "Texto que o usuário vê fica em pt-BR"
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-08T03:15:16Z",
+      "details" : "O README.md documenta o formato de .vibedeck/, o fluxo de regras, o build (scripts/build-app.sh, swift test, fallback de SDK), a tabela de atalhos, os comandos do CLI e o Worker. Se a tarefa muda qualquer um desses pontos, atualize a seção correspondente.\nVerificar: comparar o diff com as seções do README.",
+      "id" : "306A20B6-E1FA-4BE4-96E8-2B854A3D0BC6",
+      "severity" : "should",
+      "text" : "README atualizado quando muda algo documentado"
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-08T03:15:16Z",
+      "details" : "Todos os commits do histórico terminam com `Co-Authored-By: Claude ... <noreply@anthropic.com>` e têm título curto no imperativo em inglês, com bullets quando necessário. Commitar só quando o usuário pedir.\nVerificar: `git log -1 --format=%B`.",
+      "id" : "4095F087-1E04-46C0-9AA4-A60C8C16A72B",
+      "severity" : "should",
+      "text" : "Commits terminam com a linha Co-Authored-By"
+    }
+  ],
+  "tags" : [
+    "geral"
+  ],
+  "title" : "Geral"
+}

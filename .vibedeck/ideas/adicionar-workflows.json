@@ -1,0 +1,13 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "human",
+  "body" : "A ideia do Work",
+  "createdAt" : "2026-10-08T03:37:17Z",
+  "id" : "E9E14271-164A-4DA1-8670-26C3E22CEC95",
+  "rules" : [
+
+  ],
+  "status" : "new",
+  "title" : "Adicionar workflows",
+  "updatedAt" : "2026-10-08T04:30:24Z"
+}

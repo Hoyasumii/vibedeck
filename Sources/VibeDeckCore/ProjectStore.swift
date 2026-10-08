@@ -9,11 +9,19 @@ public enum VibeDeckError: LocalizedError, Equatable {
     case ambiguousItem(String)
     case topicNotFound(String)
     case ideaNotFound(String)
+    case agentNotFound(String)
+    case invalidNextStep(String)
     case ruleNotFound(String)
     case ambiguousRule(String)
     case incompleteCheck([String])
     case rulesNotVerified([String])
     case invalidName
+    case invalidStatusLine
+    case invalidClaudeSettings(String)
+    case cloudNotSynced(CloudSync)
+    case cloudDirty(CloudSync)
+    case claudeNotInstalled
+    case cloudSessionFailed(String)
 
     public var errorDescription: String? {
         switch self {
@@ -25,6 +33,8 @@ public enum VibeDeckError: LocalizedError, Equatable {
         case .ambiguousItem(let s): "Prefixo de id ambíguo: \(s)"
         case .topicNotFound(let s): "Tópico de regras não encontrado: \(s)"
         case .ideaNotFound(let s): "Ideia não encontrada: \(s)"
+        case .agentNotFound(let s): "Agente não encontrado: \(s)"
+        case .invalidNextStep(let s): "Próximo passo inválido: \(s)"
         case .ruleNotFound(let s): "Regra não encontrada entre as aplicáveis: \(s)"
         case .ambiguousRule(let s): "Prefixo de id de regra ambíguo: \(s)"
         case .incompleteCheck(let missing):
@@ -33,6 +43,12 @@ public enum VibeDeckError: LocalizedError, Equatable {
             "O item não pode ser concluído sem passar pelas regras:\n" + problems.map { "- \($0)" }.joined(separator: "\n")
                 + "\nUse rules_for / submit_rule_check (ou `vibedeck rules check`) com o id do item."
         case .invalidName: "Nome inválido."
+        case .invalidStatusLine: "Entrada da statusline do Claude Code não é um objeto JSON."
+        case .invalidClaudeSettings(let p): "\(p) não é um objeto JSON válido; corrija antes de ligar a statusline."
+        case .cloudNotSynced(let sync): sync.message
+        case .cloudDirty(let sync): sync.message + " Confirme (--allow-dirty / allow_dirty) para criar mesmo assim."
+        case .claudeNotInstalled: "O Claude Code (`claude`) não foi encontrado. Instale-o para usar a nuvem."
+        case .cloudSessionFailed(let output): "O Claude Code não criou a sessão na nuvem:\n\(output)"
         }
     }
 }
@@ -55,6 +71,7 @@ public struct ProjectStore: Sendable {
     public var reviewsDir: URL { dataDir.appending(path: "reviews", directoryHint: .isDirectory) }
     public var rulesDir: URL { dataDir.appending(path: "rules", directoryHint: .isDirectory) }
     public var ideasDir: URL { dataDir.appending(path: "ideas", directoryHint: .isDirectory) }
+    public var agentDefsDir: URL { dataDir.appending(path: "agents", directoryHint: .isDirectory) }
     public var checksDir: URL { dataDir.appending(path: "checks", directoryHint: .isDirectory) }
     public var agentsURL: URL { dataDir.appending(path: "AGENTS.md") }
 
@@ -94,7 +111,7 @@ public struct ProjectStore: Sendable {
 
     public func ensureDirectories() throws {
         let fm = FileManager.default
-        for dir in [docsDir, reviewsDir, rulesDir, ideasDir, checksDir] {
+        for dir in [docsDir, reviewsDir, rulesDir, ideasDir, agentDefsDir, checksDir] {
             try fm.createDirectory(at: dir, withIntermediateDirectories: true)
         }
     }
@@ -304,8 +321,10 @@ public struct ProjectStore: Sendable {
         return topic
     }
 
+    /// Deletes the topic and unpromotes any idea it came from.
     public func deleteTopic(_ slug: String) throws {
         try FileManager.default.removeItem(at: topicURL(slug))
+        try releaseOrphanedIdeas()
     }
 
     /// Adds a rule to a topic (created on the fly if `topicRef` doesn't resolve).
@@ -336,6 +355,106 @@ public struct ProjectStore: Sendable {
         var (slug, topic, index) = try findRule(ref)
         topic.rules.remove(at: index)
         try saveTopic(topic, slug: slug)
+    }
+
+    // MARK: Agents
+
+    public func agentURL(_ slug: String) -> URL { agentDefsDir.appending(path: "\(slug).json") }
+
+    public func listAgents() throws -> [(slug: String, agent: Agent)] {
+        try listRecords(Agent.self, in: agentDefsDir).map { ($0.slug, $0.value) }
+    }
+
+    public func resolveAgentSlug(_ ref: String) throws -> String {
+        try resolveSlug(ref, Agent.self, in: agentDefsDir) { .agentNotFound($0) }
+    }
+
+    public func loadAgent(_ slug: String) throws -> Agent {
+        try loadRecord(slug, in: agentDefsDir) { .agentNotFound($0) }
+    }
+
+    public func saveAgent(_ agent: Agent, slug: String) throws {
+        try ensureDirectories()
+        try AtomicFile.write(VDJSON.encode(agent), to: agentURL(slug))
+    }
+
+    @discardableResult
+    public func createAgent(
+        title: String, summary: String? = nil, model: String? = nil, tools: [String] = [], prompt: String = "",
+        tags: [String] = [], author: Author = .human
+    ) throws -> (slug: String, agent: Agent) {
+        guard let title = title.trimmed.nonEmpty else { throw VibeDeckError.invalidName }
+        let slug = uniqueSlug(Slug.make(title), in: agentDefsDir, ext: "json")
+        let agent = Agent(title: title, summary: summary, model: model, tools: tools, prompt: prompt, tags: tags, author: author)
+        try saveAgent(agent, slug: slug)
+        return (slug, agent)
+    }
+
+    @discardableResult
+    public func updateAgent(_ ref: String, _ change: (inout Agent) throws -> Void) throws -> (slug: String, agent: Agent) {
+        let slug = try resolveAgentSlug(ref)
+        var agent = try loadAgent(slug)
+        try change(&agent)
+        agent.updatedAt = .now
+        try saveAgent(agent, slug: slug)
+        return (slug, agent)
+    }
+
+    public func deleteAgent(_ slug: String) throws {
+        try FileManager.default.removeItem(at: agentURL(slug))
+    }
+
+    /// Appends a next step to an agent's flow. `agent` steps must point to an existing, different VibeDeck agent;
+    /// `ref` accepts the same references as agents (slug, UUID, prefix, title) and is stored as the slug.
+    @discardableResult
+    public func addNextStep(to ref: String, kind: NextStepKind = .agent, target: String, note: String? = nil) throws -> (slug: String, agent: Agent) {
+        let from = try resolveAgentSlug(ref)
+        var stored = target
+        switch kind {
+        case .agent:
+            stored = try resolveAgentSlug(target)
+            if stored == from { throw VibeDeckError.invalidNextStep("um agente não pode ser o próximo passo de si mesmo.") }
+        case .command:
+            guard target.trimmed.nonEmpty != nil else { throw VibeDeckError.invalidNextStep("comando vazio.") }
+        }
+        return try updateAgent(from) { agent in
+            guard !agent.nextSteps.contains(where: { $0.kind == kind && $0.ref == stored }) else { return }
+            agent.nextSteps.append(NextStep(kind: kind, ref: stored, note: note?.trimmed.nonEmpty))
+        }
+    }
+
+    /// Imports Claude Code agents (`~/.claude/agents` and `<project>/.claude/agents`) as VibeDeck agents.
+    /// Existing agents (same slug) are skipped unless `overwrite`. Returns the slugs created/updated.
+    @discardableResult
+    public func importClaudeAgents(from dirs: [URL]? = nil, overwrite: Bool = false, author: Author = .human) throws -> [String] {
+        let fm = FileManager.default
+        let sources = dirs ?? [
+            root.appending(path: ".claude/agents", directoryHint: .isDirectory),
+            fm.homeDirectoryForCurrentUser.appending(path: ".claude/agents", directoryHint: .isDirectory),
+        ]
+        var imported: [String] = []
+        var seen = Set<String>()
+        for dir in sources {
+            guard let files = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]) else { continue }
+            for file in files.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) where file.pathExtension.lowercased() == "md" {
+                guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
+                let parsed = ClaudeAgentFile.parse(text, fallbackName: file.deletingPathExtension().lastPathComponent)
+                let slug = Slug.make(parsed.name)
+                guard seen.insert(slug).inserted else { continue }  // project dir wins over user dir
+                if fm.fileExists(atPath: agentURL(slug).path) {
+                    guard overwrite else { continue }
+                    try updateAgent(slug) {
+                        $0.summary = parsed.description; $0.model = parsed.model; $0.tools = parsed.tools; $0.prompt = parsed.prompt
+                    }
+                } else {
+                    var agent = Agent(title: parsed.name, summary: parsed.description, model: parsed.model, tools: parsed.tools, prompt: parsed.prompt, author: author)
+                    agent.tags = ["claude-code"]
+                    try saveAgent(agent, slug: slug)
+                }
+                imported.append(slug)
+            }
+        }
+        return imported
     }
 
     // MARK: Ideas
@@ -411,6 +530,37 @@ public struct ProjectStore: Sendable {
             if !idea.status.isClosed { idea.status = .approved }
         }
         return topicSlug
+    }
+
+    /// Undoes `promoteIdea`: deletes the idea's topic (if it still exists) and releases the idea.
+    /// The draft rules stay in the idea. Returns the deleted topic slug, if any.
+    @discardableResult
+    public func unpromoteIdea(_ ref: String) throws -> String? {
+        let ideaSlug = try resolveIdeaSlug(ref)
+        guard let linked = try loadIdea(ideaSlug).promotedTopic else { return nil }
+        let topicSlug = try? resolveTopicSlug(linked)
+        if let topicSlug { try FileManager.default.removeItem(at: topicURL(topicSlug)) }
+        try updateIdea(ideaSlug) { Self.release(&$0) }
+        return topicSlug
+    }
+
+    /// Unpromotes ideas whose topic no longer exists (deleted by the app, the CLI or by hand).
+    /// Idempotent. Returns the slugs of the ideas that changed.
+    @discardableResult
+    public func releaseOrphanedIdeas() throws -> [String] {
+        var released: [String] = []
+        for (slug, idea) in try listIdeas() {
+            guard let linked = idea.promotedTopic, (try? resolveTopicSlug(linked)) == nil else { continue }
+            try updateIdea(slug) { Self.release(&$0) }
+            released.append(slug)
+        }
+        return released
+    }
+
+    /// Drops the topic link; an approved idea goes back to exploring, other statuses stay.
+    private static func release(_ idea: inout Idea) {
+        idea.promotedTopic = nil
+        if idea.status == .approved { idea.status = .exploring }
     }
 
     // MARK: Checks
@@ -595,6 +745,7 @@ protocol SlugRecord: Decodable {
 extension ReviewGroup: SlugRecord {}
 extension RuleTopic: SlugRecord {}
 extension Idea: SlugRecord {}
+extension Agent: SlugRecord {}
 
 public enum AtomicFile {
     public static func write(_ data: Data, to url: URL) throws {

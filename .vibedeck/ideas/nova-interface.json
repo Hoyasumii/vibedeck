@@ -3,7 +3,6 @@
   "author" : "human",
   "createdAt" : "2026-10-07T23:35:31Z",
   "id" : "18B88C52-22E1-4368-882C-6655E15F0167",
-  "promotedTopic" : "nova-interface",
   "rules" : [
     {
       "author" : "human",
@@ -27,5 +26,5 @@
     "ui"
   ],
   "title" : "Nova Interface",
-  "updatedAt" : "2026-10-08T02:35:04Z"
+  "updatedAt" : "2026-10-08T03:23:44Z"
 }

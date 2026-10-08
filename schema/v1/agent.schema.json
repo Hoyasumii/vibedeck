@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibedeck-schema.alanreisanjo.workers.dev/v1/agent.schema.json",
+  "title": "VibeDeck agent",
+  "description": "An AI agent (name, model, prompt) and the next steps that chain it into a flow. Lives at <repo>/.vibedeck/agents/<slug>.json.",
+  "type": "object",
+  "required": ["id", "title", "prompt", "author", "createdAt", "updatedAt"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": { "type": "string", "format": "uuid" },
+    "title": { "type": "string", "minLength": 1, "description": "Agent name." },
+    "summary": { "type": "string", "description": "When to use this agent." },
+    "model": { "type": "string", "description": "Model alias or id (e.g. sonnet, opus)." },
+    "tools": { "type": "array", "items": { "type": "string" } },
+    "prompt": { "type": "string", "description": "System prompt (Markdown)." },
+    "nextSteps": {
+      "type": "array",
+      "description": "Flow: what acts on this agent's result. `ref` is a slug of a VibeDeck agent/command, never the AI provider's.",
+      "items": {
+        "type": "object",
+        "required": ["kind", "ref"],
+        "properties": {
+          "kind": { "enum": ["agent", "command"] },
+          "ref": { "type": "string", "minLength": 1 },
+          "note": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "author": { "enum": ["human", "ai"] },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}

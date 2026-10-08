@@ -1,0 +1,13 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "human",
+  "body" : "As configurações do Aplicativo, deverá ter inicialmente uma opção:\n- Adicionar Memória\n---\n## Adicionar Memória\n- Caso a memória seja ativada, o sistema de memória vai ser ativado durante o prompt.\n- O sistema de memória armazena estados do projeto, e evita com que o serviço de IA gaste tokens explorando código que já foi explorado. Ele deriva de @hoyasumii/claude-kit, disponível no Github.\n---\n## Sistema de Memória\n- Ele evita reexploração\n- Além de claude-kit, ele usa o graphify\n- Ele se lembra de decisões de design que já foi implementado no código, e no que vai ser futuramente\n---",
+  "createdAt" : "2026-10-08T03:38:13Z",
+  "id" : "3651FCA6-6D4D-4AB3-A3A0-5C0583B24286",
+  "rules" : [
+
+  ],
+  "status" : "new",
+  "title" : "Adicionar Configurações do App",
+  "updatedAt" : "2026-10-08T03:47:26Z"
+}

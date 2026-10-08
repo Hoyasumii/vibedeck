@@ -144,6 +144,36 @@ private func newStore() throws -> ProjectStore {
         #expect(try store.listTopics().count == 1)
     }
 
+    @Test func unpromote() throws {
+        let store = try newStore()
+        let (slug, _) = try store.createIdea(title: "Modo offline")
+        try store.addRule(Rule(text: "Funciona sem rede"), toIdea: slug)
+
+        // Deleting the topic through the store releases the idea.
+        try store.deleteTopic(store.promoteIdea(slug))
+        var idea = try store.loadIdea(slug)
+        #expect(idea.promotedTopic == nil)
+        #expect(idea.status == .exploring)
+        #expect(idea.rules.count == 1, "draft rules stay in the idea")
+
+        // Deleting the file by hand is picked up by releaseOrphanedIdeas (idempotent).
+        let topicSlug = try store.promoteIdea(slug)
+        try FileManager.default.removeItem(at: store.topicURL(topicSlug))
+        #expect(try store.releaseOrphanedIdeas() == [slug])
+        #expect(try store.releaseOrphanedIdeas().isEmpty)
+        #expect(try store.loadIdea(slug).promotedTopic == nil)
+
+        // unpromoteIdea deletes the topic; closed statuses are kept.
+        let again = try store.promoteIdea(slug)
+        try store.updateIdea(slug) { $0.status = .discarded }
+        #expect(try store.unpromoteIdea(slug) == again)
+        #expect(!FileManager.default.fileExists(atPath: store.topicURL(again).path))
+        idea = try store.loadIdea(slug)
+        #expect(idea.promotedTopic == nil)
+        #expect(idea.status == .discarded)
+        #expect(try store.unpromoteIdea(slug) == nil, "not promoted: no-op")
+    }
+
     @Test func reviewItemRulesRoundTrip() throws {
         let store = try newStore()
         try store.addItem(ReviewItem(kind: "note", title: "Sem regras"), toGroup: "g")

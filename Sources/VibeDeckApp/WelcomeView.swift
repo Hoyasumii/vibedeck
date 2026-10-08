@@ -61,6 +61,8 @@ struct WelcomeView: View {
         }
         .padding(40)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // Let the window background run under the title bar instead of a separate toolbar strip.
+        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         .dropDestination(for: URL.self) { urls, _ in
             guard let url = urls.first, url.hasDirectoryPath else { return false }
             open(url)

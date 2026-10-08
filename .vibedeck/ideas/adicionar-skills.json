@@ -1,0 +1,12 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-08T03:36:55Z",
+  "id" : "916C43F7-862A-43FF-AA9F-BD785E3F95E3",
+  "rules" : [
+
+  ],
+  "status" : "new",
+  "title" : "Adicionar Skills",
+  "updatedAt" : "2026-10-08T03:36:55Z"
+}

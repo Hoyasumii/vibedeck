@@ -1,0 +1,332 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-08T03:27:38.613Z",
+  "failures" : [
+
+  ],
+  "files" : [
+    "README.md",
+    "Sources/VibeDeckApp/IdeaView.swift",
+    "Sources/VibeDeckApp/ProjectModel.swift",
+    "Sources/VibeDeckCore/AgentsGuide.swift",
+    "Sources/VibeDeckCore/ProjectStore.swift",
+    "Sources/vibedeck/CLI.swift",
+    "Sources/vibedeck/MCPServer.swift",
+    "Tests/VibeDeckCoreTests/RulesTests.swift"
+  ],
+  "id" : "34B55864-C29C-469A-A8F7-A19E32A38333",
+  "passed" : true,
+  "results" : [
+    {
+      "note" : "unpromoteIdea exposto como `ideas unpromote` (CLI.swift) e `unpromote_idea` (MCPServer.swift)",
+      "ruleId" : "C604B203-A022-48C7-92DA-F343DA4AE60B",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhum registro novo é criado",
+      "ruleId" : "643AA948-85C0-485E-A110-E83B59C0B5BC",
+      "topic" : "cli-e-mcp",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Status de item de revisão não é tocado",
+      "ruleId" : "30A2FC1A-16E7-4708-A559-0CA78431EDD7",
+      "topic" : "cli-e-mcp",
+      "verdict" : "na"
+    },
+    {
+      "note" : "instructions e descrições de rules_for/submit_rule_check inalteradas",
+      "ruleId" : "A34C030C-D9E7-4C1A-A8E1-23E47D9B15AF",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Descrição de promote_idea inalterada",
+      "ruleId" : "7A76B622-C234-4B41-9ECA-C8C414AB47FE",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "unpromote_idea só tem parâmetro string",
+      "ruleId" : "ED4D47D8-F744-4E94-A8EE-807E2AFF0670",
+      "topic" : "cli-e-mcp",
+      "verdict" : "na"
+    },
+    {
+      "note" : "mcp install não alterado",
+      "ruleId" : "05F179F3-EB5F-474B-B8C1-9E4E0926B388",
+      "topic" : "cli-e-mcp",
+      "verdict" : "na"
+    },
+    {
+      "note" : "unpromote é comando de escrita; listagens inalteradas",
+      "ruleId" : "21E4D353-1916-4961-B355-EC7B8DEEB0B4",
+      "topic" : "cli-e-mcp",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Versão não alterada",
+      "ruleId" : "4913B3AF-4F67-4717-A7D4-9600D8BF0942",
+      "topic" : "cli-e-mcp",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Os dois chamam store.unpromoteIdea; descrição do MCP termina com 'Só faça isso quando o usuário pedir.'",
+      "ruleId" : "D94F39E0-F874-43A0-86DC-21D9FEDEC02D",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Métodos novos só leem/escrevem disco; ProjectStore segue sem estado",
+      "ruleId" : "5FA116B6-6FBE-45F9-8C5D-29E7548F6C2F",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Escritas via updateIdea→saveIdea→AtomicFile; remoção via removeItem, como deleteTopic",
+      "ruleId" : "857149E6-8C34-46A8-9C30-439EBE78309D",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhum encoder/decoder novo",
+      "ruleId" : "99BF0D79-2F65-419A-87DA-0B4F37E4FEF5",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhum campo de modelo novo",
+      "ruleId" : "5ED22D96-FE5F-4683-8611-E3D264113B67",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "promotedTopic=nil é omitido por encodeIfPresent (visto no diff de nova-interface.json)",
+      "ruleId" : "C6D79B9C-1F50-4AE3-8CD1-8CAE5C4F6B6F",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "RuleCheck não alterado",
+      "ruleId" : "57ADA275-8A0F-42BA-9E14-BA3B34AB8235",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Modelo não mudou (schema igual); AgentsGuide atualizado na seção Ideias",
+      "ruleId" : "4133C155-F789-428E-9ED5-5EAC37C19700",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Usa resolveIdeaSlug/resolveTopicSlug",
+      "ruleId" : "B0277971-459D-4CCB-9E9D-5990F1574F5B",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhum slug novo é criado",
+      "ruleId" : "7F7C6B09-EBCB-4CA0-BAAF-6B18D36F15C1",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "submitCheck não alterado",
+      "ruleId" : "BC028BE5-D7E0-4DA3-BB5C-E8A628EBFA8A",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "verificationProblems não alterado",
+      "ruleId" : "64E65B59-8D5B-40DE-B381-CAF2B1BDC785",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "applicableTopics não alterado",
+      "ruleId" : "8D874A06-515D-41B5-A094-DC8B83BB40B6",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "promoteIdea intocado; teste ideasAndPromotion passa e o unpromote repromove no mesmo slug",
+      "ruleId" : "35D8D7C3-1224-45CC-8A80-66D0B6291C33",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Glob não alterado",
+      "ruleId" : "64334D9C-327B-4811-B088-8B785EF4E0FE",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Erros reaproveitam ideaNotFound/topicNotFound; mensagens novas do CLI/MCP em pt-BR",
+      "ruleId" : "EA5E6F7D-1587-4FC5-87D9-51CE6F130C7B",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "scripts/test.sh: 19 testes em 2 suítes passaram",
+      "ruleId" : "97510532-2FCF-44BD-9D01-75086E554EB9",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "@Test unpromote() em RulesTests",
+      "ruleId" : "91774D06-91B5-4945-9EC6-CDEFC57332FA",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "URL de schema não alterada",
+      "ruleId" : "DFE3361B-6AFE-4ED3-A741-4FC0818D197D",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "deleteTopic chama releaseOrphanedIdeas; approved→exploring, outros mantidos; coberto no teste unpromote",
+      "ruleId" : "B659FD25-792B-4C0E-BD08-6082ACFCC80A",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Teste verifica arquivo do tópico removido, rules mantidas, discarded mantido e no-op quando não promovida; segunda chamada de releaseOrphanedIdeas devolve []",
+      "ruleId" : "A2B13B15-C59E-4189-8905-3A309C89DF28",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "AGENTS.md não editado à mão (mudança foi em AgentsGuide.swift); checks só via submit",
+      "ruleId" : "9D6F362B-9F0E-4661-97B3-6158B160D478",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Regras novas via MCP add_rule; nova-interface.json alterado pela própria lógica do store",
+      "ruleId" : "9F92A765-76E7-4EA0-A66A-78AE12EE4C8F",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nada de humano apagado; a ideia humana só perdeu o vínculo pendente (comportamento pedido); regras novas author=ai",
+      "ruleId" : "AC4BA963-CDEE-419C-B057-9140643E115D",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Textos novos (menu, help, abstract, respostas MCP) em pt-BR",
+      "ruleId" : "0E5AEC71-405E-4113-AB27-615313AB2B5F",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "README: parágrafo de Ideias + comando `ideas unpromote`",
+      "ruleId" : "306A20B6-E1FA-4BE4-96E8-2B854A3D0BC6",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhum commit feito",
+      "ruleId" : "4095F087-1E04-46C0-9AA4-A60C8C16A72B",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem frames novos no root",
+      "ruleId" : "EE65A0A5-71DA-431A-A4B7-567144D40423",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Header continua HStack único; só um contextMenu no badge",
+      "ruleId" : "9A4878F2-54AD-4B93-9E8B-9D7683C8F9F2",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Colunas não alteradas",
+      "ruleId" : "047D2216-D1C9-4AFC-AA0A-D789DC1E8A60",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Despromover grava na hora e registra undo/redo que restaura tópico e ideia (ProjectModel.unpromoteIdea). Mover tópico para o Lixo continua sem undo, como antes",
+      "ruleId" : "00E57961-FE6D-4AFC-BB1A-3DC70152D38D",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Escritas do store seguem o padrão do promoteIdea (reload direto); o reload extra do FSEvents é idempotente (compara listas) e releaseOrphanedIdeas é idempotente, sem loop",
+      "ruleId" : "8385BC07-3F91-46DC-8BBD-6F62C4851DD9",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Editores de texto não alterados",
+      "ruleId" : "B065B5AF-B93F-4698-8E43-BB4369E74351",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhum campo de texto novo",
+      "ruleId" : "3D508DEA-D43E-4E33-91B7-F46039B6B53D",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Tópico apagado fecha a aba pela poda já existente (pruneTabs)",
+      "ruleId" : "329A929F-62CC-4A7D-99A3-A299F495A08C",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Sidebar não alterada",
+      "ruleId" : "335DA4F8-7DBF-4120-8878-42130C661D69",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Listas não alteradas",
+      "ruleId" : "A999B857-E236-4893-97A9-07257A538B57",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhum atalho novo nem reaproveitado",
+      "ruleId" : "DC9EED4D-8823-4FD1-83ED-3B820A83E8B4",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Toolbar não alterada",
+      "ruleId" : "492100C1-EFE3-488F-8368-08CE17A797DA",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Menu de contexto nativo; botão .glass mantido",
+      "ruleId" : "B382469C-4D35-4314-BEC2-50BCEC7C6855",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "deleteTopic (Lixo), handleExternalChanges (topicsChanged) e init chamam releaseOrphanedIdeas; badge depende de promotedTopic, então some e o botão volta a 'Promover para Regras'",
+      "ruleId" : "1A4EF162-82B1-4940-8251-A2102964C3E8",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    }
+  ],
+  "task" : "Despromoção de ideias: unpromoteIdea/releaseOrphanedIdeas no Core; deleteTopic despromove; app despromove ao mover tópico para o Lixo, em mudanças externas e na abertura; \"Despromover\" (com undo) no badge da ideia; CLI `ideas unpromote` e MCP `unpromote_idea`; docs e teste.",
+  "topics" : [
+    "cli-e-mcp",
+    "core-e-formato-de-dados",
+    "geral",
+    "interface-do-app"
+  ],
+  "warnings" : [
+
+  ]
+}

@@ -109,7 +109,14 @@ struct IdeaView: View {
             }
             .buttonStyle(.glass)
             .fixedSize()
-            .help("Abrir o tópico de regras criado a partir desta ideia")
+            .help("Abrir o tópico de regras criado a partir desta ideia (clique direito para despromover)")
+            .contextMenu {
+                Button("Despromover", role: .destructive) {
+                    flush()
+                    model.unpromoteIdea(slug, undo: undo)
+                }
+                .help("Apaga o tópico de regras; as regras rascunho continuam na ideia")
+            }
         }
     }
 

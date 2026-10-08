@@ -1,7 +1,7 @@
 # VibeDeck — guia para agentes de IA
 
 Este diretório é gerenciado pelo app **VibeDeck**. Ele guarda links, documentos,
-pontos de revisão, **regras** e **ideias** do projeto em arquivos locais que você (agente) pode ler e editar.
+pontos de revisão, **regras**, **ideias** e **agentes** do projeto em arquivos locais que você (agente) pode ler e editar.
 
 ## ⚠️ Regras — obrigatório antes de concluir qualquer tarefa
 
@@ -28,10 +28,11 @@ vibedeck.json                 # declara o projeto: nome, links, tipos de revisã
   reviews/<slug>.json         # um grupo (tema) de itens de revisão por arquivo
   rules/<slug>.json           # um tópico de regras por arquivo (paths = globs de escopo)
   ideas/<slug>.json           # uma ideia por arquivo (brainstorm, com regras rascunho)
+  agents/<slug>.json          # um agente do VibeDeck por arquivo (nome, modelo, prompt, próximos passos)
   checks/*.json               # verificações de regras registradas (histórico; não edite)
 ```
 
-Schemas: https://vibedeck-schema.alanreisanjo.workers.dev/v1/{project,review-group,rule-topic,idea,rule-check}.schema.json
+Schemas: https://vibedeck-schema.alanreisanjo.workers.dev/v1/{project,review-group,rule-topic,idea,agent,rule-check}.schema.json
 
 ## Itens de revisão
 
@@ -55,12 +56,22 @@ Cada item de `reviews/*.json` descreve algo a ajustar no projeto
 
 Ideias (`ideas/*.json`) são futuras e **não** são regras ativas: `status` new | exploring | approved |
 discarded | done, `body` em markdown, `rules` rascunho. `promote_idea` transforma as regras da
-ideia em um tópico de regras real (aí passam a valer). Registre ideias que surgirem com `add_idea`.
+ideia em um tópico de regras real (aí passam a valer). `unpromote_idea` desfaz isso (apaga o tópico,
+as regras rascunho ficam na ideia); apagar o tópico de outro jeito também despromove a ideia
+(`approved` volta para `exploring`). Registre ideias que surgirem com `add_idea`.
+
+## Agentes
+
+Agentes (`agents/*.json`) são agentes **do VibeDeck**: `title` (nome), `model`, `prompt` (markdown), `tools` e
+`nextSteps` — `{kind: agent|command, ref, note}` apontando para outros agentes/comandos do **VibeDeck**
+(nunca do provedor de IA). Os próximos passos formam um fluxo: o próximo atua sobre o resultado do anterior.
+`agent_flow` / `vibedeck agents flow <ref>` devolve o JSON do fluxo (prompt + passos encadeados) para orquestrar
+a IA. `import_agents` / `vibedeck agents import` traz os agentes do Claude Code (`.claude/agents`).
 
 ## Tags
 
-Docs (frontmatter `tags: [a, b]`), grupos de revisão, tópicos de regras e ideias aceitam `tags`.
-Use `set_tags` (MCP) ou `vibedeck tag <doc|review|rules|idea> <ref> <tags...>`.
+Docs (frontmatter `tags: [a, b]`), grupos de revisão, tópicos de regras, ideias e agentes aceitam `tags`.
+Use `set_tags` (MCP) ou `vibedeck tag <doc|review|rules|idea|agent> <ref> <tags...>`.
 
 ## Regras gerais para agentes
 
@@ -81,6 +92,7 @@ vibedeck docs list | vibedeck docs cat <slug>
 vibedeck rules for src/Login.tsx --json      # regras aplicáveis (com ids)
 echo '[{"ruleId":"ab12","verdict":"pass","note":"..."}]' | vibedeck rules check --task "..." --file src/Login.tsx --item <id>
 vibedeck ideas list | vibedeck ideas new "Modo offline"
+vibedeck agents list | vibedeck agents next <agente> <proximo> | vibedeck agents flow <agente>
 ```
 
 MCP: `vibedeck mcp install` (registra `vibedeck mcp` no Claude Code)
