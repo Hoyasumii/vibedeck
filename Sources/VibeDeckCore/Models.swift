@@ -9,6 +9,10 @@ public enum SchemaURL {
     public static let ruleTopic = "\(base)/rule-topic.schema.json"
     public static let idea = "\(base)/idea.schema.json"
     public static let agent = "\(base)/agent.schema.json"
+    public static let command = "\(base)/command.schema.json"
+    public static let skill = "\(base)/skill.schema.json"
+    public static let workflow = "\(base)/workflow.schema.json"
+    public static let workflowRun = "\(base)/workflow-run.schema.json"
     public static let ruleCheck = "\(base)/rule-check.schema.json"
 }
 

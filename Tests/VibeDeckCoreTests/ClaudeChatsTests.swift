@@ -69,4 +69,12 @@ import Testing
         #expect(text.contains(#"titulo="A 'x'""#))
         #expect(text.contains("mensagem de A") && text.contains("resposta de B"))
     }
+
+    @Test func wireTextListsAttachedFiles() {
+        let text = ClaudeChat.wireText("veja", mentioning: [], attachments: ["/tmp/a.png", "/Users/x/spec.pdf"])
+        #expect(text == "veja\n\nArquivos anexados pelo usuário (leia com Read se precisar):\n- /tmp/a.png\n- /Users/x/spec.pdf")
+        let message = ClaudeChatMessage(role: .user, text: "veja", attachments: ["/tmp/a.png"])
+        let decoded = try? VDJSON.decoder.decode(ClaudeChatMessage.self, from: VDJSON.encode(message))
+        #expect(decoded?.attachments == ["/tmp/a.png"])
+    }
 }

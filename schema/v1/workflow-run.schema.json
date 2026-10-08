@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibedeck-schema.alanreisanjo.workers.dev/v1/workflow-run.schema.json",
+  "title": "VibeDeck workflow run",
+  "description": "One execution of a workflow, managed by `vibedeck runs` / the workflow_run_* MCP tools (do not edit by hand). Lives at <repo>/.vibedeck/runs/<workflow>/<run>/run.json; the folder also holds what the steps write.",
+  "type": "object",
+  "required": [
+    "id",
+    "workflow",
+    "status",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "workflow": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Slug of the workflow."
+    },
+    "input": {
+      "type": "string",
+      "description": "Input of the run (the run folder is named after it)."
+    },
+    "status": {
+      "enum": [
+        "running",
+        "waiting",
+        "done",
+        "stopped"
+      ]
+    },
+    "current": {
+      "type": "string",
+      "description": "Id of the step to run next; absent once finished."
+    },
+    "reason": {
+      "type": "string",
+      "description": "Why the run is waiting, finished or stopped."
+    },
+    "cycle": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Pass over the workflow; starting a finished run again opens a new one."
+    },
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "step"
+        ],
+        "properties": {
+          "step": {
+            "type": "string"
+          },
+          "verdict": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "next": {
+            "type": "string",
+            "description": "Step chosen after this one; absent = end."
+          },
+          "cycle": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "number",
+          "step",
+          "question",
+          "createdAt"
+        ],
+        "properties": {
+          "number": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "step": {
+            "type": "string"
+          },
+          "question": {
+            "type": "string"
+          },
+          "context": {
+            "type": "string"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "label"
+              ],
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "multiple": {
+            "type": "boolean"
+          },
+          "answer": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "answeredAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}

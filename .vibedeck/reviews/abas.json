@@ -1,0 +1,18 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/review-group.schema.json",
+  "createdAt" : "2026-10-08T14:30:23Z",
+  "id" : "99A40EA5-1C60-44FF-B7F4-61A2AD19E503",
+  "items" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-08T14:30:43Z",
+      "id" : "78BE5EFD-934F-4F8F-9CF5-6FCC164868E2",
+      "kind" : "fix",
+      "priority" : "normal",
+      "status" : "open",
+      "title" : "Cmd+W para fechar abas ativas",
+      "updatedAt" : "2026-10-08T14:30:43Z"
+    }
+  ],
+  "title" : "Abas"
+}

@@ -17,10 +17,12 @@ public struct ClaudeChatMessage: Codable, Equatable, Sendable {
     public var isError: Bool?
     /// User messages: other chats mentioned (sent to Claude as JSON, not resumed).
     public var mentions: [UUID]?
+    /// User messages: absolute paths of files attached (referenced in the prompt, never copied).
+    public var attachments: [String]?
 
     public init(
         role: Role, text: String, toolName: String? = nil, summary: String? = nil, result: String? = nil,
-        isError: Bool? = nil, mentions: [UUID]? = nil
+        isError: Bool? = nil, mentions: [UUID]? = nil, attachments: [String]? = nil
     ) {
         self.role = role
         self.text = text
@@ -29,10 +31,11 @@ public struct ClaudeChatMessage: Codable, Equatable, Sendable {
         self.result = result
         self.isError = isError
         self.mentions = mentions
+        self.attachments = attachments
     }
 
     private enum CodingKeys: String, CodingKey {
-        case role, text, toolName, summary, result, isError, mentions
+        case role, text, toolName, summary, result, isError, mentions, attachments
     }
 
     public init(from decoder: Decoder) throws {
@@ -44,6 +47,7 @@ public struct ClaudeChatMessage: Codable, Equatable, Sendable {
         result = try c.decodeIfPresent(String.self, forKey: .result)
         isError = try c.decodeIfPresent(Bool.self, forKey: .isError)
         mentions = try c.decodeIfPresent([UUID].self, forKey: .mentions)
+        attachments = try c.decodeIfPresent([String].self, forKey: .attachments)
     }
 }
 
@@ -101,9 +105,14 @@ public struct ClaudeChat: Codable, Equatable, Identifiable, Sendable {
     }
 
     /// What is written to Claude for a user message: the text, followed by each mentioned chat as JSON.
-    public static func wireText(_ text: String, mentioning chats: [ClaudeChat]) -> String {
-        guard !chats.isEmpty else { return text }
-        var out = text + "\n\n"
+    public static func wireText(_ text: String, mentioning chats: [ClaudeChat], attachments: [String] = []) -> String {
+        var out = text
+        if !attachments.isEmpty {
+            out += "\n\nArquivos anexados pelo usuário (leia com Read se precisar):"
+            out += attachments.map { "\n- " + $0 }.joined()
+        }
+        guard !chats.isEmpty else { return out }
+        out += "\n\n"
         out += "As conversas mencionadas abaixo são só referência (outras conversas deste projeto, em JSON); não fazem parte desta conversa."
         for chat in chats {
             let title = chat.title.replacingOccurrences(of: "\"", with: "'")

@@ -21,6 +21,8 @@ final class ClaudeSession {
         var toolUseId: String?
         /// User messages: chats mentioned (sent as JSON).
         var mentions: [UUID] = []
+        /// User messages: absolute paths of attached files (only referenced in the prompt).
+        var attachments: [String] = []
     }
 
     let root: URL
@@ -40,7 +42,7 @@ final class ClaudeSession {
     private(set) var isThinking = false
     private(set) var lastCost: Double?
     private(set) var model: String?
-    /// Chosen in the panel; Claude Code also changes it (approving a plan returns to `.default`).
+    /// Chosen in the composer; Claude Code also changes it (approving a plan returns to `.default`).
     private(set) var permissionMode: ClaudePermissionMode = .default
     /// Model and effort only apply at launch, so changing them restarts the process (resuming the
     /// conversation) before the next message.
@@ -50,16 +52,16 @@ final class ClaudeSession {
     private(set) var effort: ClaudeEffort {
         didSet { UserDefaults.standard.set(effort.rawValue, forKey: "claudeEffort") }
     }
-    var isPanelVisible: Bool {
-        didSet { UserDefaults.standard.set(isPanelVisible, forKey: panelKey) }
-    }
+    enum Page: Equatable { case chat, terminal(UUID) }
 
-    enum PanelTab: String, CaseIterable { case chat, terminal }
-
-    /// Which tab of the panel is showing: the conversation or the project terminal.
-    var panelTab: PanelTab = .chat
-    /// Interactive shell of the project, kept alive while the window is open.
-    let terminal: ProjectTerminal
+    /// Set to ask the window to show the conversation or a terminal tab; the window clears it.
+    var requestedPage: Page?
+    /// Composer text, mentioned chats and attached files, kept here so they survive switching tabs.
+    var draft = ""
+    var draftMentions: [UUID] = []
+    var draftAttachments: [URL] = []
+    /// Interactive shells of the project, one per terminal tab. A shell lives exactly as long as its tab.
+    private(set) var terminals: [UUID: ProjectTerminal] = [:]
 
     /// Slash commands the running Claude Code reported at init (plugins included).
     private(set) var reportedCommands: [String] = []
@@ -77,15 +79,11 @@ final class ClaudeSession {
     @ObservationIgnored private var resumedWithoutInit = false
     @ObservationIgnored private var needsRestart = false
     private let currentKey: String
-    private let panelKey: String
 
     init(root: URL, projectId: UUID) {
         self.root = root
-        terminal = ProjectTerminal(root: root)
         store = ClaudeChatStore.forProject(projectId)
         currentKey = "claudeChat.\(projectId.uuidString)"
-        panelKey = "claudePanel.\(projectId.uuidString)"
-        isPanelVisible = ClaudeCode.isInstalled && UserDefaults.standard.bool(forKey: panelKey)
         chosenModel = ClaudeModel(rawValue: UserDefaults.standard.string(forKey: "claudeModel") ?? "") ?? .automatic
         effort = ClaudeEffort(rawValue: UserDefaults.standard.string(forKey: "claudeEffort") ?? "") ?? .automatic
         migrateLegacySession(key: "claudeSession.\(projectId.uuidString)")
@@ -208,27 +206,29 @@ final class ClaudeSession {
 
     // MARK: Actions
 
-    /// Opens the panel and sends `prompt`, for buttons elsewhere in the app.
+    /// Shows the conversation and sends `prompt`, for buttons elsewhere in the app.
     func ask(_ prompt: String) {
-        isPanelVisible = true
+        requestedPage = .chat
         send(prompt)
     }
 
-    /// Sends `text`; `mentions` are other chats, included in full as JSON (their sessions aren't resumed).
-    func send(_ text: String, mentions: [UUID] = []) {
+    /// Sends `text`; `mentions` are other chats, included in full as JSON (their sessions aren't resumed);
+    /// `attachments` are files referenced by absolute path in the prompt (nothing is copied).
+    func send(_ text: String, mentions: [UUID] = [], attachments: [URL] = []) {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return }
+        let paths = attachments.map(\.path)
+        guard !text.isEmpty || !paths.isEmpty else { return }
         if needsRestart, !isWorking { stop() }
         if current == nil { current = ClaudeChat(title: ClaudeChat.untitled) }
         guard let chatId = current?.id else { return }
         if current?.title == ClaudeChat.untitled, !entries.contains(where: { if case .user = $0.kind { true } else { false } }) {
-            current?.title = ClaudeChat.title(from: text)
+            current?.title = ClaudeChat.title(from: text.isEmpty ? attachments.map(\.lastPathComponent).joined(separator: ", ") : text)
         }
         let mentioned = mentions.filter { $0 != chatId }.compactMap(store.load)
-        entries.append(Entry(kind: .user(text), mentions: mentioned.map(\.id)))
+        entries.append(Entry(kind: .user(text), mentions: mentioned.map(\.id), attachments: paths))
         isWorking = true
         persist()
-        var wire = ClaudeChat.wireText(text, mentioning: mentioned)
+        var wire = ClaudeChat.wireText(text, mentioning: mentioned, attachments: paths)
         if !shellContext.isEmpty {
             wire = shellContext.joined(separator: "\n") + "\n\n" + wire
             shellContext = []
@@ -264,17 +264,37 @@ final class ClaudeSession {
         }
     }
 
+    // MARK: Terminals
+
+    /// Starts a new shell in the project folder and asks the window to show it in a new tab.
+    /// When the shell exits, the terminal is dropped and the window closes its tab.
+    func openTerminal(running command: String? = nil) {
+        let id = UUID()
+        let used = Set(terminals.values.map(\.number))
+        let number = (1...).first { !used.contains($0) }!
+        let terminal = ProjectTerminal(root: root, number: number) { [weak self] in
+            self?.terminals[id] = nil
+        }
+        terminals[id] = terminal
+        if let command { terminal.run(command) } else { terminal.start() }
+        requestedPage = .terminal(id)
+    }
+
+    /// Ends the shell of a terminal whose tab was closed.
+    func closeTerminal(_ id: UUID) {
+        terminals.removeValue(forKey: id)?.terminate()
+    }
+
     // MARK: Terminal commands
 
     /// Runs `command` in the project like the `!` prompt of Claude Code, shows the output in the
     /// transcript and hands it to Claude with the next message. Programs that need a keyboard (editors,
-    /// pagers, REPLs, ssh) go to the terminal tab instead.
+    /// pagers, REPLs, ssh) go to the terminal page instead.
     func runShell(_ command: String) {
         let command = command.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !command.isEmpty else { return }
         if ShellCommand.isInteractive(command) {
-            panelTab = .terminal
-            terminal.run(command)
+            openTerminal(running: command)
             return
         }
         if current == nil { current = ClaudeChat(title: ClaudeChat.untitled) }
@@ -294,23 +314,7 @@ final class ClaudeSession {
     }
 
     nonisolated private static func execute(_ command: String, in root: URL) -> (output: String, status: Int32) {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh")
-        process.arguments = ["-lc", command]
-        process.currentDirectoryURL = root
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-        process.standardInput = FileHandle.nullDevice
-        let timeout = DispatchWorkItem { if process.isRunning { process.terminate() } }
-        do { try process.run() } catch { return ("Não foi possível executar: \(error.localizedDescription)", 127) }
-        DispatchQueue.global().asyncAfter(deadline: .now() + 120, execute: timeout)
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        timeout.cancel()
-        var text = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
-        if text.count > 20_000 { text = String(text.prefix(20_000)) + "\n… (saída cortada)" }
-        return (text.isEmpty ? "(sem saída)" : text, process.terminationStatus)
+        ShellRunner.run(command, in: root)
     }
 
     /// Starts the process once, even when several messages are sent before it is up.
@@ -384,8 +388,8 @@ final class ClaudeSession {
         pending.removeAll { $0.id == request.id }
     }
 
-    func approvePlan(_ request: ClaudePermissionRequest, acceptEdits: Bool) {
-        write(ClaudeInput.approvePlan(request, acceptEdits: acceptEdits))
+    func approvePlan(_ request: ClaudePermissionRequest, then mode: ClaudePermissionMode?) {
+        write(ClaudeInput.approvePlan(request, then: mode))
         pending.removeAll { $0.id == request.id }
     }
 
@@ -560,7 +564,7 @@ final class ClaudeSession {
 extension ClaudeSession.Entry {
     init(_ message: ClaudeChatMessage) {
         switch message.role {
-        case .user: self.init(kind: .user(message.text), mentions: message.mentions ?? [])
+        case .user: self.init(kind: .user(message.text), mentions: message.mentions ?? [], attachments: message.attachments ?? [])
         case .assistant: self.init(kind: .assistant(message.text))
         case .tool: self.init(kind: .tool(name: message.toolName ?? message.text, summary: message.summary ?? "", result: message.result, isError: message.isError ?? false))
         case .notice: self.init(kind: .notice(message.text))
@@ -571,7 +575,8 @@ extension ClaudeSession.Entry {
     /// Nil for an assistant message that never got text.
     var message: ClaudeChatMessage? {
         switch kind {
-        case .user(let text): ClaudeChatMessage(role: .user, text: text, mentions: mentions.isEmpty ? nil : mentions)
+        case .user(let text):
+            ClaudeChatMessage(role: .user, text: text, mentions: mentions.isEmpty ? nil : mentions, attachments: attachments.isEmpty ? nil : attachments)
         case .assistant(let text): text.isEmpty ? nil : ClaudeChatMessage(role: .assistant, text: text)
         case .tool(let name, let summary, let result, let isError):
             ClaudeChatMessage(role: .tool, text: name, toolName: name, summary: summary, result: result, isError: isError ? true : nil)

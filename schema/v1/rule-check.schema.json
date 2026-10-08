@@ -21,7 +21,9 @@
           "topic": { "type": "string" },
           "ruleId": { "type": "string", "format": "uuid" },
           "verdict": { "enum": ["pass", "fail", "na"] },
-          "note": { "type": "string" }
+          "note": { "type": "string" },
+          "source": { "enum": ["agent", "script"], "description": "Who decided the verdict (absent = agent)." },
+          "exitCode": { "type": "integer", "description": "Exit status of the rule's script (source=script)." }
         },
         "additionalProperties": false
       }

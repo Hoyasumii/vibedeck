@@ -158,6 +158,34 @@ struct MentionChips: View {
     }
 }
 
+/// Files attached to the draft; Claude gets their absolute paths with the message.
+struct AttachmentChips: View {
+    @Binding var files: [URL]
+
+    var body: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 6) {
+                ForEach(files, id: \.self) { url in
+                    HStack(spacing: 4) {
+                        Label(url.lastPathComponent, systemImage: "paperclip")
+                            .lineLimit(1)
+                        Button { files.removeAll { $0 == url } } label: { Image(systemName: "xmark.circle.fill") }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.secondary)
+                            .help("Remover anexo")
+                    }
+                    .font(.caption)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(.tint.opacity(0.15), in: .capsule)
+                    .help(url.path)
+                }
+            }
+        }
+        .scrollIndicators(.hidden)
+    }
+}
+
 /// Picks other chats to mention; their whole transcript is sent as JSON with the message.
 struct MentionPicker: View {
     @Environment(ClaudeSession.self) private var claude

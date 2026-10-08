@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibedeck-schema.alanreisanjo.workers.dev/v1/workflow.schema.json",
+  "title": "VibeDeck workflow",
+  "description": "A named state machine over VibeDeck agents, commands and skills: the first step is the start and each step's transitions decide the next one from its verdict or result (loops allowed) until none applies. Lives at <repo>/.vibedeck/workflows/<slug>.json.",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "author",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Workflow name."
+    },
+    "summary": {
+      "type": "string",
+      "description": "What the workflow does."
+    },
+    "input": {
+      "type": "string",
+      "description": "What to ask for when starting it (e.g. <PR number>)."
+    },
+    "maxSteps": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Most step runs per execution (guard against endless loops; default 25)."
+    },
+    "steps": {
+      "type": "array",
+      "description": "Steps in order; the first one is the start.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "ref"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Key unique inside the workflow, used by transitions."
+          },
+          "kind": {
+            "enum": [
+              "agent",
+              "command",
+              "skill"
+            ]
+          },
+          "ref": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Slug of a VibeDeck agent/command/skill, never the AI provider's."
+          },
+          "note": {
+            "type": "string",
+            "description": "Extra instruction for the step ($ARGUMENTS for commands)."
+          },
+          "maxVisits": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Most runs of this step per execution cycle; exceeding it stops the run."
+          },
+          "transitions": {
+            "type": "array",
+            "description": "Verdicts first, then conditions, then the fallback; none = end.",
+            "items": {
+              "type": "object",
+              "required": [
+                "to"
+              ],
+              "properties": {
+                "verdict": {
+                  "type": "string",
+                  "description": "Exact last line of the step's result (case and accents ignored); checked before `when`."
+                },
+                "when": {
+                  "type": "string",
+                  "description": "Natural-language condition judged on the result; with neither verdict nor when = always (fallback)."
+                },
+                "to": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Id of a step of this workflow (earlier steps allowed)."
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "author": {
+      "enum": [
+        "human",
+        "ai"
+      ]
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,18 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/review-group.schema.json",
+  "createdAt" : "2026-10-08T14:26:05Z",
+  "id" : "51F57464-83E3-4307-96AA-593D06E56535",
+  "items" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-08T14:26:37Z",
+      "id" : "7808ADEC-AC5A-411A-B0CA-12994A13B382",
+      "kind" : "fix",
+      "priority" : "normal",
+      "status" : "open",
+      "title" : "Adicionar a barra de Scroll",
+      "updatedAt" : "2026-10-08T14:26:37Z"
+    }
+  ],
+  "title" : "Terminal"
+}

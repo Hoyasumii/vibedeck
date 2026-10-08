@@ -1,4 +1,3 @@
-import MarkdownUI
 import SwiftUI
 import VibeDeckCore
 
@@ -10,13 +9,8 @@ struct DocView: View {
     @State private var loaded = false
     @State private var saveTask: Task<Void, Never>?
     @State private var conflict: String?
-    @AppStorage("docViewMode") private var mode: Mode = .edit
-
-    enum Mode: String, CaseIterable {
-        case edit, split, read
-        var label: String { ["edit": "Editar", "split": "Dividir", "read": "Ler"][rawValue]! }
-        var symbol: String { ["edit": "pencil", "split": "rectangle.split.2x1", "read": "book"][rawValue]! }
-    }
+    @State private var insertion: MarkdownInsertion?
+    @AppStorage("docViewMode") private var mode: MarkdownViewMode = .edit
 
     private var isDirty: Bool { text != savedText }
 
@@ -25,21 +19,10 @@ struct DocView: View {
             .navigationTitle(model.docs.first { $0.slug == slug }?.title ?? slug)
             .navigationSubtitle(isDirty ? "Editando…" : "Salvo")
             .toolbar {
-                ToolbarItem {
-                    Picker("Modo", selection: $mode) {
-                        ForEach(Mode.allCases, id: \.self) { m in
-                            Label(m.label, systemImage: m.symbol).tag(m)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .help("Editar / Dividir / Ler (⌘E alterna)")
-                }
+                ToolbarItem { AttachButton(onPick: attach) }
+                ToolbarItem { MarkdownModePicker(mode: $mode) }
             }
-            .background {
-                Button("") { mode = mode == .read ? .edit : .read }
-                    .keyboardShortcut("e")
-                    .hidden()
-            }
+            .markdownModeShortcut($mode)
             .safeAreaInset(edge: .top) {
                 if let conflict {
                     ConflictBanner {
@@ -75,18 +58,27 @@ struct DocView: View {
     }
 
     private var editor: some View {
-        MarkdownEditor(text: $text, undoManager: model.undoManager(forDoc: slug))
+        MarkdownEditor(
+            text: $text,
+            undoManager: model.undoManager(forDoc: slug),
+            importFiles: { model.importAttachments($0, owner: slug) },
+            importImage: { model.importAttachment(data: $0, name: "colagem-\(Date.now.formatted(.iso8601)).png", owner: slug) },
+            insertion: insertion
+        )
     }
 
     private var preview: some View {
-        ScrollView {
-            Markdown(text)
-                .markdownTheme(.gitHub)
-                .textSelection(.enabled)
-                .padding(28)
-                .frame(maxWidth: 820, alignment: .leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
+        MarkdownPreview(text: text, baseURL: model.store.docsDir)
+    }
+
+    /// Files from the "Anexar" button go in through the editor (so ⌘Z undoes them): at the cursor, or
+    /// at the end after opening the editor beside the preview when only the preview is showing.
+    private func attach(_ urls: [URL]) {
+        let links = model.importAttachments(urls, owner: slug).joined(separator: "\n")
+        guard !links.isEmpty else { return }
+        guard mode == .read else { return insertion = MarkdownInsertion(text: links) }
+        mode = .split
+        DispatchQueue.main.async { insertion = MarkdownInsertion(text: links, atEnd: true) }
     }
 
     // MARK: Persistence

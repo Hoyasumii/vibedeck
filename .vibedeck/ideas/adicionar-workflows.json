@@ -1,13 +1,13 @@
 {
   "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
   "author" : "human",
-  "body" : "A ideia do Work",
+  "body" : "A ideia do Workflow é poder executar agentes e comandos, e a depender da saída de uma etapa, ele acabe indo para pontos diferentes, podendo até mesmo serem pontos anteriores. Até chegar em um ponto onde nada foi pedido. Ele seria mais pra orquestrar um fluxo inteiro. E esse Workflow poderia ser nomeado, e usado sempre que eu quisesse.",
   "createdAt" : "2026-10-08T03:37:17Z",
   "id" : "E9E14271-164A-4DA1-8670-26C3E22CEC95",
   "rules" : [
 
   ],
-  "status" : "new",
+  "status" : "done",
   "title" : "Adicionar workflows",
-  "updatedAt" : "2026-10-08T04:30:24Z"
+  "updatedAt" : "2026-10-08T14:15:02Z"
 }

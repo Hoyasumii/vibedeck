@@ -4,7 +4,7 @@ import SwiftUI
 import VibeDeckCore
 
 enum SidebarSection: String, CaseIterable, Hashable {
-    case docs, groups, topics, ideas, agents
+    case docs, groups, topics, ideas, agents, commands, skills, workflows
 
     var title: String {
         switch self {
@@ -13,6 +13,9 @@ enum SidebarSection: String, CaseIterable, Hashable {
         case .topics: "Regras"
         case .ideas: "Ideias"
         case .agents: "Agentes"
+        case .commands: "Comandos"
+        case .skills: "Skills"
+        case .workflows: "Workflows"
         }
     }
 
@@ -23,6 +26,9 @@ enum SidebarSection: String, CaseIterable, Hashable {
         case .topics: "checkmark.shield"
         case .ideas: "sparkle"
         case .agents: "person.crop.rectangle.stack"
+        case .commands: "command"
+        case .skills: "wand.and.stars"
+        case .workflows: "point.3.connected.trianglepath.dotted"
         }
     }
 
@@ -33,34 +39,52 @@ enum SidebarSection: String, CaseIterable, Hashable {
         case .topics: "Sem tópicos de regras"
         case .ideas: "Sem ideias"
         case .agents: "Sem agentes"
+        case .commands: "Sem comandos"
+        case .skills: "Sem skills"
+        case .workflows: "Sem workflows"
         }
     }
 }
 
 enum SidebarItem: Hashable {
     case links
+    case claude
+    case terminal(UUID)
     case section(SidebarSection)
     case doc(String)
     case group(String)
     case topic(String)
     case idea(String)
     case agent(String)
+    case command(String)
+    case skill(String)
+    case workflow(String)
 
     var storageKey: String {
         switch self {
         case .links: "links"
+        case .claude: "claude"
+        case .terminal(let id): "terminal:\(id.uuidString)"
         case .section(let section): "section:\(section.rawValue)"
         case .doc(let slug): "doc:\(slug)"
         case .group(let slug): "group:\(slug)"
         case .topic(let slug): "topic:\(slug)"
         case .idea(let slug): "idea:\(slug)"
         case .agent(let slug): "agent:\(slug)"
+        case .command(let slug): "command:\(slug)"
+        case .skill(let slug): "skill:\(slug)"
+        case .workflow(let slug): "workflow:\(slug)"
         }
     }
 
     init?(storageKey: String?) {
         guard let key = storageKey else { return nil }
         if key == "links" { self = .links }
+        else if key == "claude" { self = .claude }
+        else if key.hasPrefix("terminal:") {
+            guard let id = UUID(uuidString: String(key.dropFirst(9))) else { return nil }
+            self = .terminal(id)
+        }
         else if key.hasPrefix("section:") {
             guard let section = SidebarSection(rawValue: String(key.dropFirst(8))) else { return nil }
             self = .section(section)
@@ -70,19 +94,29 @@ enum SidebarItem: Hashable {
         else if key.hasPrefix("topic:") { self = .topic(String(key.dropFirst(6))) }
         else if key.hasPrefix("idea:") { self = .idea(String(key.dropFirst(5))) }
         else if key.hasPrefix("agent:") { self = .agent(String(key.dropFirst(6))) }
+        else if key.hasPrefix("command:") { self = .command(String(key.dropFirst(8))) }
+        else if key.hasPrefix("skill:") { self = .skill(String(key.dropFirst(6))) }
+        else if key.hasPrefix("workflow:") { self = .workflow(String(key.dropFirst(9))) }
         else { return nil }
+    }
+
+    var isTerminal: Bool {
+        if case .terminal = self { true } else { false }
     }
 
     /// The sidebar section this item lives in (expanded while it is selected).
     var section: SidebarSection? {
         switch self {
-        case .links: nil
+        case .links, .claude, .terminal: nil
         case .section(let section): section
         case .doc: .docs
         case .group: .groups
         case .topic: .topics
         case .idea: .ideas
         case .agent: .agents
+        case .command: .commands
+        case .skill: .skills
+        case .workflow: .workflows
         }
     }
 }
@@ -110,8 +144,17 @@ final class ProjectModel {
     var topics: [Entry<RuleTopic>] = []
     var ideas: [Entry<Idea>] = []
     var agents: [Entry<Agent>] = []
+    var commands: [Entry<Command>] = []
+    var skills: [Entry<Skill>] = []
+    var workflows: [Entry<Workflow>] = []
+    /// Workflow runs, newest first (`slug` = `<workflow>/<run>`).
+    var runs: [Entry<WorkflowRun>] = []
     /// All recorded rule checks, newest first.
     var checks: [RuleCheck] = []
+    /// Last "Rodar testes" outcome per rule (in memory only; checks are what gets recorded).
+    var testRuns: [UUID: RuleTestOutcome] = [:]
+    /// Topics whose scripts are running right now.
+    var runningTests: Set<String> = []
     var errorMessage: String?
 
     /// Bumped whenever a doc file changes on disk from outside the app.
@@ -145,6 +188,10 @@ final class ProjectModel {
         reloadTopics()
         reloadIdeas()
         reloadAgents()
+        reloadCommands()
+        reloadSkills()
+        reloadWorkflows()
+        reloadRuns()
         reloadChecks()
     }
 
@@ -166,11 +213,14 @@ final class ProjectModel {
 
     private func handleExternalChanges(_ urls: [URL]) {
         var docsChanged = false, groupsChanged = false, projectChanged = false
-        var topicsChanged = false, ideasChanged = false, agentsChanged = false, checksChanged = false
+        var topicsChanged = false, ideasChanged = false, agentsChanged = false, commandsChanged = false, skillsChanged = false, workflowsChanged = false, runsChanged = false, checksChanged = false
         for url in Set(urls.map { $0.resolvingSymlinksInPath().path }) {
             let current = FileManager.default.contents(atPath: url)
             if let current, current == lastWritten[url] { continue }
-            if url.hasSuffix("/" + ProjectStore.manifestName) {
+            if url.contains("/\(ProjectStore.dataDirName)/runs/") {
+                // Before the others: the steps' artifacts inside a run may have any name.
+                runsChanged = true
+            } else if url.hasSuffix("/" + ProjectStore.manifestName) {
                 projectChanged = true
             } else if url.contains("/docs/") {
                 docsChanged = true
@@ -184,6 +234,13 @@ final class ProjectModel {
                 ideasChanged = true
             } else if url.contains("/agents/") {
                 agentsChanged = true
+            } else if url.contains("/commands/") {
+                commandsChanged = true
+            } else if url.contains("/skills/") {
+                skillsChanged = true
+            } else if url.contains("/workflows/") {
+                workflowsChanged = true
+
             } else if url.contains("/checks/") {
                 checksChanged = true
             }
@@ -196,6 +253,10 @@ final class ProjectModel {
         if topicsChanged { reloadTopics() }
         if ideasChanged { reloadIdeas() }
         if agentsChanged { reloadAgents() }
+        if commandsChanged { reloadCommands() }
+        if skillsChanged { reloadSkills() }
+        if workflowsChanged { reloadWorkflows() }
+        if runsChanged { reloadRuns() }
         if checksChanged { reloadChecks() }
     }
 
@@ -212,6 +273,26 @@ final class ProjectModel {
     func reloadAgents() {
         let list = ((try? store.listAgents()) ?? []).map { Entry(slug: $0.slug, value: $0.agent) }
         if list != agents { agents = list }
+    }
+
+    func reloadCommands() {
+        let list = ((try? store.listCommands()) ?? []).map { Entry(slug: $0.slug, value: $0.command) }
+        if list != commands { commands = list }
+    }
+
+    func reloadSkills() {
+        let list = ((try? store.listSkills()) ?? []).map { Entry(slug: $0.slug, value: $0.skill) }
+        if list != skills { skills = list }
+    }
+
+    func reloadWorkflows() {
+        let list = ((try? store.listWorkflows()) ?? []).map { Entry(slug: $0.slug, value: $0.workflow) }
+        if list != workflows { workflows = list }
+    }
+
+    func reloadRuns() {
+        let list = ((try? store.listRuns()) ?? []).map { Entry(slug: $0.ref, value: $0.run) }
+        if list != runs { runs = list }
     }
 
     func reloadChecks() {
@@ -288,6 +369,26 @@ final class ProjectModel {
         let title = Markdown.title(of: text) ?? slug
         if let i = docs.firstIndex(where: { $0.slug == slug }), docs[i].title != title {
             docs[i].title = title
+        }
+    }
+
+    /// Copies files dropped/picked into a doc or idea to `.vibedeck/attachments/`; returns their markdown links.
+    func importAttachments(_ urls: [URL], owner: String) -> [String] {
+        urls.compactMap { url in
+            let scoped = url.startAccessingSecurityScopedResource()
+            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+            do { return try store.importAttachment(from: url, owner: owner) } catch {
+                errorMessage = error.localizedDescription
+                return nil
+            }
+        }
+    }
+
+    /// Saves pasted image data as an attachment; returns its markdown link.
+    func importAttachment(data: Data, name: String, owner: String) -> String? {
+        do { return try store.importAttachment(data: data, name: name, owner: owner) } catch {
+            errorMessage = error.localizedDescription
+            return nil
         }
     }
 
@@ -392,6 +493,21 @@ final class ProjectModel {
         mutate(\.topics, slug, url: store.topicURL(slug), actionName, undo: undo, change)
     }
 
+    /// Runs the scripts of a topic's rules off the main thread and keeps each outcome in `testRuns`.
+    func runTests(topic slug: String) {
+        guard !runningTests.contains(slug) else { return }
+        runningTests.insert(slug)
+        let store = store
+        Task {
+            let result = await Task.detached { Result { try store.runRuleTests(topics: [slug], onlyTopics: true) } }.value
+            runningTests.remove(slug)
+            switch result {
+            case .success(let runs): for run in runs { testRuns[run.rule.id] = run.outcome }
+            case .failure(let error): errorMessage = error.localizedDescription
+            }
+        }
+    }
+
     /// Checks that verified at least one rule of the topic, newest first.
     func checks(forTopic slug: String) -> [RuleCheck] {
         checks.filter { $0.topics.contains(slug) }
@@ -465,6 +581,142 @@ final class ProjectModel {
         }
     }
 
+    // MARK: Commands
+
+    func command(_ slug: String) -> Command? {
+        commands.first { $0.slug == slug }?.value
+    }
+
+    func createCommand(title: String) -> String? {
+        create { try store.createCommand(title: title) } url: { store.commandURL($0) } reload: { reloadCommands() }
+    }
+
+    func deleteCommand(_ slug: String) {
+        trash(store.commandURL(slug)) { reloadCommands() }
+    }
+
+    func mutateCommand(_ slug: String, _ actionName: String, undo: UndoManager?, _ change: @escaping (inout Command) -> Void) {
+        mutate(\.commands, slug, url: store.commandURL(slug), actionName, undo: undo) { command in
+            let before = command
+            change(&command)
+            if command != before { command.updatedAt = .now }
+        }
+    }
+
+    /// Imports Claude Code slash commands as VibeDeck commands. Returns how many were created.
+    func importClaudeCommands() -> Int {
+        do {
+            let slugs = try store.importClaudeCommands()
+            reloadCommands()
+            return slugs.count
+        } catch {
+            errorMessage = error.localizedDescription
+            return 0
+        }
+    }
+
+    // MARK: Skills
+
+    func skill(_ slug: String) -> Skill? {
+        skills.first { $0.slug == slug }?.value
+    }
+
+    func createSkill(title: String) -> String? {
+        create { try store.createSkill(title: title) } url: { store.skillURL($0) } reload: { reloadSkills() }
+    }
+
+    func deleteSkill(_ slug: String) {
+        trash(store.skillURL(slug)) { reloadSkills() }
+    }
+
+    func mutateSkill(_ slug: String, _ actionName: String, undo: UndoManager?, _ change: @escaping (inout Skill) -> Void) {
+        mutate(\.skills, slug, url: store.skillURL(slug), actionName, undo: undo) { skill in
+            let before = skill
+            change(&skill)
+            if skill != before { skill.updatedAt = .now }
+        }
+    }
+
+    /// Imports Claude Code skills (`SKILL.md`) as VibeDeck skills. Returns how many were created.
+    func importClaudeSkills() -> Int {
+        do {
+            let slugs = try store.importClaudeSkills()
+            reloadSkills()
+            return slugs.count
+        } catch {
+            errorMessage = error.localizedDescription
+            return 0
+        }
+    }
+
+    // MARK: Workflows
+
+    func workflow(_ slug: String) -> Workflow? {
+        workflows.first { $0.slug == slug }?.value
+    }
+
+    func createWorkflow(title: String) -> String? {
+        create { try store.createWorkflow(title: title) } url: { store.workflowURL($0) } reload: { reloadWorkflows() }
+    }
+
+    func deleteWorkflow(_ slug: String) {
+        trash(store.workflowURL(slug)) { reloadWorkflows() }
+    }
+
+    func mutateWorkflow(_ slug: String, _ actionName: String, undo: UndoManager?, _ change: @escaping (inout Workflow) -> Void) {
+        mutate(\.workflows, slug, url: store.workflowURL(slug), actionName, undo: undo) { workflow in
+            let before = workflow
+            change(&workflow)
+            if workflow != before { workflow.updatedAt = .now }
+        }
+    }
+
+    func runs(of workflow: String) -> [Entry<WorkflowRun>] {
+        runs.filter { $0.value.workflow == workflow }
+    }
+
+    /// Starts (or resumes, with the same input) a run and returns the orchestrator prompt for the chat.
+    func startRun(_ workflow: String, input: String?, from: String? = nil) -> String? {
+        do {
+            let (ref, run, _) = try store.startRun(workflow, input: input, from: from)
+            reloadRuns()
+            return orchestratorPrompt(ref, run)
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+
+    /// Prompt that makes the chat continue orchestrating an existing run.
+    func orchestratorPrompt(_ ref: String, _ run: WorkflowRun) -> String {
+        WorkflowOrchestration.orchestratorPrompt(
+            ref: ref, title: workflow(run.workflow)?.title ?? run.workflow, input: run.input, cli: ClaudeUsageView.cliPath ?? "vibedeck"
+        )
+    }
+
+    func stopRun(_ ref: String) {
+        do {
+            try store.stopRun(ref)
+            reloadRuns()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func deleteRun(_ ref: String) {
+        trash(store.runURL(ref).deletingLastPathComponent()) { reloadRuns() }
+    }
+
+    /// The workflow's plan with the agents, commands and skills currently loaded.
+    func workflowPlan(_ slug: String, input: String? = nil) -> WorkflowPlan? {
+        workflow(slug).map {
+            WorkflowPlan.build(
+                slug: slug, workflow: $0, input: input, agents: agents.map { ($0.slug, $0.value) },
+                commands: commands.map { ($0.slug, $0.value) }, skills: skills.map { ($0.slug, $0.value) }
+            )
+        }
+    }
+
     /// Promotes the idea's rules to an enforced topic. Returns the topic slug.
     func promoteIdea(_ slug: String) -> String? {
         do {
@@ -514,6 +766,9 @@ final class ProjectModel {
         case .topics: topics.count
         case .ideas: ideas.count
         case .agents: agents.count
+        case .commands: commands.count
+        case .skills: skills.count
+        case .workflows: workflows.count
         }
     }
 
@@ -548,6 +803,23 @@ final class ProjectModel {
                            detail: $0.value.model ?? "Modelo herdado",
                            count: $0.value.nextSteps.isEmpty ? "" : "\($0.value.nextSteps.count) próximo(s) passo(s)", tags: $0.value.tags)
             }
+        case .commands:
+            commands.map {
+                SectionRow(id: .command($0.slug), title: $0.value.title, symbol: "command",
+                           detail: $0.value.summary ?? $0.value.argumentHint ?? "",
+                           count: $0.value.nextSteps.isEmpty ? "" : "\($0.value.nextSteps.count) próximo(s) passo(s)", tags: $0.value.tags)
+            }
+        case .skills:
+            skills.map {
+                SectionRow(id: .skill($0.slug), title: $0.value.title, symbol: "wand.and.stars",
+                           detail: $0.value.summary ?? "",
+                           count: $0.value.nextSteps.isEmpty ? "" : "\($0.value.nextSteps.count) próximo(s) passo(s)", tags: $0.value.tags)
+            }
+        case .workflows:
+            workflows.map {
+                SectionRow(id: .workflow($0.slug), title: $0.value.title, symbol: "point.3.connected.trianglepath.dotted",
+                           detail: $0.value.summary ?? "", count: "\($0.value.steps.count) etapa(s)", tags: $0.value.tags)
+            }
         }
     }
 
@@ -558,7 +830,10 @@ final class ProjectModel {
         case .topic(let slug): store.topicURL(slug)
         case .idea(let slug): store.ideaURL(slug)
         case .agent(let slug): store.agentURL(slug)
-        case .links, .section: nil
+        case .command(let slug): store.commandURL(slug)
+        case .skill(let slug): store.skillURL(slug)
+        case .workflow(let slug): store.workflowURL(slug)
+        case .links, .claude, .terminal, .section: nil
         }
     }
 
@@ -566,12 +841,17 @@ final class ProjectModel {
     func title(for item: SidebarItem) -> String {
         switch item {
         case .links: "Links"
+        case .claude: "Claude"
+        case .terminal: "Terminal"
         case .section(let section): section.title
         case .doc(let slug): docs.first { $0.slug == slug }?.title ?? slug
         case .group(let slug): group(slug)?.title ?? slug
         case .topic(let slug): topic(slug)?.title ?? slug
         case .idea(let slug): idea(slug)?.title ?? slug
         case .agent(let slug): agent(slug)?.title ?? slug
+        case .command(let slug): command(slug)?.title ?? slug
+        case .skill(let slug): skill(slug)?.title ?? slug
+        case .workflow(let slug): workflow(slug)?.title ?? slug
         }
     }
 
@@ -579,24 +859,33 @@ final class ProjectModel {
     func symbol(for item: SidebarItem) -> String {
         switch item {
         case .links: "link"
+        case .claude: "sparkles"
+        case .terminal: "terminal"
         case .section(let section): section.symbol
         case .doc: "doc.text"
         case .group: "checklist"
         case .topic(let slug): topic(slug)?.isGlobal == false ? "scope" : "checkmark.shield"
         case .idea(let slug): idea(slug)?.status.symbol ?? "sparkle"
         case .agent: "person.crop.rectangle"
+        case .command: "command"
+        case .skill: "wand.and.stars"
+        case .workflow: "point.3.connected.trianglepath.dotted"
         }
     }
 
     /// Whether `item` still exists in the project (pages always do; files may have been deleted).
     func exists(_ item: SidebarItem) -> Bool {
         switch item {
-        case .links, .section: true
+        case .links, .terminal, .section: true
+        case .claude: ClaudeCode.isInstalled
         case .doc(let slug): docs.contains { $0.slug == slug }
         case .group(let slug): group(slug) != nil
         case .topic(let slug): topic(slug) != nil
         case .idea(let slug): idea(slug) != nil
         case .agent(let slug): agent(slug) != nil
+        case .command(let slug): command(slug) != nil
+        case .skill(let slug): skill(slug) != nil
+        case .workflow(let slug): workflow(slug) != nil
         }
     }
 
@@ -607,7 +896,10 @@ final class ProjectModel {
         case .topic(let slug): deleteTopic(slug)
         case .idea(let slug): deleteIdea(slug)
         case .agent(let slug): deleteAgent(slug)
-        case .links, .section: break
+        case .command(let slug): deleteCommand(slug)
+        case .skill(let slug): deleteSkill(slug)
+        case .workflow(let slug): deleteWorkflow(slug)
+        case .links, .claude, .terminal, .section: break
         }
     }
 
@@ -618,7 +910,10 @@ final class ProjectModel {
         case .topic(let slug): mutateTopic(slug, "Editar tags", undo: undo) { $0.tags = tags }
         case .idea(let slug): mutateIdea(slug, "Editar tags", undo: undo) { $0.tags = tags }
         case .agent(let slug): mutateAgent(slug, "Editar tags", undo: undo) { $0.tags = tags }
-        case .links, .section: break
+        case .command(let slug): mutateCommand(slug, "Editar tags", undo: undo) { $0.tags = tags }
+        case .skill(let slug): mutateSkill(slug, "Editar tags", undo: undo) { $0.tags = tags }
+        case .workflow(let slug): mutateWorkflow(slug, "Editar tags", undo: undo) { $0.tags = tags }
+        case .links, .claude, .terminal, .section: break
         }
     }
 

@@ -121,13 +121,17 @@ import Testing
         #expect(!exit.isQuestion)
         #expect(exit.plan == "# Plano\n\n1. Criar ola.txt")
 
-        let approve = try object(ClaudeInput.approvePlan(exit, acceptEdits: false))
+        let approve = try object(ClaudeInput.approvePlan(exit, then: nil))
         #expect(approve["response"]?["response"]?["behavior"] == "allow")
         #expect(approve["response"]?["response"]?["updatedInput"]?["planFilePath"] == "/Users/teste/.claude/plans/p.md")
         #expect(approve["response"]?["response"]?["updatedPermissions"] == nil)
 
-        let accept = try object(ClaudeInput.approvePlan(exit, acceptEdits: true))
+        let accept = try object(ClaudeInput.approvePlan(exit, then: .acceptEdits))
         #expect(accept["response"]?["response"]?["updatedPermissions"] == [["type": "setMode", "mode": "acceptEdits", "destination": "session"]])
+
+        let auto = try object(ClaudeInput.approvePlan(exit, then: .auto))
+        #expect(auto["response"]?["response"]?["updatedPermissions"] == [["type": "setMode", "mode": "auto", "destination": "session"]])
+        #expect(ClaudeStream.parse(#"{"type":"system","subtype":"status","permissionMode":"auto","session_id":"s-1"}"#) == .permissionModeChanged(.auto))
 
         let mode = try object(ClaudeInput.setPermissionMode(.plan, requestId: "m-1"))
         #expect(mode == ["type": "control_request", "request_id": "m-1", "request": ["subtype": "set_permission_mode", "mode": "plan"]])

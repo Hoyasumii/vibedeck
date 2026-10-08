@@ -44,10 +44,12 @@ import Testing
         #expect(throws: VibeDeckError.self) { try store.addNextStep(to: a, target: "nao-existe") }
         try store.addNextStep(to: b, target: a)  // cycle
         let flow = try #require(AgentFlow.build(from: a, agents: store.listAgents()))
-        #expect(flow.next.first?.node?.agent == b)
+        #expect(flow.next.first?.node?.ref == b)
         #expect(flow.next.first?.node?.next.first?.warning?.hasPrefix("Ciclo") == true)
-        try store.addNextStep(to: a, kind: .command, target: "deploy")
-        #expect(try store.loadAgent(a).nextSteps.last?.kind == .command)
+        #expect(throws: VibeDeckError.self) { try store.addNextStep(to: a, kind: .command, target: "deploy") }
+        try store.createCommand(title: "Deploy")
+        try store.addNextStep(to: a, kind: .command, target: "Deploy")
+        #expect(try store.loadAgent(a).nextSteps.last == NextStep(kind: .command, ref: "deploy"))
     }
 
     @Test func parsesClaudeAgentFile() {

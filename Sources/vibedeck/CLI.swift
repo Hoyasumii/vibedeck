@@ -8,7 +8,7 @@ struct VibeDeckCLI: AsyncParsableCommand {
         commandName: "vibedeck",
         abstract: "Gerencia projetos VibeDeck (links, docs, revisões, regras e ideias) a partir do terminal.",
         version: "0.2.0",
-        subcommands: [Init.self, Status.self, Links.self, Docs.self, Review.self, Rules.self, Ideas.self, Agents.self, Tag.self, Usage.self, Cloud.self, MCPCommand.self]
+        subcommands: [Init.self, Status.self, Links.self, Docs.self, Review.self, Rules.self, Ideas.self, Agents.self, Commands.self, Skills.self, Workflows.self, Runs.self, Tag.self, Usage.self, Cloud.self, MCPCommand.self]
     )
 }
 
@@ -60,6 +60,9 @@ struct Status: ParsableCommand {
         let ruleTopics: [String]
         let ideas: [String]
         let agents: [String]
+        let commands: [String]
+        let skills: [String]
+        let workflows: [String]
     }
 
     struct GroupSummary: Encodable {
@@ -77,11 +80,15 @@ struct Status: ParsableCommand {
         let topics = try store.listTopics()
         let ideas = try store.listIdeas()
         let agents = try store.listAgents()
+        let commands = try store.listCommands()
+        let skills = try store.listSkills()
+        let workflows = try store.listWorkflows()
         if json {
             try printJSON(Summary(
                 root: store.root.path, project: project, docs: docs.map(\.slug),
                 groups: groups.map { GroupSummary(slug: $0.slug, title: $0.group.title, open: $0.group.openCount, total: $0.group.items.count) },
-                ruleTopics: topics.map(\.slug), ideas: ideas.map(\.slug), agents: agents.map(\.slug)
+                ruleTopics: topics.map(\.slug), ideas: ideas.map(\.slug), agents: agents.map(\.slug),
+                commands: commands.map(\.slug), skills: skills.map(\.slug), workflows: workflows.map(\.slug)
             ))
             return
         }
@@ -92,7 +99,7 @@ struct Status: ParsableCommand {
             print("  • \(group.title) [\(slug)] — \(group.openCount) aberto(s) de \(group.items.count)")
         }
         let ruleCount = topics.reduce(0) { $0 + $1.topic.rules.count }
-        print("Tópicos de regras: \(topics.count) (\(ruleCount) regra(s))  Ideias: \(ideas.count) (\(ideas.filter { !$0.idea.status.isClosed }.count) abertas)  Agentes: \(agents.count)")
+        print("Tópicos de regras: \(topics.count) (\(ruleCount) regra(s))  Ideias: \(ideas.count) (\(ideas.filter { !$0.idea.status.isClosed }.count) abertas)  Agentes: \(agents.count)  Comandos: \(commands.count)  Skills: \(skills.count)  Workflows: \(workflows.count)")
     }
 }
 
@@ -306,14 +313,20 @@ extension NextStepKind: ExpressibleByArgument {}
 private func printRules(_ rules: [Rule], indent: String = "  ") {
     for r in rules {
         let mark = r.severity == .must ? "●" : "○"
-        print("\(indent)\(r.id.uuidString.prefix(8))  \(mark) \(r.text)\(r.author == .ai ? "  ✨" : "")")
+        let test = switch r.testState {
+        case .none: ""
+        case .script: "  ⚙ \(r.test?.command ?? "")"
+        case .manual: "  ✋ manual"
+        case .stale: "  ⚠ teste desatualizado"
+        }
+        print("\(indent)\(r.id.uuidString.prefix(8))  \(mark) \(r.text)\(r.author == .ai ? "  ✨" : "")\(test)")
     }
 }
 
 struct Rules: ParsableCommand {
     static let configuration = CommandConfiguration(
         abstract: "Tópicos de regras que toda tarefa precisa cumprir antes de ser concluída.",
-        subcommands: [List.self, Show.self, New.self, Add.self, Remove.self, For.self, Check.self, Checks.self],
+        subcommands: [List.self, Show.self, New.self, Add.self, Remove.self, For.self, Test.self, SetTest.self, Check.self, Checks.self],
         defaultSubcommand: List.self
     )
 
@@ -406,10 +419,70 @@ struct Rules: ParsableCommand {
         }
     }
 
+    struct Test: ParsableCommand {
+        static let configuration = CommandConfiguration(
+            abstract: "Roda os scripts das regras aplicáveis (não grava check).",
+            discussion: "Exit do script: 0 = cumpre, 77 = não se aplica, outro = viola. Sem arquivos nem tópicos, roda todos os tópicos."
+        )
+        @OptionGroup var options: RootOptions
+        @Argument(help: "Arquivos alterados.") var files: [String] = []
+        @Option(parsing: .upToNextOption, help: "Tópicos (só eles, quando não há arquivos).") var topics: [String] = []
+        @Option(help: "Id do item de revisão relacionado.") var item: String?
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws {
+            let store = try options.store()
+            let all = files.isEmpty && topics.isEmpty && item == nil
+            let runs = try store.runRuleTests(
+                files: files, topics: all ? try store.listTopics().map(\.slug) : topics, reviewItem: item,
+                onlyTopics: files.isEmpty && item == nil
+            )
+            if json { return try printJSON(runs.map(RuleTestRunRow.init)) }
+            if runs.isEmpty { return print("Nenhuma regra aplicável tem script. Gere com o botão \"Gerar testes\" no app.") }
+            for r in runs {
+                let icon = switch r.outcome.verdict { case .pass: "✅"; case .fail: "❌"; case .na: "–" }
+                print("\(icon) [\(r.topic)] \(r.rule.id.uuidString.prefix(8)) \(r.rule.text)  (exit \(r.outcome.exitCode))")
+                if r.outcome.verdict == .fail {
+                    print(r.outcome.output.split(separator: "\n", omittingEmptySubsequences: false).map { "    \($0)" }.joined(separator: "\n"))
+                }
+            }
+            if runs.contains(where: { $0.outcome.verdict == .fail && $0.rule.severity == .must }) { throw ExitCode.failure }
+        }
+    }
+
+    struct SetTest: ParsableCommand {
+        static let configuration = CommandConfiguration(
+            commandName: "set-test",
+            abstract: "Define como uma regra é verificada: por script (--command) ou manual (--manual)."
+        )
+        @OptionGroup var options: RootOptions
+        @Argument(help: "Id ou prefixo da regra.") var id: String
+        @Option(help: "Comando do script, rodado na raiz do projeto (ex.: .vibedeck/tests/geral/ab12cd34.sh).") var command: String?
+        @Flag(help: "A regra não é testável por script: continua com o agente.") var manual = false
+        @Option(help: "O que o script verifica ou por que a regra é manual.") var reason: String?
+        @Flag(help: "Remove o teste da regra (e o script em .vibedeck/tests).") var clear = false
+
+        func validate() throws {
+            let modes = [command != nil, manual, clear].filter { $0 }.count
+            guard modes == 1 else { throw ValidationError("Use exatamente um de --command, --manual ou --clear.") }
+        }
+
+        func run() throws {
+            let store = try options.store()
+            let rule = clear
+                ? try store.clearRuleTest(id)
+                : try store.setRuleTest(id, mode: manual ? .manual : .script, command: command, reason: reason)
+            print("\(rule.id.uuidString.prefix(8))\t\(rule.testState.label)")
+        }
+    }
+
     struct Check: ParsableCommand {
         static let configuration = CommandConfiguration(
             abstract: "Registra a verificação das regras aplicáveis.",
-            discussion: "Lê de stdin (ou --results) um JSON: [{\"ruleId\": \"ab12\", \"verdict\": \"pass|fail|na\", \"note\": \"...\"}]"
+            discussion: """
+            Lê de stdin (ou --results) um JSON: [{"ruleId": "ab12", "verdict": "pass|fail|na", "note": "..."}]
+            Regras com script (⚙ em `rules for`) são decididas rodando o script; responda só as outras.
+            """
         )
         @OptionGroup var options: RootOptions
         @Option(help: "Resumo do que foi feito.") var task: String
@@ -427,7 +500,8 @@ struct Rules: ParsableCommand {
                 task: task, files: files, topics: topics, reviewItem: item, answers: answers, author: ai ? .ai : .human
             )
             if json { return try printJSON(check) }
-            print(check.passed ? "✅ Aprovado (\(check.results.count) regra(s))" : "❌ Reprovado")
+            let scripted = check.results.filter { $0.source == .script }.count
+            print(check.passed ? "✅ Aprovado (\(check.results.count) regra(s), \(scripted) por script)" : "❌ Reprovado")
             for f in check.failures { print("  ✗ \(f)") }
             for w in check.warnings { print("  ⚠ \(w)") }
             if !check.passed { throw ExitCode.failure }
@@ -636,10 +710,10 @@ struct Agents: ParsableCommand {
     }
 
     struct Next: ParsableCommand {
-        static let configuration = CommandConfiguration(abstract: "Adiciona um próximo passo (agente ou comando do VibeDeck) ao agente.")
+        static let configuration = CommandConfiguration(abstract: "Adiciona um próximo passo (agente, comando ou skill do VibeDeck) ao agente.")
         @OptionGroup var options: RootOptions
         @Argument var agent: String
-        @Argument(help: "Agente (slug, id ou título) ou comando do VibeDeck.") var target: String
+        @Argument(help: "Agente (slug, id ou título), comando ou skill do VibeDeck.") var target: String
         @Option var kind: NextStepKind = .agent
         @Option var note: String?
 
@@ -657,8 +731,8 @@ struct Agents: ParsableCommand {
 
         func run() throws {
             let store = try options.store()
-            let target = (try? store.resolveAgentSlug(ref)) ?? ref
-            try store.updateAgent(agent) { $0.nextSteps.removeAll { $0.ref == target } }
+            let targets = Swift.Set([ref, try? store.resolveAgentSlug(ref), try? store.resolveCommandSlug(ref), try? store.resolveSkillSlug(ref)].compactMap { $0 })
+            try store.updateAgent(agent) { $0.nextSteps.removeAll { targets.contains($0.ref) } }
         }
     }
 
@@ -670,7 +744,7 @@ struct Agents: ParsableCommand {
         func run() throws {
             let store = try options.store()
             let slug = try store.resolveAgentSlug(agent)
-            print(try AgentFlow.json(from: slug, agents: store.listAgents()) ?? "")
+            print(try AgentFlow.json(from: slug, agents: store.listAgents(), commands: store.listCommands(), skills: store.listSkills()) ?? "")
         }
     }
 
@@ -691,15 +765,655 @@ struct Agents: ParsableCommand {
     }
 }
 
+// MARK: - commands
+
+struct Commands: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Comandos do VibeDeck (prompt no formato de slash command) e os próximos passos que formam um fluxo.",
+        subcommands: [List.self, Show.self, New.self, Set.self, Next.self, Unnext.self, Flow.self, Import.self],
+        defaultSubcommand: List.self
+    )
+
+    struct List: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws {
+            let commands = try options.store().listCommands()
+            if json { return try printJSON(commands.map(\.command)) }
+            for (slug, c) in commands {
+                let tags = c.tags.isEmpty ? "" : "  #" + c.tags.joined(separator: " #")
+                let hint = c.argumentHint.map { " \($0)" } ?? ""
+                print("\(slug)\t\(c.title)\(hint)  [\(c.model ?? "herdado")]  → \(c.nextSteps.count) passo(s)\(tags)")
+            }
+        }
+    }
+
+    struct Show: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Argument var command: String
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws {
+            let store = try options.store()
+            let c = try store.loadCommand(store.resolveCommandSlug(command))
+            if json { return try printJSON(c) }
+            print("\(c.title) — modelo: \(c.model ?? "herdado")")
+            if let s = c.summary { print(s) }
+            if let h = c.argumentHint { print("Argumentos: \(h)") }
+            if !c.tools.isEmpty { print("Ferramentas: " + c.tools.joined(separator: ", ")) }
+            print("\n\(c.prompt)\n")
+            for step in c.nextSteps { print("→ [\(step.kind.rawValue)] \(step.ref)\(step.note.map { " — \($0)" } ?? "")") }
+        }
+    }
+
+    struct New: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Argument var title: String
+        @Option var model: String?
+        @Option var summary: String?
+        @Option(help: "O que vai em $ARGUMENTS (ex.: \"<mensagem>\").") var argumentHint: String?
+        @Option var prompt: String = ""
+        @Option(parsing: .upToNextOption) var tools: [String] = []
+        @Option(parsing: .upToNextOption) var tags: [String] = []
+        @Flag(help: "Marca o comando como criado por IA.") var ai = false
+
+        func run() throws {
+            print(try options.store().createCommand(
+                title: title, summary: summary, argumentHint: argumentHint, model: model, tools: tools, prompt: prompt,
+                tags: tags, author: ai ? .ai : .human
+            ).slug)
+        }
+    }
+
+    struct Set: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Argument var command: String
+        @Option var title: String?
+        @Option var model: String?
+        @Option var summary: String?
+        @Option var argumentHint: String?
+        @Option var prompt: String?
+
+        func run() throws {
+            let (slug, c) = try options.store().updateCommand(command) { c in
+                if let title { c.title = title }
+                if let model { c.model = model.nonEmptyOrNil }
+                if let summary { c.summary = summary.nonEmptyOrNil }
+                if let argumentHint { c.argumentHint = argumentHint.nonEmptyOrNil }
+                if let prompt { c.prompt = prompt }
+            }
+            print("\(slug)\t\(c.title)")
+        }
+    }
+
+    struct Next: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Adiciona um próximo passo (agente, comando ou skill do VibeDeck) ao comando.")
+        @OptionGroup var options: RootOptions
+        @Argument var command: String
+        @Argument(help: "Agente, comando ou skill do VibeDeck (slug, id ou título).") var target: String
+        @Option var kind: NextStepKind = .agent
+        @Option var note: String?
+
+        func run() throws {
+            let (slug, c) = try options.store().addCommandNextStep(to: command, kind: kind, target: target, note: note)
+            print("\(slug)\t\(c.nextSteps.count) passo(s)")
+        }
+    }
+
+    struct Unnext: ParsableCommand {
+        static let configuration = CommandConfiguration(commandName: "unnext", abstract: "Remove um próximo passo do comando.")
+        @OptionGroup var options: RootOptions
+        @Argument var command: String
+        @Argument var ref: String
+
+        func run() throws {
+            let store = try options.store()
+            let targets = Swift.Set([ref, try? store.resolveAgentSlug(ref), try? store.resolveCommandSlug(ref), try? store.resolveSkillSlug(ref)].compactMap { $0 })
+            try store.updateCommand(command) { $0.nextSteps.removeAll { targets.contains($0.ref) } }
+        }
+    }
+
+    struct Flow: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Imprime o JSON do fluxo (comando + próximos passos) para orquestrar a IA em um prompt.")
+        @OptionGroup var options: RootOptions
+        @Argument var command: String
+
+        func run() throws {
+            let store = try options.store()
+            let slug = try store.resolveCommandSlug(command)
+            print(try AgentFlow.json(kind: .command, from: slug, agents: store.listAgents(), commands: store.listCommands(), skills: store.listSkills()) ?? "")
+        }
+    }
+
+    struct Import: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Importa comandos do Claude Code (.claude/commands do projeto e do usuário).")
+        @OptionGroup var options: RootOptions
+        @Flag(help: "Sobrescreve comandos já existentes.") var overwrite = false
+        @Option(help: "Diretório extra com arquivos .md de comandos.") var dir: String?
+        @Flag(help: "Marca os comandos como criados por IA.") var ai = false
+
+        func run() throws {
+            let store = try options.store()
+            let dirs = dir.map { [URL(fileURLWithPath: $0)] }
+            let slugs = try store.importClaudeCommands(from: dirs, overwrite: overwrite, author: ai ? .ai : .human)
+            slugs.forEach { print($0) }
+            if slugs.isEmpty { print("Nada para importar.") }
+        }
+    }
+}
+
+// MARK: - skills
+
+struct Skills: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Skills do VibeDeck (instruções no formato do SKILL.md) e os próximos passos que formam um fluxo.",
+        subcommands: [List.self, Show.self, New.self, Set.self, Next.self, Unnext.self, Flow.self, Import.self],
+        defaultSubcommand: List.self
+    )
+
+    struct List: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws {
+            let skills = try options.store().listSkills()
+            if json { return try printJSON(skills.map(\.skill)) }
+            for (slug, s) in skills {
+                let tags = s.tags.isEmpty ? "" : "  #" + s.tags.joined(separator: " #")
+                print("\(slug)\t\(s.title)  [\(s.model ?? "herdado")]  → \(s.nextSteps.count) passo(s)\(tags)")
+            }
+        }
+    }
+
+    struct Show: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Argument var skill: String
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws {
+            let store = try options.store()
+            let s = try store.loadSkill(store.resolveSkillSlug(skill))
+            if json { return try printJSON(s) }
+            print("\(s.title) — modelo: \(s.model ?? "herdado")")
+            if let d = s.summary { print(d) }
+            if !s.tools.isEmpty { print("Ferramentas: " + s.tools.joined(separator: ", ")) }
+            print("\n\(s.prompt)\n")
+            for step in s.nextSteps { print("→ [\(step.kind.rawValue)] \(step.ref)\(step.note.map { " — \($0)" } ?? "")") }
+        }
+    }
+
+    struct New: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Argument var title: String
+        @Option var model: String?
+        @Option(help: "Quando usar a skill (é o que a dispara).") var summary: String?
+        @Option var prompt: String = ""
+        @Option(parsing: .upToNextOption) var tools: [String] = []
+        @Option(parsing: .upToNextOption) var tags: [String] = []
+        @Flag(help: "Marca a skill como criada por IA.") var ai = false
+
+        func run() throws {
+            print(try options.store().createSkill(
+                title: title, summary: summary, model: model, tools: tools, prompt: prompt, tags: tags, author: ai ? .ai : .human
+            ).slug)
+        }
+    }
+
+    struct Set: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Argument var skill: String
+        @Option var title: String?
+        @Option var model: String?
+        @Option var summary: String?
+        @Option var prompt: String?
+
+        func run() throws {
+            let (slug, s) = try options.store().updateSkill(skill) { s in
+                if let title { s.title = title }
+                if let model { s.model = model.nonEmptyOrNil }
+                if let summary { s.summary = summary.nonEmptyOrNil }
+                if let prompt { s.prompt = prompt }
+            }
+            print("\(slug)\t\(s.title)")
+        }
+    }
+
+    struct Next: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Adiciona um próximo passo (agente, comando ou skill do VibeDeck) à skill.")
+        @OptionGroup var options: RootOptions
+        @Argument var skill: String
+        @Argument(help: "Agente, comando ou skill do VibeDeck (slug, id ou título).") var target: String
+        @Option var kind: NextStepKind = .agent
+        @Option var note: String?
+
+        func run() throws {
+            let (slug, s) = try options.store().addSkillNextStep(to: skill, kind: kind, target: target, note: note)
+            print("\(slug)\t\(s.nextSteps.count) passo(s)")
+        }
+    }
+
+    struct Unnext: ParsableCommand {
+        static let configuration = CommandConfiguration(commandName: "unnext", abstract: "Remove um próximo passo da skill.")
+        @OptionGroup var options: RootOptions
+        @Argument var skill: String
+        @Argument var ref: String
+
+        func run() throws {
+            let store = try options.store()
+            let targets = Swift.Set([ref, try? store.resolveAgentSlug(ref), try? store.resolveCommandSlug(ref), try? store.resolveSkillSlug(ref)].compactMap { $0 })
+            try store.updateSkill(skill) { $0.nextSteps.removeAll { targets.contains($0.ref) } }
+        }
+    }
+
+    struct Flow: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Imprime o JSON do fluxo (skill + próximos passos) para orquestrar a IA em um prompt.")
+        @OptionGroup var options: RootOptions
+        @Argument var skill: String
+
+        func run() throws {
+            let store = try options.store()
+            let slug = try store.resolveSkillSlug(skill)
+            print(try AgentFlow.json(kind: .skill, from: slug, agents: store.listAgents(), commands: store.listCommands(), skills: store.listSkills()) ?? "")
+        }
+    }
+
+    struct Import: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Importa skills do Claude Code (.claude/skills/<nome>/SKILL.md do projeto e do usuário).")
+        @OptionGroup var options: RootOptions
+        @Flag(help: "Sobrescreve skills já existentes.") var overwrite = false
+        @Option(help: "Diretório extra com pastas de skills (cada uma com SKILL.md).") var dir: String?
+        @Flag(help: "Marca as skills como criadas por IA.") var ai = false
+
+        func run() throws {
+            let store = try options.store()
+            let dirs = dir.map { [URL(fileURLWithPath: $0)] }
+            let slugs = try store.importClaudeSkills(from: dirs, overwrite: overwrite, author: ai ? .ai : .human)
+            slugs.forEach { print($0) }
+            if slugs.isEmpty { print("Nada para importar.") }
+        }
+    }
+}
+
+// MARK: - workflows
+
+struct Workflows: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Workflows do VibeDeck: etapas (agentes, comandos e skills) e transições condicionais que orquestram um fluxo inteiro.",
+        subcommands: [List.self, Show.self, New.self, Set.self, Step.self, Unstep.self, Move.self, Visits.self, Route.self, Unroute.self, Flow.self],
+        defaultSubcommand: List.self
+    )
+
+    struct List: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws {
+            let workflows = try options.store().listWorkflows()
+            if json { return try printJSON(workflows.map(\.workflow)) }
+            for (slug, w) in workflows {
+                let tags = w.tags.isEmpty ? "" : "  #" + w.tags.joined(separator: " #")
+                print("\(slug)\t\(w.title)  → \(w.steps.count) etapa(s)\(tags)")
+            }
+        }
+    }
+
+    struct Show: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Argument var workflow: String
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws {
+            let store = try options.store()
+            let w = try store.loadWorkflow(store.resolveWorkflowSlug(workflow))
+            if json { return try printJSON(w) }
+            print("\(w.title) — até \(w.maxSteps ?? Workflow.defaultMaxSteps) etapa(s) por execução")
+            if let d = w.summary { print(d) }
+            if let i = w.input { print("Entrada: \(i)") }
+            for (n, step) in w.steps.enumerated() {
+                let visits = step.maxVisits.map { "  (até \($0)x)" } ?? ""
+                print("\n\(n + 1). \(step.id) [\(step.kind.rawValue)] \(step.ref)\(n == 0 ? "  (início)" : "")\(visits)\(step.note.map { " — \($0)" } ?? "")")
+                for (i, t) in step.transitions.enumerated() { print("   \(i + 1). \(t.label) → \(t.to)") }
+                if step.transitions.isEmpty { print("   → fim") }
+            }
+        }
+    }
+
+    struct New: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Argument var title: String
+        @Option var summary: String?
+        @Option(help: "O que pedir ao iniciar (ex.: <número do PR>).") var input: String?
+        @Option(help: "Limite de etapas executadas (padrão: \(Workflow.defaultMaxSteps)).") var maxSteps: Int?
+        @Option(parsing: .upToNextOption) var tags: [String] = []
+        @Flag(help: "Marca o workflow como criado por IA.") var ai = false
+
+        func run() throws {
+            print(try options.store().createWorkflow(
+                title: title, summary: summary, input: input, maxSteps: maxSteps, tags: tags, author: ai ? .ai : .human
+            ).slug)
+        }
+    }
+
+    struct Set: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Argument var workflow: String
+        @Option var title: String?
+        @Option var summary: String?
+        @Option var input: String?
+        @Option(help: "Limite de etapas executadas (0 volta ao padrão).") var maxSteps: Int?
+
+        func run() throws {
+            let (slug, w) = try options.store().updateWorkflow(workflow) { w in
+                if let title { w.title = title }
+                if let summary { w.summary = summary.nonEmptyOrNil }
+                if let input { w.input = input.nonEmptyOrNil }
+                if let maxSteps { w.maxSteps = maxSteps > 0 ? maxSteps : nil }
+            }
+            print("\(slug)\t\(w.title)")
+        }
+    }
+
+    struct Step: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Adiciona uma etapa (agente, comando ou skill do VibeDeck). A primeira etapa é o início.")
+        @OptionGroup var options: RootOptions
+        @Argument var workflow: String
+        @Argument(help: "Agente, comando ou skill do VibeDeck (slug, id ou título).") var target: String
+        @Option var kind: NextStepKind = .agent
+        @Option(help: "Instrução extra da etapa ($ARGUMENTS para comandos).") var note: String?
+        @Option(help: "Máximo de vezes que a etapa roda por ciclo de uma execução.") var maxVisits: Int?
+
+        func run() throws {
+            let store = try options.store()
+            let (slug, _, step) = try store.addWorkflowStep(to: workflow, kind: kind, target: target, note: note)
+            if let maxVisits { try store.setWorkflowStepMaxVisits(slug, step: step, maxVisits: maxVisits) }
+            print("\(slug)\t\(step)")
+        }
+    }
+
+    struct Visits: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Define quantas vezes uma etapa pode rodar por ciclo de uma execução (0 remove o limite).")
+        @OptionGroup var options: RootOptions
+        @Argument var workflow: String
+        @Argument(help: "Id ou posição da etapa.") var step: String
+        @Argument(help: "Máximo de vezes (0 = sem limite).") var max: Int
+
+        func run() throws {
+            let (slug, _) = try options.store().setWorkflowStepMaxVisits(workflow, step: step, maxVisits: max)
+            print("\(slug)\t\(step): \(max > 0 ? "até \(max)x" : "sem limite")")
+        }
+    }
+
+    struct Unstep: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Remove uma etapa (e as transições que apontam para ela).")
+        @OptionGroup var options: RootOptions
+        @Argument var workflow: String
+        @Argument(help: "Id ou posição (1, 2, …) da etapa.") var step: String
+
+        func run() throws {
+            let (slug, w) = try options.store().removeWorkflowStep(workflow, step: step)
+            print("\(slug)\t\(w.steps.count) etapa(s)")
+        }
+    }
+
+    struct Move: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Move uma etapa para outra posição (1 = início).")
+        @OptionGroup var options: RootOptions
+        @Argument var workflow: String
+        @Argument(help: "Id ou posição da etapa.") var step: String
+        @Argument(help: "Nova posição (1, 2, …).") var position: Int
+
+        func run() throws {
+            let (slug, w) = try options.store().moveWorkflowStep(workflow, step: step, to: position)
+            print("\(slug)\t" + w.steps.map(\.id).joined(separator: " → "))
+        }
+    }
+
+    struct Route: ParsableCommand {
+        static let configuration = CommandConfiguration(
+            abstract: "Adiciona uma transição entre etapas (pode voltar). --verdict casa a última linha do resultado; --when é uma condição; sem nenhum é o \"senão\"."
+        )
+        @OptionGroup var options: RootOptions
+        @Argument var workflow: String
+        @Argument(help: "Etapa de origem (id ou posição).") var from: String
+        @Argument(help: "Etapa de destino (id ou posição).") var to: String
+        @Option(help: "Veredito (última linha do resultado da etapa, ex.: APROVADO) que leva a esta transição.") var verdict: String?
+        @Option(help: "Condição em linguagem natural sobre o resultado da etapa.") var when: String?
+
+        func run() throws {
+            let (slug, w) = try options.store().addWorkflowTransition(workflow, from: from, to: to, when: when, verdict: verdict)
+            let step = w.steps[w.stepIndex(from) ?? 0]
+            print("\(slug)\t\(step.id): \(step.transitions.count) transição(ões)")
+        }
+    }
+
+    struct Unroute: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Remove uma transição de uma etapa (pela posição mostrada em `show`).")
+        @OptionGroup var options: RootOptions
+        @Argument var workflow: String
+        @Argument(help: "Etapa de origem (id ou posição).") var from: String
+        @Argument(help: "Posição da transição (1, 2, …).") var index: Int
+
+        func run() throws {
+            try options.store().removeWorkflowTransition(workflow, from: from, index: index)
+        }
+    }
+
+    struct Flow: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Imprime o JSON do workflow (etapas, transições e regras de execução) para orquestrar a IA.")
+        @OptionGroup var options: RootOptions
+        @Argument var workflow: String
+        @Option(help: "Entrada desta execução (sem ela, a IA pede a entrada ao usuário).") var input: String?
+        @Flag(help: "Imprime o prompt completo (instrução + JSON) em vez de só o JSON.") var prompt = false
+
+        func run() throws {
+            let plan = try options.store().workflowPlan(workflow, input: input)
+            print(prompt ? try plan.prompt() : try plan.json())
+        }
+    }
+}
+
+// MARK: - runs
+
+/// How the subagents should call this CLI: the absolute path when it was run by path, else `vibedeck`.
+func cliInvocation() -> String {
+    let arg0 = CommandLine.arguments.first ?? "vibedeck"
+    return arg0.contains("/") ? URL(fileURLWithPath: arg0).standardizedFileURL.path : "vibedeck"
+}
+
+func printRunAction(_ action: WorkflowRunAction, json: Bool) throws {
+    if json { return try printJSON(action) }
+    print("\(action.action.rawValue)\t\(action.step ?? "-")\t\(action.reason)")
+    for c in action.candidates ?? [] { print("  \(c.label) → \(c.to)") }
+    for q in action.questions ?? [] { print("  \(q.number). [\(q.step)] \(q.question)") }
+}
+
+struct Runs: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Execuções de workflows: estado em disco, uma etapa por subagente, veredito decide a transição, perguntas sobem ao orquestrador.",
+        subcommands: [List.self, Show.self, Start.self, Next.self, StepPrompt.self, Record.self, Ask.self, Questions.self, Answer.self, Stop.self, Delete.self, Orchestrate.self],
+        defaultSubcommand: List.self
+    )
+
+    struct List: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Option(help: "Só as execuções deste workflow.") var workflow: String?
+        @Option(help: "running, waiting, done ou stopped.") var status: WorkflowRunStatus?
+        @Flag(help: "Saída JSON.") var json = false
+
+        struct Row: Encodable { let ref: String; let run: WorkflowRun }
+
+        func run() throws {
+            let runs = try options.store().listRuns(workflow: workflow).filter { status == nil || $0.run.status == status }
+            if json { return try printJSON(runs.map { Row(ref: $0.ref, run: $0.run) }) }
+            for (ref, r) in runs {
+                print("\(ref)\t\(r.status.rawValue)\t\(r.current ?? "-")\t\(r.history.count) etapa(s)\(r.openQuestions.isEmpty ? "" : "  ❓\(r.openQuestions.count)")")
+            }
+        }
+    }
+
+    struct Show: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Argument(help: "<workflow>/<execução>, nome da execução ou id.") var execution: String
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws {
+            let store = try options.store()
+            let ref = try store.resolveRunRef(execution)
+            let r = try store.loadRun(ref)
+            if json { return try printJSON(r) }
+            print("\(ref) — \(r.status.rawValue)\(r.input.map { " — entrada: \($0)" } ?? "")")
+            if let reason = r.reason { print(reason) }
+            for (n, e) in r.history.enumerated() {
+                print("\(n + 1). [c\(e.cycle)] \(e.step) → \(e.verdict ?? "—")\(e.next.map { " ⇒ \($0)" } ?? " ⇒ fim")\(e.summary.map { "  · \($0)" } ?? "")")
+            }
+            if let current = r.current, !r.isFinished { print("Próxima: \(current)") }
+            for q in r.questions { print("❓ \(q.number). [\(q.step)] \(q.question)\(q.answer.map { " → \($0)" } ?? "  (aberta)")") }
+        }
+    }
+
+    struct Start: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Inicia (ou retoma, com a mesma entrada) uma execução e imprime a próxima ação.")
+        @OptionGroup var options: RootOptions
+        @Argument var workflow: String
+        @Option(help: "Entrada da execução (a execução recebe o nome dela).") var input: String?
+        @Option(help: "Etapa por onde começar (libera mais uma volta numa execução parada).") var from: String?
+        @Flag(help: "Imprime o prompt do orquestrador em vez da ação.") var prompt = false
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws {
+            let store = try options.store()
+            let (ref, _, action) = try store.startRun(workflow, input: input, from: from)
+            if prompt {
+                let w = try store.loadWorkflow(store.resolveWorkflowSlug(workflow))
+                return print(WorkflowOrchestration.orchestratorPrompt(ref: ref, title: w.title, input: input, cli: cliInvocation()))
+            }
+            try printRunAction(action, json: json)
+        }
+    }
+
+    struct Next: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Próxima ação do orquestrador: run-step, ask, decide, done ou stop.")
+        @OptionGroup var options: RootOptions
+        @Argument(help: "<workflow>/<execução>, nome da execução ou id.") var execution: String
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws { try printRunAction(try options.store().nextRunAction(execution), json: json) }
+    }
+
+    struct StepPrompt: ParsableCommand {
+        static let configuration = CommandConfiguration(commandName: "step", abstract: "Imprime o prompt da etapa atual (é o que o subagente da etapa segue).")
+        @OptionGroup var options: RootOptions
+        @Argument(help: "<workflow>/<execução>, nome da execução ou id.") var execution: String
+
+        func run() throws { print(try options.store().runStepPrompt(execution, cli: cliInvocation())) }
+    }
+
+    struct Record: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Registra o veredito da etapa atual e imprime a próxima ação.")
+        @OptionGroup var options: RootOptions
+        @Argument(help: "<workflow>/<execução>, nome da execução ou id.") var execution: String
+        @Option(help: "Última linha do resultado da etapa.") var verdict: String?
+        @Option(help: "Resumo de 1 a 3 linhas do que a etapa fez.") var summary: String?
+        @Option(help: "Etapa escolhida ao avaliar as condições (resposta a `decide`).") var to: String?
+        @Flag(name: .customLong("nenhuma"), help: "Nenhuma condição vale (resposta a `decide`): segue o senão ou termina.") var noneHolds = false
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws {
+            try printRunAction(try options.store().recordRun(execution, verdict: verdict, summary: summary, to: to, noneHolds: noneHolds), json: json)
+        }
+    }
+
+    struct Ask: ParsableCommand {
+        static let configuration = CommandConfiguration(
+            abstract: "Grava perguntas da etapa atual (JSON no stdin: [{question, context, options: [{label, description}], multiple}]); a execução espera as respostas."
+        )
+        @OptionGroup var options: RootOptions
+        @Argument(help: "<workflow>/<execução>, nome da execução ou id.") var execution: String
+
+        func run() throws {
+            let data = FileHandle.standardInput.readDataToEndOfFile()
+            let drafts: [WorkflowQuestionDraft]
+            if let list = try? JSONDecoder().decode([WorkflowQuestionDraft].self, from: data) { drafts = list }
+            else { drafts = [try JSONDecoder().decode(WorkflowQuestionDraft.self, from: data)] }
+            let added = try options.store().askRun(execution, questions: drafts)
+            print("Pergunta(s) gravada(s): \(added.map { String($0.number) }.joined(separator: ", ")). Termine com a última linha: PERGUNTA")
+        }
+    }
+
+    struct Questions: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Argument(help: "<workflow>/<execução>, nome da execução ou id.") var execution: String
+        @Flag(help: "Só as abertas.") var open = false
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws {
+            let store = try options.store()
+            let r = try store.loadRun(store.resolveRunRef(execution))
+            let list = open ? r.openQuestions : r.questions
+            if json { return try printJSON(list) }
+            for q in list {
+                print("\(q.number). [\(q.step)] \(q.question)\(q.answer.map { " → \($0)" } ?? "")")
+                for o in q.options { print("   - \(o.label)\(o.description.map { ": \($0)" } ?? "")") }
+            }
+        }
+    }
+
+    struct Answer: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Argument(help: "<workflow>/<execução>, nome da execução ou id.") var execution: String
+        @Argument(help: "Número da pergunta.") var number: Int
+        @Argument(help: "Resposta (opção escolhida, várias separadas por \"; \", ou texto livre).") var answer: String
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws { try printRunAction(try options.store().answerRun(execution, number: number, answer: answer), json: json) }
+    }
+
+    struct Stop: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Argument(help: "<workflow>/<execução>, nome da execução ou id.") var execution: String
+        @Option(help: "Motivo.") var reason: String?
+
+        func run() throws {
+            let r = try options.store().stopRun(execution, reason: reason)
+            print("\(execution)\t\(r.status.rawValue)")
+        }
+    }
+
+    struct Delete: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Apaga a execução e a pasta dela (artefatos das etapas).")
+        @OptionGroup var options: RootOptions
+        @Argument(help: "<workflow>/<execução>, nome da execução ou id.") var execution: String
+
+        func run() throws { try options.store().deleteRun(execution) }
+    }
+
+    struct Orchestrate: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Imprime o prompt do orquestrador de uma execução existente (para continuá-la num chat).")
+        @OptionGroup var options: RootOptions
+        @Argument(help: "<workflow>/<execução>, nome da execução ou id.") var execution: String
+
+        func run() throws {
+            let store = try options.store()
+            let ref = try store.resolveRunRef(execution)
+            let r = try store.loadRun(ref)
+            let title = (try? store.loadWorkflow(r.workflow).title) ?? r.workflow
+            print(WorkflowOrchestration.orchestratorPrompt(ref: ref, title: title, input: r.input, cli: cliInvocation()))
+        }
+    }
+}
+
+extension WorkflowRunStatus: ExpressibleByArgument {}
+
 // MARK: - tag
 
 struct Tag: ParsableCommand {
-    static let configuration = CommandConfiguration(abstract: "Define as tags de um doc, grupo de revisão, tópico de regras, ideia ou agente (sem tags: remove todas).")
+    static let configuration = CommandConfiguration(abstract: "Define as tags de um doc, grupo de revisão, tópico de regras, ideia, agente, comando, skill ou workflow (sem tags: remove todas).")
 
-    enum Kind: String, ExpressibleByArgument, CaseIterable { case doc, review, rules, idea, agent }
+    enum Kind: String, ExpressibleByArgument, CaseIterable { case doc, review, rules, idea, agent, command, skill, workflow }
 
     @OptionGroup var options: RootOptions
-    @Argument(help: "doc, review, rules, idea ou agent.") var kind: Kind
+    @Argument(help: "doc, review, rules, idea, agent, command, skill ou workflow.") var kind: Kind
     @Argument(help: "Slug, id ou título.") var ref: String
     @Argument(help: "Tags (substituem as atuais).") var tags: [String] = []
 
@@ -711,6 +1425,9 @@ struct Tag: ParsableCommand {
         case .rules: try store.updateTopic(ref) { $0.tags = tags }
         case .idea: try store.updateIdea(ref) { $0.tags = tags }
         case .agent: try store.updateAgent(ref) { $0.tags = tags }
+        case .command: try store.updateCommand(ref) { $0.tags = tags }
+        case .skill: try store.updateSkill(ref) { $0.tags = tags }
+        case .workflow: try store.updateWorkflow(ref) { $0.tags = tags }
         }
         print(tags.isEmpty ? "Tags removidas." : "Tags: " + tags.joined(separator: ", "))
     }

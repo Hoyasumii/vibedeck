@@ -2,73 +2,68 @@ import MarkdownUI
 import SwiftUI
 import VibeDeckCore
 
-/// Claude Code conversation shown in the window's trailing column.
-struct ClaudePanel: View {
+/// Claude Code conversation, shown as a page (and tab) of the detail column.
+struct ClaudeChatPage: View {
     @Environment(ClaudeSession.self) private var claude
-    @State private var draft = ""
-    /// Other chats mentioned in the draft.
-    @State private var mentions: [UUID] = []
     @State private var pickingMention = false
+    @State private var pickingFiles = false
+    @State private var droppingFiles = false
     @State private var launchingCloud = false
     @State private var selection = 0
     /// Draft whose suggestions were dismissed with Esc.
     @State private var dismissed: String?
     @FocusState private var inputFocused: Bool
 
+    /// Readable line length for the transcript and composer in a wide detail column.
+    private static let columnWidth: CGFloat = 760
+
+    private var draft: String {
+        get { claude.draft }
+        nonmutating set { claude.draft = newValue }
+    }
+
+    private var mentions: [UUID] {
+        get { claude.draftMentions }
+        nonmutating set { claude.draftMentions = newValue }
+    }
+
+    private var attachments: [URL] {
+        get { claude.draftAttachments }
+        nonmutating set { claude.draftAttachments = newValue }
+    }
+
+    private var canSend: Bool {
+        if isShellMode { return draft != "!" }
+        return !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !attachments.isEmpty
+    }
+
     var body: some View {
-        @Bindable var claude = claude
-        VStack(spacing: 0) {
-            Picker("Painel", selection: $claude.panelTab) {
-                Label("Conversa", systemImage: "sparkles").tag(ClaudeSession.PanelTab.chat)
-                Label("Terminal", systemImage: "terminal").tag(ClaudeSession.PanelTab.terminal)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .padding(8)
-            Divider()
-            // The terminal stays mounted so switching tabs keeps its scrollback and running program.
-            ZStack {
-                TerminalPane(terminal: claude.terminal, isActive: claude.panelTab == .terminal)
-                    .opacity(claude.panelTab == .terminal ? 1 : 0)
-                    .allowsHitTesting(claude.panelTab == .terminal)
-                if claude.panelTab == .chat {
-                    Group {
-                        if claude.current == nil {
-                            ClaudeChatList()
-                        } else {
-                            chat
-                        }
-                    }
-                    .background(.background)
-                }
+        Group {
+            if claude.current == nil {
+                ClaudeChatList()
+            } else {
+                chat
             }
         }
-        .onChange(of: claude.panelTab) { _, tab in
-            if tab == .chat { inputFocused = true }
-        }
+        .background(.background)
         .toolbar {
             ToolbarItemGroup {
                 if claude.isWorking {
                     Button { claude.interrupt() } label: { Label("Parar", systemImage: "stop.fill") }
                         .help("Interromper o Claude")
                 }
-                if claude.panelTab == .terminal {
-                    Button { claude.terminal.terminate(); claude.terminal.start(); claude.terminal.focus() } label: { Label("Reiniciar terminal", systemImage: "arrow.clockwise") }
-                        .help("Encerrar o shell e abrir outro na pasta do projeto")
-                } else if claude.current != nil {
+                if claude.current != nil {
                     Button { claude.leaveChat() } label: { Label("Conversas", systemImage: "bubble.left.and.text.bubble.right") }
                         .help("Ver todas as conversas")
                 }
-                if claude.panelTab == .chat {
-                    Button { launchingCloud = true } label: { Label("Sessão na nuvem", systemImage: "cloud") }
-                        .help("Criar uma sessão do Claude Code na nuvem, sobre o GitHub (a main precisa estar igual)")
-                    Button { claude.newChat() } label: { Label("Nova conversa", systemImage: "square.and.pencil") }
-                        .help("Começar uma nova conversa")
-                }
+                Button { launchingCloud = true } label: { Label("Sessão na nuvem", systemImage: "cloud") }
+                    .help("Criar uma sessão do Claude Code na nuvem, sobre o GitHub (a main precisa estar igual)")
+                Button { claude.newChat() } label: { Label("Nova conversa", systemImage: "square.and.pencil") }
+                    .help("Começar uma nova conversa")
             }
         }
         .sheet(isPresented: $launchingCloud) { CloudLaunchSheet(root: claude.root) }
-        .onChange(of: claude.current?.id) { mentions = []; inputFocused = true }
+        .onChange(of: claude.current?.id) { mentions = []; attachments = []; inputFocused = true }
     }
 
     private var chat: some View {
@@ -88,6 +83,7 @@ struct ClaudePanel: View {
                 }
                 .id(request.id)
                 .padding([.horizontal, .top], 10)
+                .frame(maxWidth: Self.columnWidth)
             }
             composer
         }
@@ -118,6 +114,8 @@ struct ClaudePanel: View {
                 }
                 .padding(12)
                 .textSelection(.enabled)
+                .frame(maxWidth: Self.columnWidth)
+                .frame(maxWidth: .infinity)
             }
             .onChange(of: claude.entries) { proxy.scrollTo("bottom", anchor: .bottom) }
             .onChange(of: claude.pending.count) { proxy.scrollTo("bottom", anchor: .bottom) }
@@ -145,14 +143,18 @@ struct ClaudePanel: View {
     private var composer: some View {
         VStack(alignment: .leading, spacing: 4) {
             if !mentions.isEmpty {
-                MentionChips(mentions: $mentions)
+                MentionChips(mentions: Bindable(claude).draftMentions)
+                    .padding(.horizontal, 4)
+            }
+            if !attachments.isEmpty {
+                AttachmentChips(files: Bindable(claude).draftAttachments)
                     .padding(.horizontal, 4)
             }
             if !suggestions.isEmpty {
                 SuggestionList(suggestions: suggestions, selection: $selection, onPick: accept)
             }
             HStack(alignment: .bottom, spacing: 8) {
-                TextField(isShellMode ? "Comando de terminal (roda no projeto)" : "Pergunte ou peça algo ao Claude (/ comandos, @ arquivos e conversas, ! terminal)", text: $draft, axis: .vertical)
+                TextField(isShellMode ? "Comando de terminal (roda no projeto)" : "Pergunte ou peça algo ao Claude (/ comandos, @ arquivos e conversas, ! terminal)", text: Bindable(claude).draft, axis: .vertical)
                     .textFieldStyle(.plain)
                     .lineLimit(1...8)
                     .focused($inputFocused)
@@ -167,11 +169,18 @@ struct ClaudePanel: View {
                     .onKeyPress(.return) { suggestions.isEmpty ? .ignored : accept() }
                     .onKeyPress(.escape) { dismissSuggestions() }
                     .popover(isPresented: $pickingMention, arrowEdge: .top) {
-                        MentionPicker(mentions: $mentions) {
+                        MentionPicker(mentions: Bindable(claude).draftMentions) {
                             if draft.hasSuffix("@") { draft.removeLast() }
                             pickingMention = false
                             inputFocused = true
                         }
+                    }
+                Button { pickingFiles = true } label: { Image(systemName: "paperclip") }
+                    .buttonStyle(.glass)
+                    .buttonBorderShape(.circle)
+                    .help("Anexar arquivos: o Claude recebe o caminho deles (nada é copiado). Também dá para arrastar.")
+                    .fileImporter(isPresented: $pickingFiles, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
+                        if case .success(let urls) = result { addAttachments(urls) }
                     }
                 Button { pickingMention = true } label: { Image(systemName: "at") }
                     .buttonStyle(.glass)
@@ -183,12 +192,11 @@ struct ClaudePanel: View {
                 }
                 .buttonStyle(.glassProminent)
                 .buttonBorderShape(.circle)
-                .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || draft == "!")
+                .disabled(!canSend)
                 .keyboardShortcut(.return, modifiers: .command)
                 .help("Enviar (↩)")
             }
-            // One compressible row (no ViewThatFits: switching layouts inside the inspector makes its
-            // column sizing loop). Labels truncate so the row never forces the panel past the window.
+            // One compressible row: labels truncate so a narrow detail column never overflows.
             HStack(spacing: 10) {
                 pickers
                 Text("⌥↩ quebra linha")
@@ -205,6 +213,24 @@ struct ClaudePanel: View {
             .padding(.horizontal, 4)
         }
         .padding(10)
+        .frame(maxWidth: Self.columnWidth)
+        .overlay {
+            if droppingFiles {
+                RoundedRectangle(cornerRadius: 14)
+                    .strokeBorder(.tint, style: StrokeStyle(lineWidth: 2, dash: [6]))
+                    .allowsHitTesting(false)
+            }
+        }
+        .dropDestination(for: URL.self) { urls, _ in
+            let files = urls.filter(\.isFileURL)
+            addAttachments(files)
+            return !files.isEmpty
+        } isTargeted: { droppingFiles = $0 }
+    }
+
+    private func addAttachments(_ urls: [URL]) {
+        attachments += urls.filter { !attachments.contains($0) }
+        inputFocused = true
     }
 
     @ViewBuilder
@@ -315,7 +341,7 @@ struct ClaudePanel: View {
     private func send() {
         if !suggestions.isEmpty, accept() == .handled { return }
         let text = draft
-        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        guard canSend else { return }
         draft = ""
         if text.hasPrefix("!") {
             claude.runShell(String(text.dropFirst()))
@@ -324,10 +350,12 @@ struct ClaudePanel: View {
         if text.trimmingCharacters(in: .whitespacesAndNewlines) == "/clear", let id = claude.current?.id {
             claude.clear(id)
             mentions = []
+            attachments = []
             return
         }
-        claude.send(text, mentions: mentions)
+        claude.send(text, mentions: mentions, attachments: attachments)
         mentions = []
+        attachments = []
     }
 }
 
@@ -337,6 +365,7 @@ extension ClaudePermissionMode {
         case .default: "Normal"
         case .plan: "Planejar"
         case .acceptEdits: "Aceitar edições"
+        case .auto: "Auto"
         }
     }
 
@@ -345,6 +374,7 @@ extension ClaudePermissionMode {
         case .default: "hand.raised"
         case .plan: "list.bullet.clipboard"
         case .acceptEdits: "pencil.and.outline"
+        case .auto: "sparkles"
         }
     }
 
@@ -353,6 +383,7 @@ extension ClaudePermissionMode {
         case .default: "Normal: o Claude pede permissão antes de editar arquivos ou rodar comandos"
         case .plan: "Planejar: o Claude só lê e pesquisa, e apresenta um plano para você aprovar antes de mudar algo"
         case .acceptEdits: "Aceitar edições: edições de arquivo passam direto; comandos ainda pedem permissão"
+        case .auto: "Auto: o Claude roda edições e comandos sem perguntar, mas ainda pede confirmação em ações arriscadas"
         }
     }
 }
@@ -481,7 +512,14 @@ private struct EntryView: View {
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
-                    Text(text)
+                    ForEach(entry.attachments, id: \.self) { path in
+                        Label(URL(fileURLWithPath: path).lastPathComponent, systemImage: "paperclip")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .help(path)
+                    }
+                    if !text.isEmpty { Text(text) }
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 7)
@@ -675,12 +713,14 @@ private struct PlanCard: View {
                 HStack {
                     Button("Pedir mudanças") { askingChanges = true }
                     Spacer()
-                    Button("Aprovar e aceitar edições") { claude.approvePlan(request, acceptEdits: true) }
+                    Button("Aprovar") { claude.approvePlan(request, then: nil) }
+                        .help("Executa o plano, pedindo permissão para cada edição e comando")
+                    Button("Aprovar e aceitar edições") { claude.approvePlan(request, then: .acceptEdits) }
                         .help("Executa o plano sem pedir permissão para cada edição de arquivo (comandos ainda pedem)")
-                    Button("Aprovar") { claude.approvePlan(request, acceptEdits: false) }
+                    Button("Aprovar em modo auto") { claude.approvePlan(request, then: .auto) }
                         .buttonStyle(.glassProminent)
                         .keyboardShortcut(.defaultAction)
-                        .help("Executa o plano, pedindo permissão para cada edição e comando")
+                        .help("Executa o plano em modo auto: edições e comandos rodam sem perguntar, só ações arriscadas pedem confirmação")
                 }
             }
         }

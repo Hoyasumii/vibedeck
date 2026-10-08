@@ -1,0 +1,18 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/skill.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-08T14:34:34Z",
+  "id" : "FF777875-54EA-4CBF-9553-53402645BF34",
+  "model" : "sonnet",
+  "prompt" : "Como ler e mudar o **Status** de uma issue do repositório `Hoyasumii/vibedeck` no GitHub Projects. As\netapas do workflow Conduzir usam esta skill no lugar do Plane.\n\nPré-requisito: o `gh` precisa do escopo `project` (`gh auth refresh -s project`). Sem ele, os comandos\n`gh project …` falham com \"missing required scopes\": **não escreva nada**, mostre o erro e diga ao usuário\npara rodar `gh auth refresh -s project`. O resto da etapa segue (o Status é um efeito colateral, não um\nportão), a não ser que a etapa diga o contrário.\n\n## Ler\n```bash\ngh issue view <N> --repo Hoyasumii/vibedeck --json number,title,body,url,state,labels,assignees,projectItems\n```\n`projectItems[]` traz `title` (o projeto) e `status.name` (o Status atual). Lista vazia = a issue não está em\nnenhum projeto.\n\n## Achar o projeto, o campo e o item\n1. Projeto: `gh project list --owner Hoyasumii --format json` → o de `title` igual ao de `projectItems`. A\n   issue fora de qualquer projeto: se o dono tem **um** projeto aberto, use-o; se tem mais de um, pergunte ao\n   usuário qual (pelo protocolo da etapa) e não adivinhe.\n2. Campo: `gh project field-list <número> --owner Hoyasumii --format json` → o campo `Status` (`id`) e as\n   `options` (`id`, `name`).\n3. Item: `gh project item-list <número> --owner Hoyasumii --format json --limit 500` → o de\n   `content.number == <N>` e `content.repository` terminando em `vibedeck`. Não achou → adicione:\n   `gh project item-add <número> --owner Hoyasumii --url <url da issue> --format json` (devolve o `id`).\n4. Id do projeto: `gh project view <número> --owner Hoyasumii --format json --jq .id`.\n\n## Mudar\n```bash\ngh project item-edit --id <item> --project-id <id do projeto> --field-id <id do Status> --single-select-option-id <id da opção>\n```\n\nNomes de Status que as etapas pedem e a opção a usar quando o projeto não tem o nome exato (compare sem\ndiferenciar maiúsculas e acentos):\n\n| Pedido | Alternativas, nesta ordem |\n|---|---|\n| `Para refinar` | `Refinar`, `Backlog`, `Todo` |\n| `Pausado` | `Blocked`, `Bloqueado`, `On hold` |\n| `Em andamento` | `In Progress`, `Doing` |\n| `Review` | `In Review`, `In review`, `Em revisão` |\n\nNenhuma opção serve → não mude, diga na saída qual Status ficou faltando no projeto. Já está no Status pedido\n→ não faça nada.\n\n## Comentar na issue\n`gh issue comment <N> --repo Hoyasumii/vibedeck --body-file <arquivo>` (escreva o texto num arquivo\ntemporário do seu diretório de rascunho; nada de heredoc com crase solta). Comentários para PO e time: pt-BR,\nsem caminho de arquivo nem jargão de código.",
+  "summary" : "Use para ler ou mudar o Status de uma issue de Hoyasumii/vibedeck no GitHub Projects, ou comentar nela (substitui o Plane no workflow Conduzir).",
+  "tags" : [
+    "claude-kit",
+    "github"
+  ],
+  "title" : "Status no GitHub Project",
+  "tools" : [
+    "Bash"
+  ],
+  "updatedAt" : "2026-10-08T14:34:34Z"
+}

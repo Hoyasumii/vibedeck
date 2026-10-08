@@ -11,6 +11,8 @@ struct IdeaView: View {
     @State private var savedText = ""
     @State private var loaded = false
     @State private var saveTask: Task<Void, Never>?
+    @State private var insertion: MarkdownInsertion?
+    @AppStorage("ideaViewMode") private var mode: MarkdownViewMode = .edit
 
     private var idea: Idea { model.idea(slug) ?? Idea(title: slug) }
 
@@ -18,16 +20,9 @@ struct IdeaView: View {
         VStack(spacing: 0) {
             header
             Divider()
-            MarkdownEditor(text: $text, undoManager: model.undoManager(forDoc: "idea:\(slug)"), autoFocus: false)
-                .overlay(alignment: .topLeading) {
-                    if text.isEmpty {
-                        Text("Descreva a ideia em markdown: problema, proposta, dúvidas…")
-                            .foregroundStyle(.tertiary)
-                            .padding(.horizontal, 33).padding(.vertical, 24)
-                            .allowsHitTesting(false)
-                    }
-                }
+            content
         }
+        .markdownModeShortcut($mode)
         .inspector(isPresented: $showRules) {
             VStack(alignment: .leading, spacing: 0) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -54,6 +49,8 @@ struct IdeaView: View {
         .navigationSubtitle("\(idea.status.label) · \(idea.rules.count) regra(s)")
         .toolbar {
             ToolbarItem { promoteButton }
+            ToolbarItem { AttachButton(onPick: attach) }
+            ToolbarItem { MarkdownModePicker(mode: $mode) }
             ToolbarItem {
                 Button { showRules.toggle() } label: { Label("Regras", systemImage: "checkmark.shield") }
                     .keyboardShortcut("i", modifiers: [.command, .option])
@@ -69,6 +66,54 @@ struct IdeaView: View {
         }
         .onDisappear(perform: flush)
         .onReceive(NotificationCenter.default.publisher(for: .vibedeckFlushPendingSaves)) { _ in flush() }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch mode {
+        case .edit:
+            editor
+        case .read:
+            preview
+        case .split:
+            HSplitView {
+                editor.frame(minWidth: 280)
+                preview.frame(minWidth: 280)
+            }
+        }
+    }
+
+    private var editor: some View {
+        MarkdownEditor(
+            text: $text,
+            undoManager: model.undoManager(forDoc: "idea:\(slug)"),
+            autoFocus: false,
+            importFiles: { model.importAttachments($0, owner: slug) },
+            importImage: { model.importAttachment(data: $0, name: "colagem-\(Date.now.formatted(.iso8601)).png", owner: slug) },
+            insertion: insertion
+        )
+        .overlay(alignment: .topLeading) {
+            if text.isEmpty {
+                Text("Descreva a ideia em markdown: problema, proposta, dúvidas… (arraste arquivos para anexar)")
+                    .foregroundStyle(.tertiary)
+                    .padding(.horizontal, 33).padding(.vertical, 24)
+                    .allowsHitTesting(false)
+            }
+        }
+    }
+
+    private var preview: some View {
+        MarkdownPreview(text: text, baseURL: model.store.ideasDir)
+    }
+
+    /// Files from the "Anexar" button go in through the editor (so ⌘Z undoes them): at the cursor, or
+    /// at the end after opening the editor beside the preview when only the preview is showing.
+    private func attach(_ urls: [URL]) {
+        let links = model.importAttachments(urls, owner: slug).joined(separator: "\n")
+        guard !links.isEmpty else { return }
+        guard mode == .read else { return insertion = MarkdownInsertion(text: links) }
+        mode = .split
+        DispatchQueue.main.async { insertion = MarkdownInsertion(text: links, atEnd: true) }
     }
 
     private var header: some View {

@@ -3,13 +3,13 @@ import Foundation
 // MARK: - Agents
 
 public enum NextStepKind: String, Codable, CaseIterable, Sendable {
-    case agent, command
+    case agent, command, skill
 }
 
-/// Link in a flow: after this agent runs, another VibeDeck agent (or, later, command) acts on its result.
+/// Link in a flow: after this agent/command/skill runs, another VibeDeck agent, command or skill acts on its result.
 public struct NextStep: Codable, Equatable, Sendable {
     public var kind: NextStepKind
-    /// Slug of a VibeDeck agent (or command), never of the AI provider's.
+    /// Slug of a VibeDeck agent, command or skill, never of the AI provider's.
     public var ref: String
     public var note: String?
 
@@ -108,6 +108,59 @@ public struct Agent: Codable, Equatable, Identifiable, Sendable {
 
 // MARK: - Import from the AI provider (Claude Code)
 
+/// YAML frontmatter as Claude Code writes it in agent/command files: top-level `key: value` pairs, multi-line
+/// `|`/`>` blocks and `- item` lists. Not a YAML parser; just tolerant enough for hand-written files.
+enum Frontmatter {
+    /// Lowercased keys → raw values, and the body after the closing `---` (the whole text when there's no frontmatter).
+    static func parse(_ text: String) -> (fields: [String: String], body: String) {
+        let lines = text.replacingOccurrences(of: "\r\n", with: "\n").components(separatedBy: "\n")
+        var fields: [String: String] = [:]
+        guard lines.first?.trimmed == "---", let end = lines.dropFirst().firstIndex(where: { $0.trimmed == "---" }) else {
+            return (fields, text)
+        }
+        var key: String?
+        var buffer: [String] = []
+        var block = false
+        func flush() {
+            if let key { fields[key] = block ? buffer.joined(separator: "\n").trimmed : buffer.joined(separator: " ").trimmed }
+            buffer = []
+        }
+        for line in lines[1..<end] {
+            let isTop = !(line.first?.isWhitespace ?? true) && !line.hasPrefix("-")
+            if isTop, let colon = line.firstIndex(of: ":") {
+                flush()
+                key = String(line[..<colon]).trimmed.lowercased()
+                let rest = String(line[line.index(after: colon)...]).trimmed
+                block = rest == "|" || rest == ">" || rest == "|-" || rest == ">-"
+                buffer = rest.isEmpty || block ? [] : [rest]
+            } else {
+                buffer.append(line.trimmed)
+            }
+        }
+        flush()
+        return (fields, lines[(end + 1)...].joined(separator: "\n"))
+    }
+
+    static func unquote(_ s: String) -> String {
+        var s = s.trimmed
+        if s.count >= 2, let f = s.first, f == s.last, f == "\"" || f == "'" { s = String(s.dropFirst().dropLast()) }
+        return s
+    }
+
+    /// Non-empty, unquoted scalar.
+    static func value(_ fields: [String: String], _ key: String) -> String? {
+        fields[key].map(unquote)?.nonEmpty
+    }
+
+    /// Comma-, newline- or `- item`-separated list (`tools: Read, Grep` or a YAML list).
+    static func list(_ fields: [String: String], _ key: String) -> [String] {
+        (fields[key] ?? "")
+            .split(whereSeparator: { $0 == "," || $0 == "\n" })
+            .map { unquote(String($0).trimmingCharacters(in: CharacterSet(charactersIn: "- []"))) }
+            .filter { !$0.isEmpty }
+    }
+}
+
 /// Parses a Claude Code agent file: Markdown with YAML frontmatter (`name`, `description`, `model`, `tools`)
 /// whose body is the system prompt. Tolerant of multi-line `|`/`>` descriptions and comma/list `tools`.
 public enum ClaudeAgentFile {
@@ -120,48 +173,12 @@ public enum ClaudeAgentFile {
     }
 
     public static func parse(_ text: String, fallbackName: String) -> Parsed {
-        let lines = text.replacingOccurrences(of: "\r\n", with: "\n").components(separatedBy: "\n")
-        var fields: [String: String] = [:]
-        var body = text
-
-        if lines.first?.trimmed == "---", let end = lines.dropFirst().firstIndex(where: { $0.trimmed == "---" }) {
-            body = lines[(end + 1)...].joined(separator: "\n")
-            var key: String?
-            var buffer: [String] = []
-            var block = false
-            func flush() {
-                if let key { fields[key] = block ? buffer.joined(separator: "\n").trimmed : buffer.joined(separator: " ").trimmed }
-                buffer = []
-            }
-            for line in lines[1..<end] {
-                let isTop = !(line.first?.isWhitespace ?? true) && !line.hasPrefix("-")
-                if isTop, let colon = line.firstIndex(of: ":") {
-                    flush()
-                    key = String(line[..<colon]).trimmed.lowercased()
-                    let rest = String(line[line.index(after: colon)...]).trimmed
-                    block = rest == "|" || rest == ">" || rest == "|-" || rest == ">-"
-                    buffer = rest.isEmpty || block ? [] : [rest]
-                } else {
-                    buffer.append(line.trimmed)
-                }
-            }
-            flush()
-        }
-
-        func unquote(_ s: String) -> String {
-            var s = s.trimmed
-            if s.count >= 2, let f = s.first, f == s.last, f == "\"" || f == "'" { s = String(s.dropFirst().dropLast()) }
-            return s
-        }
-        let tools = (fields["tools"] ?? "")
-            .split(whereSeparator: { $0 == "," || $0 == "\n" })
-            .map { unquote(String($0).trimmingCharacters(in: CharacterSet(charactersIn: "- []"))) }
-            .filter { !$0.isEmpty }
+        let (fields, body) = Frontmatter.parse(text)
         return Parsed(
-            name: fields["name"].map(unquote)?.nonEmpty ?? fallbackName,
-            description: fields["description"].map(unquote)?.nonEmpty,
-            model: fields["model"].map(unquote)?.nonEmpty,
-            tools: tools,
+            name: Frontmatter.value(fields, "name") ?? fallbackName,
+            description: Frontmatter.value(fields, "description"),
+            model: Frontmatter.value(fields, "model"),
+            tools: Frontmatter.list(fields, "tools"),
             prompt: body.trimmed
         )
     }
@@ -169,10 +186,15 @@ public enum ClaudeAgentFile {
 
 // MARK: - Flow (JSON that orchestrates the AI)
 
+/// A VibeDeck agent, command or skill resolved inside a flow.
 public struct AgentFlowNode: Codable, Equatable, Sendable {
-    public var agent: String
+    public var kind: NextStepKind
+    /// Slug of the VibeDeck agent/command/skill.
+    public var ref: String
     public var title: String
     public var model: String?
+    /// Commands only: what goes in `$ARGUMENTS`.
+    public var argumentHint: String?
     public var prompt: String
     public var next: [AgentFlowStep]
 }
@@ -181,35 +203,62 @@ public struct AgentFlowStep: Codable, Equatable, Sendable {
     public var kind: NextStepKind
     public var ref: String
     public var note: String?
-    /// Resolved agent (nil for commands, cycles already expanded above, or missing refs).
+    /// Resolved agent/command/skill (nil for cycles already expanded above or missing refs).
     public var node: AgentFlowNode?
     public var warning: String?
 }
 
 public enum AgentFlow {
-    public static func build(from slug: String, agents: [(slug: String, agent: Agent)]) -> AgentFlowNode? {
-        let index = Dictionary(uniqueKeysWithValues: agents.map { ($0.slug, $0.agent) })
-        func node(_ slug: String, path: [String]) -> AgentFlowNode? {
-            guard let a = index[slug] else { return nil }
-            let steps = a.nextSteps.map { step -> AgentFlowStep in
+    public static func build(
+        kind: NextStepKind = .agent, from slug: String,
+        agents: [(slug: String, agent: Agent)], commands: [(slug: String, command: Command)] = [],
+        skills: [(slug: String, skill: Skill)] = []
+    ) -> AgentFlowNode? {
+        let agentIndex = Dictionary(agents.map { ($0.slug, $0.agent) }, uniquingKeysWith: { a, _ in a })
+        let commandIndex = Dictionary(commands.map { ($0.slug, $0.command) }, uniquingKeysWith: { a, _ in a })
+        let skillIndex = Dictionary(skills.map { ($0.slug, $0.skill) }, uniquingKeysWith: { a, _ in a })
+        func key(_ kind: NextStepKind, _ ref: String) -> String { "\(kind.rawValue):\(ref)" }
+        func node(_ kind: NextStepKind, _ slug: String, path: Set<String>) -> AgentFlowNode? {
+            let base: (title: String, model: String?, hint: String?, prompt: String, next: [NextStep])
+            switch kind {
+            case .agent:
+                guard let a = agentIndex[slug] else { return nil }
+                base = (a.title, a.model, nil, a.prompt, a.nextSteps)
+            case .command:
+                guard let c = commandIndex[slug] else { return nil }
+                base = (c.title, c.model, c.argumentHint, c.prompt, c.nextSteps)
+            case .skill:
+                guard let s = skillIndex[slug] else { return nil }
+                base = (s.title, s.model, nil, s.prompt, s.nextSteps)
+            }
+            let here = path.union([key(kind, slug)])
+            let steps = base.next.map { step -> AgentFlowStep in
                 var out = AgentFlowStep(kind: step.kind, ref: step.ref, note: step.note, node: nil, warning: nil)
-                switch step.kind {
-                case .command: out.warning = "Comandos ainda não são executáveis."
-                case .agent:
-                    if path.contains(step.ref) || step.ref == slug { out.warning = "Ciclo: \(step.ref) já está neste fluxo." }
-                    else if let n = node(step.ref, path: path + [slug]) { out.node = n }
-                    else { out.warning = "Agente não encontrado: \(step.ref)" }
+                if here.contains(key(step.kind, step.ref)) {
+                    out.warning = "Ciclo: \(step.ref) já está neste fluxo."
+                } else if let n = node(step.kind, step.ref, path: here) {
+                    out.node = n
+                } else {
+                    out.warning = switch step.kind {
+                    case .agent: "Agente não encontrado: \(step.ref)"
+                    case .command: "Comando não encontrado: \(step.ref)"
+                    case .skill: "Skill não encontrada: \(step.ref)"
+                    }
                 }
                 return out
             }
-            return AgentFlowNode(agent: slug, title: a.title, model: a.model, prompt: a.prompt, next: steps)
+            return AgentFlowNode(kind: kind, ref: slug, title: base.title, model: base.model, argumentHint: base.hint, prompt: base.prompt, next: steps)
         }
-        return node(slug, path: [])
+        return node(kind, slug, path: [])
     }
 
     /// Pretty JSON of the flow, meant to be pasted into / sent in a prompt.
-    public static func json(from slug: String, agents: [(slug: String, agent: Agent)]) throws -> String? {
-        guard let node = build(from: slug, agents: agents) else { return nil }
+    public static func json(
+        kind: NextStepKind = .agent, from slug: String,
+        agents: [(slug: String, agent: Agent)], commands: [(slug: String, command: Command)] = [],
+        skills: [(slug: String, skill: Skill)] = []
+    ) throws -> String? {
+        guard let node = build(kind: kind, from: slug, agents: agents, commands: commands, skills: skills) else { return nil }
         return String(decoding: try VDJSON.encode(node), as: UTF8.self)
     }
 }

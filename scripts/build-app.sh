@@ -24,6 +24,8 @@ cp "$BIN/vibedeck" "$APP/Contents/Helpers/vibedeck"
 find "$BIN" -maxdepth 1 -name '*.bundle' -exec cp -R {} "$APP/Contents/Resources/" \;
 # Icon: regenerate with `swift scripts/make-icon.swift` after changing the mark.
 cp assets/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+# Terminal font: JetBrains Mono Nerd Font Mono (SIL OFL 1.1, see assets/fonts/OFL.txt).
+cp -R assets/fonts "$APP/Contents/Resources/Fonts"
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

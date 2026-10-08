@@ -1,0 +1,18 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "ai",
+  "body" : "Ao promover a ideia \"Botão de Descubra\", o tópico foi criado sem `paths` e, portanto, **global**: as regras específicas da feature passaram a valer para qualquer tarefa do projeto. Tive que editar o JSON à mão, porque não existe ferramenta MCP/CLI para mudar os `paths` de um tópico.\n\nSugestões:\n- Na promoção (app e `promote_idea`), perguntar/aceitar os `paths` do novo tópico; no app, avisar \"Sem escopo: vale para toda tarefa\" antes de confirmar.\n- Adicionar `update_rule_topic` (MCP) / `vibedeck rules topic set --paths` (CLI) para editar título, descrição e paths.",
+  "createdAt" : "2026-10-08T15:07:47Z",
+  "id" : "FF4F2F4D-4750-4A82-85F9-6485C777CEDE",
+  "rules" : [
+
+  ],
+  "status" : "new",
+  "tags" : [
+    "regras",
+    "ideias",
+    "mcp"
+  ],
+  "title" : "Promover ideia não deveria criar tópico global sem avisar",
+  "updatedAt" : "2026-10-08T15:07:47Z"
+}

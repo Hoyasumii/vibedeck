@@ -1,0 +1,73 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "createdAt" : "2026-10-08T15:00:56Z",
+  "description" : "Regras vindas da ideia \"Botão de Descubra em \"Onde\" e \"Regras\" nas Revisões\".",
+  "id" : "C0CBF882-C740-4B73-BE35-6CBE11579FE9",
+  "paths" : [
+    "Sources/VibeDeckCore/ReviewDiscover.swift",
+    "Sources/VibeDeckApp/ReviewDiscover*.swift",
+    "Sources/VibeDeckApp/ReviewGroupView.swift",
+    "Tests/VibeDeckCoreTests/ReviewDiscoverTests.swift"
+  ],
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-08T15:00:05Z",
+      "id" : "46A96B82-5BDD-43F8-982F-BBC35B5C6EAA",
+      "severity" : "must",
+      "text" : "O Descubra nunca grava direto: mostra uma proposta e o usuário aceita (tudo ou por campo); cada aceite é um único passo de undo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-08T15:00:05Z",
+      "details" : "Protege o gate de check aprovado antes de concluir o item.",
+      "id" : "4D2EEC85-41C6-4A77-B792-F9DB87651D48",
+      "severity" : "must",
+      "text" : "O Descubra só adiciona tópicos de regras ao item; nunca remove um tópico já marcado."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-08T15:00:05Z",
+      "id" : "06B55036-7BD0-4348-82F4-39B67519FBA0",
+      "severity" : "must",
+      "text" : "Arquivos sugeridos precisam existir no projeto e slugs sugeridos precisam ser tópicos existentes; o resto é descartado antes de mostrar a proposta."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-08T15:00:05Z",
+      "id" : "52B60258-B539-41CF-98C3-E67E74C72F3E",
+      "severity" : "must",
+      "text" : "A chamada ao Claude do Descubra roda só com ferramentas de leitura (Read/Grep/Glob), sem Edit/Write/Bash."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-08T15:00:05Z",
+      "id" : "D670FAD9-8DC7-429F-A65F-A1280F81DF19",
+      "severity" : "must",
+      "text" : "A resposta do Claude é JSON validado; se o parse falhar, mostra um erro claro e não altera o item."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-08T15:00:05Z",
+      "id" : "A9D8FA72-F39C-48F4-92B6-9C22760A37CC",
+      "severity" : "must",
+      "text" : "Campos do Onde já preenchidos não são sobrescritos sem o usuário aceitar explicitamente aquela troca."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-08T15:00:05Z",
+      "id" : "2635526C-DBAB-471A-BD6A-CC8BA52F22E1",
+      "severity" : "should",
+      "text" : "Cada sugestão vem com uma justificativa curta (onde encontrou, ex.: arquivo:linha)."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-08T15:00:05Z",
+      "id" : "7334A6CD-9FD4-4865-9803-5B0AC0BCBCCF",
+      "severity" : "should",
+      "text" : "O Descubra tem botão de cancelar e timeout, e descarta a resposta se o item mudou ou deixou de estar selecionado durante a chamada."
+    }
+  ],
+  "sourceIdea" : "732148CD-AFC5-4C37-ADB0-E561BAA46248",
+  "title" : "Botão de Descubra em \"Onde\" e \"Regras\" nas Revisões"
+}

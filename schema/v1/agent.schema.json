@@ -15,12 +15,12 @@
     "prompt": { "type": "string", "description": "System prompt (Markdown)." },
     "nextSteps": {
       "type": "array",
-      "description": "Flow: what acts on this agent's result. `ref` is a slug of a VibeDeck agent/command, never the AI provider's.",
+      "description": "Flow: what acts on this agent's result. `ref` is a slug of a VibeDeck agent/command/skill, never the AI provider's.",
       "items": {
         "type": "object",
         "required": ["kind", "ref"],
         "properties": {
-          "kind": { "enum": ["agent", "command"] },
+          "kind": { "enum": ["agent", "command", "skill"] },
           "ref": { "type": "string", "minLength": 1 },
           "note": { "type": "string" }
         },

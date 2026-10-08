@@ -31,8 +31,24 @@
         "details": { "type": "string", "description": "How to verify it." },
         "severity": { "enum": ["must", "should"], "description": "must blocks completion; should only warns." },
         "author": { "enum": ["human", "ai"] },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "createdAt": { "type": "string", "format": "date-time" },
+        "test": { "$ref": "#/$defs/test" }
       },
+      "additionalProperties": false
+    },
+    "test": {
+      "type": "object",
+      "description": "How the rule is verified. script: `command` runs at the project root with $VIBEDECK_FILES (exit 0 = pass, 77 = n/a, else fail) and decides the rule in checks; manual: the agent answers it. Stale when ruleHash differs from the rule's current text+details hash.",
+      "required": ["mode", "ruleHash", "generatedAt"],
+      "properties": {
+        "mode": { "enum": ["script", "manual"] },
+        "command": { "type": "string", "minLength": 1, "description": "Shell command (required for script), e.g. .vibedeck/tests/<topic>/<rule>.sh" },
+        "reason": { "type": "string", "description": "What the script checks, or why the rule is manual." },
+        "ruleHash": { "type": "string", "description": "First 16 hex chars of SHA-256(text + \"\\n\" + details) when the test was written." },
+        "generatedAt": { "type": "string", "format": "date-time" }
+      },
+      "if": { "properties": { "mode": { "const": "script" } } },
+      "then": { "required": ["command"] },
       "additionalProperties": false
     }
   }

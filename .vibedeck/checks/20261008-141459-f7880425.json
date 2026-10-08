@@ -1,0 +1,510 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-08T14:14:59.807Z",
+  "failures" : [
+
+  ],
+  "files" : [
+    "README.md",
+    "Sources/VibeDeckApp/ProjectModel.swift",
+    "Sources/VibeDeckApp/ProjectWindow.swift",
+    "Sources/VibeDeckApp/WorkflowDiagram.swift",
+    "Sources/VibeDeckApp/WorkflowView.swift",
+    "Sources/VibeDeckCore/AgentsGuide.swift",
+    "Sources/VibeDeckCore/Models.swift",
+    "Sources/VibeDeckCore/ProjectStore.swift",
+    "Sources/VibeDeckCore/Workflows.swift",
+    "Sources/vibedeck/CLI.swift",
+    "Sources/vibedeck/MCPServer.swift",
+    "Tests/VibeDeckCoreTests/WorkflowsTests.swift",
+    "schema/v1/workflow.schema.json",
+    "worker/src/index.ts"
+  ],
+  "id" : "F7880425-98A9-4B0E-962E-3C00D13D88EB",
+  "passed" : true,
+  "results" : [
+    {
+      "note" : "create/update/addStep/removeStep/moveStep/addTransition/removeTransition/workflowPlan têm subcomando em `vibedeck workflows` e tool MCP; deleteWorkflow segue o padrão de agentes/skills (só app/Finder).",
+      "ruleId" : "C604B203-A022-48C7-92DA-F343DA4AE60B",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "add_workflow cria com author: .ai e diz 'Marcado author=ai.'; CLI só com --ai.",
+      "ruleId" : "643AA948-85C0-485E-A110-E83B59C0B5BC",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Não mexe em status de item de revisão.",
+      "ruleId" : "30A2FC1A-16E7-4708-A559-0CA78431EDD7",
+      "topic" : "cli-e-mcp",
+      "verdict" : "na"
+    },
+    {
+      "note" : "instructions e descrições de rules_for/submit_rule_check intactas; só acrescentado 'workflows' na frase de autoria.",
+      "ruleId" : "A34C030C-D9E7-4C1A-A8E1-23E47D9B15AF",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "promote_idea inalterado.",
+      "ruleId" : "7A76B622-C234-4B41-9ECA-C8C414AB47FE",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "tags de add/update_workflow usam list(); inteiros via helper int() novo.",
+      "ruleId" : "ED4D47D8-F744-4E94-A8EE-807E2AFF0670",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Lógica de mcp install não alterada.",
+      "ruleId" : "05F179F3-EB5F-474B-B8C1-9E4E0926B388",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "workflows list/show têm --json (VDJSON via printJSON); flow imprime JSON por VDJSON.",
+      "ruleId" : "21E4D353-1916-4961-B355-EC7B8DEEB0B4",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "version: \"0.2.0\" intacta; build-app.sh gerou VibeDeck-0.2.0.dmg.",
+      "ruleId" : "4913B3AF-4F67-4717-A7D4-9600D8BF0942",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Não alterado.",
+      "ruleId" : "D94F39E0-F874-43A0-86DC-21D9FEDEC02D",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Métodos novos do ProjectStore só leem/gravam disco; nenhuma propriedade armazenada nova além de workflowsDir derivado de root.",
+      "ruleId" : "5FA116B6-6FBE-45F9-8C5D-29E7548F6C2F",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "saveWorkflow usa AtomicFile.write.",
+      "ruleId" : "857149E6-8C34-46A8-9C30-439EBE78309D",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "VDJSON.encode/decoder em saveWorkflow, loadRecord e WorkflowPlan.json.",
+      "ruleId" : "99BF0D79-2F65-419A-87DA-0B4F37E4FEF5",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Workflow/WorkflowStep/WorkflowTransition com init(from:) manual e decodeIfPresent ?? default; teste lenientDecodeAndOmitEmpty.",
+      "ruleId" : "5ED22D96-FE5F-4683-8611-E3D264113B67",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "encode omite summary/input/maxSteps/note/when nil e steps/tags/transitions vazios (testado).",
+      "ruleId" : "C6D79B9C-1F50-4AE3-8CD1-8CAE5C4F6B6F",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "RuleCheck não alterado.",
+      "ruleId" : "57ADA275-8A0F-42BA-9E14-BA3B34AB8235",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Modelo novo com schema/v1/workflow.schema.json e seção Workflows no AgentsGuide.swift.",
+      "ruleId" : "4133C155-F789-428E-9ED5-5EAC37C19700",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "resolveWorkflowSlug usa resolveSlug; alvos das etapas usam resolveAgent/Command/SkillSlug.",
+      "ruleId" : "B0277971-459D-4CCB-9E9D-5990F1574F5B",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "createWorkflow usa Slug.make + uniqueSlug; ids de etapa via Slug.make com sufixo -2 (únicos dentro do arquivo).",
+      "ruleId" : "7F7C6B09-EBCB-4CA0-BAAF-6B18D36F15C1",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "submitCheck não alterado.",
+      "ruleId" : "BC028BE5-D7E0-4DA3-BB5C-E8A628EBFA8A",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "verificationProblems não alterado.",
+      "ruleId" : "64E65B59-8D5B-40DE-B381-CAF2B1BDC785",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "applicableTopics não alterado.",
+      "ruleId" : "8D874A06-515D-41B5-A094-DC8B83BB40B6",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "promoteIdea não alterado.",
+      "ruleId" : "35D8D7C3-1224-45CC-8A80-66D0B6291C33",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Glob não alterado.",
+      "ruleId" : "64334D9C-327B-4811-B088-8B785EF4E0FE",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Erros novos workflowNotFound/invalidWorkflow em VibeDeckError, pt-BR.",
+      "ruleId" : "EA5E6F7D-1587-4FC5-87D9-51CE6F130C7B",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "swift test: 77 testes em 12 suítes passaram (inclui WorkflowsTests).",
+      "ruleId" : "97510532-2FCF-44BD-9D01-75086E554EB9",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "WorkflowsTests: crud, decode tolerante, etapas, transições/laços/senão, plano com avisos.",
+      "ruleId" : "91774D06-91B5-4945-9EC6-CDEFC57332FA",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhuma URL base alterada; workflow usa SchemaURL.base.",
+      "ruleId" : "DFE3361B-6AFE-4ED3-A741-4FC0818D197D",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "deleteTopic não alterado.",
+      "ruleId" : "B659FD25-792B-4C0E-BD08-6082ACFCC80A",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "unpromoteIdea não alterado.",
+      "ruleId" : "A2B13B15-C59E-4189-8905-3A309C89DF28",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Não editei .vibedeck/AGENTS.md nem checks à mão; guia mudado em AgentsGuide.swift (o app regenera).",
+      "ruleId" : "9D6F362B-9F0E-4661-97B3-6158B160D478",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhum dado do projeto editado à mão.",
+      "ruleId" : "9F92A765-76E7-4EA0-A66A-78AE12EE4C8F",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nada de humano apagado; workflow 'Implementar' do usuário intacto.",
+      "ruleId" : "AC4BA963-CDEE-419C-B057-9140643E115D",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Strings de UI, CLI, MCP, erros e guia em pt-BR.",
+      "ruleId" : "0E5AEC71-405E-4113-AB27-615313AB2B5F",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "README: formato (workflows/), seção Workflows com diagrama, comandos do CLI e tag.",
+      "ruleId" : "306A20B6-E1FA-4BE4-96E8-2B854A3D0BC6",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Sem commit (não pedido).",
+      "ruleId" : "4095F087-1E04-46C0-9AA4-A60C8C16A72B",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhum min-size no root; diagrama usa frame fixo só no próprio conteúdo dentro do ScrollView.",
+      "ruleId" : "EE65A0A5-71DA-431A-A4B7-567144D40423",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Header do WorkflowView é um HStack único; grep ViewThatFits só acha o comentário.",
+      "ruleId" : "9A4878F2-54AD-4B93-9E8B-9D7683C8F9F2",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Inspector do mapa com inspectorColumnWidth(min: 260, ideal: 320, max: 440).",
+      "ruleId" : "047D2216-D1C9-4AFC-AA0A-D789DC1E8A60",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Todas as edições (etapas, transições, campos, tags) passam por model.mutateWorkflow, que grava e registra undo.",
+      "ruleId" : "00E57961-FE6D-4AFC-BB1A-3DC70152D38D",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "FileWatcher trata /workflows/ → reloadWorkflows; escritas próprias filtradas por lastWritten (mutate/create genéricos).",
+      "ruleId" : "8385BC07-3F91-46DC-8BBD-6F62C4851DD9",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Workflow não tem editor de texto longo; sem UndoManager por doc.",
+      "ruleId" : "B065B5AF-B93F-4698-8E43-BB4369E74351",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Título, descrição, entrada, limite, instrução e condições usam CommitTextField; nova transição confirma no Return/botão.",
+      "ruleId" : "3D508DEA-D43E-4E33-91B7-F46039B6B53D",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "SidebarItem.workflow com storageKey, exists, title, symbol; 'Abrir em Nova Aba' no menu de contexto.",
+      "ruleId" : "329A929F-62CC-4A7D-99A3-A299F495A08C",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Seção nova usa o mesmo SectionSidebarRow/accordion.",
+      "ruleId" : "335DA4F8-7DBF-4120-8878-42130C661D69",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "rows(for: .workflows) inclui tags; SectionListView genérica filtra texto e #tag.",
+      "ruleId" : "A999B857-E236-4893-97A9-07257A538B57",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "⌥⌘I alterna o mapa como nas outras páginas; nenhum atalho reaproveitado.",
+      "ruleId" : "DC9EED4D-8823-4FD1-83ED-3B820A83E8B4",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Página fica na coluna de detalhe existente; nenhuma barra nova.",
+      "ruleId" : "492100C1-EFE3-488F-8368-08CE17A797DA",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "SF Symbols, Picker segmentado, inspector, Canvas nativo; sem dependências novas.",
+      "ruleId" : "B382469C-4D35-4314-BEC2-50BCEC7C6855",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Tópicos/ideias não alterados.",
+      "ruleId" : "1A4EF162-82B1-4940-8251-A2102964C3E8",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Editado só schema/v1; worker/public gerado por `bun run sync` (ignorado no git).",
+      "ruleId" : "EFDEC345-F90B-41DA-9484-9F470C8E3E94",
+      "topic" : "worker-e-schemas",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Por pedido do usuário rodado com bun: `bun run sync && bun run typecheck` (tsc --noEmit) exit 0.",
+      "ruleId" : "4C804BFE-C826-440C-A3DF-F22AF3D16FD5",
+      "topic" : "worker-e-schemas",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Só adicionada entrada no índice; respostas e CORS inalterados.",
+      "ruleId" : "A486BCE3-EAA0-47DD-8826-B20BF64166F5",
+      "topic" : "worker-e-schemas",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "workflow no índice do worker, SchemaURL.workflow e linha Schemas: do guia.",
+      "ruleId" : "CD3057F2-1C45-4F09-A9C7-7EC146998DFA",
+      "topic" : "worker-e-schemas",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "$id de workflow.schema.json usa a mesma base de SchemaURL.base.",
+      "ruleId" : "0A89A5BC-A21B-465C-AE44-9099C3D77A9B",
+      "topic" : "worker-e-schemas",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Só schema novo; nenhum existente alterado.",
+      "ruleId" : "48A5C815-B18A-4F32-B67E-E2A8F8FB216E",
+      "topic" : "worker-e-schemas",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Workflows em .vibedeck/workflows/<slug>.json, descritos no schema e no AGENTS.md.",
+      "ruleId" : "9E02C127-7793-4588-A770-0E817687B02F",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Ideias não alteradas.",
+      "ruleId" : "116AEA24-9A0B-431B-9FC1-8ABE22683898",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nada promove ideias; a ideia só será marcada done.",
+      "ruleId" : "F7531E2B-4846-4C63-BE0F-3DFA1771CCCC",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Revisões não alteradas.",
+      "ruleId" : "BE018170-5258-45AA-876E-5B761B643714",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Revisões não alteradas.",
+      "ruleId" : "257D96B2-3561-47D2-AB56-33FA0900B331",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Cálculo de check não alterado.",
+      "ruleId" : "54A2D6B0-BC39-4555-A4E9-DB8D418D55CB",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Escopo de tópicos não alterado.",
+      "ruleId" : "6E22946D-DF9C-4D59-B403-1BB9F3F0FFB5",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhuma operação sobre checks.",
+      "ruleId" : "C637A278-87F1-4586-BB2F-0864EDB552CB",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Workflow tem author; WorkflowView mostra sparkles 'Criado por IA'.",
+      "ruleId" : "C9BEE6A5-C314-4547-AE52-52D116B11220",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Workflow tem tags (TagsField, set_tags, vibedeck tag workflow) e entra no filtro #tag.",
+      "ruleId" : "B9E9DD35-4A5F-4FA3-BDDF-014238B8CB50",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Botão Executar só aparece com ClaudeCode.isInstalled (mesma detecção das outras features).",
+      "ruleId" : "A31D4912-A7FA-4E2A-B1C2-CC27D577177B",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "SidebarSection.workflows com lista filtrável.",
+      "ruleId" : "3901FA3E-16BD-4E00-A844-DAB5A87BDFC1",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Edição no lugar, sem Salvar; único diálogo é o de criação/execução.",
+      "ruleId" : "8D5FCA3B-9398-45CD-AF1E-03A04F22526C",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Watcher recarrega /workflows/; o workflow 'Implementar' criado fora desta sessão aparece no list_workflows/app.",
+      "ruleId" : "9BBFB48C-17CC-4FD9-8D7C-F1FD71529D95",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Inspector 'Mapa' com problemas e transições, ⌥⌘I.",
+      "ruleId" : "34D2EA32-DD0D-4405-93F6-FDABEBA7CC1B",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "openInNewTabButton(.workflow) na sidebar; lista de seção usa o menu genérico.",
+      "ruleId" : "3D22A05A-9E61-433B-A8E2-00BFA2A968EE",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Welcome não alterada.",
+      "ruleId" : "365080A7-DD8F-4EBE-9CDF-979D07F6A5C3",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Este check; AGENTS/MCP mantêm o fluxo.",
+      "ruleId" : "EA7C01E6-5CC5-4199-94B6-11536B1ABDFA",
+      "topic" : "fluxo-padrao",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "list_review_items status=open: nenhum item aberto.",
+      "ruleId" : "8F28F353-95A9-4EEC-8223-383AF2FF6140",
+      "topic" : "fluxo-padrao",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Tarefa não veio de item de revisão.",
+      "ruleId" : "3A31B517-334E-484C-9205-0513AF158AE8",
+      "topic" : "fluxo-padrao",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Workflows no app (seção/página/diagrama), CLI (workflows) e MCP (list/get/add/update/…/workflow_flow).",
+      "ruleId" : "95C0C917-663D-47F0-A4BD-C93E1B7F2D0C",
+      "topic" : "fluxo-padrao",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "add_idea continua disponível; nenhuma ideia nova fora do escopo surgiu.",
+      "ruleId" : "09C9F3A9-5B74-496C-8A2D-F93C4294CAD2",
+      "topic" : "fluxo-padrao",
+      "verdict" : "pass"
+    }
+  ],
+  "task" : "Workflows: modelo (Workflows.swift), ProjectStore (CRUD, etapas, transições, plano), CLI `workflows`, tools MCP *_workflow*, schema workflow.schema.json + índice do worker, guia/README, seção Workflows no app com WorkflowView (Etapas) e WorkflowDiagram (Fluxo: diagrama das transições), botão Executar que manda o plano ao chat do Claude.",
+  "topics" : [
+    "cli-e-mcp",
+    "core-e-formato-de-dados",
+    "geral",
+    "interface-do-app",
+    "worker-e-schemas",
+    "conceitos-do-produto",
+    "dinamicas-da-interface",
+    "fluxo-padrao"
+  ],
+  "warnings" : [
+
+  ]
+}

@@ -63,6 +63,18 @@ struct SectionListView: View {
                         .help("Importa os agentes de .claude/agents (projeto e usuário)")
                 }
             }
+            if section == .commands, ClaudeCode.isInstalled {
+                ToolbarItem {
+                    Button { importedCount = model.importClaudeCommands() } label: { Label("Importar do Claude Code", systemImage: "square.and.arrow.down") }
+                        .help("Importa os comandos de .claude/commands (projeto e usuário)")
+                }
+            }
+            if section == .skills, ClaudeCode.isInstalled {
+                ToolbarItem {
+                    Button { importedCount = model.importClaudeSkills() } label: { Label("Importar do Claude Code", systemImage: "square.and.arrow.down") }
+                        .help("Importa as skills de .claude/skills (projeto e usuário)")
+                }
+            }
             ToolbarItem {
                 Button(action: onAdd) { Label("Novo", systemImage: "plus") }
             }
@@ -70,7 +82,12 @@ struct SectionListView: View {
         .alert("Importação concluída", isPresented: Binding(get: { importedCount != nil }, set: { if !$0 { importedCount = nil } })) {
             Button("OK") { importedCount = nil }
         } message: {
-            Text(importedCount == 0 ? "Nenhum agente novo encontrado." : "\(importedCount ?? 0) agente(s) importado(s).")
+            let count = importedCount ?? 0
+            switch section {
+            case .skills: Text(count == 0 ? "Nenhuma skill nova encontrada." : "\(count) skill(s) importada(s).")
+            case .commands: Text(count == 0 ? "Nenhum comando novo encontrado." : "\(count) comando(s) importado(s).")
+            default: Text(count == 0 ? "Nenhum agente novo encontrado." : "\(count) agente(s) importado(s).")
+            }
         }
         .sheet(item: $editingTags) { row in
             TagsEditor(title: row.title, tags: row.tags) { model.setTags($0, for: row.id, undo: undo) }

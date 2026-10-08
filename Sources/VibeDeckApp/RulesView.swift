@@ -4,10 +4,14 @@ import VibeDeckCore
 struct RuleTopicView: View {
     let slug: String
     @Environment(ProjectModel.self) private var model
+    @Environment(ClaudeSession.self) private var claude
     @Environment(\.undoManager) private var undo
     @State private var showChecks = true
 
     private var topic: RuleTopic { model.topic(slug) ?? RuleTopic(title: slug) }
+    private var hasAnyTest: Bool { topic.rules.contains { $0.test != nil } }
+    private var pendingTests: Int { RuleTestPrompt.pending(topic).count }
+    private var scriptCount: Int { topic.rules.filter { $0.testState == .script }.count }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -16,7 +20,8 @@ struct RuleTopicView: View {
                 rules: topic.rules,
                 emptyTitle: "Nenhuma regra ainda",
                 emptyHint: "Descreva comportamentos que este tópico deve ter. Ex.: \"Nunca usar minWidth no root da janela\".",
-                quickAddShortcut: true
+                quickAddShortcut: true,
+                testRuns: model.testRuns
             ) { action, change in
                 model.mutateTopic(slug, action, undo: undo) { change(&$0.rules) }
             }
@@ -28,12 +33,46 @@ struct RuleTopicView: View {
         .navigationTitle(topic.title)
         .navigationSubtitle("\(topic.rules.count) regra(s) · \(topic.isGlobal ? "vale para toda tarefa" : "\(topic.paths.count) escopo(s)")")
         .toolbar {
+            ToolbarItemGroup {
+                if ClaudeCode.isInstalled { testsMenu }
+                Button { model.runTests(topic: slug) } label: {
+                    if model.runningTests.contains(slug) {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Label("Rodar testes", systemImage: "play")
+                    }
+                }
+                .disabled(scriptCount == 0 || model.runningTests.contains(slug))
+                .help(scriptCount == 0 ? "Nenhuma regra tem script ainda" : "Rodar os \(scriptCount) script(s) deste tópico (não grava verificação)")
+            }
             ToolbarItem {
                 Button { showChecks.toggle() } label: { Label("Verificações", systemImage: "checkmark.seal") }
                     .keyboardShortcut("i", modifiers: [.command, .option])
                     .help("Mostrar/ocultar verificações (⌥⌘I)")
             }
         }
+    }
+
+    /// "Gerar testes" asks Claude (in the chat) to turn each rule into a script; afterwards checks run the scripts.
+    private var testsMenu: some View {
+        Menu {
+            Button("Só as pendentes (\(pendingTests))") { generateTests(onlyPending: true) }
+                .disabled(pendingTests == 0)
+            Button("Regenerar todas") { generateTests(onlyPending: false) }
+        } label: {
+            Label(hasAnyTest ? "Atualizar testes" : "Gerar testes", systemImage: "hammer")
+        } primaryAction: {
+            generateTests(onlyPending: hasAnyTest && pendingTests > 0)
+        }
+        .disabled(topic.rules.isEmpty)
+        .badge(hasAnyTest ? pendingTests : 0)
+        .help(hasAnyTest
+            ? "Pedir ao Claude para criar os testes das regras novas ou alteradas (\(pendingTests) pendente(s))"
+            : "Pedir ao Claude para transformar as regras em scripts: a verificação passa a rodá-los em vez de perguntar a ele")
+    }
+
+    private func generateTests(onlyPending: Bool) {
+        claude.ask(RuleTestPrompt.generate(slug: slug, topic: topic, onlyPending: onlyPending))
     }
 
     private var header: some View {
@@ -87,6 +126,8 @@ struct RuleListEditor: View {
     let emptyTitle: String
     let emptyHint: String
     var quickAddShortcut = false
+    /// Last script outcome per rule, shown next to it (topics only).
+    var testRuns: [UUID: RuleTestOutcome] = [:]
     let mutate: (String, @escaping (inout [Rule]) -> Void) -> Void
 
     @State private var newText = ""
@@ -105,7 +146,7 @@ struct RuleListEditor: View {
             } else {
                 List {
                     ForEach(rules) { rule in
-                        RuleRow(rule: rule) { action, change in update(rule.id, action, change) }
+                        RuleRow(rule: rule, lastRun: testRuns[rule.id]) { action, change in update(rule.id, action, change) }
                             .contextMenu { contextMenu(for: rule) }
                     }
                     .onMove { from, to in mutate("Reordenar regras") { $0.move(fromOffsets: from, toOffset: to) } }
@@ -133,6 +174,15 @@ struct RuleListEditor: View {
         Button("Copiar id") {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(rule.id.uuidString, forType: .string)
+        }
+        if let command = rule.test?.command {
+            Button("Copiar comando do teste") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(command, forType: .string)
+            }
+        }
+        if rule.test != nil {
+            Button("Remover teste") { update(rule.id, "Remover teste") { $0.test = nil } }
         }
         Divider()
         Button("Remover", role: .destructive) { mutate("Remover regra") { $0.removeAll { $0.id == rule.id } } }
@@ -189,6 +239,7 @@ extension RuleSeverity {
 
 struct RuleRow: View {
     let rule: Rule
+    var lastRun: RuleTestOutcome?
     let update: (String, @escaping (inout Rule) -> Void) -> Void
 
     var body: some View {
@@ -225,6 +276,7 @@ struct RuleRow: View {
                         .fixedSize()
                         .padding(.horizontal, 8).padding(.vertical, 2)
                         .glassEffect(.regular.tint((rule.severity == .must ? Color.orange : Color.gray).opacity(0.3)), in: .capsule)
+                    if rule.testState != .none { TestChip(rule: rule, lastRun: lastRun) }
                     Text(rule.id.uuidString.prefix(8)).font(.caption.monospaced()).foregroundStyle(.tertiary).textSelection(.enabled)
                     if rule.author == .ai {
                         Image(systemName: "sparkles").font(.caption).foregroundStyle(.purple).help("Criada por IA")
@@ -233,6 +285,76 @@ struct RuleRow: View {
             }
         }
         .padding(.vertical, 5)
+    }
+}
+
+/// How the rule is verified (script / manual / stale) and, for scripts, the last run in this session.
+private struct TestChip: View {
+    let rule: Rule
+    let lastRun: RuleTestOutcome?
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: symbol)
+            Text(rule.testState.label)
+            if rule.testState == .script, let lastRun {
+                Image(systemName: lastRun.verdict.symbol).foregroundStyle(lastRun.verdict.color)
+            }
+        }
+        .font(.caption.weight(.medium))
+        .fixedSize()
+        .padding(.horizontal, 8).padding(.vertical, 2)
+        .glassEffect(.regular.tint(tint.opacity(0.3)), in: .capsule)
+        .help(help)
+    }
+
+    private var symbol: String {
+        switch rule.testState {
+        case .script: "gearshape"
+        case .manual: "hand.raised"
+        case .stale, .none: "exclamationmark.triangle"
+        }
+    }
+
+    private var tint: Color {
+        switch rule.testState {
+        case .script: .blue
+        case .manual: .gray
+        case .stale, .none: .orange
+        }
+    }
+
+    private var help: String {
+        var lines: [String] = []
+        switch rule.testState {
+        case .script: lines.append("Verificada pelo script: \(rule.test?.command ?? "")")
+        case .manual: lines.append("Não testável por script: o agente verifica no check.")
+        case .stale: lines.append("A regra mudou depois do teste: volta a ser manual até você atualizar os testes.")
+        case .none: break
+        }
+        if let reason = rule.test?.reason { lines.append(reason) }
+        if rule.testState == .script, let lastRun {
+            lines.append("Última execução: exit \(lastRun.exitCode)\n\(lastRun.output.suffix(600))")
+        }
+        return lines.joined(separator: "\n")
+    }
+}
+
+extension RuleVerdict {
+    var symbol: String {
+        switch self {
+        case .pass: "checkmark.circle.fill"
+        case .fail: "xmark.circle.fill"
+        case .na: "minus.circle"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .pass: .green
+        case .fail: .red
+        case .na: .secondary
+        }
     }
 }
 
@@ -293,27 +415,16 @@ private struct ResultRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 6) {
-            Image(systemName: icon).foregroundStyle(color)
+            Image(systemName: result.verdict.symbol).foregroundStyle(result.verdict.color)
             VStack(alignment: .leading, spacing: 1) {
-                Text(text ?? "Regra removida").font(.callout).foregroundStyle(text == nil ? .secondary : .primary)
-                if let note = result.note { Text(note).font(.caption).foregroundStyle(.secondary) }
+                HStack(spacing: 4) {
+                    Text(text ?? "Regra removida").font(.callout).foregroundStyle(text == nil ? .secondary : .primary)
+                    if result.source == .script {
+                        Image(systemName: "gearshape").font(.caption).foregroundStyle(.secondary).help("Decidida pelo script da regra")
+                    }
+                }
+                if let note = result.note { Text(note).font(.caption).foregroundStyle(.secondary).lineLimit(6) }
             }
-        }
-    }
-
-    private var icon: String {
-        switch result.verdict {
-        case .pass: "checkmark.circle.fill"
-        case .fail: "xmark.circle.fill"
-        case .na: "minus.circle"
-        }
-    }
-
-    private var color: Color {
-        switch result.verdict {
-        case .pass: .green
-        case .fail: .red
-        case .na: .secondary
         }
     }
 }

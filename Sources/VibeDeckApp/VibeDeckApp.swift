@@ -57,8 +57,12 @@ struct AppCommands: Commands {
         }
         CommandGroup(after: .sidebar) {
             if let claude {
-                Button(claude.isPanelVisible ? "Ocultar Claude" : "Mostrar Claude") { claude.isPanelVisible.toggle() }
-                    .keyboardShortcut("c", modifiers: [.command, .shift])
+                if ClaudeCode.isInstalled {
+                    Button("Abrir Claude") { claude.requestedPage = .chat }
+                        .keyboardShortcut("c", modifiers: [.command, .shift])
+                }
+                Button("Novo Terminal") { claude.openTerminal() }
+                    .keyboardShortcut("`", modifiers: .control)
             }
         }
     }

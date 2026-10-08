@@ -3,7 +3,7 @@ import VibeDeckCore
 
 struct AgentView: View {
     let slug: String
-    let openAgent: (String) -> Void
+    let open: (SidebarItem) -> Void
     @Environment(ProjectModel.self) private var model
     @Environment(\.undoManager) private var undo
     @State private var showFlow = true
@@ -83,83 +83,18 @@ struct AgentView: View {
 
     // MARK: Flow
 
-    private var candidates: [Entry] {
-        let taken = Set(agent.nextSteps.filter { $0.kind == .agent }.map(\.ref))
-        return model.agents.filter { $0.slug != slug && !taken.contains($0.slug) }.map { Entry(slug: $0.slug, title: $0.value.title) }
-    }
-
-    private struct Entry: Identifiable { var slug: String; var title: String; var id: String { slug } }
-
     private var flowInspector: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Próximos passos").font(.headline)
-                Text("Agentes do VibeDeck que atuam sobre o resultado deste. Formam um fluxo.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 14)
-
-            List {
-                ForEach(Array(agent.nextSteps.enumerated()), id: \.offset) { index, step in
-                    HStack {
-                        Image(systemName: step.kind == .agent ? "person.crop.rectangle" : "terminal")
-                        VStack(alignment: .leading) {
-                            Text(model.agent(step.ref)?.title ?? step.ref)
-                            if step.kind == .agent, model.agent(step.ref) == nil {
-                                Text("Agente não encontrado").font(.caption).foregroundStyle(.red)
-                            } else if let note = step.note {
-                                Text(note).font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
-                        Spacer()
-                        if step.kind == .agent, model.agent(step.ref) != nil {
-                            Button { openAgent(step.ref) } label: { Image(systemName: "arrow.right.circle") }
-                                .buttonStyle(.borderless)
-                                .help("Abrir agente")
-                        }
-                    }
-                    .contextMenu {
-                        Button("Remover", role: .destructive) {
-                            model.mutateAgent(slug, "Remover próximo passo", undo: undo) { $0.nextSteps.remove(at: index) }
-                        }
-                    }
-                }
-                .onMove { from, to in
-                    model.mutateAgent(slug, "Reordenar passos", undo: undo) { $0.nextSteps.move(fromOffsets: from, toOffset: to) }
-                }
-                .onDelete { offsets in
-                    model.mutateAgent(slug, "Remover próximo passo", undo: undo) { $0.nextSteps.remove(atOffsets: offsets) }
-                }
-            }
-            .overlay {
-                if agent.nextSteps.isEmpty {
-                    ContentUnavailableView("Sem próximos passos", systemImage: "arrow.triangle.branch",
-                                           description: Text("Escolha abaixo qual agente atua depois deste."))
-                }
-            }
-
-            Menu {
-                ForEach(candidates) { c in
-                    Button(c.title) {
-                        model.mutateAgent(slug, "Adicionar próximo passo", undo: undo) { $0.nextSteps.append(NextStep(kind: .agent, ref: c.slug)) }
-                    }
-                }
-                Divider()
-                Button("Comando (em breve)") {}.disabled(true)
-            } label: {
-                Label("Adicionar próximo passo", systemImage: "plus")
-            }
-            .menuStyle(.borderlessButton)
-            .disabled(candidates.isEmpty)
-            .padding(16)
-        }
+        NextStepsInspector(owner: .agent(slug), steps: agent.nextSteps, mutate: { actionName, change in
+            model.mutateAgent(slug, actionName, undo: undo) { change(&$0.nextSteps) }
+        }, open: open)
     }
 
     private func copyFlow() {
         flush()
-        guard let json = try? AgentFlow.json(from: slug, agents: model.agents.map { ($0.slug, $0.value) }) else { return }
+        guard let json = try? AgentFlow.json(
+            from: slug, agents: model.agents.map { ($0.slug, $0.value) }, commands: model.commands.map { ($0.slug, $0.value) },
+            skills: model.skills.map { ($0.slug, $0.value) }
+        ) else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(json, forType: .string)
     }

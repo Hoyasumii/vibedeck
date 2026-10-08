@@ -1,0 +1,680 @@
+{
+  ".vibedeck/checks/20261008-022524-03295ae7.json": {
+    "mtime": 1791426324.8219204,
+    "seen": 1791440485.530405,
+    "ast_hash": "a0412db9ff21582299dfe77bfaf52e5b",
+    "semantic_hash": "a0412db9ff21582299dfe77bfaf52e5b"
+  },
+  ".vibedeck/checks/20261008-023017-edde4eec.json": {
+    "mtime": 1791426617.4863088,
+    "seen": 1791440485.530407,
+    "ast_hash": "e266b842bb1d7ceff4abce94a5770d65",
+    "semantic_hash": "e266b842bb1d7ceff4abce94a5770d65"
+  },
+  ".vibedeck/checks/20261008-023954-9d2040b3.json": {
+    "mtime": 1791427194.835642,
+    "seen": 1791440485.530408,
+    "ast_hash": "c08ba1e91a27f4d5697f181ce699fbd0",
+    "semantic_hash": "c08ba1e91a27f4d5697f181ce699fbd0"
+  },
+  ".vibedeck/checks/20261008-024209-cb66cb26.json": {
+    "mtime": 1791427329.0231144,
+    "seen": 1791440485.5304089,
+    "ast_hash": "6ef694657dd7be2b70df624b3d41f6e6",
+    "semantic_hash": "6ef694657dd7be2b70df624b3d41f6e6"
+  },
+  ".vibedeck/checks/20261008-030323-04d2df8d.json": {
+    "mtime": 1791428603.883072,
+    "seen": 1791440485.5304089,
+    "ast_hash": "7df904c9f892268685ca09a4b3e605d9",
+    "semantic_hash": "7df904c9f892268685ca09a4b3e605d9"
+  },
+  ".vibedeck/checks/20261008-032738-34b55864.json": {
+    "mtime": 1791430058.6150787,
+    "seen": 1791440485.53041,
+    "ast_hash": "01baf3a43040150e9ffa0f2af62eb8bb",
+    "semantic_hash": "01baf3a43040150e9ffa0f2af62eb8bb"
+  },
+  ".vibedeck/checks/20261008-033342-cfcbd6b2.json": {
+    "mtime": 1791430422.542882,
+    "seen": 1791440485.53041,
+    "ast_hash": "41b2dfb0268ebe20c263fdeec20ee8b7",
+    "semantic_hash": "41b2dfb0268ebe20c263fdeec20ee8b7"
+  },
+  ".vibedeck/checks/20261008-033651-75550a93.json": {
+    "mtime": 1791430611.7031424,
+    "seen": 1791440485.530411,
+    "ast_hash": "fc7f546ddbb670f71a49cd393e93189f",
+    "semantic_hash": "fc7f546ddbb670f71a49cd393e93189f"
+  },
+  ".vibedeck/checks/20261008-034251-bffc0a1f.json": {
+    "mtime": 1791430971.4226956,
+    "seen": 1791440485.530411,
+    "ast_hash": "005f5cf4e14ff32ec0bb396362a1f96e",
+    "semantic_hash": "005f5cf4e14ff32ec0bb396362a1f96e"
+  },
+  ".vibedeck/checks/20261008-041352-cd40d382.json": {
+    "mtime": 1791432832.4087427,
+    "seen": 1791440485.530412,
+    "ast_hash": "4a2b55fe5b5eb2493a7ac2cbd7541173",
+    "semantic_hash": "4a2b55fe5b5eb2493a7ac2cbd7541173"
+  },
+  ".vibedeck/checks/20261008-044538-3d13bfd2.json": {
+    "mtime": 1791434738.664395,
+    "seen": 1791440485.530412,
+    "ast_hash": "226fe06865d285aa708b8e148560472c",
+    "semantic_hash": "226fe06865d285aa708b8e148560472c"
+  },
+  ".vibedeck/checks/20261008-044804-29a2c3ea.json": {
+    "mtime": 1791434884.2887075,
+    "seen": 1791440485.5304132,
+    "ast_hash": "0a213e0aea95657af5265a7eff932191",
+    "semantic_hash": "0a213e0aea95657af5265a7eff932191"
+  },
+  ".vibedeck/checks/20261008-045631-6961b062.json": {
+    "mtime": 1791435391.7349222,
+    "seen": 1791440485.5304132,
+    "ast_hash": "1cb70a0d38f98261490fb2d2b7ee0cc6",
+    "semantic_hash": "1cb70a0d38f98261490fb2d2b7ee0cc6"
+  },
+  ".vibedeck/checks/20261008-050310-16f37986.json": {
+    "mtime": 1791435790.3480089,
+    "seen": 1791440485.530414,
+    "ast_hash": "e20314fdc39cd055f9bc1d5bb053a218",
+    "semantic_hash": "e20314fdc39cd055f9bc1d5bb053a218"
+  },
+  ".vibedeck/checks/20261008-051300-b5fc6ec2.json": {
+    "mtime": 1791436380.6821735,
+    "seen": 1791440485.530414,
+    "ast_hash": "4d5787043b7d5e456819462b8535f589",
+    "semantic_hash": "4d5787043b7d5e456819462b8535f589"
+  },
+  ".vibedeck/checks/20261008-051350-8c41ea9e.json": {
+    "mtime": 1791436430.4001005,
+    "seen": 1791440485.530415,
+    "ast_hash": "cddb182d7edf7d1d5849af757cbb27bc",
+    "semantic_hash": "cddb182d7edf7d1d5849af757cbb27bc"
+  },
+  ".vibedeck/checks/20261008-052147-d5c7b937.json": {
+    "mtime": 1791436907.4810543,
+    "seen": 1791440485.530415,
+    "ast_hash": "b8051851dcf6af23f33f9c7897411f0e",
+    "semantic_hash": "b8051851dcf6af23f33f9c7897411f0e"
+  },
+  ".vibedeck/checks/20261008-052202-c8e671d2.json": {
+    "mtime": 1791436922.13846,
+    "seen": 1791440485.530416,
+    "ast_hash": "38f069668172bac6c11847c10137911a",
+    "semantic_hash": "38f069668172bac6c11847c10137911a"
+  },
+  ".vibedeck/checks/20261008-052903-b19bc00b.json": {
+    "mtime": 1791437343.2687345,
+    "seen": 1791440485.530416,
+    "ast_hash": "5b36aea4a02bf4e20d38e9d1d0f5e088",
+    "semantic_hash": "5b36aea4a02bf4e20d38e9d1d0f5e088"
+  },
+  ".vibedeck/checks/20261008-053339-2356909d.json": {
+    "mtime": 1791437619.8422554,
+    "seen": 1791440485.530417,
+    "ast_hash": "2ebef25c00e20cd726730a211bdfd0db",
+    "semantic_hash": "2ebef25c00e20cd726730a211bdfd0db"
+  },
+  ".vibedeck/checks/20261008-053733-775fee7b.json": {
+    "mtime": 1791437853.2684898,
+    "seen": 1791440485.530417,
+    "ast_hash": "f0776372297d1202841a684538c01c06",
+    "semantic_hash": "f0776372297d1202841a684538c01c06"
+  },
+  ".vibedeck/checks/20261008-054542-f29b80e0.json": {
+    "mtime": 1791438342.477652,
+    "seen": 1791440485.530417,
+    "ast_hash": "956339abd43c445a2f0398173cd25a39",
+    "semantic_hash": "956339abd43c445a2f0398173cd25a39"
+  },
+  ".vibedeck/checks/20261008-055729-aa13f869.json": {
+    "mtime": 1791439049.1329138,
+    "seen": 1791440485.530418,
+    "ast_hash": "dce932ec71ac7bd652fd3c44c358cb38",
+    "semantic_hash": "dce932ec71ac7bd652fd3c44c358cb38"
+  },
+  ".vibedeck/checks/20261008-055906-cdee7e0a.json": {
+    "mtime": 1791439146.1597557,
+    "seen": 1791440485.5304189,
+    "ast_hash": "55961bdf847316a10d88b9d293129cb8",
+    "semantic_hash": "55961bdf847316a10d88b9d293129cb8"
+  },
+  ".vibedeck/checks/20261008-061509-dfdb25ad.json": {
+    "mtime": 1791440109.329994,
+    "seen": 1791440485.5304189,
+    "ast_hash": "da16ba3a54836b53e56646fb224be7c0",
+    "semantic_hash": "da16ba3a54836b53e56646fb224be7c0"
+  },
+  ".vibedeck/ideas/adicionar-agentes.json": {
+    "mtime": 1791433951.8747678,
+    "seen": 1791440485.5304189,
+    "ast_hash": "21c137eb78856235249a4cde0bd6d6d0",
+    "semantic_hash": "21c137eb78856235249a4cde0bd6d6d0"
+  },
+  ".vibedeck/ideas/adicionar-comandos.json": {
+    "mtime": 1791433669.7049794,
+    "seen": 1791440485.53042,
+    "ast_hash": "e8fc221f4580943f4faf18daee7a6fc7",
+    "semantic_hash": "e8fc221f4580943f4faf18daee7a6fc7"
+  },
+  ".vibedeck/ideas/adicionar-configuracoes-do-app.json": {
+    "mtime": 1791431246.1296446,
+    "seen": 1791440485.53042,
+    "ast_hash": "4d0aedb715a784c33d1ea447440a1e19",
+    "semantic_hash": "4d0aedb715a784c33d1ea447440a1e19"
+  },
+  ".vibedeck/ideas/adicionar-skills.json": {
+    "mtime": 1791430615.9024138,
+    "seen": 1791440485.530421,
+    "ast_hash": "933c87468917a62871a052c7a01b3f1f",
+    "semantic_hash": "933c87468917a62871a052c7a01b3f1f"
+  },
+  ".vibedeck/ideas/adicionar-workflows.json": {
+    "mtime": 1791433824.0397508,
+    "seen": 1791440485.530421,
+    "ast_hash": "46ef22d2e0ddc39801e5ea24e68403fb",
+    "semantic_hash": "46ef22d2e0ddc39801e5ea24e68403fb"
+  },
+  ".vibedeck/ideas/botao-de-descubra-em-onde-e-regras.json": {
+    "mtime": 1791432756.9907787,
+    "seen": 1791440485.530422,
+    "ast_hash": "6c0b90377910797890cb576feb3d3d90",
+    "semantic_hash": "6c0b90377910797890cb576feb3d3d90"
+  },
+  ".vibedeck/ideas/botao-de-gerar-prompt-sobre-ideias-e-revisoes.json": {
+    "mtime": 1791434196.7681143,
+    "seen": 1791440485.530422,
+    "ast_hash": "1116d6a54711824de301321c80a570bb",
+    "semantic_hash": "1116d6a54711824de301321c80a570bb"
+  },
+  ".vibedeck/ideas/melhorar-o-md-viewer.json": {
+    "mtime": 1791429419.09133,
+    "seen": 1791440485.530423,
+    "ast_hash": "6fde814439cad466d43d87c026f5c785",
+    "semantic_hash": "6fde814439cad466d43d87c026f5c785"
+  },
+  ".vibedeck/ideas/nova-interface.json": {
+    "mtime": 1791429824.2140534,
+    "seen": 1791440485.530423,
+    "ast_hash": "2975cfd9f7012024e1991f7cb4f4fc84",
+    "semantic_hash": "2975cfd9f7012024e1991f7cb4f4fc84"
+  },
+  ".vibedeck/ideas/site-do-projeto.json": {
+    "mtime": 1791427146.7053592,
+    "seen": 1791440485.530423,
+    "ast_hash": "e267bd11372a61337d8055020bc2d538",
+    "semantic_hash": "e267bd11372a61337d8055020bc2d538"
+  },
+  ".vibedeck/ideas/suporte-a-idiomas.json": {
+    "mtime": 1791417057.6117914,
+    "seen": 1791440485.530424,
+    "ast_hash": "b15d0a3023614b2b868d678dfe9c1fde",
+    "semantic_hash": "b15d0a3023614b2b868d678dfe9c1fde"
+  },
+  ".vibedeck/reviews/tela-de-ia.json": {
+    "mtime": 1791437023.7891617,
+    "seen": 1791440485.530424,
+    "ast_hash": "c6b781a2da000eb9014008fad0625c3d",
+    "semantic_hash": "c6b781a2da000eb9014008fad0625c3d"
+  },
+  ".vibedeck/reviews/tela-lateral.json": {
+    "mtime": 1791436923.6846113,
+    "seen": 1791440485.530425,
+    "ast_hash": "1e14e4884742f8e6c9e4f2d115363b69",
+    "semantic_hash": "1e14e4884742f8e6c9e4f2d115363b69"
+  },
+  ".vibedeck/rules/build-scripts-e-ci.json": {
+    "mtime": 1791439019.429216,
+    "seen": 1791440485.530425,
+    "ast_hash": "968fbb905f25da63d37e0bd438422ba8",
+    "semantic_hash": "968fbb905f25da63d37e0bd438422ba8"
+  },
+  ".vibedeck/rules/cli-e-mcp.json": {
+    "mtime": 1791429879.8445063,
+    "seen": 1791440485.530426,
+    "ast_hash": "b7f35fec722d9dd1a8d70188fbf75a3f",
+    "semantic_hash": "b7f35fec722d9dd1a8d70188fbf75a3f"
+  },
+  ".vibedeck/rules/conceitos-do-produto.json": {
+    "mtime": 1791433458.669078,
+    "seen": 1791440485.530426,
+    "ast_hash": "c91bf8063ca7658de1adc9b4b88dd545",
+    "semantic_hash": "c91bf8063ca7658de1adc9b4b88dd545"
+  },
+  ".vibedeck/rules/core-e-formato-de-dados.json": {
+    "mtime": 1791429879.8214447,
+    "seen": 1791440485.530426,
+    "ast_hash": "7d8357c590b84b91437094cce4b739d0",
+    "semantic_hash": "7d8357c590b84b91437094cce4b739d0"
+  },
+  ".vibedeck/rules/dinamicas-da-interface.json": {
+    "mtime": 1791430411.3706074,
+    "seen": 1791440485.530427,
+    "ast_hash": "d189f39f41fa41fcdba15aac2b853182",
+    "semantic_hash": "d189f39f41fa41fcdba15aac2b853182"
+  },
+  ".vibedeck/rules/fluxo-padrao.json": {
+    "mtime": 1791430411.4329693,
+    "seen": 1791440485.530428,
+    "ast_hash": "26677e9dc15ddb59042192314dddc3e5",
+    "semantic_hash": "26677e9dc15ddb59042192314dddc3e5"
+  },
+  ".vibedeck/rules/geral.json": {
+    "mtime": 1791429316.1943874,
+    "seen": 1791440485.530428,
+    "ast_hash": "94b01b2e904cef69ab17f8bf2746c150",
+    "semantic_hash": "94b01b2e904cef69ab17f8bf2746c150"
+  },
+  ".vibedeck/rules/interface-do-app.json": {
+    "mtime": 1791438993.6575365,
+    "seen": 1791440485.530428,
+    "ast_hash": "fe75d63baba63a73cbf42bf9b0542895",
+    "semantic_hash": "fe75d63baba63a73cbf42bf9b0542895"
+  },
+  ".vibedeck/rules/worker-e-schemas.json": {
+    "mtime": 1791429316.7814932,
+    "seen": 1791440485.530429,
+    "ast_hash": "b5b640d8f25006b30cbd2fbe0f048f7a",
+    "semantic_hash": "b5b640d8f25006b30cbd2fbe0f048f7a"
+  },
+  "Package.swift": {
+    "mtime": 1791438773.5847476,
+    "seen": 1791440485.530429,
+    "ast_hash": "afc3e11ac6067e0203e3442ae750d980",
+    "semantic_hash": "afc3e11ac6067e0203e3442ae750d980"
+  },
+  "Sources/VibeDeckApp/AgentView.swift": {
+    "mtime": 1791436823.8225143,
+    "seen": 1791440485.5304298,
+    "ast_hash": "8aeb609ed0b7693c07d61eb7aa98a30a",
+    "semantic_hash": "8aeb609ed0b7693c07d61eb7aa98a30a"
+  },
+  "Sources/VibeDeckApp/Aliases.swift": {
+    "mtime": 1791436823.8228548,
+    "seen": 1791440485.5304298,
+    "ast_hash": "2c429866ca0eee651278958592761f57",
+    "semantic_hash": "2c429866ca0eee651278958592761f57"
+  },
+  "Sources/VibeDeckApp/ClaudeChatList.swift": {
+    "mtime": 1791436823.823157,
+    "seen": 1791440485.530431,
+    "ast_hash": "d528dfcfa7ee07dfe7aff7f159e4a2a3",
+    "semantic_hash": "d528dfcfa7ee07dfe7aff7f159e4a2a3"
+  },
+  "Sources/VibeDeckApp/ClaudeChatPage.swift": {
+    "mtime": 1791440004.5708494,
+    "seen": 1791440485.530431,
+    "ast_hash": "9dba6eee196e9892bf5da27373152303",
+    "semantic_hash": "9dba6eee196e9892bf5da27373152303"
+  },
+  "Sources/VibeDeckApp/ClaudeSession.swift": {
+    "mtime": 1791439981.8455763,
+    "seen": 1791440485.530431,
+    "ast_hash": "3b96be9de557a59d70706aec07f8b72b",
+    "semantic_hash": "3b96be9de557a59d70706aec07f8b72b"
+  },
+  "Sources/VibeDeckApp/ClaudeUsageView.swift": {
+    "mtime": 1791436823.8242939,
+    "seen": 1791440485.530432,
+    "ast_hash": "c72a56e8b7e924f43850200677103e8c",
+    "semantic_hash": "c72a56e8b7e924f43850200677103e8c"
+  },
+  "Sources/VibeDeckApp/CloudLaunchSheet.swift": {
+    "mtime": 1791439157.2468922,
+    "seen": 1791440485.530432,
+    "ast_hash": "24a8ba624480e75cda85a2498e5dd862",
+    "semantic_hash": "24a8ba624480e75cda85a2498e5dd862"
+  },
+  "Sources/VibeDeckApp/DocView.swift": {
+    "mtime": 1791436823.824787,
+    "seen": 1791440485.530433,
+    "ast_hash": "a31bc9723bbe13e0737e0e988d0318cf",
+    "semantic_hash": "a31bc9723bbe13e0737e0e988d0318cf"
+  },
+  "Sources/VibeDeckApp/IdeaView.swift": {
+    "mtime": 1791436823.825107,
+    "seen": 1791440485.530433,
+    "ast_hash": "839e3a4645b314f4fe7c7f4a272ebfa6",
+    "semantic_hash": "839e3a4645b314f4fe7c7f4a272ebfa6"
+  },
+  "Sources/VibeDeckApp/LinksView.swift": {
+    "mtime": 1791436823.8254464,
+    "seen": 1791440485.5304341,
+    "ast_hash": "78527b48c458267272ff4a7ed4d32aea",
+    "semantic_hash": "78527b48c458267272ff4a7ed4d32aea"
+  },
+  "Sources/VibeDeckApp/MarkdownEditor.swift": {
+    "mtime": 1791436823.8257618,
+    "seen": 1791440485.5304341,
+    "ast_hash": "e847d6c8a9b382410bce225578436df9",
+    "semantic_hash": "e847d6c8a9b382410bce225578436df9"
+  },
+  "Sources/VibeDeckApp/ProjectModel.swift": {
+    "mtime": 1791439971.3246722,
+    "seen": 1791440485.5304341,
+    "ast_hash": "77cbddd2d02e7a29682b23c46ca62b68",
+    "semantic_hash": "77cbddd2d02e7a29682b23c46ca62b68"
+  },
+  "Sources/VibeDeckApp/ProjectTerminal.swift": {
+    "mtime": 1791440011.0421715,
+    "seen": 1791440485.530435,
+    "ast_hash": "cc0f8e21beeb4054e985cb83b897a5b3",
+    "semantic_hash": "cc0f8e21beeb4054e985cb83b897a5b3"
+  },
+  "Sources/VibeDeckApp/ProjectWindow.swift": {
+    "mtime": 1791440032.2567687,
+    "seen": 1791440485.530435,
+    "ast_hash": "5d06f564f00da24ed9af2ba1070246bd",
+    "semantic_hash": "5d06f564f00da24ed9af2ba1070246bd"
+  },
+  "Sources/VibeDeckApp/ReviewGroupView.swift": {
+    "mtime": 1791437814.4284883,
+    "seen": 1791440485.530436,
+    "ast_hash": "e184f0c77d74ea6b3c1a89825799c988",
+    "semantic_hash": "e184f0c77d74ea6b3c1a89825799c988"
+  },
+  "Sources/VibeDeckApp/RulesView.swift": {
+    "mtime": 1791436823.827602,
+    "seen": 1791440485.530436,
+    "ast_hash": "5ab7f6a7c8272025ddc41da08fb502bd",
+    "semantic_hash": "5ab7f6a7c8272025ddc41da08fb502bd"
+  },
+  "Sources/VibeDeckApp/SectionListView.swift": {
+    "mtime": 1791436823.827969,
+    "seen": 1791440485.530436,
+    "ast_hash": "a137aa1ed5756f928ca60e39c4cd7e7d",
+    "semantic_hash": "a137aa1ed5756f928ca60e39c4cd7e7d"
+  },
+  "Sources/VibeDeckApp/TabBar.swift": {
+    "mtime": 1791436823.828403,
+    "seen": 1791440485.5304372,
+    "ast_hash": "9e7a5d06aa9734a1830cf708c5903591",
+    "semantic_hash": "9e7a5d06aa9734a1830cf708c5903591"
+  },
+  "Sources/VibeDeckApp/VibeDeckApp.swift": {
+    "mtime": 1791440028.7548997,
+    "seen": 1791440485.5304372,
+    "ast_hash": "e28db3ee37e04631e0f9e8fb315d9ef1",
+    "semantic_hash": "e28db3ee37e04631e0f9e8fb315d9ef1"
+  },
+  "Sources/VibeDeckApp/WelcomeView.swift": {
+    "mtime": 1791436823.829184,
+    "seen": 1791440485.530438,
+    "ast_hash": "c02c04ae2065de2c8931eb26144602c6",
+    "semantic_hash": "c02c04ae2065de2c8931eb26144602c6"
+  },
+  "Sources/VibeDeckCore/Agents.swift": {
+    "mtime": 1791432556.077979,
+    "seen": 1791440485.530438,
+    "ast_hash": "b24ed67ad91cbc5c4cf68b0eca45d58c",
+    "semantic_hash": "b24ed67ad91cbc5c4cf68b0eca45d58c"
+  },
+  "Sources/VibeDeckCore/AgentsGuide.swift": {
+    "mtime": 1791439042.6024323,
+    "seen": 1791440485.530439,
+    "ast_hash": "488c978cb3f4a90100ca6d1e197c16eb",
+    "semantic_hash": "488c978cb3f4a90100ca6d1e197c16eb"
+  },
+  "Sources/VibeDeckCore/ClaudeChats.swift": {
+    "mtime": 1791436391.828263,
+    "seen": 1791440485.530439,
+    "ast_hash": "4a862db03aa9e007b31b7191f02ca467",
+    "semantic_hash": "4a862db03aa9e007b31b7191f02ca467"
+  },
+  "Sources/VibeDeckCore/ClaudeCode.swift": {
+    "mtime": 1791434625.9806147,
+    "seen": 1791440485.530439,
+    "ast_hash": "82c626e59c1741b063a552b0404fdf25",
+    "semantic_hash": "82c626e59c1741b063a552b0404fdf25"
+  },
+  "Sources/VibeDeckCore/ClaudeCompletion.swift": {
+    "mtime": 1791438659.0474367,
+    "seen": 1791440485.5304399,
+    "ast_hash": "91244d60f327da6d3569213053889607",
+    "semantic_hash": "91244d60f327da6d3569213053889607"
+  },
+  "Sources/VibeDeckCore/ClaudeStream.swift": {
+    "mtime": 1791438215.1579382,
+    "seen": 1791440485.5304399,
+    "ast_hash": "15fd4dc4967aafb7ebc6aae753567146",
+    "semantic_hash": "15fd4dc4967aafb7ebc6aae753567146"
+  },
+  "Sources/VibeDeckCore/ClaudeUsage.swift": {
+    "mtime": 1791434655.021151,
+    "seen": 1791440485.530441,
+    "ast_hash": "0c259bd62f6cdf61722237d6dc1dde94",
+    "semantic_hash": "0c259bd62f6cdf61722237d6dc1dde94"
+  },
+  "Sources/VibeDeckCore/CloudSession.swift": {
+    "mtime": 1791439092.1494308,
+    "seen": 1791440485.530441,
+    "ast_hash": "6db3cd9a4241c9cee9018cee0584ea66",
+    "semantic_hash": "6db3cd9a4241c9cee9018cee0584ea66"
+  },
+  "Sources/VibeDeckCore/FileWatcher.swift": {
+    "mtime": 1791390107.437545,
+    "seen": 1791440485.530442,
+    "ast_hash": "b30e1b08e67fc3be142848cfdaacf978",
+    "semantic_hash": "b30e1b08e67fc3be142848cfdaacf978"
+  },
+  "Sources/VibeDeckCore/Models.swift": {
+    "mtime": 1791432574.9312596,
+    "seen": 1791440485.530442,
+    "ast_hash": "3218b41b5b8a283cc79d9f34ab3c6d39",
+    "semantic_hash": "3218b41b5b8a283cc79d9f34ab3c6d39"
+  },
+  "Sources/VibeDeckCore/ProjectStore.swift": {
+    "mtime": 1791439092.1491325,
+    "seen": 1791440485.530442,
+    "ast_hash": "a3bf5cdc32c7d140813f13cd4a56934e",
+    "semantic_hash": "a3bf5cdc32c7d140813f13cd4a56934e"
+  },
+  "Sources/VibeDeckCore/Rules.swift": {
+    "mtime": 1791417197.0948484,
+    "seen": 1791440485.530443,
+    "ast_hash": "c6997e1eb9b256528c0736c8e3034260",
+    "semantic_hash": "c6997e1eb9b256528c0736c8e3034260"
+  },
+  "Sources/vibedeck/CLI.swift": {
+    "mtime": 1791439092.149716,
+    "seen": 1791440485.530443,
+    "ast_hash": "925fd705d0e13e19cb05de5ee0ec37e5",
+    "semantic_hash": "925fd705d0e13e19cb05de5ee0ec37e5"
+  },
+  "Sources/vibedeck/MCPServer.swift": {
+    "mtime": 1791438949.381566,
+    "seen": 1791440485.5304441,
+    "ast_hash": "c4cae1bc1c9fb5620eb2a7d9ff32a982",
+    "semantic_hash": "c4cae1bc1c9fb5620eb2a7d9ff32a982"
+  },
+  "Tests/VibeDeckCoreTests/AgentsTests.swift": {
+    "mtime": 1791432749.031549,
+    "seen": 1791440485.5304441,
+    "ast_hash": "c9c68101d89c9dbfba9b45003a2b0310",
+    "semantic_hash": "c9c68101d89c9dbfba9b45003a2b0310"
+  },
+  "Tests/VibeDeckCoreTests/ClaudeChatsTests.swift": {
+    "mtime": 1791436391.8284764,
+    "seen": 1791440485.530445,
+    "ast_hash": "de7e38c8a578ebe4cc0dac71026a20e2",
+    "semantic_hash": "de7e38c8a578ebe4cc0dac71026a20e2"
+  },
+  "Tests/VibeDeckCoreTests/ClaudeCompletionTests.swift": {
+    "mtime": 1791438659.0573792,
+    "seen": 1791440485.530445,
+    "ast_hash": "7e9648e7db806de6738cb6422ee2766d",
+    "semantic_hash": "7e9648e7db806de6738cb6422ee2766d"
+  },
+  "Tests/VibeDeckCoreTests/ClaudeStreamTests.swift": {
+    "mtime": 1791436297.1530426,
+    "seen": 1791440485.530446,
+    "ast_hash": "96efa314126527f415c713cb83481adb",
+    "semantic_hash": "96efa314126527f415c713cb83481adb"
+  },
+  "Tests/VibeDeckCoreTests/ClaudeUsageTests.swift": {
+    "mtime": 1791434634.19264,
+    "seen": 1791440485.530447,
+    "ast_hash": "e4ff5e6dc3a78f0ba237331e0a4ecec4",
+    "semantic_hash": "e4ff5e6dc3a78f0ba237331e0a4ecec4"
+  },
+  "Tests/VibeDeckCoreTests/CloudSessionTests.swift": {
+    "mtime": 1791438943.5480618,
+    "seen": 1791440485.530447,
+    "ast_hash": "475c0dd6ed320123d58eb5309473f649",
+    "semantic_hash": "475c0dd6ed320123d58eb5309473f649"
+  },
+  "Tests/VibeDeckCoreTests/ProjectStoreTests.swift": {
+    "mtime": 1791417395.8829489,
+    "seen": 1791440485.530448,
+    "ast_hash": "7cd8d091b49eb63aba0da763b77b5c7d",
+    "semantic_hash": "7cd8d091b49eb63aba0da763b77b5c7d"
+  },
+  "Tests/VibeDeckCoreTests/RulesTests.swift": {
+    "mtime": 1791429926.857843,
+    "seen": 1791440485.530448,
+    "ast_hash": "cdd9f1f974e033656284989a879ac6da",
+    "semantic_hash": "cdd9f1f974e033656284989a879ac6da"
+  },
+  "schema/v1/agent.schema.json": {
+    "mtime": 1791432574.9568374,
+    "seen": 1791440485.530448,
+    "ast_hash": "f93c331a610529440362f6cf1d1e7f5d",
+    "semantic_hash": "f93c331a610529440362f6cf1d1e7f5d"
+  },
+  "schema/v1/idea.schema.json": {
+    "mtime": 1791413063.8926713,
+    "seen": 1791440485.530449,
+    "ast_hash": "4cad1c0fb33c63484cd867c04ae850c5",
+    "semantic_hash": "4cad1c0fb33c63484cd867c04ae850c5"
+  },
+  "schema/v1/project.schema.json": {
+    "mtime": 1791397873.4225414,
+    "seen": 1791440485.530449,
+    "ast_hash": "674bacbfb1b058fae3f39ba070a5d415",
+    "semantic_hash": "674bacbfb1b058fae3f39ba070a5d415"
+  },
+  "schema/v1/review-group.schema.json": {
+    "mtime": 1791417183.2494853,
+    "seen": 1791440485.5304499,
+    "ast_hash": "f1de6af54a811b9ad4a49670e6454a7c",
+    "semantic_hash": "f1de6af54a811b9ad4a49670e6454a7c"
+  },
+  "schema/v1/rule-check.schema.json": {
+    "mtime": 1791413063.901272,
+    "seen": 1791440485.5304499,
+    "ast_hash": "e2be55fad9880005770531f7e29465de",
+    "semantic_hash": "e2be55fad9880005770531f7e29465de"
+  },
+  "schema/v1/rule-topic.schema.json": {
+    "mtime": 1791417183.2496145,
+    "seen": 1791440485.530451,
+    "ast_hash": "46330295048c1d5508ec40de80d73e6f",
+    "semantic_hash": "46330295048c1d5508ec40de80d73e6f"
+  },
+  "scripts/build-app.sh": {
+    "mtime": 1791416939.5008476,
+    "seen": 1791440485.530451,
+    "ast_hash": "2450a2057d16c8bfd1113f3b01d45020",
+    "semantic_hash": "2450a2057d16c8bfd1113f3b01d45020"
+  },
+  "scripts/env.sh": {
+    "mtime": 1791391408.7752047,
+    "seen": 1791440485.530451,
+    "ast_hash": "1255bdf48381a32099cb5a745ced63f5",
+    "semantic_hash": "1255bdf48381a32099cb5a745ced63f5"
+  },
+  "scripts/make-dmg-background.swift": {
+    "mtime": 1791416939.2715268,
+    "seen": 1791440485.530452,
+    "ast_hash": "a0933ec170cfde02fa81e715c55e2ae7",
+    "semantic_hash": "a0933ec170cfde02fa81e715c55e2ae7"
+  },
+  "scripts/make-icon.swift": {
+    "mtime": 1791416765.3375547,
+    "seen": 1791440485.530452,
+    "ast_hash": "ac384cb270b5bf6759c11917acef43c8",
+    "semantic_hash": "ac384cb270b5bf6759c11917acef43c8"
+  },
+  "scripts/set-schema-url.sh": {
+    "mtime": 1791391408.8026452,
+    "seen": 1791440485.530453,
+    "ast_hash": "16a4f5358287aad9c47e9287fcdc289e",
+    "semantic_hash": "16a4f5358287aad9c47e9287fcdc289e"
+  },
+  "scripts/test.sh": {
+    "mtime": 1791391408.7940097,
+    "seen": 1791440485.530453,
+    "ast_hash": "e15c4272eefe8939aa460b9383465298",
+    "semantic_hash": "e15c4272eefe8939aa460b9383465298"
+  },
+  "vibedeck.json": {
+    "mtime": 1791408448.667033,
+    "seen": 1791440485.530454,
+    "ast_hash": "776fd3c0173bcacf51e8fdefde779557",
+    "semantic_hash": "776fd3c0173bcacf51e8fdefde779557"
+  },
+  "worker/package.json": {
+    "mtime": 1791392251.6480517,
+    "seen": 1791440485.530454,
+    "ast_hash": "e427f3c1bd8f7a40c27fe4265d3774ce",
+    "semantic_hash": "e427f3c1bd8f7a40c27fe4265d3774ce"
+  },
+  "worker/src/index.ts": {
+    "mtime": 1791432574.9318929,
+    "seen": 1791440485.530455,
+    "ast_hash": "08bb9807e2494e42ff3964b77add8d02",
+    "semantic_hash": "08bb9807e2494e42ff3964b77add8d02"
+  },
+  "worker/tsconfig.json": {
+    "mtime": 1791390458.0979931,
+    "seen": 1791440485.530455,
+    "ast_hash": "429df6e585a771242e67e979fa7e650c",
+    "semantic_hash": "429df6e585a771242e67e979fa7e650c"
+  },
+  ".github/workflows/swift.yml": {
+    "mtime": 1791397947.9857786,
+    "seen": 1791440485.530455,
+    "ast_hash": "7424716cb39da0b9ac417678c5dde2d1",
+    "semantic_hash": "7424716cb39da0b9ac417678c5dde2d1"
+  },
+  ".github/workflows/worker.yml": {
+    "mtime": 1791397799.2945852,
+    "seen": 1791440485.530456,
+    "ast_hash": "e73aac784050a07716f056b54510f5ec",
+    "semantic_hash": "e73aac784050a07716f056b54510f5ec"
+  },
+  ".vibedeck/AGENTS.md": {
+    "mtime": 1791440343.0079885,
+    "seen": 1791440485.530456,
+    "ast_hash": "4c1cca8459165ee9e733de228bf9de06",
+    "semantic_hash": "4c1cca8459165ee9e733de228bf9de06"
+  },
+  ".vibedeck/docs/conceitos-do-vibedeck.md": {
+    "mtime": 1791432789.9991055,
+    "seen": 1791440485.530457,
+    "ast_hash": "e40ea715078c506faed4ff0ef4051be2",
+    "semantic_hash": "e40ea715078c506faed4ff0ef4051be2"
+  },
+  ".vibedeck/docs/sobre-o-projeto.md": {
+    "mtime": 1791412510.9583416,
+    "seen": 1791440485.530457,
+    "ast_hash": "8cbb6d66cc787b251c050fadbb96490d",
+    "semantic_hash": "8cbb6d66cc787b251c050fadbb96490d"
+  },
+  "README.md": {
+    "mtime": 1791440090.8398175,
+    "seen": 1791440485.5304582,
+    "ast_hash": "67f5d67c81c40fd8cf4d8bd19dbe7e16",
+    "semantic_hash": "67f5d67c81c40fd8cf4d8bd19dbe7e16"
+  },
+  "assets/AppIcon.png": {
+    "mtime": 1791416768.8882716,
+    "seen": 1791440485.5304582,
+    "ast_hash": "aacd1708f3e27ba99465f0af8a628a2b",
+    "semantic_hash": "aacd1708f3e27ba99465f0af8a628a2b"
+  }
+}

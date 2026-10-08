@@ -1,0 +1,12 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-08T07:24:59Z",
+  "id" : "13262B13-942D-4798-993E-EE1D26C99041",
+  "rules" : [
+
+  ],
+  "status" : "new",
+  "title" : "Exibir o grafo de graphify em algum lugar do app",
+  "updatedAt" : "2026-10-08T07:24:59Z"
+}

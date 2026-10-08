@@ -1,0 +1,18 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "ai",
+  "body" : "O app já copia arquivos arrastados/colados/anexados para `.vibedeck/attachments/` e insere `![](../attachments/x.png)` no markdown (ProjectStore.importAttachment). Falta expor isso a agentes: `vibedeck doc attach <slug> <arquivo>` e uma ferramenta MCP `attach_file` que devolve o link markdown, para a IA poder anexar screenshots/diagramas a docs e ideias.",
+  "createdAt" : "2026-10-08T06:43:40Z",
+  "id" : "3055950E-3600-4C1D-8725-CE68430CD0B5",
+  "rules" : [
+
+  ],
+  "status" : "new",
+  "tags" : [
+    "anexos",
+    "cli",
+    "mcp"
+  ],
+  "title" : "Anexar arquivos a docs/ideias pelo CLI e MCP",
+  "updatedAt" : "2026-10-08T06:43:40Z"
+}

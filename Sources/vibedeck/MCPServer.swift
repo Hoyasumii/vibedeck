@@ -141,14 +141,19 @@ struct MCPHandler: Sendable {
         REGRA OBRIGATÓRIA: nenhuma tarefa neste projeto está concluída sem passar pelas regras.
         Antes de dizer que terminou qualquer implementação ou alteração:
         1. chame rules_for com os arquivos que você alterou (e review_item, se a tarefa veio de um item de revisão);
-        2. verifique cada regra de verdade contra o código;
-        3. chame submit_rule_check respondendo pass/fail/na para TODAS as regras, com nota de evidência;
+        2. verifique de verdade contra o código cada regra com check="manual" (as de check="script" são decididas
+           rodando o script delas — run_rule_tests mostra o resultado antes do check);
+        3. chame submit_rule_check respondendo pass/fail/na para TODAS as regras manuais, com nota de evidência
+           (o submit roda os scripts sozinho e ignora respostas para regras de script);
         4. se passed=false, corrija e envie outro check. Só declare concluído quando passed=true
            (avise o usuário sobre warnings de regras "should").
 
         Leia os itens de revisão abertos antes de mexer numa área; ao concluir um item, marque status=done
-        (bloqueado sem check aprovado quando o item tem regras). Itens, regras, ideias e agentes criados por você são author=ai.
+        (bloqueado sem check aprovado quando o item tem regras). Itens, regras, ideias, agentes, comandos, skills e workflows criados por você são author=ai.
         Ideias (list_ideas) são planos futuros, não regras ativas; registre ideias novas com add_idea.
+        Para executar um workflow, use workflow_run_start e siga o `prompt` devolvido: você orquestra, cada etapa roda
+        num subagente (que lê workflow_run_step), o veredito vai para workflow_run_record e as perguntas das etapas
+        chegam por workflow_run_questions para você fazer ao usuário.
         Guia completo: .vibedeck/AGENTS.md.
         """
     }
@@ -185,6 +190,24 @@ struct MCPHandler: Sendable {
                 "note": ["type": "string", "description": "Evidência curta: o que você verificou"],
             ],
             "required": ["ruleId", "verdict"],
+        ],
+    ]
+
+    private static let questionsSchema: Value = [
+        "type": "array",
+        "description": "Perguntas para o usuário, de 2 a 4 opções cada (a recomendada primeiro).",
+        "items": [
+            "type": "object",
+            "properties": [
+                "question": ["type": "string", "description": "Pergunta direta, em pt-BR"],
+                "context": ["type": "string", "description": "O que gerou a dúvida"],
+                "options": [
+                    "type": "array",
+                    "items": ["type": "object", "properties": ["label": ["type": "string"], "description": ["type": "string"]], "required": ["label"]],
+                ],
+                "multiple": ["type": "boolean", "description": "Múltipla escolha"],
+            ],
+            "required": ["question"],
         ],
     ]
 
@@ -257,13 +280,27 @@ struct MCPHandler: Sendable {
                  "review_item": ("string", "Id do item de revisão relacionado"),
              ]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "submit_rule_check", description: "Registra a verificação das regras aplicáveis. Responda TODAS as regras de rules_for. Retorna passed=false se alguma regra 'must' falhou: corrija e envie de novo.",
+        Tool(name: "submit_rule_check", description: "Registra a verificação das regras aplicáveis. Responda TODAS as regras de rules_for com check=manual; as de check=script são decididas rodando o script (respostas para elas são ignoradas). Retorna passed=false se alguma regra 'must' falhou: corrija e envie de novo.",
              inputSchema: schema([
                  "task": ("string", "Resumo do que foi feito"),
                  "files": ("array", "Arquivos alterados"),
                  "topics": ("array", "Tópicos extras (os mesmos passados a rules_for)"),
                  "review_item": ("string", "Id do item de revisão relacionado"),
              ], required: ["task", "results"], custom: ["results": resultsSchema])),
+        Tool(name: "run_rule_tests", description: "Roda os scripts das regras aplicáveis (exit 0 = cumpre, 77 = não se aplica, outro = viola) e devolve o resultado de cada um. Não grava check. Sem files/review_item, roda só os topics indicados.",
+             inputSchema: schema([
+                 "files": ("array", "Arquivos alterados"),
+                 "topics": ("array", "Tópicos (slug, id ou título)"),
+                 "review_item": ("string", "Id do item de revisão relacionado"),
+             ]),
+             annotations: .init(readOnlyHint: true)),
+        Tool(name: "set_rule_test", description: "Define como uma regra é verificada: mode=script com o comando do script (rodado na raiz; recebe $VIBEDECK_FILES; exit 0/77/outro) ou mode=manual quando a regra não é testável objetivamente. Guarda o hash da regra: se ela mudar, o teste fica desatualizado.",
+             inputSchema: schema([
+                 "rule_id": ("string", "Id da regra (ou prefixo >= 4 chars)"),
+                 "mode": ("string", "script | manual"),
+                 "command": ("string", "Comando do script (obrigatório em mode=script), ex.: .vibedeck/tests/geral/ab12cd34.sh"),
+                 "reason": ("string", "O que o script verifica ou por que a regra é manual"),
+             ], required: ["rule_id", "mode"], enums: ["mode": RuleTestMode.allCases.map(\.rawValue)])),
         Tool(name: "list_rule_topics", description: "Lista os tópicos de regras (escopo por paths e quantidade de regras).", inputSchema: schema([:]),
              annotations: .init(readOnlyHint: true)),
         Tool(name: "get_rule_topic", description: "Retorna um tópico de regras completo.", inputSchema: schema(["topic": ("string", "Slug, id ou título")], required: ["topic"]),
@@ -334,23 +371,207 @@ struct MCPHandler: Sendable {
                  "prompt": ("string", "Novo prompt"),
                  "tags": ("array", "Substitui as tags"),
              ], required: ["agent"])),
-        Tool(name: "add_agent_next_step", description: "Adiciona um próximo passo ao agente: outro agente (ou comando) do VibeDeck que atua sobre o resultado. Forma um fluxo.",
+        Tool(name: "add_agent_next_step", description: "Adiciona um próximo passo ao agente: outro agente, comando ou skill do VibeDeck que atua sobre o resultado. Forma um fluxo.",
              inputSchema: schema([
                  "agent": ("string", "Agente de origem (slug, id ou título)"),
-                 "target": ("string", "Agente (slug, id ou título) ou comando do VibeDeck"),
-                 "kind": ("string", "agent (padrão) ou command"),
+                 "target": ("string", "Agente, comando ou skill do VibeDeck (slug, id ou título)"),
+                 "kind": ("string", "agent (padrão), command ou skill"),
                  "note": ("string", "Quando/como executar"),
-             ], required: ["agent", "target"], enums: ["kind": ["agent", "command"]])),
+             ], required: ["agent", "target"], enums: ["kind": ["agent", "command", "skill"]])),
         Tool(name: "agent_flow", description: "JSON do fluxo de um agente (prompt + próximos passos encadeados) para orquestrar a IA.",
              inputSchema: schema(["agent": ("string", "Slug, id ou título")], required: ["agent"]), annotations: .init(readOnlyHint: true)),
         Tool(name: "import_agents", description: "Importa agentes do Claude Code (.claude/agents do projeto e do usuário) como agentes do VibeDeck. Marcados como author=ai.",
              inputSchema: schema(["overwrite": ("boolean", "Sobrescreve existentes (padrão: não)")])),
-        Tool(name: "set_tags", description: "Substitui as tags de um doc, grupo de revisão, tópico de regras, ideia ou agente (lista vazia remove).",
+        // Commands
+        Tool(name: "list_commands", description: "Lista os comandos do VibeDeck (nome, argumentos, modelo e próximos passos). Não são os comandos do provedor de IA.",
+             inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "get_command", description: "Retorna um comando completo (prompt e próximos passos).", inputSchema: schema(["command": ("string", "Slug, id ou título")], required: ["command"]),
+             annotations: .init(readOnlyHint: true)),
+        Tool(name: "add_command", description: "Cria um comando do VibeDeck (prompt no formato de slash command, com $ARGUMENTS). Marcado author=ai.",
+             inputSchema: schema([
+                 "title": ("string", "Nome do comando"),
+                 "summary": ("string", "O que o comando faz"),
+                 "argument_hint": ("string", "O que vai em $ARGUMENTS (ex.: <mensagem>)"),
+                 "model": ("string", "Modelo (ex.: sonnet, opus)"),
+                 "tools": ("array", "Ferramentas permitidas"),
+                 "prompt": ("string", "Prompt do comando (markdown)"),
+                 "tags": ("array", "Tags"),
+             ], required: ["title"])),
+        Tool(name: "update_command", description: "Atualiza um comando (use add_command_next_step para o fluxo).",
+             inputSchema: schema([
+                 "command": ("string", "Slug, id ou título"),
+                 "title": ("string", "Novo nome"),
+                 "summary": ("string", "Nova descrição"),
+                 "argument_hint": ("string", "Novos argumentos"),
+                 "model": ("string", "Novo modelo"),
+                 "tools": ("array", "Substitui as ferramentas"),
+                 "prompt": ("string", "Novo prompt"),
+                 "tags": ("array", "Substitui as tags"),
+             ], required: ["command"])),
+        Tool(name: "add_command_next_step", description: "Adiciona um próximo passo ao comando: um agente, outro comando ou uma skill do VibeDeck que atua sobre o resultado. Forma um fluxo.",
+             inputSchema: schema([
+                 "command": ("string", "Comando de origem (slug, id ou título)"),
+                 "target": ("string", "Agente, comando ou skill do VibeDeck (slug, id ou título)"),
+                 "kind": ("string", "agent (padrão), command ou skill"),
+                 "note": ("string", "Quando/como executar"),
+             ], required: ["command", "target"], enums: ["kind": ["agent", "command", "skill"]])),
+        Tool(name: "command_flow", description: "JSON do fluxo de um comando (prompt + próximos passos encadeados) para orquestrar a IA.",
+             inputSchema: schema(["command": ("string", "Slug, id ou título")], required: ["command"]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "import_commands", description: "Importa comandos do Claude Code (.claude/commands do projeto e do usuário) como comandos do VibeDeck. Marcados como author=ai.",
+             inputSchema: schema(["overwrite": ("boolean", "Sobrescreve existentes (padrão: não)")])),
+        // Skills
+        Tool(name: "list_skills", description: "Lista as skills do VibeDeck (nome, descrição, modelo e próximos passos). Não são as skills do provedor de IA.",
+             inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "get_skill", description: "Retorna uma skill completa (instruções e próximos passos).", inputSchema: schema(["skill": ("string", "Slug, id ou título")], required: ["skill"]),
+             annotations: .init(readOnlyHint: true)),
+        Tool(name: "add_skill", description: "Cria uma skill do VibeDeck (instruções no formato do SKILL.md; a descrição diz quando usá-la). Marcada author=ai.",
+             inputSchema: schema([
+                 "title": ("string", "Nome da skill"),
+                 "summary": ("string", "Quando usar a skill (é o que a dispara)"),
+                 "model": ("string", "Modelo (ex.: sonnet, opus)"),
+                 "tools": ("array", "Ferramentas permitidas"),
+                 "prompt": ("string", "Instruções da skill (markdown)"),
+                 "tags": ("array", "Tags"),
+             ], required: ["title"])),
+        Tool(name: "update_skill", description: "Atualiza uma skill (use add_skill_next_step para o fluxo).",
+             inputSchema: schema([
+                 "skill": ("string", "Slug, id ou título"),
+                 "title": ("string", "Novo nome"),
+                 "summary": ("string", "Nova descrição"),
+                 "model": ("string", "Novo modelo"),
+                 "tools": ("array", "Substitui as ferramentas"),
+                 "prompt": ("string", "Novas instruções"),
+                 "tags": ("array", "Substitui as tags"),
+             ], required: ["skill"])),
+        Tool(name: "add_skill_next_step", description: "Adiciona um próximo passo à skill: um agente, comando ou outra skill do VibeDeck que atua sobre o resultado. Forma um fluxo.",
+             inputSchema: schema([
+                 "skill": ("string", "Skill de origem (slug, id ou título)"),
+                 "target": ("string", "Agente, comando ou skill do VibeDeck (slug, id ou título)"),
+                 "kind": ("string", "agent (padrão), command ou skill"),
+                 "note": ("string", "Quando/como executar"),
+             ], required: ["skill", "target"], enums: ["kind": ["agent", "command", "skill"]])),
+        Tool(name: "skill_flow", description: "JSON do fluxo de uma skill (instruções + próximos passos encadeados) para orquestrar a IA.",
+             inputSchema: schema(["skill": ("string", "Slug, id ou título")], required: ["skill"]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "import_skills", description: "Importa skills do Claude Code (.claude/skills/<nome>/SKILL.md do projeto e do usuário) como skills do VibeDeck. Marcadas como author=ai.",
+             inputSchema: schema(["overwrite": ("boolean", "Sobrescreve existentes (padrão: não)")])),
+        // Workflows
+        Tool(name: "list_workflows", description: "Lista os workflows do VibeDeck: fluxos nomeados de etapas (agentes, comandos e skills do VibeDeck) com transições condicionais.",
+             inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "get_workflow", description: "Retorna um workflow completo (etapas e transições).", inputSchema: schema(["workflow": ("string", "Slug, id ou título")], required: ["workflow"]),
+             annotations: .init(readOnlyHint: true)),
+        Tool(name: "add_workflow", description: "Cria um workflow do VibeDeck (sem etapas; use add_workflow_step e add_workflow_transition). Marcado author=ai.",
+             inputSchema: schema([
+                 "title": ("string", "Nome do workflow"),
+                 "summary": ("string", "O que o workflow faz"),
+                 "input": ("string", "O que pedir ao iniciar (ex.: <número do PR>)"),
+                 "max_steps": ("integer", "Limite de etapas executadas por execução (padrão: \(Workflow.defaultMaxSteps))"),
+                 "tags": ("array", "Tags"),
+             ], required: ["title"])),
+        Tool(name: "update_workflow", description: "Atualiza nome, descrição, entrada, limite ou tags de um workflow.",
+             inputSchema: schema([
+                 "workflow": ("string", "Slug, id ou título"),
+                 "title": ("string", "Novo nome"),
+                 "summary": ("string", "Nova descrição"),
+                 "input": ("string", "Nova entrada"),
+                 "max_steps": ("integer", "Novo limite de etapas (0 volta ao padrão)"),
+                 "tags": ("array", "Substitui as tags"),
+             ], required: ["workflow"])),
+        Tool(name: "add_workflow_step", description: "Adiciona uma etapa ao workflow: um agente, comando ou skill do VibeDeck (pode repetir). A primeira etapa é o início. Retorna o id da etapa.",
+             inputSchema: schema([
+                 "workflow": ("string", "Slug, id ou título"),
+                 "target": ("string", "Agente, comando ou skill do VibeDeck (slug, id ou título)"),
+                 "kind": ("string", "agent (padrão), command ou skill"),
+                 "note": ("string", "Instrução extra da etapa ($ARGUMENTS para comandos)"),
+                 "max_visits": ("integer", "Máximo de vezes que a etapa roda por ciclo de uma execução"),
+             ], required: ["workflow", "target"], enums: ["kind": ["agent", "command", "skill"]])),
+        Tool(name: "set_workflow_step_max_visits", description: "Define quantas vezes uma etapa pode rodar por ciclo de uma execução (0 remove o limite). Estourou → a execução para.",
+             inputSchema: schema([
+                 "workflow": ("string", "Slug, id ou título"),
+                 "step": ("string", "Id ou posição da etapa"),
+                 "max_visits": ("integer", "Máximo (0 = sem limite)"),
+             ], required: ["workflow", "step", "max_visits"])),
+        Tool(name: "remove_workflow_step", description: "Remove uma etapa do workflow e as transições que apontam para ela.",
+             inputSchema: schema([
+                 "workflow": ("string", "Slug, id ou título"),
+                 "step": ("string", "Id ou posição (1, 2, …) da etapa"),
+             ], required: ["workflow", "step"])),
+        Tool(name: "move_workflow_step", description: "Move uma etapa para outra posição (1 = início).",
+             inputSchema: schema([
+                 "workflow": ("string", "Slug, id ou título"),
+                 "step": ("string", "Id ou posição da etapa"),
+                 "position": ("integer", "Nova posição (1, 2, …)"),
+             ], required: ["workflow", "step", "position"])),
+        Tool(name: "add_workflow_transition", description: "Adiciona uma transição: depois da etapa `from`, vá para `to` (pode voltar a etapas anteriores) quando o veredito da etapa (última linha do resultado) for `verdict`, ou quando `when` valer para o resultado. Sem nenhum dos dois é o \"senão\" (um por etapa, sempre por último). Vereditos primeiro, depois condições, depois o senão; nenhuma = fim.",
+             inputSchema: schema([
+                 "workflow": ("string", "Slug, id ou título"),
+                 "from": ("string", "Etapa de origem (id ou posição)"),
+                 "to": ("string", "Etapa de destino (id ou posição)"),
+                 "verdict": ("string", "Veredito que leva a esta transição (ex.: APROVADO); maiúsculas e acentos não importam"),
+                 "when": ("string", "Condição em linguagem natural sobre o resultado da etapa"),
+             ], required: ["workflow", "from", "to"])),
+        Tool(name: "remove_workflow_transition", description: "Remove a transição na posição `index` (1, 2, …) de uma etapa.",
+             inputSchema: schema([
+                 "workflow": ("string", "Slug, id ou título"),
+                 "from": ("string", "Etapa de origem (id ou posição)"),
+                 "index": ("integer", "Posição da transição na etapa"),
+             ], required: ["workflow", "from", "index"])),
+        Tool(name: "workflow_flow", description: "JSON do workflow (etapas resolvidas, transições e regras de execução) para orquestrar a IA. Para executar, siga as `rules` do JSON.",
+             inputSchema: schema([
+                 "workflow": ("string", "Slug, id ou título"),
+                 "input": ("string", "Entrada desta execução (sem ela, a IA pede a entrada ao usuário)"),
+             ], required: ["workflow"]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "workflow_run_start", description: "Inicia (ou retoma, com a mesma entrada) uma execução de workflow com estado em disco e devolve {ref, action, prompt}: `prompt` é o roteiro do orquestrador — siga-o (cada etapa num subagente, veredito decide a transição, perguntas ao usuário). `from` libera mais uma volta numa execução parada a partir de uma etapa.",
+             inputSchema: schema([
+                 "workflow": ("string", "Slug, id ou título"),
+                 "input": ("string", "Entrada da execução (a execução recebe o nome dela)"),
+                 "from": ("string", "Etapa por onde começar"),
+             ], required: ["workflow"])),
+        Tool(name: "workflow_run_next", description: "Próxima ação do orquestrador numa execução: run-step (lance um subagente para `step`), ask (faça as perguntas abertas), decide (avalie as condições), done ou stop.",
+             inputSchema: schema(["run": ("string", "<workflow>/<execução>, nome da execução ou id")], required: ["run"]),
+             annotations: .init(readOnlyHint: true)),
+        Tool(name: "workflow_run_step", description: "Prompt da etapa atual da execução, para o subagente que a executa (instruções resolvidas, pasta da execução, respostas do usuário e protocolo de saída).",
+             inputSchema: schema(["run": ("string", "<workflow>/<execução>, nome da execução ou id")], required: ["run"]),
+             annotations: .init(readOnlyHint: true)),
+        Tool(name: "workflow_run_record", description: "Registra o veredito (última linha) da etapa atual e devolve a próxima ação. Se vier `decide`, avalie os `candidates` e chame de novo com `to` (ou `none_holds`).",
+             inputSchema: schema([
+                 "run": ("string", "<workflow>/<execução>, nome da execução ou id"),
+                 "verdict": ("string", "Última linha do resultado da etapa"),
+                 "summary": ("string", "Resumo de 1 a 3 linhas do que a etapa fez"),
+                 "to": ("string", "Etapa escolhida ao avaliar as condições"),
+                 "none_holds": ("boolean", "Nenhuma condição vale: segue o senão ou termina"),
+             ], required: ["run"])),
+        Tool(name: "workflow_run_ask", description: "Grava perguntas da etapa atual para o usuário (a etapa não fala com ele); a execução espera as respostas. Depois termine a etapa com a última linha PERGUNTA.",
+             inputSchema: schema(["run": ("string", "<workflow>/<execução>, nome da execução ou id")], required: ["run", "questions"], custom: ["questions": questionsSchema])),
+        Tool(name: "workflow_run_questions", description: "Perguntas de uma execução (só as abertas com open=true).",
+             inputSchema: schema([
+                 "run": ("string", "<workflow>/<execução>, nome da execução ou id"),
+                 "open": ("boolean", "Só as abertas"),
+             ], required: ["run"]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "workflow_run_answer", description: "Grava a resposta do usuário a uma pergunta (opção escolhida, várias separadas por \"; \", ou texto livre) e devolve a próxima ação.",
+             inputSchema: schema([
+                 "run": ("string", "<workflow>/<execução>, nome da execução ou id"),
+                 "number": ("integer", "Número da pergunta"),
+                 "answer": ("string", "Resposta"),
+             ], required: ["run", "number", "answer"])),
+        Tool(name: "workflow_run_list", description: "Execuções de workflows (mais recentes primeiro), com status e etapa atual.",
+             inputSchema: schema([
+                 "workflow": ("string", "Só deste workflow"),
+                 "status": ("string", "Filtra pelo status"),
+             ], enums: ["status": WorkflowRunStatus.allCases.map(\.rawValue)]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "workflow_run_show", description: "Uma execução completa: status, etapa atual, histórico com vereditos e perguntas.",
+             inputSchema: schema(["run": ("string", "<workflow>/<execução>, nome da execução ou id")], required: ["run"]),
+             annotations: .init(readOnlyHint: true)),
+        Tool(name: "workflow_run_stop", description: "Para uma execução. Só faça isso quando o usuário pedir.",
+             inputSchema: schema([
+                 "run": ("string", "<workflow>/<execução>, nome da execução ou id"),
+                 "reason": ("string", "Motivo"),
+             ], required: ["run"])),
+        Tool(name: "set_tags", description: "Substitui as tags de um doc, grupo de revisão, tópico de regras, ideia, agente, comando, skill ou workflow (lista vazia remove).",
              inputSchema: schema([
                  "kind": ("string", "Tipo do item"),
                  "ref": ("string", "Slug, id ou título"),
                  "tags": ("array", "Novas tags"),
-             ], required: ["kind", "ref", "tags"], enums: ["kind": ["doc", "review_group", "rule_topic", "idea", "agent"]])),
+             ], required: ["kind", "ref", "tags"], enums: ["kind": ["doc", "review_group", "rule_topic", "idea", "agent", "command", "skill", "workflow"]])),
         Tool(name: "promote_idea", description: "Transforma as regras de uma ideia em um tópico de regras ativo. Só faça isso quando o usuário pedir.",
              inputSchema: schema(["idea": ("string", "Slug, id ou título")], required: ["idea"])),
         Tool(name: "unpromote_idea", description: "Desfaz promote_idea: apaga o tópico de regras criado pela ideia e remove o vínculo (as regras rascunho ficam na ideia; Aprovada volta para Explorando). Só faça isso quando o usuário pedir.",
@@ -372,6 +593,10 @@ struct MCPHandler: Sendable {
             guard let text = value.stringValue else { return nil }
             if let data = text.data(using: .utf8), let parsed = try? JSONDecoder().decode([String].self, from: data) { return parsed }
             return text.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        }
+        /// Integers may arrive as JSON numbers or as text.
+        func int(_ key: String) -> Int? {
+            args[key]?.intValue ?? args[key]?.doubleValue.map { Int($0) } ?? str(key).flatMap { Int($0) }
         }
         func severity() throws -> RuleSeverity {
             guard let s = str("severity") else { return .must }
@@ -489,7 +714,24 @@ struct MCPHandler: Sendable {
             if !check.warnings.isEmpty {
                 summary += "\n⚠️ Recomendações não cumpridas (avise o usuário):\n" + check.warnings.map { "- \($0)" }.joined(separator: "\n")
             }
+            let scripted = check.results.filter { $0.source == .script }
+            if !scripted.isEmpty {
+                summary += "\n⚙️ \(scripted.count) regra(s) decidida(s) por script."
+                for r in scripted where r.verdict == .fail { summary += "\n--- script reprovado:\n\(r.note ?? "")" }
+            }
             return summary + "\n" + (try json(check))
+
+        case "run_rule_tests":
+            let files = list("files") ?? []
+            let item = str("review_item")
+            let runs = try store.runRuleTests(files: files, topics: list("topics") ?? [], reviewItem: item, onlyTopics: files.isEmpty && item == nil)
+            if runs.isEmpty { return "Nenhuma regra aplicável tem script." }
+            return try json(runs.map(RuleTestRunRow.init))
+
+        case "set_rule_test":
+            guard let mode = RuleTestMode(rawValue: try req("mode")) else { throw MCPError.invalidParams("mode deve ser script ou manual.") }
+            let rule = try store.setRuleTest(req("rule_id"), mode: mode, command: str("command"), reason: str("reason"))
+            return "Regra \(rule.id.uuidString.prefix(8)): \(rule.testState.label)."
 
         case "list_rule_topics":
             return try json(store.listTopics().map {
@@ -513,6 +755,9 @@ struct MCPHandler: Sendable {
             case "rule_topic": try store.updateTopic(ref) { $0.tags = tags }
             case "idea": try store.updateIdea(ref) { $0.tags = tags }
             case "agent": try store.updateAgent(ref) { $0.tags = tags }
+            case "command": try store.updateCommand(ref) { $0.tags = tags }
+            case "skill": try store.updateSkill(ref) { $0.tags = tags }
+            case "workflow": try store.updateWorkflow(ref) { $0.tags = tags }
             case let other: throw MCPError.invalidParams("Tipo inválido: \(other)")
             }
             return tags.isEmpty ? "Tags removidas." : "Tags: " + tags.joined(separator: ", ")
@@ -605,11 +850,210 @@ struct MCPHandler: Sendable {
 
         case "agent_flow":
             let slug = try store.resolveAgentSlug(req("agent"))
-            return try AgentFlow.json(from: slug, agents: store.listAgents()) ?? ""
+            return try AgentFlow.json(from: slug, agents: store.listAgents(), commands: store.listCommands(), skills: store.listSkills()) ?? ""
 
         case "import_agents":
             let slugs = try store.importClaudeAgents(overwrite: args["overwrite"]?.boolValue ?? false, author: .ai)
             return try json(slugs)
+
+        case "list_commands":
+            return try json(store.listCommands().map {
+                CommandRow(slug: $0.slug, title: $0.command.title, argumentHint: $0.command.argumentHint, model: $0.command.model,
+                           tags: $0.command.tags, nextSteps: $0.command.nextSteps)
+            })
+
+        case "get_command":
+            let slug = try store.resolveCommandSlug(req("command"))
+            return try json(SlugAnd(slug: slug, value: store.loadCommand(slug)))
+
+        case "add_command":
+            let (slug, command) = try store.createCommand(
+                title: req("title"), summary: str("summary"), argumentHint: str("argument_hint"), model: str("model"),
+                tools: list("tools") ?? [], prompt: str("prompt") ?? "", tags: list("tags") ?? [], author: .ai)
+            return try json(SlugAnd(slug: slug, value: command))
+
+        case "update_command":
+            let tags = list("tags"), tools = list("tools")
+            let (slug, command) = try store.updateCommand(req("command")) { c in
+                if let t = str("title") { c.title = t }
+                if let v = str("summary") { c.summary = v }
+                if let v = str("argument_hint") { c.argumentHint = v }
+                if let v = str("model") { c.model = v }
+                if let v = str("prompt") { c.prompt = v }
+                if let tools { c.tools = tools }
+                if let tags { c.tags = tags }
+            }
+            return try json(SlugAnd(slug: slug, value: command))
+
+        case "add_command_next_step":
+            let kind = try str("kind").map { k in
+                guard let v = NextStepKind(rawValue: k) else { throw MCPError.invalidParams("Tipo inválido: \(k)") }
+                return v
+            } ?? .agent
+            let (slug, command) = try store.addCommandNextStep(to: req("command"), kind: kind, target: req("target"), note: str("note"))
+            return try json(SlugAnd(slug: slug, value: command))
+
+        case "command_flow":
+            let slug = try store.resolveCommandSlug(req("command"))
+            return try AgentFlow.json(kind: .command, from: slug, agents: store.listAgents(), commands: store.listCommands(), skills: store.listSkills()) ?? ""
+
+        case "import_commands":
+            let slugs = try store.importClaudeCommands(overwrite: args["overwrite"]?.boolValue ?? false, author: .ai)
+            return try json(slugs)
+
+        case "list_skills":
+            return try json(store.listSkills().map {
+                SkillRow(slug: $0.slug, title: $0.skill.title, summary: $0.skill.summary, model: $0.skill.model, tags: $0.skill.tags, nextSteps: $0.skill.nextSteps)
+            })
+
+        case "get_skill":
+            let slug = try store.resolveSkillSlug(req("skill"))
+            return try json(SlugAnd(slug: slug, value: store.loadSkill(slug)))
+
+        case "add_skill":
+            let (slug, skill) = try store.createSkill(
+                title: req("title"), summary: str("summary"), model: str("model"), tools: list("tools") ?? [],
+                prompt: str("prompt") ?? "", tags: list("tags") ?? [], author: .ai)
+            return try json(SlugAnd(slug: slug, value: skill))
+
+        case "update_skill":
+            let tags = list("tags"), tools = list("tools")
+            let (slug, skill) = try store.updateSkill(req("skill")) { s in
+                if let t = str("title") { s.title = t }
+                if let v = str("summary") { s.summary = v }
+                if let v = str("model") { s.model = v }
+                if let v = str("prompt") { s.prompt = v }
+                if let tools { s.tools = tools }
+                if let tags { s.tags = tags }
+            }
+            return try json(SlugAnd(slug: slug, value: skill))
+
+        case "add_skill_next_step":
+            let kind = try str("kind").map { k in
+                guard let v = NextStepKind(rawValue: k) else { throw MCPError.invalidParams("Tipo inválido: \(k)") }
+                return v
+            } ?? .agent
+            let (slug, skill) = try store.addSkillNextStep(to: req("skill"), kind: kind, target: req("target"), note: str("note"))
+            return try json(SlugAnd(slug: slug, value: skill))
+
+        case "skill_flow":
+            let slug = try store.resolveSkillSlug(req("skill"))
+            return try AgentFlow.json(kind: .skill, from: slug, agents: store.listAgents(), commands: store.listCommands(), skills: store.listSkills()) ?? ""
+
+        case "import_skills":
+            let slugs = try store.importClaudeSkills(overwrite: args["overwrite"]?.boolValue ?? false, author: .ai)
+            return try json(slugs)
+
+        case "list_workflows":
+            return try json(store.listWorkflows().map {
+                WorkflowRow(slug: $0.slug, title: $0.workflow.title, summary: $0.workflow.summary, input: $0.workflow.input,
+                            tags: $0.workflow.tags, steps: $0.workflow.steps.map(\.id))
+            })
+
+        case "get_workflow":
+            let slug = try store.resolveWorkflowSlug(req("workflow"))
+            return try json(SlugAnd(slug: slug, value: store.loadWorkflow(slug)))
+
+        case "add_workflow":
+            let (slug, workflow) = try store.createWorkflow(
+                title: req("title"), summary: str("summary"), input: str("input"), maxSteps: int("max_steps").flatMap { $0 > 0 ? $0 : nil },
+                tags: list("tags") ?? [], author: .ai)
+            return try json(SlugAnd(slug: slug, value: workflow))
+
+        case "update_workflow":
+            let tags = list("tags"), maxSteps = int("max_steps")
+            let (slug, workflow) = try store.updateWorkflow(req("workflow")) { w in
+                if let t = str("title") { w.title = t }
+                if let v = str("summary") { w.summary = v }
+                if let v = str("input") { w.input = v }
+                if let maxSteps { w.maxSteps = maxSteps > 0 ? maxSteps : nil }
+                if let tags { w.tags = tags }
+            }
+            return try json(SlugAnd(slug: slug, value: workflow))
+
+        case "add_workflow_step":
+            let kind = try str("kind").map { k in
+                guard let v = NextStepKind(rawValue: k) else { throw MCPError.invalidParams("Tipo inválido: \(k)") }
+                return v
+            } ?? .agent
+            var (slug, workflow, step) = try store.addWorkflowStep(to: req("workflow"), kind: kind, target: req("target"), note: str("note"))
+            if let visits = int("max_visits") { (slug, workflow) = try store.setWorkflowStepMaxVisits(slug, step: step, maxVisits: visits) }
+            return try json(WorkflowStepAdded(slug: slug, step: step, workflow: workflow))
+
+        case "set_workflow_step_max_visits":
+            guard let visits = int("max_visits") else { throw MCPError.invalidParams("Parâmetro obrigatório: max_visits") }
+            let (slug, workflow) = try store.setWorkflowStepMaxVisits(req("workflow"), step: req("step"), maxVisits: visits)
+            return try json(SlugAnd(slug: slug, value: workflow))
+
+        case "remove_workflow_step":
+            let (slug, workflow) = try store.removeWorkflowStep(req("workflow"), step: req("step"))
+            return try json(SlugAnd(slug: slug, value: workflow))
+
+        case "move_workflow_step":
+            guard let position = int("position") else { throw MCPError.invalidParams("Parâmetro obrigatório: position") }
+            let (slug, workflow) = try store.moveWorkflowStep(req("workflow"), step: req("step"), to: position)
+            return try json(SlugAnd(slug: slug, value: workflow))
+
+        case "add_workflow_transition":
+            let (slug, workflow) = try store.addWorkflowTransition(req("workflow"), from: req("from"), to: req("to"), when: str("when"), verdict: str("verdict"))
+            return try json(SlugAnd(slug: slug, value: workflow))
+
+        case "remove_workflow_transition":
+            guard let index = int("index") else { throw MCPError.invalidParams("Parâmetro obrigatório: index") }
+            let (slug, workflow) = try store.removeWorkflowTransition(req("workflow"), from: req("from"), index: index)
+            return try json(SlugAnd(slug: slug, value: workflow))
+
+        case "workflow_flow":
+            return try store.workflowPlan(req("workflow"), input: str("input")).json()
+
+        case "workflow_run_start":
+            let (ref, run, action) = try store.startRun(req("workflow"), input: str("input"), from: str("from"))
+            let title = (try? store.loadWorkflow(run.workflow).title) ?? run.workflow
+            return try json(RunStarted(ref: ref, action: action, prompt: WorkflowOrchestration.orchestratorPrompt(ref: ref, title: title, input: run.input)))
+
+        case "workflow_run_next":
+            return try json(store.nextRunAction(req("run")))
+
+        case "workflow_run_step":
+            return try store.runStepPrompt(req("run"))
+
+        case "workflow_run_record":
+            return try json(store.recordRun(
+                req("run"), verdict: str("verdict"), summary: str("summary"), to: str("to"), noneHolds: args["none_holds"]?.boolValue ?? false
+            ))
+
+        case "workflow_run_ask":
+            guard let raw = args["questions"] else { throw MCPError.invalidParams("Parâmetro obrigatório: questions") }
+            let drafts: [WorkflowQuestionDraft]
+            do {
+                let data = try raw.stringValue.map { Data($0.utf8) } ?? JSONEncoder().encode(raw)
+                drafts = try JSONDecoder().decode([WorkflowQuestionDraft].self, from: data)
+            } catch {
+                throw MCPError.invalidParams("questions deve ser uma lista de {question, context, options: [{label, description}], multiple}.")
+            }
+            let added = try store.askRun(req("run"), questions: drafts)
+            return "Pergunta(s) gravada(s): \(added.map { String($0.number) }.joined(separator: ", ")). Termine a etapa com a última linha: PERGUNTA"
+
+        case "workflow_run_questions":
+            let run = try store.loadRun(store.resolveRunRef(req("run")))
+            return try json((args["open"]?.boolValue ?? false) ? run.openQuestions : run.questions)
+
+        case "workflow_run_answer":
+            guard let number = int("number") else { throw MCPError.invalidParams("Parâmetro obrigatório: number") }
+            return try json(store.answerRun(req("run"), number: number, answer: req("answer")))
+
+        case "workflow_run_list":
+            let status = str("status").flatMap(WorkflowRunStatus.init(rawValue:))
+            return try json(store.listRuns(workflow: str("workflow")).filter { status == nil || $0.run.status == status }.map {
+                RunRow(ref: $0.ref, workflow: $0.run.workflow, input: $0.run.input, status: $0.run.status, current: $0.run.current,
+                       steps: $0.run.history.count, openQuestions: $0.run.openQuestions.count, updatedAt: $0.run.updatedAt)
+            })
+
+        case "workflow_run_show":
+            return try json(store.loadRun(store.resolveRunRef(req("run"))))
+
+        case "workflow_run_stop":
+            return try json(store.stopRun(req("run"), reason: str("reason")))
 
         case "promote_idea":
             let topic = try store.promoteIdea(req("idea"))
@@ -643,6 +1087,15 @@ struct MCPHandler: Sendable {
         list += try store.listAgents().map {
             Resource(name: "Agente: \($0.agent.title)", uri: "vibedeck://agents/\($0.slug)", description: $0.agent.model, mimeType: "application/json")
         }
+        list += try store.listCommands().map {
+            Resource(name: "Comando: \($0.command.title)", uri: "vibedeck://commands/\($0.slug)", description: $0.command.summary, mimeType: "application/json")
+        }
+        list += try store.listSkills().map {
+            Resource(name: "Skill: \($0.skill.title)", uri: "vibedeck://skills/\($0.slug)", description: $0.skill.summary, mimeType: "application/json")
+        }
+        list += try store.listWorkflows().map {
+            Resource(name: "Workflow: \($0.workflow.title)", uri: "vibedeck://workflows/\($0.slug)", description: $0.workflow.summary, mimeType: "application/json")
+        }
         return list
     }
 
@@ -664,6 +1117,15 @@ struct MCPHandler: Sendable {
         }
         if let slug = uri.stripping("vibedeck://agents/") {
             return .text(try String(contentsOf: store.agentURL(slug), encoding: .utf8), uri: uri, mimeType: "application/json")
+        }
+        if let slug = uri.stripping("vibedeck://commands/") {
+            return .text(try String(contentsOf: store.commandURL(slug), encoding: .utf8), uri: uri, mimeType: "application/json")
+        }
+        if let slug = uri.stripping("vibedeck://skills/") {
+            return .text(try String(contentsOf: store.skillURL(slug), encoding: .utf8), uri: uri, mimeType: "application/json")
+        }
+        if let slug = uri.stripping("vibedeck://workflows/") {
+            return .text(try String(contentsOf: store.workflowURL(slug), encoding: .utf8), uri: uri, mimeType: "application/json")
         }
         throw MCPError.invalidParams("URI desconhecida: \(uri)")
     }
@@ -693,6 +1155,11 @@ struct TopicChecklist: Encodable {
         let text: String
         let details: String?
         let severity: RuleSeverity
+        /// "script": decided by running `test` in submit_rule_check; "manual": the agent answers it.
+        let check: String
+        let test: String?
+        /// The rule changed since its test was written: answer it manually and regenerate the test.
+        let staleTest: Bool?
     }
 
     init(slug: String, topic: RuleTopic) {
@@ -700,7 +1167,34 @@ struct TopicChecklist: Encodable {
         title = topic.title
         description = topic.description
         paths = topic.paths
-        rules = topic.rules.map { RuleRow(ruleId: $0.id.uuidString, text: $0.text, details: $0.details, severity: $0.severity) }
+        rules = topic.rules.map {
+            RuleRow(ruleId: $0.id.uuidString, text: $0.text, details: $0.details, severity: $0.severity,
+                    check: $0.testState == .script ? "script" : "manual", test: $0.scriptCommand,
+                    staleTest: $0.testState == .stale ? true : nil)
+        }
+    }
+}
+
+/// One script run, for `run_rule_tests` / `vibedeck rules test --json`.
+struct RuleTestRunRow: Encodable {
+    let topic: String
+    let ruleId: String
+    let text: String
+    let severity: RuleSeverity
+    let command: String
+    let verdict: RuleVerdict
+    let exitCode: Int32
+    let output: String
+
+    init(_ run: RuleTestRun) {
+        topic = run.topic
+        ruleId = run.rule.id.uuidString
+        text = run.rule.text
+        severity = run.rule.severity
+        command = run.command
+        verdict = run.outcome.verdict
+        exitCode = run.outcome.exitCode
+        output = run.outcome.output
     }
 }
 
@@ -749,6 +1243,57 @@ private struct AgentRow: Encodable {
     let model: String?
     let tags: [String]
     let nextSteps: [NextStep]
+}
+
+private struct CommandRow: Encodable {
+    let slug: String
+    let title: String
+    let argumentHint: String?
+    let model: String?
+    let tags: [String]
+    let nextSteps: [NextStep]
+}
+
+private struct SkillRow: Encodable {
+    let slug: String
+    let title: String
+    let summary: String?
+    let model: String?
+    let tags: [String]
+    let nextSteps: [NextStep]
+}
+
+private struct WorkflowRow: Encodable {
+    let slug: String
+    let title: String
+    let summary: String?
+    let input: String?
+    let tags: [String]
+    let steps: [String]
+}
+
+private struct WorkflowStepAdded: Encodable {
+    let slug: String
+    let step: String
+    let workflow: Workflow
+}
+
+private struct RunStarted: Encodable {
+    let ref: String
+    let action: WorkflowRunAction
+    /// Script of the orchestrator: follow it.
+    let prompt: String
+}
+
+private struct RunRow: Encodable {
+    let ref: String
+    let workflow: String
+    let input: String?
+    let status: WorkflowRunStatus
+    let current: String?
+    let steps: Int
+    let openQuestions: Int
+    let updatedAt: Date
 }
 
 private struct SlugAnd<T: Encodable>: Encodable {

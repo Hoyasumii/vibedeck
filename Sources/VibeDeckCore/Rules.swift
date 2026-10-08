@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 // MARK: - Rules
@@ -21,6 +22,8 @@ public struct Rule: Codable, Equatable, Hashable, Identifiable, Sendable {
     public var severity: RuleSeverity
     public var author: Author
     public var createdAt: Date
+    /// How the rule is verified: a script (decided by its exit code) or by the agent (`manual`).
+    public var test: RuleTest?
 
     public init(text: String, details: String? = nil, severity: RuleSeverity = .must, author: Author = .human, now: Date = .now) {
         self.id = UUID()
@@ -31,7 +34,7 @@ public struct Rule: Codable, Equatable, Hashable, Identifiable, Sendable {
         self.createdAt = now
     }
 
-    enum CodingKeys: String, CodingKey { case id, text, details, severity, author, createdAt }
+    enum CodingKeys: String, CodingKey { case id, text, details, severity, author, createdAt, test }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -41,7 +44,89 @@ public struct Rule: Codable, Equatable, Hashable, Identifiable, Sendable {
         severity = try c.decodeIfPresent(RuleSeverity.self, forKey: .severity) ?? .must
         author = try c.decodeIfPresent(Author.self, forKey: .author) ?? .human
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? .now
+        test = try c.decodeIfPresent(RuleTest.self, forKey: .test)
     }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(text, forKey: .text)
+        try c.encodeIfPresent(details, forKey: .details)
+        try c.encode(severity, forKey: .severity)
+        try c.encode(author, forKey: .author)
+        try c.encode(createdAt, forKey: .createdAt)
+        try c.encodeIfPresent(test, forKey: .test)
+    }
+
+    /// Fingerprint of what the rule asks (`text` + `details`): a test generated for another fingerprint is stale.
+    public var contentHash: String {
+        let digest = SHA256.hash(data: Data((text + "\n" + (details ?? "")).utf8))
+        return digest.prefix(8).map { String(format: "%02x", $0) }.joined()
+    }
+
+    public var testState: RuleTestState {
+        guard let test else { return .none }
+        if test.ruleHash != contentHash { return .stale }
+        return test.mode == .script && test.command?.trimmed.nonEmpty != nil ? .script : .manual
+    }
+
+    /// The command to run when the rule is decided by a script (nil when manual, untested or stale).
+    public var scriptCommand: String? {
+        testState == .script ? test?.command?.trimmed.nonEmpty : nil
+    }
+}
+
+// MARK: - Rule tests
+
+public enum RuleTestMode: String, Codable, CaseIterable, Sendable {
+    case script, manual
+}
+
+/// A rule translated into a check: `script` runs `command` (exit 0 = pass, 77 = n/a, else fail);
+/// `manual` means the rule isn't objectively testable and stays with the agent.
+public struct RuleTest: Codable, Equatable, Hashable, Sendable {
+    public var mode: RuleTestMode
+    public var command: String?
+    public var reason: String?
+    /// `Rule.contentHash` when the test was written.
+    public var ruleHash: String
+    public var generatedAt: Date
+
+    public init(mode: RuleTestMode, command: String? = nil, reason: String? = nil, ruleHash: String, now: Date = .now) {
+        self.mode = mode
+        self.command = command
+        self.reason = reason
+        self.ruleHash = ruleHash
+        self.generatedAt = now
+    }
+
+    enum CodingKeys: String, CodingKey { case mode, command, reason, ruleHash, generatedAt }
+
+    /// Hand-written tests: `mode` follows `command`; without `ruleHash` the test reads as stale until regenerated.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        command = try c.decodeIfPresent(String.self, forKey: .command)
+        mode = try c.decodeIfPresent(RuleTestMode.self, forKey: .mode) ?? (command == nil ? .manual : .script)
+        reason = try c.decodeIfPresent(String.self, forKey: .reason)
+        ruleHash = try c.decodeIfPresent(String.self, forKey: .ruleHash) ?? ""
+        generatedAt = try c.decodeIfPresent(Date.self, forKey: .generatedAt) ?? .now
+    }
+}
+
+public enum RuleTestState: String, Sendable {
+    case none, script, manual, stale
+
+    public var label: String {
+        switch self {
+        case .none: "Sem teste"
+        case .script: "Script"
+        case .manual: "Manual"
+        case .stale: "Desatualizado"
+        }
+    }
+
+    /// True when the agent has to answer the rule in a check.
+    public var needsAgent: Bool { self != .script }
 }
 
 /// A file per topic in `.vibedeck/rules/`. Topics without `paths` apply to every task;
@@ -204,17 +289,47 @@ public enum RuleVerdict: String, Codable, CaseIterable, Sendable {
     case pass, fail, na
 }
 
+public enum RuleResultSource: String, Codable, Sendable {
+    case agent, script
+}
+
 public struct RuleResult: Codable, Equatable, Hashable, Sendable {
     public var topic: String
     public var ruleId: UUID
     public var verdict: RuleVerdict
     public var note: String?
+    public var source: RuleResultSource
+    public var exitCode: Int32?
 
-    public init(topic: String, ruleId: UUID, verdict: RuleVerdict, note: String? = nil) {
+    public init(topic: String, ruleId: UUID, verdict: RuleVerdict, note: String? = nil, source: RuleResultSource = .agent, exitCode: Int32? = nil) {
         self.topic = topic
         self.ruleId = ruleId
         self.verdict = verdict
         self.note = note
+        self.source = source
+        self.exitCode = exitCode
+    }
+
+    enum CodingKeys: String, CodingKey { case topic, ruleId, verdict, note, source, exitCode }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        topic = try c.decode(String.self, forKey: .topic)
+        ruleId = try c.decode(UUID.self, forKey: .ruleId)
+        verdict = try c.decode(RuleVerdict.self, forKey: .verdict)
+        note = try c.decodeIfPresent(String.self, forKey: .note)
+        source = try c.decodeIfPresent(RuleResultSource.self, forKey: .source) ?? .agent
+        exitCode = try c.decodeIfPresent(Int32.self, forKey: .exitCode)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(topic, forKey: .topic)
+        try c.encode(ruleId, forKey: .ruleId)
+        try c.encode(verdict, forKey: .verdict)
+        try c.encodeIfPresent(note, forKey: .note)
+        if source != .agent { try c.encode(source, forKey: .source) }
+        try c.encodeIfPresent(exitCode, forKey: .exitCode)
     }
 }
 

@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vibedeck-schema.alanreisanjo.workers.dev/v1/command.schema.json",
+  "title": "VibeDeck command",
+  "description": "A reusable prompt (like a Claude Code slash command, with $ARGUMENTS) and the next steps that chain it into a flow. Lives at <repo>/.vibedeck/commands/<slug>.json.",
+  "type": "object",
+  "required": ["id", "title", "prompt", "author", "createdAt", "updatedAt"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": { "type": "string", "format": "uuid" },
+    "title": { "type": "string", "minLength": 1, "description": "Command name." },
+    "summary": { "type": "string", "description": "What the command does." },
+    "argumentHint": { "type": "string", "description": "What goes in $ARGUMENTS (e.g. <message>)." },
+    "model": { "type": "string", "description": "Model alias or id (e.g. sonnet, opus)." },
+    "tools": { "type": "array", "items": { "type": "string" }, "description": "Allowed tools." },
+    "prompt": { "type": "string", "description": "Prompt (Markdown); $ARGUMENTS is replaced by the invocation arguments." },
+    "nextSteps": {
+      "type": "array",
+      "description": "Flow: what acts on this command's result. `ref` is a slug of a VibeDeck agent/command/skill, never the AI provider's.",
+      "items": {
+        "type": "object",
+        "required": ["kind", "ref"],
+        "properties": {
+          "kind": { "enum": ["agent", "command", "skill"] },
+          "ref": { "type": "string", "minLength": 1 },
+          "note": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "author": { "enum": ["human", "ai"] },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}

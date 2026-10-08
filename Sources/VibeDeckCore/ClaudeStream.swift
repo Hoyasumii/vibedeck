@@ -55,6 +55,8 @@ public enum ClaudePermissionMode: String, CaseIterable, Sendable {
     case plan
     /// File edits go through without asking; commands still ask.
     case acceptEdits
+    /// Claude Code decides on its own what is safe to run; risky actions still ask.
+    case auto
 }
 
 /// Model chosen in the panel, passed as `--model`. `.automatic` leaves Claude Code's own setting.
@@ -319,12 +321,12 @@ public enum ClaudeInput {
         return allow(request, input: input)
     }
 
-    /// Approves the plan of an ExitPlanMode request. With `acceptEdits`, the edits that carry it out
-    /// don't ask again (Claude Code's "approve and auto-accept edits").
-    public static func approvePlan(_ request: ClaudePermissionRequest, acceptEdits: Bool) -> Data {
+    /// Approves the plan of an ExitPlanMode request. With a `mode` (e.g. `.acceptEdits` or `.auto`), the
+    /// session switches to it to carry out the plan; otherwise Claude Code returns to its default mode.
+    public static func approvePlan(_ request: ClaudePermissionRequest, then mode: ClaudePermissionMode?) -> Data {
         var response: [String: JSONValue] = ["behavior": "allow", "updatedInput": .object(request.input)]
-        if acceptEdits {
-            response["updatedPermissions"] = [["type": "setMode", "mode": "acceptEdits", "destination": "session"]]
+        if let mode {
+            response["updatedPermissions"] = [["type": "setMode", "mode": .string(mode.rawValue), "destination": "session"]]
         }
         return controlResponse(request.requestId, .object(response))
     }

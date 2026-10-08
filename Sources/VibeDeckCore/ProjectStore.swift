@@ -10,10 +10,16 @@ public enum VibeDeckError: LocalizedError, Equatable {
     case topicNotFound(String)
     case ideaNotFound(String)
     case agentNotFound(String)
+    case commandNotFound(String)
+    case skillNotFound(String)
+    case workflowNotFound(String)
+    case runNotFound(String)
+    case invalidWorkflow(String)
     case invalidNextStep(String)
     case ruleNotFound(String)
     case ambiguousRule(String)
     case incompleteCheck([String])
+    case invalidRuleTest(String)
     case rulesNotVerified([String])
     case invalidName
     case invalidStatusLine
@@ -22,6 +28,9 @@ public enum VibeDeckError: LocalizedError, Equatable {
     case cloudDirty(CloudSync)
     case claudeNotInstalled
     case cloudSessionFailed(String)
+    case discoverFailed(String)
+    case discoverInvalidAnswer
+    case discoverTimedOut
 
     public var errorDescription: String? {
         switch self {
@@ -34,11 +43,17 @@ public enum VibeDeckError: LocalizedError, Equatable {
         case .topicNotFound(let s): "Tópico de regras não encontrado: \(s)"
         case .ideaNotFound(let s): "Ideia não encontrada: \(s)"
         case .agentNotFound(let s): "Agente não encontrado: \(s)"
+        case .commandNotFound(let s): "Comando não encontrado: \(s)"
+        case .skillNotFound(let s): "Skill não encontrada: \(s)"
+        case .workflowNotFound(let s): "Workflow não encontrado: \(s)"
+        case .runNotFound(let s): "Execução de workflow não encontrada: \(s)"
+        case .invalidWorkflow(let s): "Workflow inválido: \(s)"
         case .invalidNextStep(let s): "Próximo passo inválido: \(s)"
         case .ruleNotFound(let s): "Regra não encontrada entre as aplicáveis: \(s)"
         case .ambiguousRule(let s): "Prefixo de id de regra ambíguo: \(s)"
         case .incompleteCheck(let missing):
-            "Check incompleto: responda todas as regras aplicáveis (pass, fail ou na). Faltando:\n" + missing.map { "- \($0)" }.joined(separator: "\n")
+            "Check incompleto: responda todas as regras aplicáveis que não são decididas por script (pass, fail ou na). Faltando:\n" + missing.map { "- \($0)" }.joined(separator: "\n")
+        case .invalidRuleTest(let s): "Teste de regra inválido: \(s)"
         case .rulesNotVerified(let problems):
             "O item não pode ser concluído sem passar pelas regras:\n" + problems.map { "- \($0)" }.joined(separator: "\n")
                 + "\nUse rules_for / submit_rule_check (ou `vibedeck rules check`) com o id do item."
@@ -49,6 +64,10 @@ public enum VibeDeckError: LocalizedError, Equatable {
         case .cloudDirty(let sync): sync.message + " Confirme (--allow-dirty / allow_dirty) para criar mesmo assim."
         case .claudeNotInstalled: "O Claude Code (`claude`) não foi encontrado. Instale-o para usar a nuvem."
         case .cloudSessionFailed(let output): "O Claude Code não criou a sessão na nuvem:\n\(output)"
+        case .discoverFailed(let output):
+            "O Claude Code não conseguiu descobrir; nada foi alterado." + (output.isEmpty ? "" : "\n\(output)")
+        case .discoverInvalidAnswer: "O Claude Code respondeu num formato inesperado; nada foi alterado. Tente de novo."
+        case .discoverTimedOut: "O Descubra demorou demais e foi interrompido; nada foi alterado. Tente de novo."
         }
     }
 }
@@ -72,7 +91,14 @@ public struct ProjectStore: Sendable {
     public var rulesDir: URL { dataDir.appending(path: "rules", directoryHint: .isDirectory) }
     public var ideasDir: URL { dataDir.appending(path: "ideas", directoryHint: .isDirectory) }
     public var agentDefsDir: URL { dataDir.appending(path: "agents", directoryHint: .isDirectory) }
+    public var commandsDir: URL { dataDir.appending(path: "commands", directoryHint: .isDirectory) }
+    public var skillsDir: URL { dataDir.appending(path: "skills", directoryHint: .isDirectory) }
+    public var workflowsDir: URL { dataDir.appending(path: "workflows", directoryHint: .isDirectory) }
     public var checksDir: URL { dataDir.appending(path: "checks", directoryHint: .isDirectory) }
+    /// Scripts generated from rules (`tests/<topic>/<rule>.sh`); created on demand by whoever writes them.
+    public var testsDir: URL { dataDir.appending(path: "tests", directoryHint: .isDirectory) }
+    public var runsDir: URL { dataDir.appending(path: "runs", directoryHint: .isDirectory) }
+    public var attachmentsDir: URL { dataDir.appending(path: "attachments", directoryHint: .isDirectory) }
     public var agentsURL: URL { dataDir.appending(path: "AGENTS.md") }
 
     // MARK: Detection / init
@@ -111,7 +137,7 @@ public struct ProjectStore: Sendable {
 
     public func ensureDirectories() throws {
         let fm = FileManager.default
-        for dir in [docsDir, reviewsDir, rulesDir, ideasDir, agentDefsDir, checksDir] {
+        for dir in [docsDir, reviewsDir, rulesDir, ideasDir, agentDefsDir, commandsDir, skillsDir, workflowsDir, checksDir, attachmentsDir] {
             try fm.createDirectory(at: dir, withIntermediateDirectories: true)
         }
     }
@@ -191,6 +217,40 @@ public struct ProjectStore: Sendable {
 
     public func deleteDoc(_ slug: String) throws {
         try FileManager.default.removeItem(at: docURL(slug))
+    }
+
+    // MARK: Attachments
+
+    /// Copies `url` into `.vibedeck/attachments/` as `<owner>-<name>.<ext>` (suffixed when taken).
+    /// Returns the markdown link to insert, relative to `docs/` and `ideas/` (`../attachments/…`).
+    public func importAttachment(from url: URL, owner: String) throws -> String {
+        let dest = try attachmentDestination(name: url.lastPathComponent, owner: owner)
+        try AtomicFile.write(Data(contentsOf: url), to: dest)
+        return Self.attachmentMarkdown(path: "../attachments/" + dest.lastPathComponent, name: url.lastPathComponent)
+    }
+
+    /// Saves `data` (e.g. a pasted image) as an attachment named after `name`. Returns the markdown link.
+    public func importAttachment(data: Data, name: String, owner: String) throws -> String {
+        let dest = try attachmentDestination(name: name, owner: owner)
+        try AtomicFile.write(data, to: dest)
+        return Self.attachmentMarkdown(path: "../attachments/" + dest.lastPathComponent, name: name)
+    }
+
+    private func attachmentDestination(name: String, owner: String) throws -> URL {
+        try ensureDirectories()
+        let file = URL(fileURLWithPath: name)
+        let ext = file.pathExtension.isEmpty ? "" : Slug.make(file.pathExtension)
+        let slug = uniqueSlug(Slug.make(owner) + "-" + Slug.make(file.deletingPathExtension().lastPathComponent), in: attachmentsDir, ext: ext)
+        return attachmentsDir.appending(path: ext.isEmpty ? slug : "\(slug).\(ext)")
+    }
+
+    static let imageExtensions: Set<String> = ["png", "jpg", "jpeg", "gif", "webp", "heic", "svg", "tif", "tiff", "bmp"]
+
+    /// `![name](path)` for images (rendered in the preview), `[name](path)` for anything else.
+    public static func attachmentMarkdown(path: String, name: String) -> String {
+        let label = name.replacingOccurrences(of: "[", with: "(").replacingOccurrences(of: "]", with: ")")
+        let isImage = imageExtensions.contains(URL(fileURLWithPath: path).pathExtension.lowercased())
+        return (isImage ? "!" : "") + "[\(label)](\(path))"
     }
 
     // MARK: Reviews
@@ -353,8 +413,36 @@ public struct ProjectStore: Sendable {
 
     public func deleteRule(_ ref: String) throws {
         var (slug, topic, index) = try findRule(ref)
-        topic.rules.remove(at: index)
+        let removed = topic.rules.remove(at: index)
         try saveTopic(topic, slug: slug)
+        removeGeneratedScript(of: removed)
+    }
+
+    /// Records how a rule is verified: a script `command` (run from the project root) or `manual`.
+    @discardableResult
+    public func setRuleTest(_ ref: String, mode: RuleTestMode, command: String? = nil, reason: String? = nil) throws -> Rule {
+        let command = command?.trimmed.nonEmpty
+        if mode == .script, command == nil { throw VibeDeckError.invalidRuleTest("Informe o comando do script.") }
+        return try updateRule(ref) { rule in
+            rule.test = RuleTest(mode: mode, command: mode == .script ? command : nil, reason: reason?.trimmed.nonEmpty, ruleHash: rule.contentHash)
+        }
+    }
+
+    /// Forgets a rule's test (the generated script, if any, is deleted too).
+    @discardableResult
+    public func clearRuleTest(_ ref: String) throws -> Rule {
+        var previous: Rule?
+        let rule = try updateRule(ref) { previous = $0; $0.test = nil }
+        if let previous { removeGeneratedScript(of: previous) }
+        return rule
+    }
+
+    /// Deletes the rule's script when it lives in `.vibedeck/tests/` (hand-pointed commands elsewhere are left alone).
+    private func removeGeneratedScript(of rule: Rule) {
+        guard let command = rule.test?.command?.trimmed.nonEmpty, !command.contains(" ") else { return }
+        let url = URL(fileURLWithPath: command, relativeTo: root).standardizedFileURL
+        guard url.path.hasPrefix(testsDir.standardizedFileURL.path) else { return }
+        try? FileManager.default.removeItem(at: url)
     }
 
     // MARK: Agents
@@ -404,22 +492,38 @@ public struct ProjectStore: Sendable {
         try FileManager.default.removeItem(at: agentURL(slug))
     }
 
-    /// Appends a next step to an agent's flow. `agent` steps must point to an existing, different VibeDeck agent;
-    /// `ref` accepts the same references as agents (slug, UUID, prefix, title) and is stored as the slug.
+    /// Appends a next step to an agent's flow. The target must be an existing VibeDeck agent or command (never the
+    /// agent itself); it accepts the usual references (slug, UUID, prefix, title) and is stored as the slug.
     @discardableResult
     public func addNextStep(to ref: String, kind: NextStepKind = .agent, target: String, note: String? = nil) throws -> (slug: String, agent: Agent) {
         let from = try resolveAgentSlug(ref)
-        var stored = target
-        switch kind {
-        case .agent:
-            stored = try resolveAgentSlug(target)
-            if stored == from { throw VibeDeckError.invalidNextStep("um agente não pode ser o próximo passo de si mesmo.") }
-        case .command:
-            guard target.trimmed.nonEmpty != nil else { throw VibeDeckError.invalidNextStep("comando vazio.") }
-        }
+        let stored = try resolveNextStepTarget(kind: kind, target: target, excluding: (.agent, from))
         return try updateAgent(from) { agent in
             guard !agent.nextSteps.contains(where: { $0.kind == kind && $0.ref == stored }) else { return }
             agent.nextSteps.append(NextStep(kind: kind, ref: stored, note: note?.trimmed.nonEmpty))
+        }
+    }
+
+    /// Resolves a next-step target to the slug of a VibeDeck agent/command/skill, rejecting the step's own owner.
+    private func resolveNextStepTarget(kind: NextStepKind, target: String, excluding owner: (kind: NextStepKind, slug: String)) throws -> String {
+        let stored = try resolveStepTarget(kind: kind, target: target)
+        if kind == owner.kind, stored == owner.slug {
+            let noun = switch kind {
+            case .agent: "um agente"
+            case .command: "um comando"
+            case .skill: "uma skill"
+            }
+            throw VibeDeckError.invalidNextStep("\(noun) não pode ser o próximo passo de si mesmo.")
+        }
+        return stored
+    }
+
+    /// Slug of an existing VibeDeck agent, command or skill (usual references: slug, UUID, prefix, title).
+    private func resolveStepTarget(kind: NextStepKind, target: String) throws -> String {
+        switch kind {
+        case .agent: try resolveAgentSlug(target)
+        case .command: try resolveCommandSlug(target)
+        case .skill: try resolveSkillSlug(target)
         }
     }
 
@@ -455,6 +559,502 @@ public struct ProjectStore: Sendable {
             }
         }
         return imported
+    }
+
+    // MARK: Commands
+
+    public func commandURL(_ slug: String) -> URL { commandsDir.appending(path: "\(slug).json") }
+
+    public func listCommands() throws -> [(slug: String, command: Command)] {
+        try listRecords(Command.self, in: commandsDir).map { ($0.slug, $0.value) }
+    }
+
+    public func resolveCommandSlug(_ ref: String) throws -> String {
+        try resolveSlug(ref, Command.self, in: commandsDir) { .commandNotFound($0) }
+    }
+
+    public func loadCommand(_ slug: String) throws -> Command {
+        try loadRecord(slug, in: commandsDir) { .commandNotFound($0) }
+    }
+
+    public func saveCommand(_ command: Command, slug: String) throws {
+        try ensureDirectories()
+        try AtomicFile.write(VDJSON.encode(command), to: commandURL(slug))
+    }
+
+    @discardableResult
+    public func createCommand(
+        title: String, summary: String? = nil, argumentHint: String? = nil, model: String? = nil, tools: [String] = [],
+        prompt: String = "", tags: [String] = [], author: Author = .human
+    ) throws -> (slug: String, command: Command) {
+        guard let title = title.trimmed.nonEmpty else { throw VibeDeckError.invalidName }
+        let slug = uniqueSlug(Slug.make(title), in: commandsDir, ext: "json")
+        let command = Command(title: title, summary: summary, argumentHint: argumentHint, model: model, tools: tools, prompt: prompt, tags: tags, author: author)
+        try saveCommand(command, slug: slug)
+        return (slug, command)
+    }
+
+    @discardableResult
+    public func updateCommand(_ ref: String, _ change: (inout Command) throws -> Void) throws -> (slug: String, command: Command) {
+        let slug = try resolveCommandSlug(ref)
+        var command = try loadCommand(slug)
+        try change(&command)
+        command.updatedAt = .now
+        try saveCommand(command, slug: slug)
+        return (slug, command)
+    }
+
+    public func deleteCommand(_ slug: String) throws {
+        try FileManager.default.removeItem(at: commandURL(slug))
+    }
+
+    /// Appends a next step to a command's flow (same rules as `addNextStep(to:)` for agents).
+    @discardableResult
+    public func addCommandNextStep(to ref: String, kind: NextStepKind = .agent, target: String, note: String? = nil) throws -> (slug: String, command: Command) {
+        let from = try resolveCommandSlug(ref)
+        let stored = try resolveNextStepTarget(kind: kind, target: target, excluding: (.command, from))
+        return try updateCommand(from) { command in
+            guard !command.nextSteps.contains(where: { $0.kind == kind && $0.ref == stored }) else { return }
+            command.nextSteps.append(NextStep(kind: kind, ref: stored, note: note?.trimmed.nonEmpty))
+        }
+    }
+
+    /// Imports Claude Code slash commands (`<project>/.claude/commands` and `~/.claude/commands`, recursively) as
+    /// VibeDeck commands. Subfolders are namespaces (`git/commit.md` → `git:commit`). Existing commands (same slug)
+    /// are skipped unless `overwrite`. Returns the slugs created/updated.
+    @discardableResult
+    public func importClaudeCommands(from dirs: [URL]? = nil, overwrite: Bool = false, author: Author = .human) throws -> [String] {
+        let fm = FileManager.default
+        let sources = dirs ?? [
+            root.appending(path: ".claude/commands", directoryHint: .isDirectory),
+            fm.homeDirectoryForCurrentUser.appending(path: ".claude/commands", directoryHint: .isDirectory),
+        ]
+        var imported: [String] = []
+        var seen = Set<String>()
+        for dir in sources {
+            guard let paths = try? fm.subpathsOfDirectory(atPath: dir.path) else { continue }
+            let files = paths.filter { $0.lowercased().hasSuffix(".md") && !$0.split(separator: "/").contains { $0.hasPrefix(".") } }
+            for path in files.sorted() {
+                guard let text = try? String(contentsOf: dir.appending(path: path), encoding: .utf8) else { continue }
+                let name = String(path.dropLast(3)).split(separator: "/").joined(separator: ":")
+                let parsed = ClaudeCommandFile.parse(text, fallbackName: name)
+                let slug = Slug.make(parsed.name)
+                guard seen.insert(slug).inserted else { continue }  // project dir wins over user dir
+                if fm.fileExists(atPath: commandURL(slug).path) {
+                    guard overwrite else { continue }
+                    try updateCommand(slug) {
+                        $0.summary = parsed.description; $0.argumentHint = parsed.argumentHint; $0.model = parsed.model
+                        $0.tools = parsed.tools; $0.prompt = parsed.prompt
+                    }
+                } else {
+                    var command = Command(
+                        title: parsed.name, summary: parsed.description, argumentHint: parsed.argumentHint, model: parsed.model,
+                        tools: parsed.tools, prompt: parsed.prompt, author: author)
+                    command.tags = ["claude-code"]
+                    try saveCommand(command, slug: slug)
+                }
+                imported.append(slug)
+            }
+        }
+        return imported
+    }
+
+    // MARK: Skills
+
+    public func skillURL(_ slug: String) -> URL { skillsDir.appending(path: "\(slug).json") }
+
+    public func listSkills() throws -> [(slug: String, skill: Skill)] {
+        try listRecords(Skill.self, in: skillsDir).map { ($0.slug, $0.value) }
+    }
+
+    public func resolveSkillSlug(_ ref: String) throws -> String {
+        try resolveSlug(ref, Skill.self, in: skillsDir) { .skillNotFound($0) }
+    }
+
+    public func loadSkill(_ slug: String) throws -> Skill {
+        try loadRecord(slug, in: skillsDir) { .skillNotFound($0) }
+    }
+
+    public func saveSkill(_ skill: Skill, slug: String) throws {
+        try ensureDirectories()
+        try AtomicFile.write(VDJSON.encode(skill), to: skillURL(slug))
+    }
+
+    @discardableResult
+    public func createSkill(
+        title: String, summary: String? = nil, model: String? = nil, tools: [String] = [], prompt: String = "",
+        tags: [String] = [], author: Author = .human
+    ) throws -> (slug: String, skill: Skill) {
+        guard let title = title.trimmed.nonEmpty else { throw VibeDeckError.invalidName }
+        let slug = uniqueSlug(Slug.make(title), in: skillsDir, ext: "json")
+        let skill = Skill(title: title, summary: summary, model: model, tools: tools, prompt: prompt, tags: tags, author: author)
+        try saveSkill(skill, slug: slug)
+        return (slug, skill)
+    }
+
+    @discardableResult
+    public func updateSkill(_ ref: String, _ change: (inout Skill) throws -> Void) throws -> (slug: String, skill: Skill) {
+        let slug = try resolveSkillSlug(ref)
+        var skill = try loadSkill(slug)
+        try change(&skill)
+        skill.updatedAt = .now
+        try saveSkill(skill, slug: slug)
+        return (slug, skill)
+    }
+
+    public func deleteSkill(_ slug: String) throws {
+        try FileManager.default.removeItem(at: skillURL(slug))
+    }
+
+    /// Appends a next step to a skill's flow (same rules as `addNextStep(to:)` for agents).
+    @discardableResult
+    public func addSkillNextStep(to ref: String, kind: NextStepKind = .agent, target: String, note: String? = nil) throws -> (slug: String, skill: Skill) {
+        let from = try resolveSkillSlug(ref)
+        let stored = try resolveNextStepTarget(kind: kind, target: target, excluding: (.skill, from))
+        return try updateSkill(from) { skill in
+            guard !skill.nextSteps.contains(where: { $0.kind == kind && $0.ref == stored }) else { return }
+            skill.nextSteps.append(NextStep(kind: kind, ref: stored, note: note?.trimmed.nonEmpty))
+        }
+    }
+
+    /// Imports Claude Code skills (`<project>/.claude/skills/<name>/SKILL.md` and `~/.claude/skills/<name>/SKILL.md`)
+    /// as VibeDeck skills. Only `SKILL.md` is read; supporting files stay where they are. Existing skills (same slug)
+    /// are skipped unless `overwrite`. Returns the slugs created/updated.
+    @discardableResult
+    public func importClaudeSkills(from dirs: [URL]? = nil, overwrite: Bool = false, author: Author = .human) throws -> [String] {
+        let fm = FileManager.default
+        let sources = dirs ?? [
+            root.appending(path: ".claude/skills", directoryHint: .isDirectory),
+            fm.homeDirectoryForCurrentUser.appending(path: ".claude/skills", directoryHint: .isDirectory),
+        ]
+        var imported: [String] = []
+        var seen = Set<String>()
+        for dir in sources {
+            guard let folders = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]) else { continue }
+            for folder in folders.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
+                guard let text = try? String(contentsOf: folder.appending(path: "SKILL.md"), encoding: .utf8) else { continue }
+                let parsed = ClaudeSkillFile.parse(text, fallbackName: folder.lastPathComponent)
+                let slug = Slug.make(parsed.name)
+                guard seen.insert(slug).inserted else { continue }  // project dir wins over user dir
+                if fm.fileExists(atPath: skillURL(slug).path) {
+                    guard overwrite else { continue }
+                    try updateSkill(slug) {
+                        $0.summary = parsed.description; $0.model = parsed.model; $0.tools = parsed.tools; $0.prompt = parsed.prompt
+                    }
+                } else {
+                    var skill = Skill(title: parsed.name, summary: parsed.description, model: parsed.model, tools: parsed.tools, prompt: parsed.prompt, author: author)
+                    skill.tags = ["claude-code"]
+                    try saveSkill(skill, slug: slug)
+                }
+                imported.append(slug)
+            }
+        }
+        return imported
+    }
+
+
+    // MARK: Workflows
+
+    public func workflowURL(_ slug: String) -> URL { workflowsDir.appending(path: "\(slug).json") }
+
+    public func listWorkflows() throws -> [(slug: String, workflow: Workflow)] {
+        try listRecords(Workflow.self, in: workflowsDir).map { ($0.slug, $0.value) }
+    }
+
+    public func resolveWorkflowSlug(_ ref: String) throws -> String {
+        try resolveSlug(ref, Workflow.self, in: workflowsDir) { .workflowNotFound($0) }
+    }
+
+    public func loadWorkflow(_ slug: String) throws -> Workflow {
+        try loadRecord(slug, in: workflowsDir) { .workflowNotFound($0) }
+    }
+
+    public func saveWorkflow(_ workflow: Workflow, slug: String) throws {
+        try ensureDirectories()
+        try AtomicFile.write(VDJSON.encode(workflow), to: workflowURL(slug))
+    }
+
+    @discardableResult
+    public func createWorkflow(
+        title: String, summary: String? = nil, input: String? = nil, maxSteps: Int? = nil, tags: [String] = [],
+        author: Author = .human
+    ) throws -> (slug: String, workflow: Workflow) {
+        guard let title = title.trimmed.nonEmpty else { throw VibeDeckError.invalidName }
+        let slug = uniqueSlug(Slug.make(title), in: workflowsDir, ext: "json")
+        let workflow = Workflow(title: title, summary: summary, input: input, maxSteps: maxSteps, tags: tags, author: author)
+        try saveWorkflow(workflow, slug: slug)
+        return (slug, workflow)
+    }
+
+    @discardableResult
+    public func updateWorkflow(_ ref: String, _ change: (inout Workflow) throws -> Void) throws -> (slug: String, workflow: Workflow) {
+        let slug = try resolveWorkflowSlug(ref)
+        var workflow = try loadWorkflow(slug)
+        try change(&workflow)
+        workflow.updatedAt = .now
+        try saveWorkflow(workflow, slug: slug)
+        return (slug, workflow)
+    }
+
+    public func deleteWorkflow(_ slug: String) throws {
+        try FileManager.default.removeItem(at: workflowURL(slug))
+    }
+
+    /// Appends a step running an existing VibeDeck agent/command/skill (the same one may appear more than once).
+    /// Returns the new step's id, unique inside the workflow.
+    @discardableResult
+    public func addWorkflowStep(
+        to ref: String, kind: NextStepKind = .agent, target: String, note: String? = nil
+    ) throws -> (slug: String, workflow: Workflow, step: String) {
+        let stored = try resolveStepTarget(kind: kind, target: target)
+        var id = ""
+        let (slug, workflow) = try updateWorkflow(ref) { workflow in
+            id = workflow.newStepId(stored)
+            workflow.steps.append(WorkflowStep(id: id, kind: kind, ref: stored, note: note?.trimmed.nonEmpty))
+        }
+        return (slug, workflow, id)
+    }
+
+    /// Removes a step (by id or 1-based position) and the transitions pointing to it.
+    @discardableResult
+    public func removeWorkflowStep(_ ref: String, step: String) throws -> (slug: String, workflow: Workflow) {
+        try updateWorkflow(ref) { workflow in
+            workflow.removeStep(at: try stepIndex(step, in: workflow))
+        }
+    }
+
+    /// Moves a step to a 1-based `position` (position 1 makes it the start).
+    @discardableResult
+    public func moveWorkflowStep(_ ref: String, step: String, to position: Int) throws -> (slug: String, workflow: Workflow) {
+        try updateWorkflow(ref) { workflow in
+            let from = try stepIndex(step, in: workflow)
+            let moved = workflow.steps.remove(at: from)
+            workflow.steps.insert(moved, at: min(max(position - 1, 0), workflow.steps.count))
+        }
+    }
+
+    /// Adds a transition `from` → `to` (both steps of the workflow; going back is allowed). `verdict` matches the
+    /// exact last line of the step's result; `when` is a natural-language condition. With neither it is the fallback
+    /// ("senão"); only one per step, and it stays last because the first matching transition wins.
+    @discardableResult
+    public func addWorkflowTransition(
+        _ ref: String, from: String, to: String, when: String? = nil, verdict: String? = nil
+    ) throws -> (slug: String, workflow: Workflow) {
+        try updateWorkflow(ref) { workflow in
+            let source = try stepIndex(from, in: workflow)
+            let target = workflow.steps[try stepIndex(to, in: workflow)].id
+            let transition = WorkflowTransition(verdict: verdict?.trimmed.nonEmpty, when: when?.trimmed.nonEmpty, to: target)
+            if transition.isFallback, workflow.steps[source].transitions.contains(where: { $0.isFallback && $0.to != target }) {
+                throw VibeDeckError.invalidWorkflow("a etapa \(workflow.steps[source].id) já tem uma transição sem condição (senão).")
+            }
+            workflow.addTransition(transition, toStepAt: source)
+        }
+    }
+
+    /// Sets (or clears, with nil) the most runs of a step per execution.
+    @discardableResult
+    public func setWorkflowStepMaxVisits(_ ref: String, step: String, maxVisits: Int?) throws -> (slug: String, workflow: Workflow) {
+        try updateWorkflow(ref) { workflow in
+            workflow.steps[try stepIndex(step, in: workflow)].maxVisits = maxVisits.flatMap { $0 > 0 ? $0 : nil }
+        }
+    }
+
+    /// Removes the transition at 1-based `index` of a step.
+    @discardableResult
+    public func removeWorkflowTransition(_ ref: String, from: String, index: Int) throws -> (slug: String, workflow: Workflow) {
+        try updateWorkflow(ref) { workflow in
+            let source = try stepIndex(from, in: workflow)
+            guard workflow.steps[source].transitions.indices.contains(index - 1) else {
+                throw VibeDeckError.invalidWorkflow("a etapa \(workflow.steps[source].id) não tem a transição \(index).")
+            }
+            workflow.steps[source].transitions.remove(at: index - 1)
+        }
+    }
+
+    /// JSON plan that orchestrates the AI through the workflow.
+    public func workflowPlan(_ ref: String, input: String? = nil) throws -> WorkflowPlan {
+        let slug = try resolveWorkflowSlug(ref)
+        return WorkflowPlan.build(
+            slug: slug, workflow: try loadWorkflow(slug), input: input,
+            agents: try listAgents(), commands: try listCommands(), skills: try listSkills()
+        )
+    }
+
+    // MARK: Workflow runs
+
+    public func runDir(workflow: String, run: String) -> URL {
+        runsDir.appending(path: workflow, directoryHint: .isDirectory).appending(path: run, directoryHint: .isDirectory)
+    }
+
+    public func runURL(_ ref: String) -> URL {
+        let (workflow, run) = Self.splitRunRef(ref)
+        return runDir(workflow: workflow, run: run).appending(path: "run.json")
+    }
+
+    /// Every run, newest first, as `(ref: "<workflow>/<run>", run)`.
+    public func listRuns(workflow: String? = nil) throws -> [(ref: String, run: WorkflowRun)] {
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: runsDir.path) else { return [] }
+        let workflows = try workflow.map { [try resolveWorkflowSlug($0)] }
+            ?? fm.contentsOfDirectory(atPath: runsDir.path).filter { !$0.hasPrefix(".") }
+        var out: [(ref: String, run: WorkflowRun)] = []
+        for wf in workflows {
+            let dir = runsDir.appending(path: wf, directoryHint: .isDirectory)
+            for name in (try? fm.contentsOfDirectory(atPath: dir.path)) ?? [] where !name.hasPrefix(".") {
+                let url = dir.appending(path: name, directoryHint: .isDirectory).appending(path: "run.json")
+                guard let data = fm.contents(atPath: url.path), let run = try? VDJSON.decoder.decode(WorkflowRun.self, from: data) else { continue }
+                out.append(("\(wf)/\(name)", run))
+            }
+        }
+        return out.sorted { ($0.run.updatedAt, $0.ref) > ($1.run.updatedAt, $1.ref) }
+    }
+
+    /// Resolves `<workflow>/<run>`, a run name unique across workflows, or a run id (prefix >= 4 chars).
+    public func resolveRunRef(_ ref: String) throws -> String {
+        let ref = ref.trimmed
+        let runs = try listRuns()
+        if let exact = runs.first(where: { $0.ref == ref }) { return exact.ref }
+        let needle = ref.lowercased()
+        let matches = runs.filter {
+            $0.ref.split(separator: "/").last.map(String.init) == ref || $0.run.id.uuidString.lowercased() == needle
+                || (needle.count >= 4 && $0.run.id.uuidString.lowercased().hasPrefix(needle))
+        }
+        guard let first = matches.first else { throw VibeDeckError.runNotFound(ref) }
+        guard matches.count == 1 else { throw VibeDeckError.invalidWorkflow("execução ambígua: \(ref); use <workflow>/<execução>.") }
+        return first.ref
+    }
+
+    public func loadRun(_ ref: String) throws -> WorkflowRun {
+        let url = runURL(ref)
+        guard let data = FileManager.default.contents(atPath: url.path) else { throw VibeDeckError.runNotFound(ref) }
+        return try VDJSON.decoder.decode(WorkflowRun.self, from: data)
+    }
+
+    public func saveRun(_ run: WorkflowRun, ref: String) throws {
+        try AtomicFile.write(VDJSON.encode(run), to: runURL(ref))
+    }
+
+    /// Starts a run of a workflow. The run is named after the input, so starting again with the same input resumes
+    /// it: an unfinished run stays where it is, a finished one starts a new cycle (from `from`, or the start).
+    @discardableResult
+    public func startRun(_ workflowRef: String, input: String? = nil, from: String? = nil) throws -> (ref: String, run: WorkflowRun, action: WorkflowRunAction) {
+        let slug = try resolveWorkflowSlug(workflowRef)
+        let workflow = try loadWorkflow(slug)
+        guard !workflow.steps.isEmpty else { throw VibeDeckError.invalidWorkflow("o workflow não tem etapas.") }
+        let input = input?.trimmed.nonEmpty
+        let name: String
+        if let input {
+            name = Slug.make(input)
+        } else {
+            let stamp = Date.now.formatted(.iso8601.year().month().day().time(includingFractionalSeconds: false).dateTimeSeparator(.standard))
+            name = uniqueSlug("execucao-" + Slug.make(stamp), in: runsDir.appending(path: slug, directoryHint: .isDirectory), ext: "")
+        }
+        let ref = "\(slug)/\(name)"
+        var run: WorkflowRun
+        if FileManager.default.fileExists(atPath: runURL(ref).path) {
+            run = try loadRun(ref)
+            try WorkflowRunEngine.restart(&run, workflow: workflow, from: from)
+        } else {
+            run = WorkflowRun(workflow: slug, input: input, start: workflow.steps.first?.id)
+            if let from { try WorkflowRunEngine.restart(&run, workflow: workflow, from: from) }
+        }
+        try saveRun(run, ref: ref)
+        return (ref, run, nextRunAction(run, ref: ref, workflow: workflow))
+    }
+
+    /// What the orchestrator does now.
+    public func nextRunAction(_ ref: String) throws -> WorkflowRunAction {
+        let ref = try resolveRunRef(ref)
+        let run = try loadRun(ref)
+        return nextRunAction(run, ref: ref, workflow: try loadWorkflow(run.workflow))
+    }
+
+    private func nextRunAction(_ run: WorkflowRun, ref: String, workflow: Workflow) -> WorkflowRunAction {
+        WorkflowRunEngine.next(run, ref: ref, workflow: workflow) { step in
+            let r = resolvedStep(step)
+            return (r.title, r.model)
+        }
+    }
+
+    /// Records the current step's verdict and returns the next action (`decide` when conditions must be judged).
+    @discardableResult
+    public func recordRun(
+        _ ref: String, verdict: String?, summary: String?, to: String? = nil, noneHolds: Bool = false
+    ) throws -> WorkflowRunAction {
+        let ref = try resolveRunRef(ref)
+        var run = try loadRun(ref)
+        let workflow = try loadWorkflow(run.workflow)
+        if let decide = try WorkflowRunEngine.record(&run, workflow: workflow, verdict: verdict, summary: summary, to: to, noneHolds: noneHolds, ref: ref) {
+            return decide
+        }
+        try saveRun(run, ref: ref)
+        return nextRunAction(run, ref: ref, workflow: workflow)
+    }
+
+    @discardableResult
+    public func askRun(_ ref: String, questions: [WorkflowQuestionDraft]) throws -> [WorkflowQuestion] {
+        let ref = try resolveRunRef(ref)
+        var run = try loadRun(ref)
+        let added = try WorkflowRunEngine.ask(&run, drafts: questions)
+        try saveRun(run, ref: ref)
+        return added
+    }
+
+    @discardableResult
+    public func answerRun(_ ref: String, number: Int, answer: String) throws -> WorkflowRunAction {
+        let ref = try resolveRunRef(ref)
+        var run = try loadRun(ref)
+        try WorkflowRunEngine.answer(&run, number: number, text: answer)
+        try saveRun(run, ref: ref)
+        return nextRunAction(run, ref: ref, workflow: try loadWorkflow(run.workflow))
+    }
+
+    @discardableResult
+    public func stopRun(_ ref: String, reason: String? = nil) throws -> WorkflowRun {
+        let ref = try resolveRunRef(ref)
+        var run = try loadRun(ref)
+        WorkflowRunEngine.stop(&run, reason: reason)
+        try saveRun(run, ref: ref)
+        return run
+    }
+
+    public func deleteRun(_ ref: String) throws {
+        let ref = try resolveRunRef(ref)
+        try FileManager.default.removeItem(at: runURL(ref).deletingLastPathComponent())
+    }
+
+    /// The prompt of the run's current step, for the subagent that runs it.
+    public func runStepPrompt(_ ref: String, cli: String = "vibedeck") throws -> String {
+        let ref = try resolveRunRef(ref)
+        let run = try loadRun(ref)
+        let workflow = try loadWorkflow(run.workflow)
+        guard !run.isFinished, let current = run.current, let step = workflow.steps.first(where: { $0.id == current }) else {
+            throw VibeDeckError.invalidWorkflow("a execução \(ref) não tem etapa a rodar (\(run.status.rawValue)).")
+        }
+        let resolved = resolvedStep(step)
+        let (wf, name) = Self.splitRunRef(ref)
+        return WorkflowOrchestration.stepPrompt(
+            run: run, ref: ref, workflow: workflow, step: step, title: resolved.title, instructions: resolved.prompt,
+            runDir: runDir(workflow: wf, run: name), cli: cli
+        )
+    }
+
+    private func resolvedStep(_ step: WorkflowStep) -> (title: String?, model: String?, prompt: String?) {
+        switch step.kind {
+        case .agent: (try? loadAgent(step.ref)).map { ($0.title, $0.model, $0.prompt) } ?? (nil, nil, nil)
+        case .command: (try? loadCommand(step.ref)).map { ($0.title, $0.model, $0.prompt) } ?? (nil, nil, nil)
+        case .skill: (try? loadSkill(step.ref)).map { ($0.title, $0.model, $0.prompt) } ?? (nil, nil, nil)
+        }
+    }
+
+    static func splitRunRef(_ ref: String) -> (workflow: String, run: String) {
+        let parts = ref.split(separator: "/", maxSplits: 1).map(String.init)
+        return parts.count == 2 ? (parts[0], parts[1]) : ("", ref)
+    }
+
+    private func stepIndex(_ step: String, in workflow: Workflow) throws -> Int {
+        guard let i = workflow.stepIndex(step) else { throw VibeDeckError.invalidWorkflow("etapa não encontrada: \(step).") }
+        return i
     }
 
     // MARK: Ideas
@@ -589,13 +1189,8 @@ public struct ProjectStore: Sendable {
         try applicableTopics(files: [item.target?.file].compactMap { $0 }, explicit: item.rules)
     }
 
-    /// Records an agent's verification. Every applicable rule must be answered; the check passes
-    /// when no `must` rule failed (`should` failures become warnings).
-    @discardableResult
-    public func submitCheck(
-        task: String, files: [String], topics explicit: [String] = [], reviewItem: String? = nil,
-        answers: [RuleAnswer], author: Author = .ai
-    ) throws -> RuleCheck {
+    /// Files and topics of a task: the given ones plus the review item's target file and explicit topics.
+    private func taskScope(files: [String], topics explicit: [String], reviewItem: String?) throws -> (files: [String], topics: [(slug: String, topic: RuleTopic)], item: UUID?) {
         var files = files.map(relativePath)
         var explicit = explicit
         var itemID: UUID?
@@ -606,25 +1201,66 @@ public struct ProjectStore: Sendable {
             explicit += item.rules
             if let file = item.target?.file { files.append(relativePath(file)) }
         }
-        let topics = try applicableTopics(files: files, explicit: explicit)
+        return (Array(Set(files)).sorted(), try applicableTopics(files: files, explicit: explicit), itemID)
+    }
+
+    /// Runs the scripts of the applicable rules that are decided by a script (stale tests are skipped).
+    /// `topics` alone (no files) runs exactly those topics.
+    public func runRuleTests(
+        files: [String] = [], topics explicit: [String] = [], reviewItem: String? = nil, onlyTopics: Bool = false,
+        runner: RuleTestRunner = .live
+    ) throws -> [RuleTestRun] {
+        let scope = try taskScope(files: files, topics: explicit, reviewItem: reviewItem)
+        let named = Set(try explicit.map { try resolveTopicSlug($0) })
+        let topics = onlyTopics ? scope.topics.filter { named.contains($0.slug) } : scope.topics
+        return runScripts(topics.flatMap { t in t.topic.rules.map { (t.slug, $0) } }, files: scope.files, runner: runner)
+    }
+
+    /// One at a time: scripts often share build directories (`swift test`, `npm test`) and would fight over locks.
+    private func runScripts(_ rules: [(String, Rule)], files: [String], runner: RuleTestRunner) -> [RuleTestRun] {
+        rules.compactMap { slug, rule in
+            guard let command = rule.scriptCommand else { return nil }
+            let outcome = runner.run(command, .init(root: root, files: files, ruleId: rule.id))
+            return RuleTestRun(topic: slug, rule: rule, command: command, outcome: outcome)
+        }
+    }
+
+    /// Records a verification. Rules with a current script are decided by running it (answers for them are
+    /// ignored); every other applicable rule must be answered by the agent. The check passes when no `must`
+    /// rule failed (`should` failures and stale tests become warnings).
+    @discardableResult
+    public func submitCheck(
+        task: String, files: [String], topics explicit: [String] = [], reviewItem: String? = nil,
+        answers: [RuleAnswer], author: Author = .ai, runner: RuleTestRunner = .live
+    ) throws -> RuleCheck {
+        let (files, topics, itemID) = try taskScope(files: files, topics: explicit, reviewItem: reviewItem)
         let candidates = topics.flatMap { t in t.topic.rules.map { (t.slug, $0) } }
 
         var answered: [UUID: RuleResult] = [:]
         for answer in answers {
             let (slug, rule) = try matchRule(answer.ruleId, in: candidates) { $0.1 }
+            guard rule.testState.needsAgent else { continue }
             answered[rule.id] = RuleResult(topic: slug, ruleId: rule.id, verdict: answer.verdict, note: answer.note?.trimmed.nonEmpty)
         }
-        let missing = candidates.filter { answered[$0.1.id] == nil }
+        let missing = candidates.filter { $0.1.testState.needsAgent && answered[$0.1.id] == nil }
         guard missing.isEmpty else {
             throw VibeDeckError.incompleteCheck(missing.map { "[\($0.0)] \($0.1.id.uuidString.prefix(8)) \($0.1.text)" })
         }
+        for run in runScripts(candidates, files: files, runner: runner) {
+            answered[run.rule.id] = RuleResult(
+                topic: run.topic, ruleId: run.rule.id, verdict: run.outcome.verdict,
+                note: "\(run.command) (exit \(run.outcome.exitCode))\n\(run.outcome.output)".trimmed,
+                source: .script, exitCode: run.outcome.exitCode
+            )
+        }
 
         let failed = candidates.filter { answered[$0.1.id]?.verdict == .fail }
+        let stale = candidates.filter { $0.1.testState == .stale }.map { "Teste desatualizado (a regra mudou): \($0.1.text)" }
         let check = RuleCheck(
-            task: task, files: Array(Set(files)).sorted(), topics: topics.map(\.slug), reviewItem: itemID,
+            task: task, files: files, topics: topics.map(\.slug), reviewItem: itemID,
             results: candidates.compactMap { answered[$0.1.id] },
             passed: !failed.contains { $0.1.severity == .must },
-            warnings: failed.filter { $0.1.severity == .should }.map(\.1.text),
+            warnings: failed.filter { $0.1.severity == .should }.map(\.1.text) + stale,
             failures: failed.filter { $0.1.severity == .must }.map(\.1.text),
             author: author
         )
@@ -727,7 +1363,7 @@ public struct ProjectStore: Sendable {
         let fm = FileManager.default
         var slug = base
         var n = 2
-        while fm.fileExists(atPath: dir.appending(path: "\(slug).\(ext)").path) {
+        while fm.fileExists(atPath: dir.appending(path: ext.isEmpty ? slug : "\(slug).\(ext)").path) {
             slug = "\(base)-\(n)"
             n += 1
         }
@@ -746,6 +1382,9 @@ extension ReviewGroup: SlugRecord {}
 extension RuleTopic: SlugRecord {}
 extension Idea: SlugRecord {}
 extension Agent: SlugRecord {}
+extension Command: SlugRecord {}
+extension Skill: SlugRecord {}
+extension Workflow: SlugRecord {}
 
 public enum AtomicFile {
     public static func write(_ data: Data, to url: URL) throws {

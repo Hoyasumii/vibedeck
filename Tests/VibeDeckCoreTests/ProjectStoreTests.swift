@@ -56,6 +56,17 @@ private func tempDir() throws -> URL {
         #expect(throws: VibeDeckError.docNotFound(slug)) { try store.readDoc(slug) }
     }
 
+    @Test func attachments() throws {
+        let store = try ProjectStore.initialize(at: tempDir())
+        let source = try tempDir().appending(path: "Tela Inicial.PNG")
+        try Data("img".utf8).write(to: source)
+        #expect(try store.importAttachment(from: source, owner: "visao-geral") == "![Tela Inicial.PNG](../attachments/visao-geral-tela-inicial.png)")
+        #expect(try store.importAttachment(from: source, owner: "visao-geral") == "![Tela Inicial.PNG](../attachments/visao-geral-tela-inicial-2.png)")
+        #expect(FileManager.default.contents(atPath: store.attachmentsDir.appending(path: "visao-geral-tela-inicial.png").path) == Data("img".utf8))
+        #expect(try store.importAttachment(data: Data("pdf".utf8), name: "spec [v2].pdf", owner: "ideia") == "[spec (v2).pdf](../attachments/ideia-spec-v2.pdf)")
+        #expect(try store.importAttachment(data: Data(), name: "Makefile", owner: "ideia") == "[Makefile](../attachments/ideia-makefile)")
+    }
+
     @Test func reviewGroupsAndItems() throws {
         let store = try ProjectStore.initialize(at: tempDir())
         let (slug, _) = try store.addItem(ReviewItem(kind: "disable", title: "Inativar botão salvar"), toGroup: "Tela de Login")

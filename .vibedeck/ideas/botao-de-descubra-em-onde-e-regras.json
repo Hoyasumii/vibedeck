@@ -1,13 +1,70 @@
 {
   "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
   "author" : "human",
-  "body" : "A ideia do botão descubra, é perguntar pro claude, as informações que ele consegue puxar com base no que você falou, e ele vai preencher pra você. Dentro do Aplicativo.",
+  "body" : "A ideia do botão descubra, é perguntar pro claude, as informações que ele consegue puxar com base no que você falou, e ele vai preencher pra você. Dentro do Aplicativo.\n\n## Refinamento\n\n**Onde fica:** um único botão \"Descubra\" no inspector do item de revisão (`ReviewItemInspector`). Ele preenche **Onde** (arquivo, rota/tela, componente, seletor) e **Regras** (tópicos), nessa ordem. Assim as Regras levam em conta o arquivo descoberto e o auto-match de `paths` dos tópicos.\n\n**Contexto:** o Claude recebe título, detalhes, tipo, o Onde atual e a lista de tópicos (slug, título, descrição, paths). Ele **lê o repositório** só com ferramentas de leitura (Read/Grep/Glob) para achar o local real.\n\n**Saída:** JSON estruturado `{ target: {file, route, component, selector}, rules: [slug], reasons: {campo: justificativa} }`, validado pelo app.\n\n**Aplicação:** nada é gravado direto. O app mostra uma **proposta** (valor atual → sugerido, com a justificativa) e o usuário aceita tudo ou campo a campo. O aceite vira um único passo de undo.\n\n**Regras do Descubra:** ele só **adiciona** tópicos e nunca desmarca um tópico já marcado.\n\n**Estados:** carregando (com cancelar), erro (Claude ausente/sem login/parse inválido), \"nada encontrado\". Se o item mudar ou deixar de estar selecionado durante a chamada, a resposta é descartada.\n\n**Fora de escopo por ora:** marcar a autoria por campo (IA vs humano).\n\n**Futuro:** expor também por MCP/CLI (ex.: `suggest_review_target`) para os agentes usarem.\n\n## Riscos\n- Arquivo inventado ligando ou desligando regras por engano → validar a existência do arquivo.\n- Custo e latência por clique → contam no uso do Claude.\n- Permissões de escrita no `claude -p` → forçar só leitura.\n- Corrida com edições do usuário → descartar a resposta se o item mudou.",
   "createdAt" : "2026-10-08T04:11:49Z",
   "id" : "732148CD-AFC5-4C37-ADB0-E561BAA46248",
+  "promotedTopic" : "botao-de-descubra-em-onde-e-regras-nas-revisoes",
   "rules" : [
-
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-08T15:00:05Z",
+      "id" : "46A96B82-5BDD-43F8-982F-BBC35B5C6EAA",
+      "severity" : "must",
+      "text" : "O Descubra nunca grava direto: mostra uma proposta e o usuário aceita (tudo ou por campo); cada aceite é um único passo de undo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-08T15:00:05Z",
+      "details" : "Protege o gate de check aprovado antes de concluir o item.",
+      "id" : "4D2EEC85-41C6-4A77-B792-F9DB87651D48",
+      "severity" : "must",
+      "text" : "O Descubra só adiciona tópicos de regras ao item; nunca remove um tópico já marcado."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-08T15:00:05Z",
+      "id" : "06B55036-7BD0-4348-82F4-39B67519FBA0",
+      "severity" : "must",
+      "text" : "Arquivos sugeridos precisam existir no projeto e slugs sugeridos precisam ser tópicos existentes; o resto é descartado antes de mostrar a proposta."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-08T15:00:05Z",
+      "id" : "52B60258-B539-41CF-98C3-E67E74C72F3E",
+      "severity" : "must",
+      "text" : "A chamada ao Claude do Descubra roda só com ferramentas de leitura (Read/Grep/Glob), sem Edit/Write/Bash."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-08T15:00:05Z",
+      "id" : "D670FAD9-8DC7-429F-A65F-A1280F81DF19",
+      "severity" : "must",
+      "text" : "A resposta do Claude é JSON validado; se o parse falhar, mostra um erro claro e não altera o item."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-08T15:00:05Z",
+      "id" : "A9D8FA72-F39C-48F4-92B6-9C22760A37CC",
+      "severity" : "must",
+      "text" : "Campos do Onde já preenchidos não são sobrescritos sem o usuário aceitar explicitamente aquela troca."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-08T15:00:05Z",
+      "id" : "2635526C-DBAB-471A-BD6A-CC8BA52F22E1",
+      "severity" : "should",
+      "text" : "Cada sugestão vem com uma justificativa curta (onde encontrou, ex.: arquivo:linha)."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-08T15:00:05Z",
+      "id" : "7334A6CD-9FD4-4865-9803-5B0AC0BCBCCF",
+      "severity" : "should",
+      "text" : "O Descubra tem botão de cancelar e timeout, e descarta a resposta se o item mudou ou deixou de estar selecionado durante a chamada."
+    }
   ],
-  "status" : "new",
+  "status" : "approved",
   "title" : "Botão de Descubra em \"Onde\" e \"Regras\" nas Revisões",
-  "updatedAt" : "2026-10-08T04:12:36Z"
+  "updatedAt" : "2026-10-08T15:00:56Z"
 }

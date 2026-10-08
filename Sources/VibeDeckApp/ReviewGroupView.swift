@@ -46,7 +46,7 @@ struct ReviewGroupView: View {
             Group {
                 if let item = selectedItem {
                     ReviewItemInspector(
-                        item: item, kinds: model.project.reviewKinds, topics: model.topics,
+                        item: item, kinds: model.project.reviewKinds, topics: model.topics, store: model.store,
                         required: model.requiredTopics(for: item), problems: model.verificationProblems(for: item)
                     ) { action, change in
                         model.mutateItem(slug, item.id, action, undo: undo, change)
@@ -363,10 +363,12 @@ struct ReviewItemInspector: View {
     let item: ReviewItem
     let kinds: [ReviewKind]
     let topics: [ProjectModel.Entry<RuleTopic>]
+    let store: ProjectStore
     /// Topic slugs gating this item (explicit + global + matching target file).
     let required: [String]
     let problems: [String]
     let mutate: (String, @escaping (inout ReviewItem) -> Void) -> Void
+    @State private var discover = ReviewDiscoverRunner()
 
     var body: some View {
         Form {
@@ -390,11 +392,18 @@ struct ReviewItemInspector: View {
                     ForEach(ReviewPriority.allCases, id: \.self) { Text($0.label).tag($0) }
                 }
             }
-            Section("Onde") {
+            Section {
+                discoverStatus
                 targetField("Arquivo", \.file)
                 targetField("Rota / tela", \.route)
                 targetField("Componente", \.component)
                 targetField("Seletor", \.selector)
+            } header: {
+                HStack {
+                    Text("Onde")
+                    Spacer()
+                    if ClaudeCode.isInstalled { discoverButton }
+                }
             }
             rulesSection
             Section {
@@ -407,6 +416,55 @@ struct ReviewItemInspector: View {
             }
         }
         .formStyle(.grouped)
+        .sheet(isPresented: Binding(get: { proposal != nil }, set: { if !$0 { discover.dismiss() } })) {
+            if let proposal {
+                ReviewDiscoverSheet(proposal: proposal) { fields, topics in
+                    mutate("Descobrir onde e regras") { proposal.apply(fields: fields, topics: topics, to: &$0) }
+                }
+            }
+        }
+        .onChange(of: item.updatedAt) { discover.itemChanged() }
+        .onDisappear { discover.cancel() }
+    }
+
+    // MARK: Descubra
+
+    private var proposal: ReviewDiscoverProposal? {
+        if case .ready(let proposal) = discover.state { proposal } else { nil }
+    }
+
+    private var discoverButton: some View {
+        Button {
+            let kind = kinds.first { $0.id == item.kind }?.label ?? item.kind
+            discover.start(item: item, kind: kind, topics: topics.map { ($0.slug, $0.value) }, store: store)
+        } label: {
+            Label("Descubra", systemImage: "sparkles")
+        }
+        .buttonStyle(.borderless)
+        .controlSize(.small)
+        .disabled(discover.isRunning)
+        .help("Pede ao Claude Code (só leitura) para sugerir onde o item se aplica e quais regras ele segue")
+    }
+
+    @ViewBuilder
+    private var discoverStatus: some View {
+        switch discover.state {
+        case .running:
+            HStack {
+                ProgressView().controlSize(.small)
+                Text("Procurando no código…").foregroundStyle(.secondary)
+                Spacer()
+                Button("Cancelar") { discover.cancel() }
+            }
+        case .failed(let message):
+            HStack(alignment: .top) {
+                Label(message, systemImage: "exclamationmark.triangle").font(.callout).foregroundStyle(.orange)
+                Spacer()
+                Button("OK") { discover.dismiss() }.buttonStyle(.borderless)
+            }
+        case .idle, .ready:
+            EmptyView()
+        }
     }
 
     @ViewBuilder

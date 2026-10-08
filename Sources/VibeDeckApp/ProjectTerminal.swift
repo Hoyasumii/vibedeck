@@ -3,21 +3,27 @@ import Observation
 import SwiftTerm
 import SwiftUI
 
-/// The project's interactive terminal: the user's login shell in a pty, rooted at the project folder.
-/// The view is created once and reused, so switching panel tabs never kills the shell.
+/// One interactive terminal of the project: the user's login shell in a pty, rooted at the project folder.
+/// Each lives in its own tab. The view is created once and reused, so switching tabs never kills the shell;
+/// when the shell exits (`exit`), `onExit` runs so its tab can close.
 @Observable @MainActor
 final class ProjectTerminal {
     let root: URL
+    /// 1, 2, … among the window's open terminals; shown in the tab title.
+    let number: Int
     private(set) var isRunning = false
-    /// Whether a shell was ever started; an ended one waits for the user instead of restarting by itself.
-    private(set) var hasStarted = false
 
+    @ObservationIgnored private let onExit: () -> Void
     @ObservationIgnored private var delegate: Delegate?
     @ObservationIgnored private(set) lazy var view: LocalProcessTerminalView = makeView()
 
-    init(root: URL) {
+    init(root: URL, number: Int, onExit: @escaping () -> Void) {
         self.root = root
+        self.number = number
+        self.onExit = onExit
     }
+
+    var title: String { number == 1 ? "Terminal" : "Terminal \(number)" }
 
     /// Starts the shell if it isn't running.
     func start() {
@@ -29,7 +35,23 @@ final class ProjectTerminal {
         // A leading "-" in argv[0] makes it a login shell, which loads the user's PATH and aliases.
         view.startProcess(executable: shell, args: [], environment: environment, execName: "-" + (shell as NSString).lastPathComponent, currentDirectory: root.path)
         isRunning = true
-        hasStarted = true
+        watchExit(of: view.process.shellPid)
+    }
+
+    /// SwiftTerm's own exit watcher is unreliable: when the pty hits EOF before the exit event is
+    /// delivered, it cancels the watcher, so `processTerminated` never fires and the shell is left a
+    /// zombie. Watching the pid here (and reaping it) makes `exit` close the tab every time. The
+    /// watcher keeps itself alive until the shell is reaped, also after `terminate()` drops the terminal.
+    private func watchExit(of pid: pid_t) {
+        guard pid > 0 else { return }
+        let monitor = DispatchSource.makeProcessSource(identifier: pid, eventMask: .exit, queue: .main)
+        monitor.setEventHandler { [weak self] in
+            var status: Int32 = 0
+            waitpid(pid, &status, WNOHANG)
+            monitor.cancel()
+            MainActor.assumeIsolated { self?.ended() }
+        }
+        monitor.activate()
     }
 
     /// Types `command` into the shell and runs it.
@@ -52,9 +74,10 @@ final class ProjectTerminal {
 
     private func makeView() -> LocalProcessTerminalView {
         let view = LocalProcessTerminalView(frame: NSRect(x: 0, y: 0, width: 340, height: 400))
-        view.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+        view.font = Self.font(size: 12)
         view.nativeForegroundColor = .textColor
-        view.nativeBackgroundColor = .textBackgroundColor
+        // Same as the rest of the window, so the terminal doesn't read as a separate box.
+        view.nativeBackgroundColor = .windowBackgroundColor
         view.caretColor = .controlAccentColor
         let delegate = Delegate(owner: self)
         self.delegate = delegate
@@ -62,8 +85,27 @@ final class ProjectTerminal {
         return view
     }
 
+    /// JetBrains Mono Nerd Font (OFL, bundled under Contents/Resources/Fonts by scripts/build-app.sh),
+    /// falling back to the system monospaced font when it isn't there (e.g. `swift run`).
+    private static func font(size: CGFloat) -> NSFont {
+        registerBundledFonts
+        return NSFont(name: "JetBrainsMonoNFM-Regular", size: size) ?? .monospacedSystemFont(ofSize: size, weight: .regular)
+    }
+
+    private static let registerBundledFonts: Void = {
+        guard let dir = Bundle.main.resourceURL?.appendingPathComponent("Fonts"),
+              let urls = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
+        else { return }
+        for url in urls where url.pathExtension == "ttf" {
+            CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+        }
+    }()
+
+    /// Called by both exit watchers (ours and SwiftTerm's); only the first one counts.
     fileprivate func ended() {
+        guard isRunning else { return }
         isRunning = false
+        onExit()
     }
 
     private final class Delegate: LocalProcessTerminalViewDelegate {
@@ -85,37 +127,21 @@ final class ProjectTerminal {
     }
 }
 
-/// Terminal tab of the Claude panel.
-struct TerminalPane: View {
-    let terminal: ProjectTerminal
-    /// The pane stays mounted behind the chat; the shell only starts once the tab is shown.
-    let isActive: Bool
+/// One project terminal, shown as a page (and tab) of the detail column.
+struct TerminalPage: View {
+    let id: UUID
+    @Environment(ClaudeSession.self) private var claude
 
     var body: some View {
-        ZStack {
+        // The terminal is gone for a moment after `exit`, until the window closes its tab.
+        if let terminal = claude.terminals[id] {
             TerminalHost(terminal: terminal)
                 .padding(.leading, 8)
                 .padding(.vertical, 4)
-            if !terminal.isRunning, terminal.hasStarted {
-                VStack(spacing: 8) {
-                    Text("O terminal foi encerrado.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                    Button("Abrir de novo") {
-                        terminal.start()
-                        terminal.focus()
-                    }
-                    .buttonStyle(.glass)
-                }
-                .padding()
-                .glassEffect(.regular, in: .rect(cornerRadius: 12))
-            }
-        }
-        .background(Color(nsColor: .textBackgroundColor))
-        .onChange(of: isActive, initial: true) { _, active in
-            guard active else { return }
-            if !terminal.hasStarted { terminal.start() }
-            DispatchQueue.main.async { terminal.focus() }
+                .background(Color(nsColor: .textBackgroundColor))
+                .onAppear { DispatchQueue.main.async { terminal.focus() } }
+        } else {
+            Color(nsColor: .textBackgroundColor)
         }
     }
 }

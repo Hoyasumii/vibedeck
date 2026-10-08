@@ -5,7 +5,7 @@ public enum AgentsGuide {
     # VibeDeck — guia para agentes de IA
 
     Este diretório é gerenciado pelo app **VibeDeck**. Ele guarda links, documentos,
-    pontos de revisão, **regras**, **ideias** e **agentes** do projeto em arquivos locais que você (agente) pode ler e editar.
+    pontos de revisão, **regras**, **ideias**, **agentes**, **comandos**, **skills** e **workflows** do projeto em arquivos locais que você (agente) pode ler e editar.
 
     ## ⚠️ Regras — obrigatório antes de concluir qualquer tarefa
 
@@ -13,9 +13,10 @@ public enum AgentsGuide {
 
     1. Chame `rules_for` (MCP) ou `vibedeck rules for <arquivos> --json` com os arquivos que você
        alterou (e o id do item de revisão, se houver).
-    2. Verifique cada regra retornada contra o seu trabalho de verdade (leia o código, rode o que precisar).
+    2. Verifique contra o seu trabalho de verdade (leia o código, rode o que precisar) cada regra retornada
+       com `check: "manual"`. As de `check: "script"` são decididas pelo script delas (veja "Testes de regras").
     3. Envie o resultado com `submit_rule_check` (ou `vibedeck rules check`): `pass`, `fail` ou `na`
-       para **cada** regra, com uma nota curta de evidência.
+       para **cada** regra manual, com uma nota curta de evidência. O envio roda os scripts sozinho.
     4. Se `passed` for `false`, corrija e envie um novo check. Só diga que terminou quando passar.
        Regras `should` que falham não bloqueiam, mas avise o usuário.
 
@@ -33,10 +34,16 @@ public enum AgentsGuide {
       rules/<slug>.json           # um tópico de regras por arquivo (paths = globs de escopo)
       ideas/<slug>.json           # uma ideia por arquivo (brainstorm, com regras rascunho)
       agents/<slug>.json          # um agente do VibeDeck por arquivo (nome, modelo, prompt, próximos passos)
+      commands/<slug>.json        # um comando do VibeDeck por arquivo (prompt com $ARGUMENTS, próximos passos)
+      skills/<slug>.json          # uma skill do VibeDeck por arquivo (descrição de quando usar, instruções, próximos passos)
+      workflows/<slug>.json       # um workflow do VibeDeck por arquivo (etapas e transições condicionais)
+      runs/<workflow>/<execução>/ # execuções de workflows: run.json (estado; não edite) + o que as etapas gravam
+      tests/<tópico>/<regra>.sh   # scripts gerados a partir das regras (ver "Testes de regras")
       checks/*.json               # verificações de regras registradas (histórico; não edite)
+      attachments/<dono>-<nome>   # arquivos anexados a docs/ideias; no markdown: `![](../attachments/x.png)`
     ```
 
-    Schemas: \(SchemaURL.base)/{project,review-group,rule-topic,idea,agent,rule-check}.schema.json
+    Schemas: \(SchemaURL.base)/{project,review-group,rule-topic,idea,agent,command,skill,workflow,workflow-run,rule-check}.schema.json
 
     ## Itens de revisão
 
@@ -56,6 +63,21 @@ public enum AgentsGuide {
     - `rules[].severity`: `must` (bloqueia) | `should` (aviso).
     - Você pode propor regras novas (`add_rule`), mas não apague regras de humanos.
 
+    ## Testes de regras
+
+    Uma regra pode ter um `test`: `{mode: script|manual, command, reason, ruleHash, generatedAt}`.
+
+    - `script`: `command` roda na raiz do projeto (shell de login) com `$VIBEDECK_FILES` (arquivos alterados, um
+      por linha; vazio = projeto todo), `$VIBEDECK_ROOT` e `$VIBEDECK_RULE_ID`. Exit `0` = cumpre, `77` = não se
+      aplica, outro = viola (imprima o motivo). Limite de 120 s. `submit_rule_check` roda o script e usa o
+      resultado — a sua resposta para essa regra é ignorada.
+    - `manual`: a regra não é testável objetivamente; você continua respondendo no check.
+    - Se o texto/detalhes da regra mudarem, o `ruleHash` não bate e o teste fica **desatualizado**: a regra volta a
+      ser manual (com aviso no check) até o teste ser regenerado.
+    - Para gerar/atualizar: escreva `.vibedeck/tests/<tópico>/<id8>.sh` (executável), rode-o e registre com
+      `set_rule_test` / `vibedeck rules set-test <id> --command <script>` (ou `--manual --reason "..."`).
+      Nunca afrouxe a regra para o script passar. `run_rule_tests` / `vibedeck rules test` roda os scripts sem gravar check.
+
     ## Ideias
 
     Ideias (`ideas/*.json`) são futuras e **não** são regras ativas: `status` new | exploring | approved |
@@ -67,15 +89,62 @@ public enum AgentsGuide {
     ## Agentes
     
     Agentes (`agents/*.json`) são agentes **do VibeDeck**: `title` (nome), `model`, `prompt` (markdown), `tools` e
-    `nextSteps` — `{kind: agent|command, ref, note}` apontando para outros agentes/comandos do **VibeDeck**
+    `nextSteps` — `{kind: agent|command|skill, ref, note}` apontando para outros agentes/comandos/skills do **VibeDeck**
     (nunca do provedor de IA). Os próximos passos formam um fluxo: o próximo atua sobre o resultado do anterior.
     `agent_flow` / `vibedeck agents flow <ref>` devolve o JSON do fluxo (prompt + passos encadeados) para orquestrar
     a IA. `import_agents` / `vibedeck agents import` traz os agentes do Claude Code (`.claude/agents`).
 
+    ## Comandos
+
+    Comandos (`commands/*.json`) são comandos **do VibeDeck**, no formato dos slash commands: `title`, `summary`,
+    `argumentHint` (o que vai em `$ARGUMENTS`), `model`, `tools`, `prompt` (markdown) e `nextSteps`, com o mesmo
+    fluxo dos agentes — um agente pode ter um comando como próximo passo e vice-versa. `ref` de um passo `command`
+    precisa ser um comando existente. `command_flow` / `vibedeck commands flow <ref>` devolve o JSON do fluxo;
+    `import_commands` / `vibedeck commands import` traz os comandos do Claude Code (`.claude/commands`).
+
+    ## Skills
+
+    Skills (`skills/*.json`) são skills **do VibeDeck**, no formato do `SKILL.md`: `title`, `summary` (quando usar a
+    skill — é o que a dispara), `model`, `tools`, `prompt` (as instruções, em markdown) e `nextSteps`, com o mesmo
+    fluxo dos agentes e comandos. `ref` de um passo `skill` precisa ser uma skill existente. `skill_flow` /
+    `vibedeck skills flow <ref>` devolve o JSON do fluxo; `import_skills` / `vibedeck skills import` traz as skills do
+    Claude Code (`.claude/skills/<nome>/SKILL.md`; só o `SKILL.md`, os arquivos de apoio ficam onde estão).
+
+    ## Workflows
+
+    Workflows (`workflows/*.json`) orquestram um fluxo inteiro e podem ser reusados pelo nome: `title`, `summary`,
+    `input` (o que pedir ao iniciar), `maxSteps` (limite de etapas por ciclo de execução, padrão 25) e
+    `steps` — cada etapa `{id, kind: agent|command|skill, ref, note, maxVisits, transitions}` roda um
+    agente/comando/skill do **VibeDeck** (o mesmo pode aparecer mais de uma vez); `maxVisits` limita quantas vezes ela
+    roda por ciclo. A primeira etapa é o início. `transitions` são `{verdict, when, to}`: depois da etapa, vale primeiro a
+    de `verdict` igual à última linha do resultado (maiúsculas e acentos não importam), depois a primeira cujo `when`
+    (linguagem natural) valer, por fim a sem nenhum dos dois ("senão") — inclusive para etapas anteriores (laços);
+    nenhuma = fim. Os `nextSteps` dos agentes/comandos/skills não valem dentro de um workflow. Monte com
+    `add_workflow`, `add_workflow_step` e `add_workflow_transition` (ou `vibedeck workflows new|step|route --verdict`).
+
+    ## Execuções de workflows
+
+    Para **executar** um workflow, use `workflow_run_start` / `vibedeck runs start <workflow> --input "..."`. A
+    execução fica em `runs/<workflow>/<execução>/` (o nome vem da entrada: rodar de novo com a mesma entrada retoma;
+    uma execução terminada abre um novo ciclo). A pasta guarda também o que as etapas gravam (`$RUN_DIR`).
+
+    - **Orquestrador** (o chat): único contato com o usuário. Pede a próxima ação (`workflow_run_next` / `runs next`):
+      `run-step` → lança **um subagente** por etapa só com "rode `vibedeck runs step <ref>` e siga"; `ask` → faz as
+      perguntas abertas ao usuário e grava com `runs answer`; `decide` → avalia as condições e registra com `--to`;
+      `done`/`stop` → relatório. O retorno de cada etapa vai para `runs record --verdict "<última linha>"`.
+      `vibedeck runs start ... --prompt` imprime o roteiro completo.
+    - **Etapa** (subagente): segue o prompt de `runs step`, grava artefatos em `$RUN_DIR` e termina com o veredito na
+      última linha. Não fala com o usuário: grava perguntas com `runs ask` e termina com `PERGUNTA`; depois roda de
+      novo lendo as respostas.
+    - Paradas de segurança: `maxSteps`, `maxVisits` e "a etapa voltou para si com o mesmo veredito". Para liberar
+      mais uma volta: `runs start <workflow> --input "..." --from <etapa>`.
+
+    `workflow_flow` / `vibedeck workflows flow <ref>` continua devolvendo o JSON do workflow (sem estado em disco).
+
     ## Tags
 
-    Docs (frontmatter `tags: [a, b]`), grupos de revisão, tópicos de regras, ideias e agentes aceitam `tags`.
-    Use `set_tags` (MCP) ou `vibedeck tag <doc|review|rules|idea|agent> <ref> <tags...>`.
+    Docs (frontmatter `tags: [a, b]`), grupos de revisão, tópicos de regras, ideias, agentes, comandos, skills e workflows aceitam `tags`.
+    Use `set_tags` (MCP) ou `vibedeck tag <doc|review|rules|idea|agent|command|skill|workflow> <ref> <tags...>`.
 
     ## Sessões na nuvem
 
@@ -102,8 +171,15 @@ public enum AgentsGuide {
     vibedeck docs list | vibedeck docs cat <slug>
     vibedeck rules for src/Login.tsx --json      # regras aplicáveis (com ids)
     echo '[{"ruleId":"ab12","verdict":"pass","note":"..."}]' | vibedeck rules check --task "..." --file src/Login.tsx --item <id>
+    vibedeck rules test src/Login.tsx            # roda os scripts das regras aplicáveis (sem gravar check)
+    vibedeck rules set-test ab12 --command .vibedeck/tests/geral/ab12cd34.sh   # ou --manual --reason "..." / --clear
     vibedeck ideas list | vibedeck ideas new "Modo offline"
     vibedeck agents list | vibedeck agents next <agente> <proximo> | vibedeck agents flow <agente>
+    vibedeck commands list | vibedeck agents next <agente> <comando> --kind command | vibedeck commands flow <comando>
+    vibedeck skills list | vibedeck agents next <agente> <skill> --kind skill | vibedeck skills flow <skill>
+    vibedeck workflows new "Revisão" && vibedeck workflows step revisao <agente> && vibedeck workflows route revisao <de> <para> --when "..."
+    vibedeck workflows show revisao | vibedeck workflows flow revisao --input "..."
+    vibedeck runs start revisao --input "PR 12" | vibedeck runs next revisao/pr-12 | vibedeck runs show revisao/pr-12
     vibedeck cloud check --json                  # branch local == GitHub? (pré-requisito da nuvem)
     ```
 

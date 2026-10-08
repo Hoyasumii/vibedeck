@@ -1,0 +1,509 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-08T15:25:17.031Z",
+  "failures" : [
+
+  ],
+  "files" : [
+    "README.md",
+    "Sources/VibeDeckApp/ClaudeSession.swift",
+    "Sources/VibeDeckApp/ProjectModel.swift",
+    "Sources/VibeDeckApp/RulesView.swift",
+    "Sources/VibeDeckCore/AgentsGuide.swift",
+    "Sources/VibeDeckCore/ProjectStore.swift",
+    "Sources/VibeDeckCore/RuleTests.swift",
+    "Sources/VibeDeckCore/Rules.swift",
+    "Sources/vibedeck/CLI.swift",
+    "Sources/vibedeck/MCPServer.swift",
+    "Tests/VibeDeckCoreTests/RuleTestsTests.swift",
+    "schema/v1/rule-check.schema.json",
+    "schema/v1/rule-topic.schema.json"
+  ],
+  "id" : "021C7DFB-518D-420F-9988-D4EDD955DA1F",
+  "passed" : true,
+  "results" : [
+    {
+      "note" : "setRuleTest/clearRuleTest/runRuleTests: CLI `rules set-test` + `rules test`, MCP set_rule_test + run_rule_tests; submitCheck híbrido serve aos dois",
+      "ruleId" : "C604B203-A022-48C7-92DA-F343DA4AE60B",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhuma ferramenta nova cria registro; set_rule_test só altera uma regra existente",
+      "ruleId" : "643AA948-85C0-485E-A110-E83B59C0B5BC",
+      "topic" : "cli-e-mcp",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhum caminho novo muda status de item",
+      "ruleId" : "30A2FC1A-16E7-4708-A559-0CA78431EDD7",
+      "topic" : "cli-e-mcp",
+      "verdict" : "na"
+    },
+    {
+      "note" : "REGRA OBRIGATÓRIA mantida; passos 2-3 agora dizem 'regras check=manual' e que o submit roda os scripts; descrições OBRIGATÓRIO/Responda TODAS mantidas",
+      "ruleId" : "A34C030C-D9E7-4C1A-A8E1-23E47D9B15AF",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "promote_idea intocado",
+      "ruleId" : "7A76B622-C234-4B41-9ECA-C8C414AB47FE",
+      "topic" : "cli-e-mcp",
+      "verdict" : "na"
+    },
+    {
+      "note" : "run_rule_tests usa list(\"files\")/list(\"topics\") e type array no schema(...)",
+      "ruleId" : "ED4D47D8-F744-4E94-A8EE-807E2AFF0670",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "mcp install intocado",
+      "ruleId" : "05F179F3-EB5F-474B-B8C1-9E4E0926B388",
+      "topic" : "cli-e-mcp",
+      "verdict" : "na"
+    },
+    {
+      "note" : "`rules test --json` via printJSON (VDJSON); verificado no e2e",
+      "ruleId" : "21E4D353-1916-4961-B355-EC7B8DEEB0B4",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "version: em CLI.swift intocada",
+      "ruleId" : "4913B3AF-4F67-4717-A7D4-9600D8BF0942",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "unpromote intocado",
+      "ruleId" : "D94F39E0-F874-43A0-86DC-21D9FEDEC02D",
+      "topic" : "cli-e-mcp",
+      "verdict" : "na"
+    },
+    {
+      "note" : "ProjectStore só ganhou testsDir computado de root; nenhum estado",
+      "ruleId" : "5FA116B6-6FBE-45F9-8C5D-29E7548F6C2F",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhuma escrita nova no Core (só removeItem do script gerado); topics continuam via saveTopic/AtomicFile",
+      "ruleId" : "857149E6-8C34-46A8-9C30-439EBE78309D",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Sem JSONEncoder/Decoder novos para arquivos do projeto",
+      "ruleId" : "99BF0D79-2F65-419A-87DA-0B4F37E4FEF5",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Rule.test via decodeIfPresent; RuleTest com init(from:) tolerante (mode deduzido, ruleHash ''→desatualizado, generatedAt .now); RuleResult.source default agent; testes cobrem",
+      "ruleId" : "5ED22D96-FE5F-4683-8611-E3D264113B67",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "test encodeIfPresent; source só se != agent; exitCode encodeIfPresent; teste confere que regra sem teste não grava \"test\"",
+      "ruleId" : "C6D79B9C-1F50-4AE3-8CD1-8CAE5C4F6B6F",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "RuleCheck.encode e nome do arquivo intocados",
+      "ruleId" : "57ADA275-8A0F-42BA-9E14-BA3B34AB8235",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "rule-topic.schema.json ($defs.test, usado também pela idea), rule-check.schema.json (source, exitCode) e AgentsGuide (Estrutura + seção Testes de regras + comandos)",
+      "ruleId" : "4133C155-F789-428E-9ED5-5EAC37C19700",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "setRuleTest usa updateRule/findRule/matchRule; runRuleTests usa resolveTopicSlug",
+      "ruleId" : "B0277971-459D-4CCB-9E9D-5990F1574F5B",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhum slug criado; caminho do script usa o slug existente + 8 chars do id",
+      "ruleId" : "7F7C6B09-EBCB-4CA0-BAAF-6B18D36F15C1",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "incompleteCheck continua listando as regras sem resposta (agora: as que não são decididas por script); must fail bloqueia, should vira warning, na conta; testes RulesTests + RuleTestsTests passam",
+      "ruleId" : "BC028BE5-D7E0-4DA3-BB5C-E8A628EBFA8A",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "verificationProblems intocado; resultados de script entram em results, então contam como respondidos",
+      "ruleId" : "64E65B59-8D5B-40DE-B381-CAF2B1BDC785",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "submitCheck/runRuleTests usam applicableTopics via taskScope (mesma lógica extraída)",
+      "ruleId" : "8D874A06-515D-41B5-A094-DC8B83BB40B6",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "promoteIdea intocado",
+      "ruleId" : "35D8D7C3-1224-45CC-8A80-66D0B6291C33",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Glob intocado",
+      "ruleId" : "64334D9C-327B-4811-B088-8B785EF4E0FE",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "VibeDeckError.invalidRuleTest com mensagem pt-BR; mensagem de incompleteCheck atualizada",
+      "ruleId" : "EA5E6F7D-1587-4FC5-87D9-51CE6F130C7B",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "swift test: 105 testes em 15 suítes passaram",
+      "ruleId" : "97510532-2FCF-44BD-9D01-75086E554EB9",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Novo RuleTestsTests.swift: hash/estado, decode tolerante, exit codes, set/clear, deleteRule, check híbrido, must/should, desatualizado, escopo, runner real e timeout, prompt",
+      "ruleId" : "91774D06-91B5-4945-9EC6-CDEFC57332FA",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "URL dos schemas intocada",
+      "ruleId" : "DFE3361B-6AFE-4ED3-A741-4FC0818D197D",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "deleteTopic intocado",
+      "ruleId" : "B659FD25-792B-4C0E-BD08-6082ACFCC80A",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "unpromoteIdea intocado",
+      "ruleId" : "A2B13B15-C59E-4189-8905-3A309C89DF28",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Não editei AGENTS.md nem checks à mão (AGENTS.md já estava modificado antes da tarefa; o guia mudou em AgentsGuide.swift)",
+      "ruleId" : "9D6F362B-9F0E-4661-97B3-6158B160D478",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhum arquivo de .vibedeck editado à mão; e2e feito via CLI em projeto temporário",
+      "ruleId" : "9F92A765-76E7-4EA0-A66A-78AE12EE4C8F",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nada removido de .vibedeck",
+      "ruleId" : "AC4BA963-CDEE-419C-B057-9140643E115D",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Rótulos, help, mensagens de CLI, descrições MCP, prompt de geração e guia em pt-BR",
+      "ruleId" : "0E5AEC71-405E-4113-AB27-615313AB2B5F",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "README: tests/ na estrutura, bullet Testes de regras, fluxo do agente e comandos rules test/set-test",
+      "ruleId" : "306A20B6-E1FA-4BE4-96E8-2B854A3D0BC6",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Sem commit (não pedido)",
+      "ruleId" : "4095F087-1E04-46C0-9AA4-A60C8C16A72B",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhum frame no root",
+      "ruleId" : "EE65A0A5-71DA-431A-A4B7-567144D40423",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Sem ViewThatFits",
+      "ruleId" : "9A4878F2-54AD-4B93-9E8B-9D7683C8F9F2",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Inspector intocado",
+      "ruleId" : "047D2216-D1C9-4AFC-AA0A-D789DC1E8A60",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "'Remover teste' passa por mutateTopic (grava e registra undo); 'Rodar testes' não muta dados",
+      "ruleId" : "00E57961-FE6D-4AFC-BB1A-3DC70152D38D",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "set-test pelo CLI/MCP grava o tópico, que o watcher existente recarrega",
+      "ruleId" : "8385BC07-3F91-46DC-8BBD-6F62C4851DD9",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Docs não afetados",
+      "ruleId" : "B065B5AF-B93F-4698-8E43-BB4369E74351",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhum campo de texto novo",
+      "ruleId" : "3D508DEA-D43E-4E33-91B7-F46039B6B53D",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Abas intocadas",
+      "ruleId" : "329A929F-62CC-4A7D-99A3-A299F495A08C",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sidebar intocada",
+      "ruleId" : "335DA4F8-7DBF-4120-8878-42130C661D69",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhuma seção nova",
+      "ruleId" : "A999B857-E236-4893-97A9-07257A538B57",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhum atalho novo; ⌥⌘I e ⇧⌘N do tópico mantidos",
+      "ruleId" : "DC9EED4D-8823-4FD1-83ED-3B820A83E8B4",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhuma janela/coluna nova",
+      "ruleId" : "492100C1-EFE3-488F-8368-08CE17A797DA",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "SF Symbols (hammer, play, gearshape, hand.raised), chips com glassEffect como os de severidade",
+      "ruleId" : "B382469C-4D35-4314-BEC2-50BCEC7C6855",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Fluxo de ideias intocado",
+      "ruleId" : "1A4EF162-82B1-4940-8251-A2102964C3E8",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Só schema/v1 editado; worker/public não tocado",
+      "ruleId" : "EFDEC345-F90B-41DA-9484-9F470C8E3E94",
+      "topic" : "worker-e-schemas",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "npm ci && npm run sync && npm run typecheck: tsc --noEmit sem erros",
+      "ruleId" : "4C804BFE-C826-440C-A3DF-F22AF3D16FD5",
+      "topic" : "worker-e-schemas",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "worker/src intocado",
+      "ruleId" : "A486BCE3-EAA0-47DD-8826-B20BF64166F5",
+      "topic" : "worker-e-schemas",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhum schema novo",
+      "ruleId" : "CD3057F2-1C45-4F09-A9C7-7EC146998DFA",
+      "topic" : "worker-e-schemas",
+      "verdict" : "na"
+    },
+    {
+      "note" : "$id intocados",
+      "ruleId" : "0A89A5BC-A21B-465C-AE44-9099C3D77A9B",
+      "topic" : "worker-e-schemas",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Só campos opcionais novos (rule.test, result.source/exitCode)",
+      "ruleId" : "48A5C815-B18A-4F32-B67E-E2A8F8FB216E",
+      "topic" : "worker-e-schemas",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "O teste da regra vive em rules/*.json e os scripts em .vibedeck/tests; o único estado em memória é o resultado da última execução de 'Rodar testes' (saída transitória, como o progresso de um comando); o que vale fica no check",
+      "ruleId" : "9E02C127-7793-4588-A770-0E817687B02F",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "runRuleTests/submitCheck só olham tópicos aplicáveis; regras de ideia não entram",
+      "ruleId" : "116AEA24-9A0B-431B-9FC1-8ABE22683898",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nada promove ideias",
+      "ruleId" : "F7531E2B-4846-4C63-BE0F-3DFA1771CCCC",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Revisões intocadas",
+      "ruleId" : "BE018170-5258-45AA-876E-5B761B643714",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Status intocados",
+      "ruleId" : "257D96B2-3561-47D2-AB56-33FA0900B331",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Script com fail em must → passed=false; em should → warning (teste failingScriptBlocksMustAndWarnsShould)",
+      "ruleId" : "54A2D6B0-BC39-4555-A4E9-DB8D418D55CB",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Escopo inalterado; teste runRuleTestsScopesToTopics confere global vs path",
+      "ruleId" : "6E22946D-DF9C-4D59-B403-1BB9F3F0FFB5",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Checks continuam só criados; nada edita/apaga",
+      "ruleId" : "C637A278-87F1-4586-BB2F-0864EDB552CB",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhuma entidade nova com autoria; resultados ganham source agent/script",
+      "ruleId" : "C9BEE6A5-C314-4547-AE52-52D116B11220",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Teste de regra não é um conceito novo com lista própria; pertence à regra",
+      "ruleId" : "B9E9DD35-4A5F-4FA3-BDDF-014238B8CB50",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Botão Gerar/Atualizar testes só aparece com ClaudeCode.isInstalled; Rodar testes não depende de IA",
+      "ruleId" : "A31D4912-A7FA-4E2A-B1C2-CC27D577177B",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhuma seção nova",
+      "ruleId" : "3901FA3E-16BD-4E00-A844-DAB5A87BDFC1",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Remover teste grava na hora com undo",
+      "ruleId" : "8D5FCA3B-9398-45CD-AF1E-03A04F22526C",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Tópico alterado por set-test (CLI/MCP/Claude) recarrega pelo watcher; chips refletem testState",
+      "ruleId" : "9BBFB48C-17CC-4FD9-8D7C-F1FD71529D95",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Inspector de checks mantido; ResultRow mostra engrenagem para resultados de script",
+      "ruleId" : "34D2EA32-DD0D-4405-93F6-FDABEBA7CC1B",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Abas intocadas",
+      "ruleId" : "3D22A05A-9E61-433B-A8E2-00BFA2A968EE",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Boas-vindas intocada",
+      "ruleId" : "365080A7-DD8F-4EBE-9CDF-979D07F6A5C3",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "na"
+    },
+    {
+      "note" : "AGENTS guide e instruções MCP continuam descrevendo rules_for → verificar → submit_rule_check → corrigir",
+      "ruleId" : "EA7C01E6-5CC5-4199-94B6-11536B1ABDFA",
+      "topic" : "fluxo-padrao",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Listagem de revisões intocada",
+      "ruleId" : "8F28F353-95A9-4EEC-8223-383AF2FF6140",
+      "topic" : "fluxo-padrao",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Fluxo de done intocado",
+      "ruleId" : "3A31B517-334E-484C-9205-0513AF158AE8",
+      "topic" : "fluxo-padrao",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Rodar testes: app/CLI/MCP; definir teste: CLI/MCP (+gerar e remover no app)",
+      "ruleId" : "95C0C917-663D-47F0-A4BD-C93E1B7F2D0C",
+      "topic" : "fluxo-padrao",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhuma ideia fora do escopo surgiu",
+      "ruleId" : "09C9F3A9-5B74-496C-8A2D-F93C4294CAD2",
+      "topic" : "fluxo-padrao",
+      "verdict" : "na"
+    }
+  ],
+  "task" : "Testes de regras: gerar/atualizar scripts por regra (Claude), check roda os scripts e só pergunta ao agente as regras manuais",
+  "topics" : [
+    "cli-e-mcp",
+    "core-e-formato-de-dados",
+    "geral",
+    "interface-do-app",
+    "worker-e-schemas",
+    "conceitos-do-produto",
+    "dinamicas-da-interface",
+    "fluxo-padrao"
+  ],
+  "warnings" : [
+
+  ]
+}

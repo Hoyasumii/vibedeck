@@ -1,0 +1,115 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/workflow.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-08T14:34:58Z",
+  "id" : "4187A133-E015-41C2-BA7D-B22A8283D160",
+  "input" : "<issue do GitHub, ex.: #12>",
+  "maxSteps" : 25,
+  "steps" : [
+    {
+      "id" : "registrar-task-do-github",
+      "kind" : "command",
+      "ref" : "registrar-task-do-github",
+      "transitions" : [
+        {
+          "to" : "viabilizar",
+          "verdict" : "REGISTRADA"
+        },
+        {
+          "to" : "buscar-review",
+          "verdict" : "COM_PR"
+        }
+      ]
+    },
+    {
+      "id" : "viabilizar",
+      "kind" : "command",
+      "ref" : "viabilizar",
+      "transitions" : [
+        {
+          "to" : "planejar",
+          "verdict" : "VIÁVEL"
+        }
+      ]
+    },
+    {
+      "id" : "planejar",
+      "kind" : "command",
+      "maxVisits" : 4,
+      "ref" : "planejar",
+      "transitions" : [
+        {
+          "to" : "criticar",
+          "verdict" : "PLANO"
+        }
+      ]
+    },
+    {
+      "id" : "criticar",
+      "kind" : "command",
+      "maxVisits" : 4,
+      "ref" : "criticar",
+      "transitions" : [
+        {
+          "to" : "implementar",
+          "verdict" : "APROVADO"
+        },
+        {
+          "to" : "planejar",
+          "verdict" : "REPROVADO"
+        }
+      ]
+    },
+    {
+      "id" : "implementar",
+      "kind" : "command",
+      "maxVisits" : 4,
+      "ref" : "implementar",
+      "transitions" : [
+        {
+          "to" : "avaliar",
+          "verdict" : "IMPLEMENTADA"
+        }
+      ]
+    },
+    {
+      "id" : "avaliar",
+      "kind" : "command",
+      "maxVisits" : 3,
+      "ref" : "avaliar",
+      "transitions" : [
+        {
+          "to" : "abrir-pull-request",
+          "verdict" : "RESOLVIDA"
+        },
+        {
+          "to" : "planejar",
+          "verdict" : "NAO_RESOLVIDA"
+        }
+      ]
+    },
+    {
+      "id" : "abrir-pull-request",
+      "kind" : "command",
+      "ref" : "abrir-pull-request"
+    },
+    {
+      "id" : "buscar-review",
+      "kind" : "command",
+      "ref" : "buscar-review",
+      "transitions" : [
+        {
+          "to" : "planejar",
+          "verdict" : "ALTERACOES_SOLICITADAS"
+        }
+      ]
+    }
+  ],
+  "summary" : "Leva uma issue do GitHub até o PR, como o /conduzir do claude-kit: cada etapa num subagente, o veredito decide a próxima e as perguntas das etapas chegam ao chat.",
+  "tags" : [
+    "claude-kit",
+    "conduzir"
+  ],
+  "title" : "Conduzir",
+  "updatedAt" : "2026-10-08T14:34:58Z"
+}

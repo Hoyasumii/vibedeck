@@ -8,12 +8,13 @@ struct TabBar: View {
     let onSelect: (Int) -> Void
     let onClose: (Int) -> Void
     @Environment(ProjectModel.self) private var model
+    @Environment(ClaudeSession.self) private var claude
 
     var body: some View {
         ScrollView(.horizontal) {
             HStack(spacing: 4) {
                 ForEach(Array(tabs.enumerated()), id: \.offset) { index, item in
-                    TabButton(title: model.title(for: item), symbol: model.symbol(for: item), isActive: index == active) {
+                    TabButton(title: title(for: item), symbol: model.symbol(for: item), isActive: index == active) {
                         onSelect(index)
                     } onClose: {
                         onClose(index)
@@ -26,6 +27,11 @@ struct TabBar: View {
         .scrollIndicators(.never)
         .background(.bar)
         .overlay(alignment: .bottom) { Divider() }
+    }
+
+    private func title(for item: SidebarItem) -> String {
+        if case .terminal(let id) = item, let terminal = claude.terminals[id] { return terminal.title }
+        return model.title(for: item)
     }
 }
 
