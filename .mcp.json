@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "vibedeck": {
+      "type": "stdio",
+      "command": "vibedeck",
+      "args": ["mcp"]
+    }
+  }
+}
