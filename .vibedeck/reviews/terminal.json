@@ -9,9 +9,18 @@
       "id" : "7808ADEC-AC5A-411A-B0CA-12994A13B382",
       "kind" : "fix",
       "priority" : "normal",
+      "rules" : [
+        "interface-do-app",
+        "dinamicas-da-interface"
+      ],
       "status" : "open",
+      "target" : {
+        "component" : "TabBar",
+        "file" : "Sources/VibeDeckApp/TabBar.swift",
+        "selector" : ".scrollIndicators(.never)"
+      },
       "title" : "Adicionar a barra de Scroll",
-      "updatedAt" : "2026-10-08T14:26:37Z"
+      "updatedAt" : "2026-10-08T15:33:38Z"
     }
   ],
   "title" : "Terminal"

@@ -9,9 +9,10 @@ Nenhuma tarefa está concluída sem passar pelas regras do projeto:
 
 1. Chame `rules_for` (MCP) ou `vibedeck rules for <arquivos> --json` com os arquivos que você
    alterou (e o id do item de revisão, se houver).
-2. Verifique cada regra retornada contra o seu trabalho de verdade (leia o código, rode o que precisar).
+2. Verifique contra o seu trabalho de verdade (leia o código, rode o que precisar) cada regra retornada
+   com `check: "manual"`. As de `check: "script"` são decididas pelo script delas (veja "Testes de regras").
 3. Envie o resultado com `submit_rule_check` (ou `vibedeck rules check`): `pass`, `fail` ou `na`
-   para **cada** regra, com uma nota curta de evidência.
+   para **cada** regra manual, com uma nota curta de evidência. O envio roda os scripts sozinho.
 4. Se `passed` for `false`, corrija e envie um novo check. Só diga que terminou quando passar.
    Regras `should` que falham não bloqueiam, mas avise o usuário.
 
@@ -33,6 +34,7 @@ vibedeck.json                 # declara o projeto: nome, links, tipos de revisã
   skills/<slug>.json          # uma skill do VibeDeck por arquivo (descrição de quando usar, instruções, próximos passos)
   workflows/<slug>.json       # um workflow do VibeDeck por arquivo (etapas e transições condicionais)
   runs/<workflow>/<execução>/ # execuções de workflows: run.json (estado; não edite) + o que as etapas gravam
+  tests/<tópico>/<regra>.sh   # scripts gerados a partir das regras (ver "Testes de regras")
   checks/*.json               # verificações de regras registradas (histórico; não edite)
   attachments/<dono>-<nome>   # arquivos anexados a docs/ideias; no markdown: `![](../attachments/x.png)`
 ```
@@ -56,6 +58,21 @@ Cada item de `reviews/*.json` descreve algo a ajustar no projeto
   quando um arquivo alterado casa.
 - `rules[].severity`: `must` (bloqueia) | `should` (aviso).
 - Você pode propor regras novas (`add_rule`), mas não apague regras de humanos.
+
+## Testes de regras
+
+Uma regra pode ter um `test`: `{mode: script|manual, command, reason, ruleHash, generatedAt}`.
+
+- `script`: `command` roda na raiz do projeto (shell de login) com `$VIBEDECK_FILES` (arquivos alterados, um
+  por linha; vazio = projeto todo), `$VIBEDECK_ROOT` e `$VIBEDECK_RULE_ID`. Exit `0` = cumpre, `77` = não se
+  aplica, outro = viola (imprima o motivo). Limite de 120 s. `submit_rule_check` roda o script e usa o
+  resultado — a sua resposta para essa regra é ignorada.
+- `manual`: a regra não é testável objetivamente; você continua respondendo no check.
+- Se o texto/detalhes da regra mudarem, o `ruleHash` não bate e o teste fica **desatualizado**: a regra volta a
+  ser manual (com aviso no check) até o teste ser regenerado.
+- Para gerar/atualizar: escreva `.vibedeck/tests/<tópico>/<id8>.sh` (executável), rode-o e registre com
+  `set_rule_test` / `vibedeck rules set-test <id> --command <script>` (ou `--manual --reason "..."`).
+  Nunca afrouxe a regra para o script passar. `run_rule_tests` / `vibedeck rules test` roda os scripts sem gravar check.
 
 ## Ideias
 
@@ -150,6 +167,8 @@ vibedeck review set <id> --status done       # id completo ou prefixo (>= 4 char
 vibedeck docs list | vibedeck docs cat <slug>
 vibedeck rules for src/Login.tsx --json      # regras aplicáveis (com ids)
 echo '[{"ruleId":"ab12","verdict":"pass","note":"..."}]' | vibedeck rules check --task "..." --file src/Login.tsx --item <id>
+vibedeck rules test src/Login.tsx            # roda os scripts das regras aplicáveis (sem gravar check)
+vibedeck rules set-test ab12 --command .vibedeck/tests/geral/ab12cd34.sh   # ou --manual --reason "..." / --clear
 vibedeck ideas list | vibedeck ideas new "Modo offline"
 vibedeck agents list | vibedeck agents next <agente> <proximo> | vibedeck agents flow <agente>
 vibedeck commands list | vibedeck agents next <agente> <comando> --kind command | vibedeck commands flow <comando>
