@@ -7,3 +7,4 @@ worker/public/
 .DS_Store
 worker/.dev.vars
 .env*
+graphify-out/
