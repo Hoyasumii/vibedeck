@@ -1,0 +1,99 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "human",
+  "body" : "Na parte dos documentos, deve ser possível gerar documentos. Esses documentos devem mostrar comportamentos do projeto, o que a IA achar útil: Como rodar uma aplicação; Dependências; Regras de Negócio, sei lá",
+  "createdAt" : "2026-10-09T17:35:09Z",
+  "id" : "887A02E8-C412-4A53-851C-1D297D0ED0B3",
+  "paths" : [
+    "Sources/VibeDeckApp/ProjectModel.swift",
+    "Sources/VibeDeckCore/ProjectStore.swift",
+    "Sources/VibeDeckApp/DocView.swift",
+    "Sources/VibeDeckApp/SectionListView.swift",
+    "Sources/VibeDeckApp/RuleDiscover.swift",
+    "Sources/VibeDeckApp/AIReadOnlyOperation.swift",
+    "Sources/VibeDeckCore/RuleDiscover.swift"
+  ],
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:43:03Z",
+      "details" : "Sem provedor instalado, o botão não é renderizado; com provedor, aparece em SectionListView para a seção Docs.",
+      "id" : "90397722-8EDC-468C-823F-CC4C00ED5474",
+      "severity" : "must",
+      "text" : "O botão de gerar documentos fica na lista da seção Docs e só aparece quando há provedor de IA suportado (Claude Code ou Codex) na máquina."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:43:03Z",
+      "details" : "Conferir as ferramentas permitidas na chamada; o código do Claude/Codex não pode alterar arquivos do projeto.",
+      "id" : "83D8DA0A-300F-4F3D-83C6-AC2681A30537",
+      "severity" : "must",
+      "text" : "A geração de documentos roda só com ferramentas de leitura (Read/Grep/Glob), sem Edit/Write/Bash, via AIReadOnlyOperation."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:43:03Z",
+      "details" : "Teste/inspeção: cancelar a proposta não cria nenhum arquivo em .vibedeck/docs.",
+      "id" : "F0AAAB3E-F75E-4FD4-888B-B78C9E0D22A4",
+      "severity" : "must",
+      "text" : "Os documentos gerados nunca são gravados direto: o app mostra uma proposta com título e conteúdo e o usuário aceita (tudo ou por documento) antes de gravar."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:43:03Z",
+      "details" : "Verificar que a criação usa ProjectStore e que o doc gerado tem author=ai.",
+      "id" : "FCF3BA40-0E98-4755-928E-FDB201812383",
+      "severity" : "must",
+      "text" : "Cada documento aceito é criado com author=ai, por operação do Core, e fica disponível no CLI e no MCP."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:43:03Z",
+      "details" : "Teste do Core: gerar duas vezes com o mesmo título produz dois docs com slugs distintos e o original intacto.",
+      "id" : "778E9BF5-D317-4BDF-A0B2-5BDB3169B385",
+      "severity" : "must",
+      "text" : "A geração nunca sobrescreve nem apaga documento existente; se o slug já existe, usa Slug.make + uniqueSlug."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:43:03Z",
+      "details" : "Teste com resposta inválida: nenhum doc criado e mensagem de erro exibida.",
+      "id" : "DA211AC8-6BAC-47E8-BD90-07DD335F2D57",
+      "severity" : "must",
+      "text" : "A resposta da IA é JSON validado; se o parse falhar, o app mostra erro claro em pt-BR e não cria nenhum documento."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:43:03Z",
+      "details" : "Com geração em andamento, o botão de gerar fica desabilitado e o cancelar interrompe o processo sem criar docs.",
+      "id" : "2CE9184C-7983-4532-821E-2FCED3A0258F",
+      "severity" : "must",
+      "text" : "A geração tem botão de cancelar e timeout, e permite uma geração por projeto por vez."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:43:03Z",
+      "details" : "O prompt exige referência arquivo:linha ou arquivo por seção; revisar o prompt em Core.",
+      "id" : "075903B3-6ADF-4DDF-A111-D42293A8BD43",
+      "severity" : "should",
+      "text" : "Os documentos gerados cobrem conteúdo verificável do repositório (como rodar, dependências, regras de negócio) e cada afirmação cita o arquivo de origem."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:43:03Z",
+      "details" : "Após aceitar vários docs, um ⌘Z desfaz todos.",
+      "id" : "205F9706-54D5-4938-8D8F-F33FFCE8693C",
+      "severity" : "should",
+      "text" : "Aceitar uma proposta de documentos é um único passo de undo no app."
+    }
+  ],
+  "status" : "new",
+  "tags" : [
+    "ia",
+    "ui",
+    "swiftui",
+    "core"
+  ],
+  "title" : "Botão de Gerar Documentos",
+  "updatedAt" : "2026-10-09T17:43:03Z"
+}

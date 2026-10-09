@@ -148,7 +148,9 @@ public enum AgentsGuide {
     transforma as regras da ideia em um tópico de regras real (aí passam a valer); os `paths` da ideia viram os
     do tópico (ou são somados aos dele, sem remover nenhum). `unpromote_idea` desfaz isso (apaga o tópico,
     as regras rascunho ficam na ideia); apagar o tópico de outro jeito também despromove a ideia
-    (`approved` volta para `exploring`). Registre ideias que surgirem com `add_idea`.
+    (`approved` volta para `exploring`). `readiness` é o veredito da IA no app (Descubra/Verificar) sobre a ideia
+    estar pronta para implementar; qualquer mudança em título, body, paths ou regras o invalida, e o botão
+    "Implementar" só habilita com regras e veredito viável e atual. Registre ideias que surgirem com `add_idea`.
 
     ## Provedores de IA
 

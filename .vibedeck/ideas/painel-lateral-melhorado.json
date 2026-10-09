@@ -4,10 +4,68 @@
   "body" : "A ideia do Painel lateral melhorado consiste em:\n\n- Omitir tópicos de revisões que não estão sendo trabalhados(tópicos sem issues abertas). Eles devem poder ser visto no painel de revisões, e não no painel lateral. \n\n![Captura de Tela 2026-10-09 às 13.06.47.png](../attachments/painel-lateral-melhorado-captura-de-tela-2026-10-09-as-13-06-47.png)\n\n- Omitir ideias já implementadas(elas podem ser vistas na tela de ideias):\n\n![Captura de Tela 2026-10-09 às 13.08.52.png](../attachments/painel-lateral-melhorado-captura-de-tela-2026-10-09-as-13-08-52.png)",
   "createdAt" : "2026-10-09T15:59:00Z",
   "id" : "70094A4A-1578-40DB-88FB-A19346569612",
+  "paths" : [
+    "Sources/VibeDeckApp/ProjectWindow.swift",
+    "Sources/VibeDeckApp/ProjectModel.swift",
+    "Sources/VibeDeckCore/Rules.swift"
+  ],
   "rules" : [
-
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:36:55Z",
+      "details" : "Em ProjectWindow.swift (case .groups), o ForEach filtra grupos com openCount == 0. Verificar com um grupo cujos itens estão todos done/wontfix: ele não aparece na sidebar.",
+      "id" : "E044FE9D-EF2F-40E6-A5F4-3345A69AD9C8",
+      "severity" : "must",
+      "text" : "A lista de Revisões na sidebar mostra só grupos com pelo menos um item aberto (openCount > 0)."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:36:55Z",
+      "details" : "A tela de Revisões lista todos os grupos, inclusive os sem itens abertos, e permite abri-los e abri-los em aba.",
+      "id" : "48A075FC-F155-4EC3-898A-C98B196C54CA",
+      "severity" : "must",
+      "text" : "Grupos de revisão sem itens abertos continuam acessíveis na tela de Revisões (seção .groups)."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:36:55Z",
+      "details" : "Em ProjectWindow.swift (case .ideas), filtrar status == .done. Ideias descartadas, novas, em exploração e aprovadas continuam aparecendo.",
+      "id" : "E248D5A3-186D-47B0-B365-1B8D777BB1EF",
+      "severity" : "must",
+      "text" : "A lista de Ideias na sidebar omite ideias com status done (Implementada)."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:36:55Z",
+      "details" : "A tela de Ideias (seção .ideas) mostra todas as ideias, incluindo as Implementadas, e permite abri-las.",
+      "id" : "605FC62C-F962-4D34-8982-846A0F8E3C4A",
+      "severity" : "must",
+      "text" : "Ideias com status done continuam listadas na tela de Ideias."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:36:55Z",
+      "details" : "Ao marcar o último item aberto como done, ou ideia como Implementada, a seleção/aba atual continua mostrando o conteúdo (sem tela vazia nem crash); testar mudando o status com o item selecionado.",
+      "id" : "122BDD0C-E3A0-4A9D-9FBE-A99446016FCF",
+      "severity" : "should",
+      "text" : "Um grupo de revisão ou ideia aberto/selecionado que a sidebar omite não deixa a seleção ou a aba inválida."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:36:55Z",
+      "details" : "Com o novo filtro de visibilidade aplicado, digitar texto ou #tag filtra apenas entre grupos com itens abertos e ideias não implementadas, sem quebrar a busca.",
+      "id" : "279A3FF7-0F45-4FB1-B77A-F2DACA0AC289",
+      "severity" : "should",
+      "text" : "O filtro por texto e por #tag da sidebar continua funcionando sobre os grupos e ideias que ela exibe."
+    }
   ],
   "status" : "new",
+  "tags" : [
+    "ui",
+    "swiftui",
+    "revisoes",
+    "ideias"
+  ],
   "title" : "Painel Lateral Melhorado",
-  "updatedAt" : "2026-10-09T16:09:24Z"
+  "updatedAt" : "2026-10-09T17:36:55Z"
 }

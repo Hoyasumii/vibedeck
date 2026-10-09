@@ -122,11 +122,18 @@ resource `vibedeck://patterns`.
   "Gerar com o que já tenho") e sugere regras `must`/`should`. Globs catch-all (`**`, `*`, `**/*`) ou que não
   casam nenhum arquivo são descartados, tags novas começam desmarcadas, regras que duplicam ou conflitam com as
   existentes vêm sinalizadas e desmarcadas, e nada é removido. Na ideia as regras entram como rascunho e os globs
-  ficam em `paths`. Cada aceite é um único ⌘Z; editar o tópico/ideia durante a chamada descarta a resposta.
+  ficam em `paths`. Por fim a IA reescreve a **descrição** com o que foi reunido (na ideia: Problema, Proposta,
+  Escopo e Critérios de aceite; no tópico: quando ele se aplica), mostrada antes/depois para aceitar ou manter a
+  atual. Cada aceite é um único ⌘Z; editar o tópico/ideia durante a chamada descarta a resposta.
 - **Ideias**: brainstorm com status, tags, globs (`paths`), texto markdown e regras rascunho. "Promover" cria um tópico
   de regras real com essas regras e globs (se o tópico já existe, os globs são somados; globs que não casam mais
   nenhum arquivo são avisados antes). Apagar esse tópico (no app, no Finder ou com `vibedeck ideas unpromote`)
   despromove a ideia: o vínculo some, "Aprovada" volta para "Explorando" e as regras rascunho ficam.
+- **Implementar ideia**: na etapa da descrição a IA também diz se a ideia é **viável** (dá para implementar sem
+  decisões em aberto) ou o que falta; o veredito fica em `readiness`. O botão "Implementar" só habilita com regras e
+  veredito viável e atual: qualquer mudança em título, texto, globs ou regras o invalida, e "Verificar" refaz só essa
+  avaliação. Ao clicar, as regras são promovidas/sincronizadas (a ideia fica "Aprovada") e a IA recebe no chat o
+  pedido de implementar seguindo as regras e o check.
 - **Agentes**: nome, modelo e prompt (markdown) de agentes do VibeDeck. Os **próximos passos** apontam para
   outros agentes, comandos ou skills do VibeDeck e formam um fluxo; `vibedeck agents flow <agente>`
   (ou o botão "Copiar fluxo") gera o JSON que orquestra a IA. "Importar do Claude Code" traz os `.md` de

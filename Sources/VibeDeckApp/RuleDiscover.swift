@@ -2,8 +2,8 @@ import SwiftUI
 import VibeDeckCore
 
 /// Runs the rules "Descubra" for a topic or an idea: first a read-only call proposing globs and tags, then an
-/// interview (rounds of questions) that drafts rules. Each answer only becomes a proposal; the view applies
-/// what the user accepts.
+/// interview (rounds of questions) that drafts rules, and last a rewritten description (with, for ideas, the
+/// viability verdict). Each answer only becomes a proposal; the view applies what the user accepts.
 @Observable @MainActor
 final class RuleDiscoverRunner {
     enum State: Equatable {
@@ -13,6 +13,7 @@ final class RuleDiscoverRunner {
         case scope(RuleDiscoverScope)
         case questions([RuleDiscover.Question])
         case drafts(RuleDiscoverDrafts)
+        case description(RuleDiscoverDescription)
     }
 
     var state: State = .idle
@@ -58,6 +59,23 @@ final class RuleDiscoverRunner {
         }
     }
 
+    /// Phase 3: the description rewritten with what was gathered (and the idea's viability). Alone, it's "Verificar".
+    func describe(_ subject: RuleDiscover.Subject, topics: [RuleDiscover.KnownTopic], store: ProjectStore, provider: AIProvider) {
+        let prompt = RuleDiscover.descriptionPrompt(subject, topics: topics, history: history)
+        run(subject, message: subject.kind == .idea ? "Atualizando a descrição e avaliando a ideia…" : "Atualizando a descrição…",
+            provider: provider, store: store, prompt: prompt, schema: RuleDiscover.descriptionSchema) { data in
+            let answer = try JSONDecoder().decode(RuleDiscover.DescriptionAnswer.self, from: data)
+            return .description(RuleDiscover.description(answer, subject: subject))
+        }
+    }
+
+    /// Only the description/viability phase, without the scope and interview.
+    func assess(_ subject: RuleDiscover.Subject, topics: [RuleDiscover.KnownTopic], store: ProjectStore, provider: AIProvider) {
+        history = []
+        round = 0
+        describe(subject, topics: topics, store: store, provider: provider)
+    }
+
     private func run(_ subject: RuleDiscover.Subject, message: String, provider: AIProvider, store: ProjectStore,
                      prompt: String, schema: String, parse: @escaping (Data) throws -> State) {
         guard provider.isInstalled else { state = .failed("\(provider.title) não está instalado."); return }
@@ -99,8 +117,10 @@ final class RuleDiscoverRunner {
 }
 
 /// The "Descubra" button shared by the topic and idea editors, with the sheet that walks through the proposals.
-/// `apply*` closures write one undoable change each.
+/// `apply*` closures write one undoable change each. `assessOnly` makes it the idea's "Verificar": just the
+/// description/viability phase.
 struct RuleDiscoverButton: View {
+    var assessOnly = false
     let subject: RuleDiscover.Subject
     /// Fresh subject after an accept (the interview starts from what was just applied).
     let current: () -> RuleDiscover.Subject
@@ -109,17 +129,29 @@ struct RuleDiscoverButton: View {
     let store: ProjectStore
     let applyScope: (RuleDiscoverScope, Set<String>, Set<String>) -> Void
     let applyRules: (RuleDiscoverDrafts, Set<UUID>) -> Void
+    /// The proposal and whether the new text was accepted (false keeps the current one).
+    let applyDescription: (RuleDiscoverDescription, Bool) -> Void
     @Environment(AISession.self) private var session
     @State private var runner = RuleDiscoverRunner()
 
     var body: some View {
         Button {
-            runner.start(subject, vocabulary: vocabulary, topics: topics, store: store, provider: session.provider)
+            if assessOnly {
+                runner.assess(subject, topics: topics, store: store, provider: session.provider)
+            } else {
+                runner.start(subject, vocabulary: vocabulary, topics: topics, store: store, provider: session.provider)
+            }
         } label: {
-            Label("Descubra", systemImage: "sparkles")
+            if assessOnly {
+                Label("Verificar", systemImage: "checkmark.circle.badge.questionmark")
+            } else {
+                Label("Descubra", systemImage: "sparkles")
+            }
         }
         .disabled(runner.isActive)
-        .help("Pede à IA (só leitura) globs e tags e, depois, uma entrevista para gerar regras. Nada é gravado sem aceite.")
+        .help(assessOnly
+              ? "Pede à IA (só leitura) para revisar a descrição e dizer se a ideia já dá para implementar."
+              : "Pede à IA (só leitura) globs e tags, uma entrevista para gerar regras e, por fim, a descrição atualizada. Nada é gravado sem aceite.")
         .sheet(isPresented: Binding(get: { runner.isActive }, set: { if !$0 { runner.cancel() } })) {
             RuleDiscoverSheet(runner: runner, subject: subject.kind,
                               applyScope: { scope, paths, tags, next in
@@ -132,6 +164,11 @@ struct RuleDiscoverButton: View {
                               },
                               applyRules: { drafts, chosen in
                                   applyRules(drafts, chosen)
+                                  describe()
+                              },
+                              describe: describe,
+                              applyDescription: { proposal, accepted in
+                                  applyDescription(proposal, accepted)
                                   runner.cancel()
                               })
         }
@@ -142,6 +179,10 @@ struct RuleDiscoverButton: View {
     private func interview() {
         runner.interview(current(), topics: topics, store: store, provider: session.provider)
     }
+
+    private func describe() {
+        runner.describe(current(), topics: topics, store: store, provider: session.provider)
+    }
 }
 
 private struct RuleDiscoverSheet: View {
@@ -151,6 +192,8 @@ private struct RuleDiscoverSheet: View {
     let interview: () -> Void
     let answer: ([String], Bool) -> Void
     let applyRules: (RuleDiscoverDrafts, Set<UUID>) -> Void
+    let describe: () -> Void
+    let applyDescription: (RuleDiscoverDescription, Bool) -> Void
 
     @State private var paths: Set<String> = []
     @State private var tags: Set<String> = []
@@ -200,6 +243,8 @@ private struct RuleDiscoverSheet: View {
             questionsForm(questions)
         case .drafts(let drafts):
             draftsForm(drafts)
+        case .description(let proposal):
+            descriptionForm(proposal)
         }
     }
 
@@ -216,9 +261,19 @@ private struct RuleDiscoverSheet: View {
             Button("Responder") { answer(answers, false) }
                 .keyboardShortcut(.defaultAction)
         case .drafts(let drafts):
+            Button("Pular para a descrição") { describe() }
             Button(subject == .idea ? "Adicionar ao rascunho" : "Adicionar regras") { applyRules(drafts, rules) }
                 .keyboardShortcut(.defaultAction)
                 .disabled(rules.isEmpty)
+        case .description(let proposal):
+            if proposal.suggested == nil {
+                Button(subject == .idea ? "Salvar avaliação" : "Fechar") { applyDescription(proposal, false) }
+                    .keyboardShortcut(.defaultAction)
+            } else {
+                Button("Manter a atual") { applyDescription(proposal, false) }
+                Button("Usar nova descrição") { applyDescription(proposal, true) }
+                    .keyboardShortcut(.defaultAction)
+            }
         case .idle, .running, .failed:
             EmptyView()
         }
@@ -313,6 +368,50 @@ private struct RuleDiscoverSheet: View {
         .formStyle(.grouped)
     }
 
+    private func descriptionForm(_ proposal: RuleDiscoverDescription) -> some View {
+        Form {
+            if subject == .idea {
+                Section("Viabilidade") {
+                    if proposal.viable {
+                        Label("Dá para implementar", systemImage: "checkmark.seal").foregroundStyle(.green)
+                    } else {
+                        Label("Ainda não dá para implementar", systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
+                        ForEach(proposal.missing, id: \.self) { Text("• \($0)").font(.callout) }
+                    }
+                }
+            }
+            if let suggested = proposal.suggested {
+                Section {
+                    ScrollView {
+                        Text(suggested).font(.callout.monospaced()).textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(height: 180)
+                    if let reason = proposal.reason { Text(reason).font(.caption) }
+                } header: {
+                    Text("Descrição nova")
+                } footer: {
+                    Text(subject == .idea
+                         ? "Substitui a atual (⌘Z desfaz). A IA avaliou a ideia com este texto: manter a atual não conta como viável."
+                         : "Substitui a atual (⌘Z desfaz).")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                if let current = proposal.current {
+                    Section("Descrição atual") {
+                        ScrollView {
+                            Text(current).font(.callout.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .frame(height: 100)
+                    }
+                }
+            } else {
+                Text("A IA manteve a descrição atual.").foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+    }
+
     @ViewBuilder
     private func discarded(_ list: [String]) -> some View {
         if !list.isEmpty {
@@ -332,7 +431,7 @@ private struct RuleDiscoverSheet: View {
             answers = Array(repeating: "", count: questions.count)
         case .drafts(let drafts):
             rules = drafts.defaultRules
-        case .idle, .running, .failed:
+        case .idle, .running, .failed, .description:
             break
         }
     }

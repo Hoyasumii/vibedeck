@@ -1,0 +1,604 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-09T17:56:54.619Z",
+  "failures" : [
+
+  ],
+  "files" : [
+    "Sources/VibeDeckApp/IdeaView.swift",
+    "Sources/VibeDeckApp/RuleDiscover.swift",
+    "Sources/VibeDeckApp/RulesView.swift",
+    "Sources/VibeDeckCore/AgentsGuide.swift",
+    "Sources/VibeDeckCore/RuleDiscover.swift",
+    "Sources/VibeDeckCore/Rules.swift",
+    "Tests/VibeDeckCoreTests/RuleDiscoverTests.swift",
+    "schema/v1/idea.schema.json"
+  ],
+  "id" : "02FCE06D-E493-4A08-A70F-161139CD11AE",
+  "passed" : true,
+  "pending" : [
+    "Comportamento novo no Core vem com teste",
+    "README atualizado quando muda algo documentado",
+    "Escritas próprias não recarregam; escritas externas são aplicadas",
+    "Contrato das abas",
+    "O accordion da sidebar não depende da seleção",
+    "Todo conceito é acessível pelo app, pelo CLI e pelo MCP"
+  ],
+  "results" : [
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/5fa116b6.sh (exit 77)\n(sem saída)",
+      "ruleId" : "5FA116B6-6FBE-45F9-8C5D-29E7548F6C2F",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/857149e6.sh (exit 0)\n(sem saída)",
+      "ruleId" : "857149E6-8C34-46A8-9C30-439EBE78309D",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/99bf0d79.sh (exit 0)\n(sem saída)",
+      "ruleId" : "99BF0D79-2F65-419A-87DA-0B4F37E4FEF5",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/5ed22d96.sh (exit 0)\n(sem saída)",
+      "ruleId" : "5ED22D96-FE5F-4683-8611-E3D264113B67",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/c6d79b9c.sh (exit 0)\n(sem saída)",
+      "ruleId" : "C6D79B9C-1F50-4AE3-8CD1-8CAE5C4F6B6F",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/57ada275.sh (exit 0)\n(sem saída)",
+      "ruleId" : "57ADA275-8A0F-42BA-9E14-BA3B34AB8235",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/4133c155.sh (exit 0)\n(sem saída)",
+      "ruleId" : "4133C155-F789-428E-9ED5-5EAC37C19700",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/b0277971.sh (exit 0)\n(sem saída)",
+      "ruleId" : "B0277971-459D-4CCB-9E9D-5990F1574F5B",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/7f7c6b09.sh (exit 0)\n(sem saída)",
+      "ruleId" : "7F7C6B09-EBCB-4CA0-BAAF-6B18D36F15C1",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/bc028be5.sh (exit 0)\n✔ Test submitCheck() passed after 0.012 seconds.\n✔ Suite RulesTests passed after 0.012 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.012 seconds.",
+      "ruleId" : "BC028BE5-D7E0-4DA3-BB5C-E8A628EBFA8A",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/64e65b59.sh (exit 0)\n✔ Test reviewItemGate() passed after 0.017 seconds.\n✔ Suite RulesTests passed after 0.017 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.017 seconds.",
+      "ruleId" : "64E65B59-8D5B-40DE-B381-CAF2B1BDC785",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/8d874a06.sh (exit 0)\n✔ Test applicableTopics() passed after 0.007 seconds.\n✔ Suite RulesTests passed after 0.008 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.008 seconds.",
+      "ruleId" : "8D874A06-515D-41B5-A094-DC8B83BB40B6",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/35d8d7c3.sh (exit 0)\n✔ Test ideasAndPromotion() passed after 0.010 seconds.\n✔ Suite RulesTests passed after 0.010 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.011 seconds.",
+      "ruleId" : "35D8D7C3-1224-45CC-8A80-66D0B6291C33",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/64334d9c.sh (exit 0)\n✔ Test globs() passed after 0.001 seconds.\n✔ Suite RulesTests passed after 0.001 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.001 seconds.",
+      "ruleId" : "64334D9C-327B-4811-B088-8B785EF4E0FE",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/ea5e6f7d.sh (exit 0)\n(sem saída)",
+      "ruleId" : "EA5E6F7D-1587-4FC5-87D9-51CE6F130C7B",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/97510532.sh (exit 0)\n✔ Test run with 175 tests in 23 suites passed after 1.011 seconds.\n✔ Test run with 17 tests in 3 suites passed after 0.162 seconds.",
+      "ruleId" : "97510532-2FCF-44BD-9D01-75086E554EB9",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/dfe3361b.sh (exit 0)\n(sem saída)",
+      "ruleId" : "DFE3361B-6AFE-4ED3-A741-4FC0818D197D",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/b659fd25.sh (exit 0)\n✔ Test unpromote() passed after 0.012 seconds.\n✔ Suite RulesTests passed after 0.012 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.013 seconds.",
+      "ruleId" : "B659FD25-792B-4C0E-BD08-6082ACFCC80A",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/a2b13b15.sh (exit 0)\n✔ Test unpromote() passed after 0.011 seconds.\n✔ Suite RulesTests passed after 0.011 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.012 seconds.",
+      "ruleId" : "A2B13B15-C59E-4189-8905-3A309C89DF28",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/9d6f362b.sh (exit 0)\n(sem saída)",
+      "ruleId" : "9D6F362B-9F0E-4661-97B3-6158B160D478",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/geral/9f92a765.sh (exit 77)\n(sem saída)",
+      "ruleId" : "9F92A765-76E7-4EA0-A66A-78AE12EE4C8F",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/ac4ba963.sh (exit 0)\n(sem saída)",
+      "ruleId" : "AC4BA963-CDEE-419C-B057-9140643E115D",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/0e5aec71.sh (exit 0)\n(sem saída)",
+      "ruleId" : "0E5AEC71-405E-4113-AB27-615313AB2B5F",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/geral/4095f087.sh (exit 1)\núltimo commit (e41557d): última linha deve ser 'Co-Authored-By: Claude ... <noreply@anthropic.com>', veio: feat: auto-commit idea removals",
+      "ruleId" : "4095F087-1E04-46C0-9AA4-A60C8C16A72B",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/interface-do-app/ee65a0a5.sh (exit 0)\n(sem saída)",
+      "ruleId" : "EE65A0A5-71DA-431A-A4B7-567144D40423",
+      "source" : "script",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/interface-do-app/9a4878f2.sh (exit 0)\n(sem saída)",
+      "ruleId" : "9A4878F2-54AD-4B93-9E8B-9D7683C8F9F2",
+      "source" : "script",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/interface-do-app/047d2216.sh (exit 0)\n(sem saída)",
+      "ruleId" : "047D2216-D1C9-4AFC-AA0A-D789DC1E8A60",
+      "source" : "script",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/interface-do-app/00e57961.sh (exit 0)\n(sem saída)",
+      "ruleId" : "00E57961-FE6D-4AFC-BB1A-3DC70152D38D",
+      "source" : "script",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/interface-do-app/b065b5af.sh (exit 0)\n(sem saída)",
+      "ruleId" : "B065B5AF-B93F-4698-8E43-BB4369E74351",
+      "source" : "script",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/interface-do-app/3d508dea.sh (exit 0)\n(sem saída)",
+      "ruleId" : "3D508DEA-D43E-4E33-91B7-F46039B6B53D",
+      "source" : "script",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/interface-do-app/a999b857.sh (exit 0)\n(sem saída)",
+      "ruleId" : "A999B857-E236-4893-97A9-07257A538B57",
+      "source" : "script",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/interface-do-app/dc9eed4d.sh (exit 0)\n(sem saída)",
+      "ruleId" : "DC9EED4D-8823-4FD1-83ED-3B820A83E8B4",
+      "source" : "script",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/interface-do-app/492100c1.sh (exit 0)\n(sem saída)",
+      "ruleId" : "492100C1-EFE3-488F-8368-08CE17A797DA",
+      "source" : "script",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/interface-do-app/b382469c.sh (exit 0)\n(sem saída)",
+      "ruleId" : "B382469C-4D35-4314-BEC2-50BCEC7C6855",
+      "source" : "script",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/interface-do-app/1a4ef162.sh (exit 0)\n(sem saída)",
+      "ruleId" : "1A4EF162-82B1-4940-8251-A2102964C3E8",
+      "source" : "script",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/worker-e-schemas/efdec345.sh (exit 0)\n(sem saída)",
+      "ruleId" : "EFDEC345-F90B-41DA-9484-9F470C8E3E94",
+      "source" : "script",
+      "topic" : "worker-e-schemas",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/worker-e-schemas/4c804bfe.sh (exit 0)\nworker/: sync + typecheck ok (v22.23.3)",
+      "ruleId" : "4C804BFE-C826-440C-A3DF-F22AF3D16FD5",
+      "source" : "script",
+      "topic" : "worker-e-schemas",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/worker-e-schemas/a486bce3.sh (exit 77)\n(sem saída)",
+      "ruleId" : "A486BCE3-EAA0-47DD-8826-B20BF64166F5",
+      "source" : "script",
+      "topic" : "worker-e-schemas",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/worker-e-schemas/cd3057f2.sh (exit 0)\n(sem saída)",
+      "ruleId" : "CD3057F2-1C45-4F09-A9C7-7EC146998DFA",
+      "source" : "script",
+      "topic" : "worker-e-schemas",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/worker-e-schemas/0a89a5bc.sh (exit 0)\n(sem saída)",
+      "ruleId" : "0A89A5BC-A21B-465C-AE44-9099C3D77A9B",
+      "source" : "script",
+      "topic" : "worker-e-schemas",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/worker-e-schemas/48a5c815.sh (exit 0)\n(sem saída)",
+      "ruleId" : "48A5C815-B18A-4F32-B67E-E2A8F8FB216E",
+      "source" : "script",
+      "topic" : "worker-e-schemas",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/conceitos-do-produto/9e02c127.sh (exit 0)\n(sem saída)",
+      "ruleId" : "9E02C127-7793-4588-A770-0E817687B02F",
+      "source" : "script",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/conceitos-do-produto/116aea24.sh (exit 0)\n(sem saída)",
+      "ruleId" : "116AEA24-9A0B-431B-9FC1-8ABE22683898",
+      "source" : "script",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/conceitos-do-produto/f7531e2b.sh (exit 0)\n(sem saída)",
+      "ruleId" : "F7531E2B-4846-4C63-BE0F-3DFA1771CCCC",
+      "source" : "script",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/conceitos-do-produto/be018170.sh (exit 0)\n(sem saída)",
+      "ruleId" : "BE018170-5258-45AA-876E-5B761B643714",
+      "source" : "script",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/conceitos-do-produto/257d96b2.sh (exit 0)\n(sem saída)",
+      "ruleId" : "257D96B2-3561-47D2-AB56-33FA0900B331",
+      "source" : "script",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/conceitos-do-produto/54a2d6b0.sh (exit 0)\n(sem saída)",
+      "ruleId" : "54A2D6B0-BC39-4555-A4E9-DB8D418D55CB",
+      "source" : "script",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/conceitos-do-produto/6e22946d.sh (exit 0)\n(sem saída)",
+      "ruleId" : "6E22946D-DF9C-4D59-B403-1BB9F3F0FFB5",
+      "source" : "script",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/conceitos-do-produto/c637a278.sh (exit 0)\n(sem saída)",
+      "ruleId" : "C637A278-87F1-4586-BB2F-0864EDB552CB",
+      "source" : "script",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/conceitos-do-produto/c9bee6a5.sh (exit 0)\n(sem saída)",
+      "ruleId" : "C9BEE6A5-C314-4547-AE52-52D116B11220",
+      "source" : "script",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/conceitos-do-produto/b9e9dd35.sh (exit 0)\n(sem saída)",
+      "ruleId" : "B9E9DD35-4A5F-4FA3-BDDF-014238B8CB50",
+      "source" : "script",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/conceitos-do-produto/a31d4912.sh (exit 0)\n(sem saída)",
+      "ruleId" : "A31D4912-A7FA-4E2A-B1C2-CC27D577177B",
+      "source" : "script",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/dinamicas-da-interface/3901fa3e.sh (exit 0)\n(sem saída)",
+      "ruleId" : "3901FA3E-16BD-4E00-A844-DAB5A87BDFC1",
+      "source" : "script",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/dinamicas-da-interface/8d5fca3b.sh (exit 0)\n(sem saída)",
+      "ruleId" : "8D5FCA3B-9398-45CD-AF1E-03A04F22526C",
+      "source" : "script",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/dinamicas-da-interface/9bbfb48c.sh (exit 0)\n(sem saída)",
+      "ruleId" : "9BBFB48C-17CC-4FD9-8D7C-F1FD71529D95",
+      "source" : "script",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/dinamicas-da-interface/34d2ea32.sh (exit 0)\n(sem saída)",
+      "ruleId" : "34D2EA32-DD0D-4405-93F6-FDABEBA7CC1B",
+      "source" : "script",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/dinamicas-da-interface/3d22a05a.sh (exit 0)\n(sem saída)",
+      "ruleId" : "3D22A05A-9E61-433B-A8E2-00BFA2A968EE",
+      "source" : "script",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/dinamicas-da-interface/365080a7.sh (exit 77)\n(sem saída)",
+      "ruleId" : "365080A7-DD8F-4EBE-9CDF-979D07F6A5C3",
+      "source" : "script",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/fluxo-padrao/ea7c01e6.sh (exit 0)\n(sem saída)",
+      "ruleId" : "EA7C01E6-5CC5-4199-94B6-11536B1ABDFA",
+      "source" : "script",
+      "topic" : "fluxo-padrao",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/fluxo-padrao/8f28f353.sh (exit 77)\n(sem saída)",
+      "ruleId" : "8F28F353-95A9-4EEC-8223-383AF2FF6140",
+      "source" : "script",
+      "topic" : "fluxo-padrao",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/fluxo-padrao/3a31b517.sh (exit 0)\n(sem saída)",
+      "ruleId" : "3A31B517-334E-484C-9205-0513AF158AE8",
+      "source" : "script",
+      "topic" : "fluxo-padrao",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/fluxo-padrao/09c9f3a9.sh (exit 77)\n(sem saída)",
+      "ruleId" : "09C9F3A9-5B74-496C-8A2D-F93C4294CAD2",
+      "source" : "script",
+      "topic" : "fluxo-padrao",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/2f64266b.sh (exit 0)\n◇ Test run started.\n↳ Testing Library Version: 2084\n↳ Target Platform: arm64e-apple-macos14.0\n◇ Suite AIEfficiencyTests started.\n◇ Test contextPagesAreLosslessImmutableAndConfined() started.\n◇ Test workflowKeepsOldDecisionsAndFullOutputs() started.\n◇ Test mentionedChatIsRecoverableAndFullModeRemainsAvailable() started.\n✔ Test workflowKeepsOldDecisionsAndFullOutputs() passed after 0.013 seconds.\n✔ Test mentionedChatIsRecoverableAndFullModeRemainsAvailable() passed after 0.024 seconds.\n✔ Test contextPagesAreLosslessImmutableAndConfined() passed after 0.053 seconds.\n✔ Suite AIEfficiencyTests passed after 0.053 seconds.\n✔ Test run with 3 tests in 1 suite passed after 0.053 seconds.",
+      "ruleId" : "2F64266B-FD73-4B70-B293-D9317C7228A1",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/f12aa1dd.sh (exit 0)\n(sem saída)",
+      "ruleId" : "F12AA1DD-0FFB-48F8-912D-236E271AA842",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/3301bc0e.sh (exit 0)\n(sem saída)",
+      "ruleId" : "3301BC0E-BBC5-4E4F-9609-CA119DD2C8F3",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/64f3eca8.sh (exit 0)\n[1 / 1]\nBuild complete! (0,77 seg)\n◇ Test run started.\n↳ Testing Library Version: 2084\n↳ Target Platform: arm64e-apple-macos14.0\n◇ Suite AIRecoveryTests started.\n◇ Test persistentFailureStopsAndTransportErrorsDoNotRetry() started.\n◇ Test invalidAnswerGetsOneRecoveryWithoutChangingSettings() started.\n✔ Test persistentFailureStopsAndTransportErrorsDoNotRetry() passed after 0.008 seconds.\n✔ Test invalidAnswerGetsOneRecoveryWithoutChangingSettings() passed after 0.010 seconds.\n✔ Suite AIRecoveryTests passed after 0.010 seconds.\n✔ Test run with 2 tests in 1 suite passed after 0.010 seconds.",
+      "ruleId" : "64F3ECA8-2A3F-400C-8D41-5853009B7F91",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/fc9a5733.sh (exit 0)\nBuilding for debugging...\n[Computing dependencies]\n[Using on-disk description]\nBuild complete! (0,61 seg)\n◇ Test run started.\n↳ Testing Library Version: 2084\n↳ Target Platform: arm64e-apple-macos14.0\n◇ Suite AIEfficiencyTests started.\n◇ Test usageSeparatesMissingZeroCacheAndCumulativeCounts() started.\n✔ Test usageSeparatesMissingZeroCacheAndCumulativeCounts() passed after 0.004 seconds.\n✔ Suite AIEfficiencyTests passed after 0.004 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.004 seconds.",
+      "ruleId" : "FC9A5733-DC0E-4606-BB85-A3CC7592A4BC",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/6088cc95.sh (exit 0)\n◇ Test catalogPaginatesWithoutSendingUserPrompts() started.\n◇ Test guideReducesInitialContextWithoutLosingDocumentation() started.\n◇ Test sharedPolicyAppearsOnceInTheGuide() started.\n◇ Test ruleCheckSummaryKeepsEveryVerdictAndPointsToTheFullCheck() started.\n◇ Test compactRulesForKeepsEveryRuleAndResolvesItsIds() started.\n✔ Test sharedPolicyAppearsOnceInTheGuide() passed after 0.001 seconds.\n✔ Test ruleCheckSummaryKeepsEveryVerdictAndPointsToTheFullCheck() passed after 0.003 seconds.\n✔ Test catalogPaginatesWithoutSendingUserPrompts() passed after 0.008 seconds.\n✔ Test guideReducesInitialContextWithoutLosingDocumentation() passed after 0.019 seconds.\n✔ Test compactRulesForKeepsEveryRuleAndResolvesItsIds() passed after 0.044 seconds.\n✔ Suite AIEfficiencyTests passed after 0.044 seconds.\n✔ Test run with 5 tests in 1 suite passed after 0.044 seconds.\ninstructions: 2803 -> 988 (65% menor)\ntools: 42434 -> 29555 (31% menor)\nrules_for: 17018 -> 7733 (55% menor)",
+      "ruleId" : "6088CC95-37DF-4923-ACD6-B12FCCA307EC",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/7974ee31.sh (exit 0)\nBuilding for debugging...\n[Computing dependencies]\n[1 / 58]\nBuild complete! (0,85 seg)\n◇ Test run started.\n↳ Testing Library Version: 2084\n↳ Target Platform: arm64e-apple-macos14.0\n◇ Suite AIRecoveryTests started.\n◇ Test generationChecksOnlySelectedRulesAndRejectsChangedRequirements() started.\n✔ Test generationChecksOnlySelectedRulesAndRejectsChangedRequirements() passed after 0.010 seconds.\n✔ Suite AIRecoveryTests passed after 0.010 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.010 seconds.",
+      "ruleId" : "7974EE31-FD02-492A-8258-C2F15D594E77",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/ee39f0e7.sh (exit 0)\n(sem saída)",
+      "ruleId" : "EE39F0E7-7C01-4142-A7CD-6234BF40C8F4",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    }
+  ],
+  "task" : "Descubra ganha fase de descrição (ideia/tópico) com veredito de viabilidade da ideia (Idea.readiness + fingerprint); botão Implementar (promove + chat) habilitado só para ideia viável; botão Verificar; schema, guia e testes.",
+  "topics" : [
+    "core-e-formato-de-dados",
+    "geral",
+    "interface-do-app",
+    "worker-e-schemas",
+    "conceitos-do-produto",
+    "dinamicas-da-interface",
+    "fluxo-padrao",
+    "eficiencia-de-ia"
+  ],
+  "warnings" : [
+    "Commits terminam com a linha Co-Authored-By"
+  ]
+}

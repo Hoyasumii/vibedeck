@@ -61,6 +61,10 @@ struct RuleTopicView: View {
             },
             applyRules: { drafts, chosen in
                 model.mutateTopic(slug, "Descubra: regras", undo: undo) { drafts.apply(chosen, to: &$0.rules) }
+            },
+            applyDescription: { proposal, accepted in
+                guard accepted else { return }
+                model.mutateTopic(slug, "Descubra: descrição", undo: undo) { proposal.apply(to: &$0.description) }
             }
         )
         .id(slug)

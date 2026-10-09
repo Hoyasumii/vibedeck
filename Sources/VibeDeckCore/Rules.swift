@@ -245,6 +245,8 @@ public struct Idea: Codable, Equatable, Identifiable, Sendable {
     public var rules: [Rule]
     /// Slug of the rule topic created when the idea was promoted.
     public var promotedTopic: String?
+    /// Last AI verdict on whether the idea is ready to implement (Descubra / Verificar).
+    public var readiness: IdeaReadiness?
     public var author: Author
     public var createdAt: Date
     public var updatedAt: Date
@@ -264,7 +266,7 @@ public struct Idea: Codable, Equatable, Identifiable, Sendable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case schema = "$schema", id, title, body, status, tags, paths, rules, promotedTopic, author, createdAt, updatedAt
+        case schema = "$schema", id, title, body, status, tags, paths, rules, promotedTopic, readiness, author, createdAt, updatedAt
     }
 
     public init(from decoder: Decoder) throws {
@@ -278,6 +280,7 @@ public struct Idea: Codable, Equatable, Identifiable, Sendable {
         paths = try c.decodeIfPresent([String].self, forKey: .paths) ?? []
         rules = try c.decodeIfPresent([Rule].self, forKey: .rules) ?? []
         promotedTopic = try c.decodeIfPresent(String.self, forKey: .promotedTopic)
+        readiness = try? c.decodeIfPresent(IdeaReadiness.self, forKey: .readiness)
         author = try c.decodeIfPresent(Author.self, forKey: .author) ?? .human
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? .now
         updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
@@ -294,9 +297,98 @@ public struct Idea: Codable, Equatable, Identifiable, Sendable {
         if !paths.isEmpty { try c.encode(paths, forKey: .paths) }
         try c.encode(rules, forKey: .rules)
         try c.encodeIfPresent(promotedTopic, forKey: .promotedTopic)
+        try c.encodeIfPresent(readiness, forKey: .readiness)
         try c.encode(author, forKey: .author)
         try c.encode(createdAt, forKey: .createdAt)
         try c.encode(updatedAt, forKey: .updatedAt)
+    }
+}
+
+extension Idea {
+    /// Fingerprint of what the AI judged (title, body, globs, rules). Status, tags and promotion stay out, so promoting
+    /// doesn't invalidate the verdict; any other edit (app, CLI, MCP) does.
+    public var contentFingerprint: String {
+        let rules = rules.map { "\($0.severity.rawValue)\t\($0.text)\t\($0.details ?? "")" }
+        let text = ([title, body ?? "", paths.joined(separator: "\n")] + rules).joined(separator: "\n\u{1F}\n")
+        let data = Data(text.utf8)
+        #if canImport(CryptoKit)
+        let digest = Array(SHA256.hash(data: data))
+        #else
+        let digest = PortableSHA256.hash(data)
+        #endif
+        return digest.prefix(8).map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// Why "Implementar" is unavailable, or nil when the idea is viable: has rules, was verified by the AI with
+    /// the current content and judged complete.
+    public var implementBlocker: String? {
+        if status.isClosed { return "Ideia \(status.label.lowercased())." }
+        if rules.isEmpty { return "Sem regras: rode o Descubra para gerar as regras." }
+        guard let readiness else { return "Ainda não verificada pela IA: rode o Descubra ou Verificar." }
+        if readiness.fingerprint != contentFingerprint { return "A ideia mudou desde a verificação: verifique de novo." }
+        if !readiness.viable {
+            return readiness.missing.isEmpty ? "A IA achou a ideia vaga demais para implementar."
+                : "Vaga demais. Falta: " + readiness.missing.joined(separator: "; ")
+        }
+        return nil
+    }
+}
+
+/// AI verdict on an idea: viable = description + rules are enough for an agent to implement it.
+public struct IdeaReadiness: Codable, Equatable, Sendable {
+    public var viable: Bool
+    /// Concrete gaps the AI found (empty when viable).
+    public var missing: [String]
+    public var checkedAt: Date
+    /// `Idea.contentFingerprint` when checked; a different one means the verdict is stale.
+    public var fingerprint: String
+
+    public init(viable: Bool, missing: [String] = [], checkedAt: Date = .now, fingerprint: String) {
+        self.viable = viable
+        self.missing = missing
+        self.checkedAt = checkedAt
+        self.fingerprint = fingerprint
+    }
+
+    enum CodingKeys: String, CodingKey { case viable, missing, checkedAt, fingerprint }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        viable = try c.decodeIfPresent(Bool.self, forKey: .viable) ?? false
+        missing = try c.decodeIfPresent([String].self, forKey: .missing) ?? []
+        checkedAt = try c.decodeIfPresent(Date.self, forKey: .checkedAt) ?? .now
+        fingerprint = try c.decodeIfPresent(String.self, forKey: .fingerprint) ?? ""
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(viable, forKey: .viable)
+        if !missing.isEmpty { try c.encode(missing, forKey: .missing) }
+        try c.encode(checkedAt, forKey: .checkedAt)
+        try c.encode(fingerprint, forKey: .fingerprint)
+    }
+}
+
+/// Prompt sent to the chat by "Implementar" on a viable idea (already promoted, so its rules are enforced).
+public enum IdeaImplementation {
+    public static func prompt(slug: String, idea: Idea, topic: String?) -> String {
+        var lines = [
+            "Implemente a ideia \"\(idea.title)\" deste projeto.",
+            "",
+            "1. Leia a ideia completa com get_idea (\"\(slug)\"): a descrição é a especificação.",
+        ]
+        if let topic {
+            lines.append("2. As regras dela já estão ativas no tópico \"\(topic)\" (get_rule_topic): siga todas.")
+        } else {
+            lines.append("2. Siga as regras rascunho da ideia.")
+        }
+        lines += [
+            "3. Antes de implementar: list_stack, list_patterns e os itens de revisão abertos da área.",
+            "4. Implemente. Se surgir uma decisão que a ideia não cobre, me pergunte antes.",
+            "5. Ao terminar: rules_for com os arquivos alterados e submit_rule_check até passed=true.",
+            "6. Com o check aprovado, marque a ideia como implementada (update_idea status=done).",
+        ]
+        return lines.joined(separator: "\n")
     }
 }
 

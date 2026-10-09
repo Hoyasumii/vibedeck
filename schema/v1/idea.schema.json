@@ -15,6 +15,18 @@
     "paths": { "type": "array", "items": { "type": "string" }, "description": "Suggested globs (relative to the repo root). Promotion copies them into the topic's paths." },
     "rules": { "type": "array", "items": { "$ref": "rule-topic.schema.json#/$defs/rule" } },
     "promotedTopic": { "type": "string", "description": "Slug of the rule topic created from this idea." },
+    "readiness": {
+      "type": "object",
+      "description": "Last AI verdict on whether the idea is ready to implement. Stale when fingerprint differs from the current content (title, body, paths, rules).",
+      "required": ["viable", "checkedAt", "fingerprint"],
+      "properties": {
+        "viable": { "type": "boolean" },
+        "missing": { "type": "array", "items": { "type": "string" }, "description": "Gaps that keep the idea from being implemented." },
+        "checkedAt": { "type": "string", "format": "date-time" },
+        "fingerprint": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
     "author": { "enum": ["human", "ai"] },
     "createdAt": { "type": "string", "format": "date-time" },
     "updatedAt": { "type": "string", "format": "date-time" }

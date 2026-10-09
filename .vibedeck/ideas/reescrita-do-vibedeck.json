@@ -1,13 +1,114 @@
 {
   "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
   "author" : "human",
-  "body": "A ideia da Reescrita do VibeDeck é botar o Core do Aplicativo em Rust, assim como o CLI e o MCP, e manter o pacote de Swift apenas para a interface do Aplicativo",
+  "body" : "A ideia da Reescrita do VibeDeck é botar o Core do Aplicativo em Rust, assim como o CLI e o MCP, e manter o pacote de Swift apenas para a interface do Aplicativo. Isso vai ser útil quando o projeto ganhar versões para outras plataformas, como windows e Linux\n\nA ideia tbm é mudar a regra que já existe do CLI, para substituir o CLI existente com o novo",
   "createdAt" : "2026-10-09T16:06:01Z",
   "id" : "35806341-8605-43B0-A13A-456DB1369B35",
+  "paths" : [
+    "Sources/VibeDeckCore/*.swift",
+    "Sources/vibedeck/*.swift",
+    "Sources/VibeDeckApp/*.swift",
+    "Package.swift",
+    "scripts/*.sh"
+  ],
   "rules" : [
-
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:38:55Z",
+      "details" : "Verificar que Sources/ Swift não contém regras de negócio (resolução de referências, aplicabilidade de tópicos, validação de check) e que chama o Core Rust.",
+      "id" : "F9CFB6C7-4643-4A73-AE74-B09604F76E61",
+      "severity" : "must",
+      "text" : "O Core em Rust é a única implementação da lógica de dados do projeto (leitura, escrita, regras, checks, ideias, revisões); o pacote Swift não duplica essa lógica."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:38:55Z",
+      "details" : "Verificar que o build do CLI/MCP roda com cargo, sem swift build, e que ambos importam o mesmo crate do Core.",
+      "id" : "DF006CE3-7422-4E3F-B0C1-42B98C68F5B2",
+      "severity" : "must",
+      "text" : "O CLI vibedeck e o servidor MCP são binários Rust que usam o mesmo Core, sem depender de código Swift."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:38:55Z",
+      "details" : "Comparar a saída --json e a lista de tools do MCP antes e depois da migração; qualquer diferença deve ser documentada.",
+      "id" : "83660463-AE39-4DC8-876B-3ED38DD3FDE2",
+      "severity" : "must",
+      "text" : "A reescrita preserva paridade de comportamento: mesmos comandos, flags (incluindo --json e --ai), ferramentas MCP e códigos de saída do CLI/MCP atuais."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:38:55Z",
+      "details" : "Teste de round-trip: arquivos existentes do repositório são lidos e regravados pelo Rust sem diferença semântica; campos vazios continuam omitidos e RuleCheck.createdAt mantém frações de segundo.",
+      "id" : "26A8F17F-5417-4690-9B9C-26562F154345",
+      "severity" : "must",
+      "text" : "O formato dos arquivos em .vibedeck/ e vibedeck.json não muda com a reescrita: o Core Rust lê e escreve arquivos compatíveis com o schema/v1 atual."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:38:55Z",
+      "details" : "Verificar que toda escrita usa um único helper atômico e que há teste para isso.",
+      "id" : "0AD6066A-B2F1-423E-BC61-75312DB5E5A9",
+      "severity" : "must",
+      "text" : "O Core em Rust mantém as invariantes de persistência: nenhuma escrita parcial (escrita atômica via arquivo temporário e rename) e nenhum estado em memória entre operações."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:38:55Z",
+      "details" : "Verificar o README e que existe um único módulo Swift responsável por essa ponte.",
+      "id" : "C0E7C10C-7866-4AF4-A81D-395E1D7D7070",
+      "severity" : "should",
+      "text" : "O app Swift acessa o Core Rust por uma fronteira única e documentada (FFI ou processo do CLI), e essa escolha fica registrada no README."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:38:55Z",
+      "details" : "Rodar cargo test e swift test; não apagar Sources/VibeDeckCore antes da paridade dos testes.",
+      "id" : "001121E1-1512-49C9-B9CA-B782CDDB853D",
+      "severity" : "must",
+      "text" : "Toda a lógica do Core migrado para Rust tem testes automatizados equivalentes aos testes Swift existentes, e cargo test passa antes de remover o código Swift correspondente."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:38:55Z",
+      "details" : "Verificar que o workspace Rust compila com cargo check nos três alvos (CI ou cross-target).",
+      "id" : "319A33CF-18C3-45BE-B93E-3039F16EC4F3",
+      "severity" : "should",
+      "text" : "O Core Rust não usa APIs específicas de macOS (AppKit, Foundation do Apple, Keychain) e compila em macOS, Linux e Windows."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:38:55Z",
+      "details" : "Verificar build-app.sh e .github/workflows: cargo build --release antes do swift build, binário copiado para o .app, scripts ainda com set -euo pipefail e source scripts/env.sh.",
+      "id" : "C09AAF48-52D8-40A9-9C54-D0C01453804F",
+      "severity" : "must",
+      "text" : "Os scripts de build e os workflows de CI compilam o Core/CLI/MCP em Rust e continuam empacotando o CLI dentro do app e gerando o DMG."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:38:55Z",
+      "details" : "Verificar que vibedeck --version bate com Cargo.toml e que não resta um version: em CLI.swift divergente.",
+      "id" : "47DC3D50-9084-4C2A-8377-1D84C5A381F3",
+      "severity" : "should",
+      "text" : "A versão do CLI tem uma única fonte no projeto Rust (Cargo.toml) e o script de build do app usa esse valor."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:38:55Z",
+      "details" : "Verificar que o enum de erro centraliza as mensagens e que nenhuma mensagem visível ao usuário está em inglês.",
+      "id" : "2B0AC7CF-E1E5-43EF-AC9C-A0D277175E6B",
+      "severity" : "must",
+      "text" : "As mensagens de erro do Core em Rust continuam em pt-BR e usam um tipo de erro único equivalente ao VibeDeckError."
+    }
   ],
   "status" : "new",
+  "tags" : [
+    "core",
+    "cli",
+    "mcp",
+    "build",
+    "swiftui"
+  ],
   "title" : "Reescrita do VibeDeck",
-  "updatedAt" : "2026-10-09T16:06:01Z"
+  "updatedAt" : "2026-10-09T17:39:27Z"
 }

@@ -16,7 +16,7 @@ private func newStore() throws -> ProjectStore {
 
     @Test func readOnlyToolsAndStrictSchemas() throws {
         #expect(RuleDiscover.tools == ["Read", "Grep", "Glob"])
-        for schema in [RuleDiscover.scopeSchema, RuleDiscover.interviewSchema] {
+        for schema in [RuleDiscover.scopeSchema, RuleDiscover.interviewSchema, RuleDiscover.descriptionSchema] {
             let value = try JSONDecoder().decode(JSONValue.self, from: Data(schema.utf8))
             #expect(value["type"]?.string == "object")
         }
@@ -146,5 +146,78 @@ private func newStore() throws -> ProjectStore {
         try store.updateIdea(slug) { $0.paths.append("Package.swift") }
         #expect(try store.promoteIdea(slug) == topic)
         #expect(try store.loadTopic(topic).paths == ["Sources/App/**", "Tests/**", "Sources/Gone/**", "Package.swift"])
+    }
+
+    @Test func descriptionPromptAndProposal() throws {
+        let history = [RuleDiscover.Exchange(question: "Vale no iPad?", answer: "Não")]
+        var idea = Idea(title: "Modo offline", body: "Cache local")
+        idea.rules = [Rule(text: "Sincroniza ao voltar a rede", details: "ver SyncService")]
+        let ideaSubject = RuleDiscover.Subject(idea: idea)
+        let prompt = RuleDiscover.descriptionPrompt(ideaSubject, topics: [], history: history)
+        #expect(prompt.contains("R: Não"))
+        #expect(prompt.contains("[must] Sincroniza ao voltar a rede — ver SyncService"))
+        #expect(prompt.contains("Critérios de aceite"))
+        #expect(prompt.contains("viable: true só se"))
+        #expect(RuleDiscover.descriptionPrompt(subject, topics: [], history: []).contains("quando este tópico se aplica"))
+
+        let data = Data(#"{"description":"  ## Problema\nCache  ","reason":"organizei","viable":true,"missing":[" ", "x"]}"#.utf8)
+        let answer = try JSONDecoder().decode(RuleDiscover.DescriptionAnswer.self, from: data)
+        let proposal = RuleDiscover.description(answer, subject: ideaSubject)
+        #expect(proposal.current == "Cache local")
+        #expect(proposal.suggested == "## Problema\nCache")
+        #expect(proposal.viable)
+        #expect(proposal.missing == ["x"])
+        #expect(RuleDiscover.description(.init(description: "Cache local", viable: true), subject: ideaSubject).suggested == nil)
+        #expect(!RuleDiscover.description(.init(description: "x", viable: true), subject: subject).viable)
+
+        var body = idea.body
+        proposal.apply(to: &body)
+        #expect(body == "## Problema\nCache")
+    }
+
+    @Test func readinessRoundTripsAndGoesStale() throws {
+        var idea = Idea(title: "X", body: "b")
+        #expect(!String(decoding: try VDJSON.encode(idea), as: UTF8.self).contains("readiness"))
+        #expect(idea.implementBlocker?.contains("Sem regras") == true)
+
+        idea.rules = [Rule(text: "R")]
+        #expect(idea.implementBlocker?.contains("não verificada") == true)
+
+        let viable = RuleDiscoverDescription(viable: true)
+        idea.readiness = viable.readiness(for: idea, acceptedDescription: false)
+        #expect(idea.implementBlocker == nil)
+        let decoded = try VDJSON.decoder.decode(Idea.self, from: VDJSON.encode(idea))
+        #expect(decoded.readiness?.fingerprint == idea.contentFingerprint)
+        #expect(decoded.implementBlocker == nil)
+
+        idea.status = .approved
+        idea.promotedTopic = "x"
+        idea.tags = ["t"]
+        #expect(idea.implementBlocker == nil)
+
+        idea.body = "outra"
+        #expect(idea.implementBlocker?.contains("mudou") == true)
+        idea.body = "b"
+        idea.rules[0].details = "d"
+        #expect(idea.implementBlocker?.contains("mudou") == true)
+
+        idea.readiness = RuleDiscoverDescription(viable: false, missing: ["Qual tela?"]).readiness(for: idea, acceptedDescription: true)
+        #expect(idea.implementBlocker?.contains("Qual tela?") == true)
+
+        let rejected = RuleDiscoverDescription(suggested: "nova", viable: true).readiness(for: idea, acceptedDescription: false)
+        #expect(!rejected.viable)
+        idea.readiness = RuleDiscoverDescription(suggested: "nova", viable: true).readiness(for: idea, acceptedDescription: true)
+        #expect(idea.implementBlocker == nil)
+        idea.status = .done
+        #expect(idea.implementBlocker != nil)
+    }
+
+    @Test func implementationPromptPointsToIdeaTopicAndChecks() {
+        let prompt = IdeaImplementation.prompt(slug: "modo-offline", idea: Idea(title: "Modo offline"), topic: "modo-offline")
+        #expect(prompt.contains("get_idea (\"modo-offline\")"))
+        #expect(prompt.contains("tópico \"modo-offline\""))
+        #expect(prompt.contains("rules_for"))
+        #expect(prompt.contains("submit_rule_check"))
+        #expect(prompt.contains("status=done"))
     }
 }
