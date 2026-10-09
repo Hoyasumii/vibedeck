@@ -61,6 +61,7 @@ public struct RuleTestRunner: Sendable {
 /// `command` in the user's login shell, stdout+stderr merged, killed after `timeout` seconds.
 public enum ShellRunner {
     public static let timedOutStatus: Int32 = 124
+    private static let timeoutQueue = DispatchQueue(label: "vibedeck.shell-runner-timeout")
 
     public static func run(
         _ command: String, in root: URL, environment: [String: String] = [:], timeout: TimeInterval = 120, outputLimit: Int = 20_000
@@ -83,7 +84,7 @@ public enum ShellRunner {
             process.terminate()
         }
         do { try process.run() } catch { return ("Não foi possível executar: \(error.localizedDescription)", 127) }
-        DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: timer)
+        timeoutQueue.asyncAfter(deadline: .now() + timeout, execute: timer)
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
         timer.cancel()

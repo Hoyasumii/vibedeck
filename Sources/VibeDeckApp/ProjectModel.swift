@@ -50,6 +50,7 @@ enum SidebarItem: Hashable {
     case stack
     case patterns
     case links
+    case graph
     case claude
     case terminal(UUID)
     case section(SidebarSection)
@@ -67,6 +68,7 @@ enum SidebarItem: Hashable {
         case .stack: "stack"
         case .patterns: "patterns"
         case .links: "links"
+        case .graph: "graph"
         case .claude: "claude"
         case .terminal(let id): "terminal:\(id.uuidString)"
         case .section(let section): "section:\(section.rawValue)"
@@ -86,6 +88,7 @@ enum SidebarItem: Hashable {
         if key == "stack" { self = .stack }
         else if key == "patterns" { self = .patterns }
         else if key == "links" { self = .links }
+        else if key == "graph" { self = .graph }
         else if key == "claude" { self = .claude }
         else if key.hasPrefix("terminal:") {
             guard let id = UUID(uuidString: String(key.dropFirst(9))) else { return nil }
@@ -113,7 +116,7 @@ enum SidebarItem: Hashable {
     /// The sidebar section this item lives in (expanded while it is selected).
     var section: SidebarSection? {
         switch self {
-        case .stack, .patterns, .links, .claude, .terminal: nil
+        case .stack, .patterns, .links, .graph, .claude, .terminal: nil
         case .section(let section): section
         case .doc: .docs
         case .group: .groups
@@ -989,7 +992,7 @@ final class ProjectModel {
         case .command(let slug): store.commandURL(slug)
         case .skill(let slug): store.skillURL(slug)
         case .workflow(let slug): store.workflowURL(slug)
-        case .stack, .patterns, .links, .claude, .terminal, .section: nil
+        case .stack, .patterns, .links, .graph, .claude, .terminal, .section: nil
         }
     }
 
@@ -999,6 +1002,7 @@ final class ProjectModel {
         case .stack: "Stack"
         case .patterns: "Padrões"
         case .links: "Links"
+        case .graph: "Grafo"
         case .claude: "IA"
         case .terminal: "Terminal"
         case .section(let section): section.title
@@ -1019,6 +1023,7 @@ final class ProjectModel {
         case .stack: "square.stack.3d.up"
         case .patterns: "building.columns"
         case .links: "link"
+        case .graph: "point.3.connected.trianglepath.dotted"
         case .claude: "sparkles"
         case .terminal: "terminal"
         case .section(let section): section.symbol
@@ -1036,7 +1041,7 @@ final class ProjectModel {
     /// Whether `item` still exists in the project (pages always do; files may have been deleted).
     func exists(_ item: SidebarItem) -> Bool {
         switch item {
-        case .stack, .patterns, .links, .terminal, .section: true
+        case .stack, .patterns, .links, .graph, .terminal, .section: true
         case .claude: !AIProvider.installed.isEmpty
         case .doc(let slug): docs.contains { $0.slug == slug }
         case .group(let slug): group(slug) != nil
@@ -1059,7 +1064,7 @@ final class ProjectModel {
         case .command(let slug): deleteCommand(slug)
         case .skill(let slug): deleteSkill(slug)
         case .workflow(let slug): deleteWorkflow(slug)
-        case .stack, .patterns, .links, .claude, .terminal, .section: break
+        case .stack, .patterns, .links, .graph, .claude, .terminal, .section: break
         }
     }
 
@@ -1073,7 +1078,7 @@ final class ProjectModel {
         case .command(let slug): mutateCommand(slug, "Editar tags", undo: undo) { $0.tags = tags }
         case .skill(let slug): mutateSkill(slug, "Editar tags", undo: undo) { $0.tags = tags }
         case .workflow(let slug): mutateWorkflow(slug, "Editar tags", undo: undo) { $0.tags = tags }
-        case .stack, .patterns, .links, .claude, .terminal, .section: break
+        case .stack, .patterns, .links, .graph, .claude, .terminal, .section: break
         }
     }
 
