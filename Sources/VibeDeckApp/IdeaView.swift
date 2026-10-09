@@ -11,7 +11,6 @@ struct IdeaView: View {
     @State private var text = ""
     @State private var savedText = ""
     @State private var loaded = false
-    @State private var saveTask: Task<Void, Never>?
     @State private var insertion: MarkdownInsertion?
     /// Globs of the idea that match no file, waiting for the user's choice before promoting.
     @State private var stalePaths: [String] = []
@@ -67,7 +66,7 @@ struct IdeaView: View {
             }
         }
         .onAppear(perform: load)
-        .onChange(of: text) { _, _ in scheduleSave() }
+        .onChange(of: text) { _, _ in saveIfNeeded() }
         .onChange(of: idea.body) { _, new in
             // External edit (CLI/MCP): adopt it unless the user has unsaved typing.
             let disk = new ?? ""
@@ -99,6 +98,7 @@ struct IdeaView: View {
             text: $text,
             undoManager: model.undoManager(forDoc: "idea:\(slug)"),
             autoFocus: false,
+            baseURL: model.store.ideasDir,
             importFiles: { model.importAttachments($0, owner: slug) },
             importImage: { model.importAttachment(data: $0, name: "colagem-\(Date.now.formatted(.iso8601)).png", owner: slug) },
             insertion: insertion
@@ -286,14 +286,9 @@ struct IdeaView: View {
         loaded = true
     }
 
-    private func scheduleSave() {
+    private func saveIfNeeded() {
         guard loaded, text != savedText else { return }
-        saveTask?.cancel()
-        saveTask = Task {
-            try? await Task.sleep(for: .milliseconds(600))
-            guard !Task.isCancelled else { return }
-            save()
-        }
+        save()
     }
 
     private func save() {
@@ -304,7 +299,6 @@ struct IdeaView: View {
     }
 
     private func flush() {
-        saveTask?.cancel()
         if loaded, text != savedText { save() }
     }
 }

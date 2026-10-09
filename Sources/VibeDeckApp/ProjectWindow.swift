@@ -5,6 +5,7 @@ struct ProjectWindow: View {
     @Environment(\.undoManager) private var undo
     @State private var model: ProjectModel
     @State private var claude: AISession
+    @State private var sidebarSearch = ""
     @State private var selection: SidebarItem?
     /// Open tabs; `selection` always mirrors `tabs[activeTab]`.
     @State private var tabs: [SidebarItem] = [.links]
@@ -155,12 +156,28 @@ struct ProjectWindow: View {
         // The list must stay the column's root scroll view: wrapped in a VStack, AppKit applies the
         // title-bar inset only after the first layout, so the top rows open hidden under the title.
         // A safe-area bar insets the list's content, so the last rows still scroll clear of the footer.
-        // With the toolbar background hidden, the soft edge effect lets rows show through the
-        // traffic lights and title; a hard edge gives the title area an opaque backing instead.
+        // The soft edge effect fades rows under the traffic lights and title, like the footer at the bottom.
         sidebarList
-            .scrollEdgeEffectStyle(.hard, for: .top)
+            .scrollEdgeEffectStyle(.soft, for: .top)
             .safeAreaBar(edge: .bottom, spacing: 0) {
                 VStack(spacing: 0) {
+                    Divider()
+                    HStack {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundStyle(.secondary)
+                        TextField("Filtrar sidebar (#tag)", text: $sidebarSearch)
+                            .textFieldStyle(.plain)
+                            .accessibilityLabel("Filtrar sidebar por texto e tag")
+                        if !sidebarSearch.isEmpty {
+                            Button { sidebarSearch = "" } label: {
+                                Image(systemName: "xmark.circle.fill")
+                            }
+                            .buttonStyle(.plain)
+                            .help("Limpar filtro")
+                            .accessibilityLabel("Limpar filtro")
+                        }
+                    }
+                    .padding(10)
                     Divider()
                     sidebarFooter
                 }
@@ -219,8 +236,8 @@ struct ProjectWindow: View {
         }
         .animation(.snappy(duration: 0.25), value: expanded)
         .listStyle(.sidebar)
-        // Hard edge under the title so scrolled rows don't blend into it.
-        .scrollEdgeEffectStyle(.hard, for: .top)
+        // Soft edge under the title, matching the footer's fade at the bottom.
+        .scrollEdgeEffectStyle(.soft, for: .top)
     }
 
     private var sidebarFooter: some View {
@@ -246,9 +263,10 @@ struct ProjectWindow: View {
 
     @ViewBuilder
     private func children(of section: SidebarSection) -> some View {
+        let visible = Set(model.sidebarRows(for: section, search: sidebarSearch).map(\.id))
         switch section {
         case .docs:
-            ForEach(model.docs) { doc in
+            ForEach(model.docs.filter { visible.contains(.doc($0.slug)) }) { doc in
                 Label(doc.title, systemImage: "doc.text")
                     .help(doc.title)
                     .tag(SidebarItem.doc(doc.slug))
@@ -263,7 +281,7 @@ struct ProjectWindow: View {
                     }
             }
         case .groups:
-            ForEach(model.groups) { entry in
+            ForEach(model.groups.filter { visible.contains(.group($0.slug)) }) { entry in
                 Label(entry.group.title, systemImage: "checklist")
                     .help(entry.group.title)
                     .badge(entry.group.openCount)
@@ -279,7 +297,7 @@ struct ProjectWindow: View {
                     }
             }
         case .topics:
-            ForEach(model.topics) { entry in
+            ForEach(model.topics.filter { visible.contains(.topic($0.slug)) }) { entry in
                 Label(entry.value.title, systemImage: entry.value.isGlobal ? "checkmark.shield" : "scope")
                     .badge(entry.value.rules.count)
                     .tag(SidebarItem.topic(entry.slug))
@@ -295,7 +313,7 @@ struct ProjectWindow: View {
                     }
             }
         case .ideas:
-            ForEach(model.ideas) { entry in
+            ForEach(model.ideas.filter { visible.contains(.idea($0.slug)) }) { entry in
                 Label(entry.value.title, systemImage: entry.value.status.symbol)
                     .foregroundStyle(entry.value.status.isClosed ? .secondary : .primary)
                     .tag(SidebarItem.idea(entry.slug))
@@ -321,7 +339,7 @@ struct ProjectWindow: View {
                     }
             }
         case .agents:
-            ForEach(model.agents) { entry in
+            ForEach(model.agents.filter { visible.contains(.agent($0.slug)) }) { entry in
                 Label(entry.value.title, systemImage: "person.crop.rectangle")
                     .tag(SidebarItem.agent(entry.slug))
                     .help("\(entry.value.title) — \(entry.value.model ?? "modelo herdado")")
@@ -336,7 +354,7 @@ struct ProjectWindow: View {
                     }
             }
         case .commands:
-            ForEach(model.commands) { entry in
+            ForEach(model.commands.filter { visible.contains(.command($0.slug)) }) { entry in
                 Label(entry.value.title, systemImage: "command")
                     .tag(SidebarItem.command(entry.slug))
                     .help("\(entry.value.title)\(entry.value.argumentHint.map { " \($0)" } ?? "") — \(entry.value.model ?? "modelo herdado")")
@@ -351,7 +369,7 @@ struct ProjectWindow: View {
                     }
             }
         case .skills:
-            ForEach(model.skills) { entry in
+            ForEach(model.skills.filter { visible.contains(.skill($0.slug)) }) { entry in
                 Label(entry.value.title, systemImage: "wand.and.stars")
                     .tag(SidebarItem.skill(entry.slug))
                     .help("\(entry.value.title)\(entry.value.summary.map { " — \($0)" } ?? "")")
@@ -366,7 +384,7 @@ struct ProjectWindow: View {
                     }
             }
         case .workflows:
-            ForEach(model.workflows) { entry in
+            ForEach(model.workflows.filter { visible.contains(.workflow($0.slug)) }) { entry in
                 Label(entry.value.title, systemImage: "point.3.connected.trianglepath.dotted")
                     .tag(SidebarItem.workflow(entry.slug))
                     .help("\(entry.value.title) — \(entry.value.steps.count) etapa(s)\(entry.value.summary.map { " — \($0)" } ?? "")")

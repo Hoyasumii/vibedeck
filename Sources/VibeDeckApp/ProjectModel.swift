@@ -146,6 +146,8 @@ struct SectionRow: Identifiable, Hashable {
 @MainActor
 @Observable
 final class ProjectModel {
+    let docGenerator: DocGenerateRunner
+    let graphRunner: GraphRunner
     let store: ProjectStore
     var project: Project
     var docs: [DocInfo] = []
@@ -188,6 +190,8 @@ final class ProjectModel {
 
     init(store: ProjectStore) {
         self.store = store
+        self.docGenerator = DocGenerateRunner.shared(root: store.root)
+        self.graphRunner = GraphRunner.shared(root: store.root)
         self.project = (try? store.loadProject()) ?? Project(name: store.root.lastPathComponent)
         try? store.ensureDirectories()
         try? store.refreshAgentsGuideIfNeeded()
@@ -438,6 +442,51 @@ final class ProjectModel {
     }
 
     // MARK: Docs
+
+    /// All chosen documents are one undoable action. A failed batch rolls back only its new files.
+    @discardableResult
+    func acceptGeneratedDocs(_ proposed: [DocGenerate.Document], undo: UndoManager?) -> Bool {
+        let documents = DocGenerate.validated(proposed)
+        guard !documents.isEmpty else { return false }
+        var created: [String] = []
+        do {
+            for document in documents {
+                created.append(try store.createGeneratedDoc(title: document.title, body: document.content))
+            }
+            let snapshot = try Dictionary(uniqueKeysWithValues: created.map { ($0, try store.readDoc($0)) })
+            reloadDocs()
+            undo?.registerUndo(withTarget: self) { model in model.toggleGeneratedDocs(snapshot, remove: true, undo: undo) }
+            undo?.setActionName("Gerar documentos")
+            return true
+        } catch {
+            for slug in created { try? store.deleteDoc(slug) }
+            reloadDocs()
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    private func toggleGeneratedDocs(_ snapshot: [String: String], remove: Bool, undo: UndoManager?) {
+        do {
+            // Preserve documents edited externally after acceptance, and avoid overwriting on redo.
+            for (slug, text) in snapshot {
+                if remove {
+                    guard try store.readDoc(slug) == text else {
+                        throw VibeDeckError.discoverFailed("Um documento mudou após o aceite; não foi possível desfazer o lote.")
+                    }
+                } else if FileManager.default.fileExists(atPath: store.docURL(slug).path) {
+                    throw VibeDeckError.discoverFailed("Um documento ocupa o destino; não foi possível refazer o lote.")
+                }
+            }
+            for (slug, text) in snapshot {
+                if remove { try store.deleteDoc(slug) }
+                else { try store.writeDoc(slug, text) }
+            }
+            reloadDocs()
+            undo?.registerUndo(withTarget: self) { model in model.toggleGeneratedDocs(snapshot, remove: !remove, undo: undo) }
+            undo?.setActionName("Gerar documentos")
+        } catch { errorMessage = error.localizedDescription; reloadDocs() }
+    }
 
     func createDoc(title: String) -> String? {
         do {
@@ -937,6 +986,29 @@ final class ProjectModel {
     }
 
     // MARK: Sections
+
+    /// Visibility and search belong only to the sidebar; section pages keep all rows.
+    func sidebarRows(for section: SidebarSection, search: String = "") -> [SectionRow] {
+        let hidden: Set<SidebarItem>
+        switch section {
+        case .groups:
+            hidden = Set(groups.filter { $0.group.openCount == 0 }.map { .group($0.slug) })
+        case .ideas:
+            hidden = Set(ideas.filter { $0.value.status == .done }.map { .idea($0.slug) })
+        default:
+            hidden = []
+        }
+        let terms = search.split(whereSeparator: { $0.isWhitespace })
+        let tags = terms.filter { $0.hasPrefix("#") }.map { String($0.dropFirst()) }
+        let text = terms.filter { !$0.hasPrefix("#") }.joined(separator: " ")
+        return rows(for: section).filter { row in
+            !hidden.contains(row.id)
+                && tags.allSatisfy { tag in row.tags.contains { $0.caseInsensitiveCompare(tag) == .orderedSame } }
+                && (text.isEmpty || row.title.localizedCaseInsensitiveContains(text)
+                    || row.detail.localizedCaseInsensitiveContains(text)
+                    || row.tags.contains { $0.localizedCaseInsensitiveContains(text) })
+        }
+    }
 
     func count(_ section: SidebarSection) -> Int {
         switch section {
