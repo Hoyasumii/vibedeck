@@ -283,6 +283,93 @@ public enum RuleDiscover {
         return drafts
     }
 
+    // MARK: Description (+ viability for ideas)
+
+    public struct DescriptionAnswer: Decodable, Equatable, Sendable {
+        public var description: String
+        public var reason: String
+        public var viable: Bool
+        public var missing: [String]
+
+        public init(description: String, reason: String = "", viable: Bool = false, missing: [String] = []) {
+            self.description = description
+            self.reason = reason
+            self.viable = viable
+            self.missing = missing
+        }
+
+        enum CodingKeys: String, CodingKey { case description, reason, viable, missing }
+
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            description = try c.decodeIfPresent(String.self, forKey: .description) ?? ""
+            reason = try c.decodeIfPresent(String.self, forKey: .reason) ?? ""
+            viable = try c.decodeIfPresent(Bool.self, forKey: .viable) ?? false
+            missing = try c.decodeIfPresent([String].self, forKey: .missing) ?? []
+        }
+    }
+
+    public static let descriptionSchema = #"""
+    {"type":"object","properties":{"description":{"type":"string"},"reason":{"type":"string"},"viable":{"type":"boolean"},"missing":{"type":"array","items":{"type":"string"}}},"required":["description","reason","viable","missing"]}
+    """#
+
+    /// Rewrites the description with what the Descubra gathered (globs, tags, rules, interview). For an idea it also
+    /// judges whether it's ready to implement.
+    public static func descriptionPrompt(_ subject: Subject, topics: [KnownTopic], history: [Exchange]) -> String {
+        var lines = header(subject)
+        lines.append("Regras atuais:" + (subject.rules.isEmpty ? " (nenhuma)" : ""))
+        lines += subject.rules.map { rule in
+            "- [\(rule.severity.rawValue)] \(rule.text)" + (rule.details?.trimmed.nonEmpty.map { " — \($0)" } ?? "")
+        }
+        lines += known(topics)
+        if !history.isEmpty {
+            lines += ["", "## Entrevista"]
+            for exchange in history {
+                lines.append("P: \(exchange.question)")
+                lines.append("R: \(exchange.answer.trimmed.nonEmpty ?? "(sem resposta)")")
+            }
+        }
+        lines += [
+            "",
+            "## Tarefa",
+            "Leia o repositório só com leitura e busca. Não altere nada.",
+        ]
+        if subject.kind == .idea {
+            lines += [
+                "- description: reescreva a descrição desta ideia em markdown, pronta para pedir a uma IA que implemente.",
+                "  Preserve tudo o que já está na descrição atual (inclusive links e imagens de anexos), sem inventar requisitos.",
+                "  Incorpore as respostas da entrevista, os globs, as tags e as regras. Organize em seções curtas:",
+                "  Problema, Proposta, Escopo (arquivos/telas afetados, com caminhos reais) e Critérios de aceite.",
+                "- reason: uma frase curta dizendo o que mudou na descrição.",
+                "- viable: true só se, depois de ler o código, a descrição nova + as regras bastam para um agente implementar",
+                "  sem decisões de produto em aberto. Ideia vaga, sem regras ou com dúvidas fundamentais é false.",
+                "- missing: as lacunas concretas que impedem implementar (vazio quando viable é true).",
+            ]
+        } else {
+            lines += [
+                "- description: uma ou duas frases, texto simples, dizendo quando este tópico se aplica, coerente com os",
+                "  globs, as tags, as regras e a entrevista. Preserve o sentido da descrição atual.",
+                "- reason: uma frase curta dizendo o que mudou na descrição.",
+                "- viable: false e missing vazio (não se aplica a tópicos).",
+            ]
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    /// Normalizes the answer; `suggested` is nil when the text equals the current description.
+    public static func description(_ answer: DescriptionAnswer, subject: Subject) -> RuleDiscoverDescription {
+        let current = subject.description?.trimmed.nonEmpty
+        let text = answer.description.trimmed.nonEmpty
+        let isIdea = subject.kind == .idea
+        return RuleDiscoverDescription(
+            current: current,
+            suggested: text == current ? nil : text,
+            reason: answer.reason.trimmed.nonEmpty,
+            viable: isIdea && answer.viable && !subject.rules.isEmpty,
+            missing: isIdea ? answer.missing.compactMap { $0.trimmed.nonEmpty } : []
+        )
+    }
+
     // MARK: Prompt pieces
 
     private static func noun(_ subject: Subject) -> String {
@@ -397,5 +484,36 @@ public struct RuleDiscoverDrafts: Equatable, Sendable {
         for draft in rules where chosen.contains(draft.id) {
             current.append(Rule(text: draft.text, details: draft.details, severity: draft.severity, author: .ai, now: now))
         }
+    }
+}
+
+/// Rewritten description (and, for ideas, the viability verdict) waiting for the user's choice.
+public struct RuleDiscoverDescription: Equatable, Sendable {
+    public var current: String?
+    /// New text; nil when the AI kept the current one.
+    public var suggested: String?
+    public var reason: String?
+    public var viable: Bool
+    public var missing: [String]
+
+    public init(current: String? = nil, suggested: String? = nil, reason: String? = nil, viable: Bool = false, missing: [String] = []) {
+        self.current = current
+        self.suggested = suggested
+        self.reason = reason
+        self.viable = viable
+        self.missing = missing
+    }
+
+    /// Replaces the description with the suggestion (no-op when there's none).
+    public func apply(to description: inout String?) {
+        if let suggested { description = suggested }
+    }
+
+    /// The verdict for `idea` as it is now (call after applying, or not, the description). The AI judged the new text:
+    /// keeping the old one when there was a suggestion doesn't count as viable.
+    public func readiness(for idea: Idea, acceptedDescription: Bool, now: Date = .now) -> IdeaReadiness {
+        let rejected = suggested != nil && !acceptedDescription
+        let missing = rejected && viable ? ["A descrição nova sugerida pela IA não foi aceita"] : missing
+        return IdeaReadiness(viable: viable && !rejected && !idea.rules.isEmpty, missing: missing, checkedAt: now, fingerprint: idea.contentFingerprint)
     }
 }

@@ -6,6 +6,7 @@ struct IdeaView: View {
     let openTopic: (String) -> Void
     @Environment(ProjectModel.self) private var model
     @Environment(\.undoManager) private var undo
+    @Environment(AISession.self) private var session
     @State private var showRules = true
     @State private var text = ""
     @State private var savedText = ""
@@ -14,6 +15,8 @@ struct IdeaView: View {
     @State private var insertion: MarkdownInsertion?
     /// Globs of the idea that match no file, waiting for the user's choice before promoting.
     @State private var stalePaths: [String] = []
+    /// What runs with the topic slug once the promotion (and the stale-globs dialog) is done.
+    @State private var afterPromote: ((String) -> Void)?
     @AppStorage("ideaViewMode") private var mode: MarkdownViewMode = .edit
 
     private var idea: Idea { model.idea(slug) ?? Idea(title: slug) }
@@ -50,7 +53,10 @@ struct IdeaView: View {
         .navigationTitle(idea.title)
         .navigationSubtitle("\(idea.status.label) · \(idea.rules.count) regra(s)")
         .toolbar {
-            if !AIProvider.installed.isEmpty { ToolbarItem { discoverButton } }
+            if !AIProvider.installed.isEmpty {
+                ToolbarItem { discoverButton }
+                ToolbarItem { implementButton }
+            }
             ToolbarItem { promoteButton }
             ToolbarItem { AttachButton(onPick: attach) }
             ToolbarItem { MarkdownModePicker(mode: $mode) }
@@ -179,9 +185,13 @@ struct IdeaView: View {
         }
     }
 
-    /// "Descubra": globs, tags and an interview that drafts rules into `idea.rules`; each accept is one undo step.
-    private var discoverButton: some View {
+    /// "Descubra": globs, tags, an interview that drafts rules into `idea.rules` and the rewritten description with
+    /// the viability verdict; each accept is one undo step. `assessOnly` is "Verificar" (description + verdict only).
+    private var discoverButton: some View { ruleDiscover(assessOnly: false) }
+
+    private func ruleDiscover(assessOnly: Bool) -> some View {
         RuleDiscoverButton(
+            assessOnly: assessOnly,
             subject: .init(idea: idea),
             current: { flush(); return .init(idea: idea) },
             vocabulary: model.tagVocabulary,
@@ -192,16 +202,40 @@ struct IdeaView: View {
             },
             applyRules: { drafts, chosen in
                 model.mutateIdea(slug, "Descubra: regras", undo: undo) { drafts.apply(chosen, to: &$0.rules) }
+            },
+            applyDescription: { proposal, accepted in
+                flush()
+                model.mutateIdea(slug, accepted ? "Descubra: descrição" : "Descubra: avaliação", undo: undo) { idea in
+                    if accepted { proposal.apply(to: &idea.body) }
+                    idea.readiness = proposal.readiness(for: idea, acceptedDescription: accepted)
+                }
+                if accepted, let suggested = proposal.suggested { text = suggested; savedText = suggested }
             }
         )
-        .id(slug)
+        .id("\(slug)-\(assessOnly)")
+    }
+
+    /// "Implementar": only for a viable idea (rules + current AI verdict). Promotes/syncs the rules (so rules_for
+    /// enforces them; the idea becomes Aprovada) and asks the chat to implement it.
+    @ViewBuilder
+    private var implementButton: some View {
+        let blocker = idea.implementBlocker
+        // Not verified, stale or vague: "Verificar" re-runs only the description/viability phase.
+        if blocker != nil, !idea.rules.isEmpty, !idea.status.isClosed {
+            ruleDiscover(assessOnly: true)
+        }
+        Button {
+            if readyToPromote(then: implement), let topic = model.promoteIdea(slug) { implement(topic) }
+        } label: {
+            Label("Implementar", systemImage: "hammer")
+        }
+        .disabled(blocker != nil)
+        .help(blocker ?? "Promove as regras da ideia e pede à IA, no chat, que a implemente")
     }
 
     private var promoteButton: some View {
         Button {
-            flush()
-            stalePaths = (try? model.store.unmatchedIdeaPaths(slug)) ?? []
-            if stalePaths.isEmpty, let topic = model.promoteIdea(slug) { openTopic(topic) }
+            if readyToPromote(then: openTopic), let topic = model.promoteIdea(slug) { openTopic(topic) }
         } label: {
             Label(idea.promotedTopic == nil ? "Promover para Regras" : "Sincronizar regras", systemImage: "arrow.up.forward.square")
         }
@@ -211,20 +245,37 @@ struct IdeaView: View {
               : "Leva regras e globs novos desta ideia para o tópico já criado")
         .confirmationDialog("Globs que não casam nenhum arquivo", isPresented: Binding(get: { !stalePaths.isEmpty }, set: { if !$0 { stalePaths = [] } })) {
             Button("Promover sem eles") {
-                let skipped = Set(stalePaths)
-                stalePaths = []
-                if let topic = model.promoteIdea(slug, skippingPaths: skipped) { openTopic(topic) }
+                let (skipped, then) = takePendingPromotion()
+                if let topic = model.promoteIdea(slug, skippingPaths: skipped) { then?(topic) }
             }
             Button("Promover com eles") {
-                stalePaths = []
-                if let topic = model.promoteIdea(slug) { openTopic(topic) }
+                let (_, then) = takePendingPromotion()
+                if let topic = model.promoteIdea(slug) { then?(topic) }
             }
-            Button("Cancelar", role: .cancel) { stalePaths = [] }
+            Button("Cancelar", role: .cancel) { stalePaths = []; afterPromote = nil }
         } message: {
             Text("Estes globs da ideia não casam mais nenhum arquivo do projeto (renomeado ou apagado?):\n" + stalePaths.joined(separator: "\n"))
         }
     }
 
+    private func implement(_ topic: String) {
+        session.ask(IdeaImplementation.prompt(slug: slug, idea: idea, topic: topic))
+    }
+
+    /// Before promoting from a button: true when it can go ahead now; false when globs match no file, and the
+    /// dialog asks first (its buttons promote and then run `then` with the topic).
+    private func readyToPromote(then: @escaping (String) -> Void) -> Bool {
+        flush()
+        stalePaths = (try? model.store.unmatchedIdeaPaths(slug)) ?? []
+        afterPromote = stalePaths.isEmpty ? nil : then
+        return stalePaths.isEmpty
+    }
+
+    /// Closes the stale-globs dialog: the globs it listed and what to run after promoting.
+    private func takePendingPromotion() -> (Set<String>, ((String) -> Void)?) {
+        defer { stalePaths = []; afterPromote = nil }
+        return (Set(stalePaths), afterPromote)
+    }
 
     // MARK: Persistence (debounced, like DocView)
 
