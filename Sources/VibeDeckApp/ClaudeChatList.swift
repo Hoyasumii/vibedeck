@@ -3,7 +3,7 @@ import VibeDeckCore
 
 /// The project's saved Claude conversations, shown when no chat is open.
 struct ClaudeChatList: View {
-    @Environment(ClaudeSession.self) private var claude
+    @Environment(AISession.self) private var claude
     @State private var renaming: ClaudeChat?
     @State private var deleting: ClaudeChat?
     @State private var confirmingClearHistory = false
@@ -68,7 +68,7 @@ private struct ChatRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(chat.title)
+            Text(chat.title + " · " + chat.provider.title)
                 .fontWeight(.medium)
                 .lineLimit(1)
             HStack(spacing: 6) {
@@ -91,7 +91,7 @@ private struct ChatRow: View {
 
 /// Title of the open chat, with its actions.
 struct ClaudeChatHeader: View {
-    @Environment(ClaudeSession.self) private var claude
+    @Environment(AISession.self) private var claude
     @State private var renaming: ClaudeChat?
     @State private var confirmingClear = false
 
@@ -109,7 +109,7 @@ struct ClaudeChatHeader: View {
                     Divider()
                     Button("Sair da conversa") { claude.leaveChat() }
                 } label: {
-                    Text(chat.title)
+                    Text(chat.title + " · " + chat.provider.title)
                         .font(.callout.weight(.semibold))
                         .lineLimit(1)
                 }
@@ -124,7 +124,7 @@ struct ClaudeChatHeader: View {
             .confirmationDialog("Limpar esta conversa?", isPresented: $confirmingClear) {
                 Button("Limpar", role: .destructive) { claude.clear(chat.id) }
             } message: {
-                Text("As mensagens e o contexto do Claude são apagados; a conversa continua na lista com o mesmo nome.")
+                Text("As mensagens e o contexto da IA são apagados; a conversa continua na lista com o mesmo nome.")
             }
         }
     }
@@ -132,7 +132,7 @@ struct ClaudeChatHeader: View {
 
 /// Chips for the chats mentioned in the message being written.
 struct MentionChips: View {
-    @Environment(ClaudeSession.self) private var claude
+    @Environment(AISession.self) private var claude
     @Binding var mentions: [UUID]
 
     var body: some View {
@@ -188,7 +188,7 @@ struct AttachmentChips: View {
 
 /// Picks other chats to mention; their whole transcript is sent as JSON with the message.
 struct MentionPicker: View {
-    @Environment(ClaudeSession.self) private var claude
+    @Environment(AISession.self) private var claude
     @Binding var mentions: [UUID]
     var onPick: () -> Void = {}
 
@@ -210,7 +210,7 @@ struct MentionPicker: View {
                     mentions.append(chat.id)
                     onPick()
                 } label: {
-                    Text(chat.title)
+                    Text(chat.title + " · " + chat.provider.title)
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 8)
@@ -230,7 +230,7 @@ struct MentionPicker: View {
 }
 
 private struct RenameChatAlert: ViewModifier {
-    @Environment(ClaudeSession.self) private var claude
+    @Environment(AISession.self) private var claude
     @Binding var chat: ClaudeChat?
     @State private var title = ""
 

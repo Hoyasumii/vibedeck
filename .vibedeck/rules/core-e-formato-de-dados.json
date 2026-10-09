@@ -14,6 +14,12 @@
       "details" : "Comentário em ProjectStore.swift: \"Stateless: every call reads/writes disk, so the app, the CLI, the MCP server and AI agents editing files by hand never diverge.\" Não adicione cache, propriedades mutáveis ou memoização ao ProjectStore (é um struct Sendable só com root).\nVerificar: o ProjectStore continua sem var de armazenamento além do que deriva de root.",
       "id" : "5FA116B6-6FBE-45F9-8C5D-29E7548F6C2F",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/core-e-formato-de-dados/5fa116b6.sh",
+        "generatedAt" : "2026-10-09T01:23:55Z",
+        "mode" : "script",
+        "ruleHash" : "8795636b04a3a28f"
+      },
       "text" : "ProjectStore não guarda estado: toda operação lê e escreve no disco"
     },
     {
@@ -22,6 +28,12 @@
       "details" : "AtomicFile.write cria o diretório pai e grava com .atomic, para app, CLI e FSEvents nunca verem um arquivo pela metade.\nVerificar: nenhum Data.write(to:)/String.write direto no Core fora de AtomicFile.",
       "id" : "857149E6-8C34-46A8-9C30-439EBE78309D",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/core-e-formato-de-dados/857149e6.sh",
+        "generatedAt" : "2026-10-09T01:23:55Z",
+        "mode" : "script",
+        "ruleHash" : "eb0d1fbc9f8e1a8a"
+      },
       "text" : "Toda escrita passa por AtomicFile.write"
     },
     {
@@ -30,6 +42,12 @@
       "details" : "VDJSON.encoder usa .prettyPrinted, .sortedKeys, .withoutEscapingSlashes e ISO 8601; VDJSON.encode acrescenta \\n no fim; VDJSON.decoder aceita ISO 8601 com e sem frações de segundo. Isso deixa os diffs do git estáveis e legíveis.\nVerificar: nenhum JSONEncoder()/JSONDecoder() novo para arquivos do projeto.",
       "id" : "99BF0D79-2F65-419A-87DA-0B4F37E4FEF5",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/core-e-formato-de-dados/99bf0d79.sh",
+        "generatedAt" : "2026-10-09T01:23:55Z",
+        "mode" : "script",
+        "ruleHash" : "c85ab5ee2f0a2bc3"
+      },
       "text" : "JSON passa por VDJSON"
     },
     {
@@ -38,6 +56,12 @@
       "details" : "Todo modelo tem init(from:) manual em que só o essencial é obrigatório (title/name/url/text); o resto usa decodeIfPresent com default (UUID novo, .now, [], .open, .must, .human...). Campo novo segue o mesmo padrão. Teste de referência: lenientHandWrittenTopicAndIdea em RulesTests.swift.\nVerificar: campos novos são decodificados com `decodeIfPresent ?? default`.",
       "id" : "5ED22D96-FE5F-4683-8611-E3D264113B67",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/core-e-formato-de-dados/5ed22d96.sh",
+        "generatedAt" : "2026-10-09T01:23:55Z",
+        "mode" : "script",
+        "ruleHash" : "bd7665e2f0a4cd64"
+      },
       "text" : "Decoders tolerantes a arquivos escritos à mão"
     },
     {
@@ -46,6 +70,12 @@
       "details" : "encode(to:) usa encodeIfPresent para opcionais e `if !x.isEmpty` para tags, paths, rules (do item) e target (que vira nil quando vazio no init). Mantém os arquivos enxutos e iguais aos que um humano escreveria.\nVerificar: campo novo opcional/coleção segue o padrão.",
       "id" : "C6D79B9C-1F50-4AE3-8CD1-8CAE5C4F6B6F",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/core-e-formato-de-dados/c6d79b9c.sh",
+        "generatedAt" : "2026-10-09T01:23:55Z",
+        "mode" : "script",
+        "ruleHash" : "db42c2b3eef2b5bc"
+      },
       "text" : "Campos opcionais ou vazios são omitidos ao codificar"
     },
     {
@@ -54,6 +84,12 @@
       "details" : "RuleCheck.encode grava createdAt com ISO8601FormatStyle(includingFractionalSeconds: true), para o \"último check\" de um item ser inequívoco quando o agente reenvia no mesmo segundo (verificationProblems usa o primeiro de listChecks, ordenado por data). O nome do arquivo é yyyyMMdd-HHmmss-<8 chars do id>.json em GMT.\nVerificar: o formato não mudou.",
       "id" : "57ADA275-8A0F-42BA-9E14-BA3B34AB8235",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/core-e-formato-de-dados/57ada275.sh",
+        "generatedAt" : "2026-10-09T01:23:55Z",
+        "mode" : "script",
+        "ruleHash" : "ad08cb2479ba93c6"
+      },
       "text" : "RuleCheck.createdAt mantém frações de segundo"
     },
     {
@@ -62,6 +98,12 @@
       "details" : "Alterar campos de Project, ReviewGroup/ReviewItem, RuleTopic/Rule, Idea ou RuleCheck exige atualizar o schema/v1/*.schema.json correspondente e, se o agente precisar saber, AgentsGuide.swift (seções Estrutura, Itens de revisão, Tópicos de regras, Ideias).\nVerificar: o diff de Models.swift/Rules.swift tem um diff correspondente em schema/v1.",
       "id" : "4133C155-F789-428E-9ED5-5EAC37C19700",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/core-e-formato-de-dados/4133c155.sh",
+        "generatedAt" : "2026-10-09T01:23:55Z",
+        "mode" : "script",
+        "ruleHash" : "796cb44fa6f6e272"
+      },
       "text" : "Mudança de modelo atualiza schema e guia"
     },
     {
@@ -70,6 +112,12 @@
       "details" : "resolveSlug aceita slug exato, UUID completo, título sem diferenciar maiúsculas, Slug.make(ref) e prefixo de UUID único com >= 4 chars; findItem/matchRule também aceitam prefixo >= 4 e lançam ambiguousItem/ambiguousRule quando há mais de um. Arquivo que não decodifica é devolvido pelo slug, para o erro real de decodificação aparecer.\nVerificar: novas buscas reutilizam esses helpers em vez de reimplementar.",
       "id" : "B0277971-459D-4CCB-9E9D-5990F1574F5B",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/core-e-formato-de-dados/b0277971.sh",
+        "generatedAt" : "2026-10-09T01:23:55Z",
+        "mode" : "script",
+        "ruleHash" : "e280a8375e8bebef"
+      },
       "text" : "Referências resolvem por slug, UUID, prefixo ou título"
     },
     {
@@ -78,6 +126,12 @@
       "details" : "Slug.make remove acentos, deixa só ASCII alfanumérico em minúsculas separado por -, corta em 60 chars e usa \"untitled\" se vazio; uniqueSlug acrescenta -2, -3... se o arquivo existir. Criação de doc/grupo/tópico/ideia usa os dois.\nVerificar: nenhum slug montado à mão.",
       "id" : "7F7C6B09-EBCB-4CA0-BAAF-6B18D36F15C1",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/core-e-formato-de-dados/7f7c6b09.sh",
+        "generatedAt" : "2026-10-09T01:23:55Z",
+        "mode" : "script",
+        "ruleHash" : "cfc2839aa2f0fdb2"
+      },
       "text" : "Slugs via Slug.make + uniqueSlug"
     },
     {
@@ -86,6 +140,12 @@
       "details" : "submitCheck lança incompleteCheck listando as regras sem resposta; passed = true só se nenhuma regra must tiver fail; regras should com fail vão para warnings, as must para failures; na conta como respondida.\nVerificar: testes de RulesTests cobrindo check continuam passando.",
       "id" : "BC028BE5-D7E0-4DA3-BB5C-E8A628EBFA8A",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/core-e-formato-de-dados/bc028be5.sh",
+        "generatedAt" : "2026-10-09T01:23:55Z",
+        "mode" : "script",
+        "ruleHash" : "5faa9616333459e0"
+      },
       "text" : "Check exige resposta para toda regra aplicável"
     },
     {
@@ -94,6 +154,12 @@
       "details" : "verificationProblems exige que o check mais recente com reviewItem == item.id tenha passed e responda todas as regras ATUAIS dos tópicos exigidos (regra criada depois do check bloqueia de novo: \"Regra nova desde o último check\"). Item sem regras aplicáveis não é bloqueado. ensureVerified é o ponto de entrada.\nVerificar: o contrato e as mensagens continuam iguais.",
       "id" : "64E65B59-8D5B-40DE-B381-CAF2B1BDC785",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/core-e-formato-de-dados/64e65b59.sh",
+        "generatedAt" : "2026-10-09T01:23:55Z",
+        "mode" : "script",
+        "ruleHash" : "0276dddc09d274c7"
+      },
       "text" : "Item de revisão com regras só vai para done com check aprovado"
     },
     {
@@ -102,6 +168,12 @@
       "details" : "applicableTopics converte caminhos absolutos dentro do projeto em relativos (relativePath) antes do glob; inclui tópicos sem paths, os que casam com algum arquivo e os nomeados (slug/id/título). requiredTopics(for:) usa target.file e rules do item.\nVerificar: teste applicableTopics passa.",
       "id" : "8D874A06-515D-41B5-A094-DC8B83BB40B6",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/core-e-formato-de-dados/8d874a06.sh",
+        "generatedAt" : "2026-10-09T01:23:55Z",
+        "mode" : "script",
+        "ruleHash" : "23e9441d0111659c"
+      },
       "text" : "Tópicos aplicáveis = globais + os que casam com os arquivos + explícitos"
     },
     {
@@ -110,6 +182,12 @@
       "details" : "Se a ideia já tem promotedTopic e o tópico existe, só acrescenta as regras cujo id ainda não está lá; senão cria um tópico com o título da ideia, descrição \"Regras vindas da ideia ...\" e sourceIdea. Depois grava promotedTopic e muda o status para approved, a menos que esteja discarded/done.\nVerificar: repromover não cria <slug>-2.",
       "id" : "35D8D7C3-1224-45CC-8A80-66D0B6291C33",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/core-e-formato-de-dados/35d8d7c3.sh",
+        "generatedAt" : "2026-10-09T01:23:55Z",
+        "mode" : "script",
+        "ruleHash" : "b747ad072acd16c1"
+      },
       "text" : "promoteIdea sincroniza sem duplicar"
     },
     {
@@ -118,6 +196,12 @@
       "details" : "Glob.matches: padrão sem / casa o nome do arquivo em qualquer profundidade; / no começo ancora na raiz; / no fim casa tudo abaixo; ./ é ignorado; * não cruza /, ? é um char, **/ é qualquer profundidade (inclusive zero). Teste de referência: globs em RulesTests.swift.\nVerificar: mudança no glob vem com casos novos no teste.",
       "id" : "64334D9C-327B-4811-B088-8B785EF4E0FE",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/core-e-formato-de-dados/64334d9c.sh",
+        "generatedAt" : "2026-10-09T01:23:55Z",
+        "mode" : "script",
+        "ruleHash" : "0d56c4fda2ce2c02"
+      },
       "text" : "A semântica de glob é preservada"
     },
     {
@@ -126,6 +210,12 @@
       "details" : "Erro novo vira um case de VibeDeckError com errorDescription em português, dizendo o que fazer (como em notAProject: \"Rode `vibedeck init`\"). Não use fatalError/NSError para erro de usuário.\nVerificar: o diff não tem strings de erro soltas.",
       "id" : "EA5E6F7D-1587-4FC5-87D9-51CE6F130C7B",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/core-e-formato-de-dados/ea5e6f7d.sh",
+        "generatedAt" : "2026-10-09T01:23:55Z",
+        "mode" : "script",
+        "ruleHash" : "298bd5328715cab1"
+      },
       "text" : "Erros via VibeDeckError, em pt-BR"
     },
     {
@@ -134,6 +224,12 @@
       "details" : "Com Xcode completo, `swift test`; só com Command Line Tools, `scripts/test.sh` (compila só VibeDeckCoreTests com o SDK padrão). Usa Swift Testing (@Suite, @Test, #expect) com projeto temporário via newStore().\nVerificar: rodar e anexar o resultado na nota do check.",
       "id" : "97510532-2FCF-44BD-9D01-75086E554EB9",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/core-e-formato-de-dados/97510532.sh",
+        "generatedAt" : "2026-10-09T01:23:55Z",
+        "mode" : "script",
+        "ruleHash" : "7fc126ea061a13cc"
+      },
       "text" : "swift test passa"
     },
     {
@@ -142,6 +238,12 @@
       "details" : "Arquivos em Tests/VibeDeckCoreTests/ (ProjectStoreTests.swift, RulesTests.swift), no mesmo estilo: store temporário, #expect.\nVerificar: há @Test cobrindo o caso novo.",
       "id" : "91774D06-91B5-4945-9EC6-CDEFC57332FA",
       "severity" : "should",
+      "test" : {
+        "generatedAt" : "2026-10-09T01:23:55Z",
+        "mode" : "manual",
+        "reason" : "Depende de julgamento: saber se o comportamento é novo e se o @Test o cobre não é decidível por script.",
+        "ruleHash" : "e9738985d5128515"
+      },
       "text" : "Comportamento novo no Core vem com teste"
     },
     {
@@ -150,6 +252,12 @@
       "details" : "SchemaURL.base em Models.swift é a fonte; o script troca a URL antiga em Sources, schema e README.md de uma vez. Editar só um lugar deixa $schema e $id inconsistentes.\nVerificar: `grep -r workers.dev Sources schema README.md` mostra uma única base.",
       "id" : "DFE3361B-6AFE-4ED3-A741-4FC0818D197D",
       "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/core-e-formato-de-dados/dfe3361b.sh",
+        "generatedAt" : "2026-10-09T01:23:55Z",
+        "mode" : "script",
+        "ruleHash" : "2190673106859c38"
+      },
       "text" : "URL dos schemas só muda via scripts/set-schema-url.sh"
     },
     {
@@ -158,6 +266,12 @@
       "details" : "deleteTopic chama releaseOrphanedIdeas: toda ideia cujo promotedTopic não resolve mais perde o vínculo; se estava approved volta para exploring; outros status (new, exploring, discarded, done) ficam. Remover uma regra solta de dentro do tópico NÃO despromove.\nVerificar: teste unpromote em RulesTests passa.",
       "id" : "B659FD25-792B-4C0E-BD08-6082ACFCC80A",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/core-e-formato-de-dados/b659fd25.sh",
+        "generatedAt" : "2026-10-09T01:23:55Z",
+        "mode" : "script",
+        "ruleHash" : "c01b2b905826a23b"
+      },
       "text" : "Apagar um tópico vindo de ideia despromove a ideia"
     },
     {
@@ -166,6 +280,12 @@
       "details" : "ProjectStore.unpromoteIdea apaga o arquivo do tópico vinculado (se existir), zera promotedTopic, muda approved para exploring e mantém idea.rules intacto (para poder promover de novo). Ideia não promovida fica igual. releaseOrphanedIdeas é idempotente.\nVerificar: teste unpromote em RulesTests.",
       "id" : "A2B13B15-C59E-4189-8905-3A309C89DF28",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/core-e-formato-de-dados/a2b13b15.sh",
+        "generatedAt" : "2026-10-09T01:23:55Z",
+        "mode" : "script",
+        "ruleHash" : "dcef600815e9d1fd"
+      },
       "text" : "unpromoteIdea apaga o tópico e solta a ideia, mantendo as regras rascunho"
     }
   ],

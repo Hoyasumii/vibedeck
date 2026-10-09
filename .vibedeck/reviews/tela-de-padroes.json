@@ -1,0 +1,26 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/review-group.schema.json",
+  "createdAt" : "2026-10-08T23:24:39Z",
+  "id" : "407A1A3F-C112-4584-8A57-C97DDFD4E090",
+  "items" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-08T23:25:02Z",
+      "id" : "76D53046-E631-4A9B-ADF5-6E781CBB0C66",
+      "kind" : "fix",
+      "priority" : "normal",
+      "rules" : [
+        "interface-do-app",
+        "dinamicas-da-interface"
+      ],
+      "status" : "done",
+      "target" : {
+        "component" : "PatternsView",
+        "file" : "Sources/VibeDeckApp/PatternsView.swift"
+      },
+      "title" : "Tamanho da tela de Padrões Errado",
+      "updatedAt" : "2026-10-09T01:40:22Z"
+    }
+  ],
+  "title" : "Tela de Padrões"
+}

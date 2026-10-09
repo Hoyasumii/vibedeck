@@ -1,0 +1,73 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-09T01:43:17.178Z",
+  "failures" : [
+
+  ],
+  "files" : [
+    ".vibedeck/rules/fluxo-padrao.json",
+    ".vibedeck/tests/fluxo-padrao/09c9f3a9.sh",
+    ".vibedeck/tests/fluxo-padrao/3a31b517.sh",
+    ".vibedeck/tests/fluxo-padrao/8f28f353.sh",
+    ".vibedeck/tests/fluxo-padrao/_lib.sh",
+    ".vibedeck/tests/fluxo-padrao/ea7c01e6.sh"
+  ],
+  "id" : "AF34ADAA-5BCE-461D-95D8-39AB1D30E128",
+  "passed" : true,
+  "results" : [
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/9d6f362b.sh (exit 0)\n(sem saída)",
+      "ruleId" : "9D6F362B-9F0E-4661-97B3-6158B160D478",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/9f92a765.sh (exit 0)\n(sem saída)",
+      "ruleId" : "9F92A765-76E7-4EA0-A66A-78AE12EE4C8F",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/ac4ba963.sh (exit 0)\n(sem saída)",
+      "ruleId" : "AC4BA963-CDEE-419C-B057-9140643E115D",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/geral/0e5aec71.sh (exit 77)\n(sem saída)",
+      "ruleId" : "0E5AEC71-405E-4113-AB27-615313AB2B5F",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Só scripts de teste de regras e o registro dos testes (via CLI); nada documentado no README mudou.",
+      "ruleId" : "306A20B6-E1FA-4BE4-96E8-2B854A3D0BC6",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/4095f087.sh (exit 0)\n(sem saída)",
+      "ruleId" : "4095F087-1E04-46C0-9AA4-A60C8C16A72B",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    }
+  ],
+  "task" : "Testes das regras do tópico fluxo-padrao (4 scripts + 1 manual)",
+  "topics" : [
+    "geral"
+  ],
+  "warnings" : [
+
+  ]
+}

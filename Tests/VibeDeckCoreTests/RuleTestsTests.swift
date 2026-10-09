@@ -229,4 +229,31 @@ private final class StubRunner: @unchecked Sendable {
         #expect(prompt.contains("set_rule_test"))
         #expect(RuleTestPrompt.generate(slug: "geral", topic: topic, onlyPending: false).contains("já testada"))
     }
+
+    @Test func selectionPicksMissingStaleOrAll() {
+        var topic = RuleTopic(title: "Geral")
+        var done = Rule(text: "já testada")
+        done.test = RuleTest(mode: .script, command: "ok", ruleHash: done.contentHash)
+        var stale = Rule(text: "mudou")
+        stale.test = RuleTest(mode: .script, command: "velho.sh", ruleHash: "x")
+        var manual = Rule(text: "subjetiva")
+        manual.test = RuleTest(mode: .manual, reason: "julgamento", ruleHash: manual.contentHash)
+        topic.rules = [done, stale, Rule(text: "nova"), manual]
+
+        #expect(RuleTestPrompt.rules(topic, .missing).map(\.text) == ["nova"])
+        #expect(RuleTestPrompt.rules(topic, .stale).map(\.text) == ["mudou"])
+        #expect(RuleTestPrompt.rules(topic, .pending).map(\.text) == ["mudou", "nova"])
+        #expect(RuleTestPrompt.rules(topic, .all).count == 4)
+    }
+
+    @Test func headlessPromptRegistersThroughCLI() {
+        var topic = RuleTopic(title: "Geral")
+        topic.rules = [Rule(text: "nova")]
+        let prompt = RuleTestPrompt.generate(slug: "geral", topic: topic, selection: .missing, headless: "/opt/bin/vibedeck")
+        #expect(prompt.contains("`/opt/bin/vibedeck rules set-test <id> --command"))
+        #expect(prompt.contains("--manual --reason"))
+        #expect(!prompt.contains("set_rule_test"))
+        #expect(prompt.contains("segundo plano"))
+        #expect(!prompt.contains("avise-me"))
+    }
 }

@@ -1,0 +1,58 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-08T21:15:18.618Z",
+  "failures" : [
+
+  ],
+  "files" : [
+    ".gitattributes"
+  ],
+  "id" : "DC0E4E16-9F63-4522-9BB3-63B4DD70A9AB",
+  "passed" : true,
+  "results" : [
+    {
+      "note" : "Só .gitattributes e .git/hooks/* foram criados; .vibedeck/AGENTS.md e checks não tocados",
+      "ruleId" : "9D6F362B-9F0E-4661-97B3-6158B160D478",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhum dado de projeto alterado",
+      "ruleId" : "9F92A765-76E7-4EA0-A66A-78AE12EE4C8F",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhum objeto do .vibedeck criado ou removido",
+      "ruleId" : "AC4BA963-CDEE-419C-B057-9140643E115D",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem texto visível ao usuário do VibeDeck",
+      "ruleId" : "0E5AEC71-405E-4113-AB27-615313AB2B5F",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "note" : "README não documenta hooks de git; nada documentado mudou",
+      "ruleId" : "306A20B6-E1FA-4BE4-96E8-2B854A3D0BC6",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem commit",
+      "ruleId" : "4095F087-1E04-46C0-9AA4-A60C8C16A72B",
+      "topic" : "geral",
+      "verdict" : "na"
+    }
+  ],
+  "task" : "Instalar hooks de git do graphify (post-commit, post-checkout) e merge driver de graph.json via `graphify hook install`",
+  "topics" : [
+    "geral"
+  ],
+  "warnings" : [
+
+  ]
+}

@@ -73,6 +73,15 @@ struct CommandView: View {
             .textFieldStyle(.plain)
             .foregroundStyle(.secondary)
 
+            // Hidden, not disabled, when no AI provider is installed.
+            if !AIProvider.installed.isEmpty {
+                AIProviderSettingsView(settings: command.providerSettings) { provider, settings in
+                    model.mutateCommand(slug, "Configurar provedor", undo: undo) {
+                        var all = $0.providerSettings ?? [:]; all[provider] = settings; $0.providerSettings = all
+                    }
+                }
+            }
+
             // A single HStack (not ViewThatFits): see IdeaView.
             HStack(spacing: 12) {
                 CommitTextField("Argumentos (ex.: <mensagem>)", value: command.argumentHint ?? "") { value in

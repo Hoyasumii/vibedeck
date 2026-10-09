@@ -16,15 +16,25 @@ final class ReviewDiscoverRunner {
 
     var isRunning: Bool { state == .running }
 
-    func start(item: ReviewItem, kind: String, topics: [(slug: String, topic: RuleTopic)], store: ProjectStore) {
-        guard let executable = ClaudeCode.executable else { return }
+    func start(item: ReviewItem, kind: String, topics: [(slug: String, topic: RuleTopic)], store: ProjectStore, provider: AIProvider = .claude) {
+        guard let executable = provider.executable else { state = .failed("\(provider.title) não está instalado."); return }
         cancel()
         state = .running
         let prompt = ReviewDiscover.prompt(item: item, kind: kind, topics: ReviewDiscover.candidateTopics(topics, item: item))
         task = Task {
             do {
-                let output = try await Self.run(executable: executable, root: store.root, input: prompt)
-                let answer = try ReviewDiscover.parse(output)
+                let answer: ReviewDiscover.Answer
+                if provider == .codex {
+                    let schema = try JSONDecoder().decode(JSONValue.self, from: Data(ReviewDiscover.schema.utf8))
+                    let output = try await CodexReadOnly().run(root: store.root, prompt: prompt.replacingOccurrences(of: "Use Read, Grep e Glob", with: "Use as ferramentas de leitura e busca"), schema: schema, timeout: ReviewDiscover.timeout)
+                    guard let decoded = try? JSONDecoder().decode(ReviewDiscover.Answer.self, from: Data(output.utf8)) else {
+                        throw VibeDeckError.discoverInvalidAnswer
+                    }
+                    answer = decoded
+                } else {
+                    let output = try await Self.run(executable: executable, root: store.root, input: prompt)
+                    answer = try ReviewDiscover.parse(output)
+                }
                 guard !Task.isCancelled else { return }
                 state = .ready(ReviewDiscover.proposal(answer, item: item, topics: topics, store: store))
             } catch is CancellationError {
@@ -56,12 +66,15 @@ final class ReviewDiscoverRunner {
     // MARK: Process
 
     /// stdout of the call. Terminates the process on cancellation and after `ReviewDiscover.timeout`.
-    private nonisolated static func run(executable: URL, root: URL, input: String) async throws -> Data {
+    nonisolated static func run(executable: URL, root: URL, input: String, schema: String? = nil) async throws -> Data {
         let path = ClaudeCode.childPATH()
         let process = Process()
         process.executableURL = executable
         process.currentDirectoryURL = root
         process.arguments = ReviewDiscover.arguments()
+        if let schema, let index = process.arguments?.firstIndex(of: "--json-schema") {
+            process.arguments?[index + 1] = schema
+        }
         var environment = ProcessInfo.processInfo.environment
         environment["PATH"] = path
         process.environment = environment
@@ -111,7 +124,7 @@ struct ReviewDiscoverSheet: View {
         VStack(spacing: 0) {
             Form {
                 if proposal.isEmpty {
-                    Text("O Claude não encontrou nada novo para este item.").foregroundStyle(.secondary)
+                    Text("A IA não encontrou nada novo para este item.").foregroundStyle(.secondary)
                 }
                 if !proposal.fields.isEmpty {
                     Section("Onde") {

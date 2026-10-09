@@ -6,7 +6,11 @@ import VibeDeckCore
 /// branch matches origin. Differing branches stop here; uncommitted changes only need a confirmation.
 struct CloudLaunchSheet: View {
     let root: URL
+    var provider: AIProvider = .claude
+    @State private var environment = ""
     @Environment(\.dismiss) private var dismiss
+    @Environment(ProjectModel.self) private var model
+    @Environment(\.undoManager) private var undo
     @State private var phase = Phase.checking
     @State private var task = ""
     @State private var allowDirty = false
@@ -27,7 +31,7 @@ struct CloudLaunchSheet: View {
         }
         .padding(24)
         .frame(width: 440)
-        .task { await check() }
+        .task { environment = (try? ProjectStore(root: root).loadProject().codexCloudEnvironment) ?? ""; await check() }
     }
 
     @ViewBuilder private var content: some View {
@@ -52,6 +56,10 @@ struct CloudLaunchSheet: View {
             Label(sync.dirty.isEmpty ? sync.message : "A \(sync.branch) local e a origin/\(sync.branch) são iguais.", systemImage: "checkmark.circle.fill")
                 .foregroundStyle(.green)
             if !sync.dirty.isEmpty { dirtyWarning(sync) }
+            if provider == .codex {
+                TextField("ID do ambiente Codex Cloud", text: $environment).textFieldStyle(.roundedBorder)
+                Text("O ambiente fica salvo neste projeto.").font(.caption).foregroundStyle(.secondary)
+            }
             TextField("O que a sessão deve fazer?", text: $task, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
                 .lineLimit(2...6)
@@ -74,7 +82,7 @@ struct CloudLaunchSheet: View {
                     .font(.callout)
                     .textSelection(.enabled)
             } else {
-                Label("O Claude Code respondeu sem um link de sessão:", systemImage: "questionmark.circle")
+                Label("O provedor respondeu sem um link de sessão:", systemImage: "questionmark.circle")
                 Text(output).font(.callout.monospaced()).textSelection(.enabled)
             }
             buttons { EmptyView() }
@@ -113,7 +121,7 @@ struct CloudLaunchSheet: View {
 
     private func canLaunch(_ sync: CloudSync) -> Bool {
         if case .launching = phase { return false }
-        return !task.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && (sync.dirty.isEmpty || allowDirty)
+        return !task.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && (provider != .codex || !environment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) && (sync.dirty.isEmpty || allowDirty)
     }
 
     private func check() async {
@@ -125,12 +133,16 @@ struct CloudLaunchSheet: View {
     private func launch() {
         guard case .checked(let sync) = phase else { return }
         phase = .launching(sync)
+        let provider = provider, environment = environment.trimmingCharacters(in: .whitespacesAndNewlines)
         let root = root, description = task.trimmingCharacters(in: .whitespacesAndNewlines), allowDirty = allowDirty
         Task {
             do {
                 let result = try await Task.detached {
-                    try CloudSession.launch(root: root, description: description, allowDirty: allowDirty)
+                    try CloudSession.launch(root: root, description: description, allowDirty: allowDirty, provider: provider, environment: environment)
                 }.value
+                if provider == .codex {
+                    model.mutateProject("Alterar ambiente da nuvem", undo: undo) { $0.codexCloudEnvironment = environment }
+                }
                 if let url = result.url { NSWorkspace.shared.open(url) }
                 phase = .launched(result.url, output: result.output)
             } catch {

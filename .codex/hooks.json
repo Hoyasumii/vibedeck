@@ -1,0 +1,37 @@
+{
+  "hooks" : {
+    "PreToolUse" : [
+      {
+        "hooks" : [
+          {
+            "command" : "/Users/hoy/.local/share/mise/shims/graphify hook-check",
+            "type" : "command"
+          }
+        ],
+        "matcher" : "Bash"
+      }
+    ],
+    "SessionStart" : [
+      {
+        "hooks" : [
+          {
+            "command" : "'/Applications/VibeDeck.app/Contents/Helpers/vibedeck' hook start",
+            "timeout" : 600,
+            "type" : "command"
+          }
+        ]
+      }
+    ],
+    "Stop" : [
+      {
+        "hooks" : [
+          {
+            "command" : "'/Applications/VibeDeck.app/Contents/Helpers/vibedeck' hook stop",
+            "timeout" : 600,
+            "type" : "command"
+          }
+        ]
+      }
+    ]
+  }
+}

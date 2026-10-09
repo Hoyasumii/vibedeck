@@ -19,3 +19,11 @@ jobs:
       # Full Xcode toolchain here, so a plain `swift test` builds and links the test bundle
       # (scripts/test.sh is tuned for a local CLT-only setup).
       - run: swift test
+
+  # The CLI and MCP server (no SwiftUI app) must keep building on Linux: Claude Code cloud sessions run there.
+  linux-cli:
+    runs-on: ubuntu-latest
+    container: swift:6.2
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift build -c release --product vibedeck

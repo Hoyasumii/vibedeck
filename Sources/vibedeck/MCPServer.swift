@@ -59,12 +59,20 @@ struct MCPInstall: ParsableCommand {
     )
 
     @OptionGroup var options: RootOptions
-    @Option(name: [.short, .long], help: "Escopo: local, project ou user.") var scope: MCPScope = .local
-    @Option(help: "Nome do servidor no Claude Code.") var name = "vibedeck"
+    @Option(name: [.short, .long], help: "Escopo: local, project ou user.") var scope: MCPScope?
+    @Option(help: "Provedor: claude ou codex.") var provider: AIProvider = .claude
+    @Option(help: "Nome do servidor.") var name = "vibedeck"
     @Flag(help: "Substitui um registro existente com o mesmo nome.") var force = false
 
     func run() throws {
         let root = try options.store().root
+        let scope = scope ?? (provider == .codex ? .project : .local)
+        if provider == .codex {
+            guard scope != .local else { throw ValidationError("Codex suporta os escopos project ou user.") }
+            try CodexMCP.install(root: root, cli: vibedeckExecutablePath(), name: name, user: scope == .user, force: force)
+            print("MCP instalado no Codex (\(scope.rawValue)). Reinicie o cliente para carregar as tools.")
+            return
+        }
         // .mcp.json é versionado: usa o comando do PATH em vez de um caminho absoluto desta máquina.
         let executable = scope == .project ? "vibedeck" : vibedeckExecutablePath()
 
@@ -87,11 +95,19 @@ struct MCPUninstall: ParsableCommand {
     )
 
     @OptionGroup var options: RootOptions
-    @Option(name: [.short, .long], help: "Escopo: local, project ou user.") var scope: MCPScope = .local
-    @Option(help: "Nome do servidor no Claude Code.") var name = "vibedeck"
+    @Option(name: [.short, .long], help: "Escopo: local, project ou user.") var scope: MCPScope?
+    @Option(help: "Provedor: claude ou codex.") var provider: AIProvider = .claude
+    @Option(help: "Nome do servidor.") var name = "vibedeck"
 
     func run() throws {
-        let status = try runClaude(["mcp", "remove", name, "-s", scope.rawValue], in: try options.store().root)
+        let root = try options.store().root
+        let scope = scope ?? (provider == .codex ? .project : .local)
+        if provider == .codex {
+            guard scope != .local else { throw ValidationError("Codex suporta project ou user.") }
+            try CodexMCP.uninstall(root: root, name: name, user: scope == .user)
+            return
+        }
+        let status = try runClaude(["mcp", "remove", name, "-s", scope.rawValue], in: root)
         if status != 0 { throw ExitCode(status) }
     }
 }
@@ -118,7 +134,7 @@ struct MCPServe: AsyncParsableCommand {
         await server.withMethodHandler(ListTools.self) { _ in .init(tools: MCPHandler.tools) }
         await server.withMethodHandler(CallTool.self) { params in
             do {
-                return .init(content: [.text(text: try handler.call(params.name, params.arguments ?? [:]), annotations: nil, _meta: nil)], isError: false)
+                return .init(content: [.text(text: try await handler.call(params.name, params.arguments ?? [:]), annotations: nil, _meta: nil)], isError: false)
             } catch {
                 return .init(content: [.text(text: error.localizedDescription, annotations: nil, _meta: nil)], isError: true)
             }
@@ -133,6 +149,7 @@ struct MCPServe: AsyncParsableCommand {
 
 struct MCPHandler: Sendable {
     let store: ProjectStore
+    var stackService: StackService { StackService(store: store) }
 
     static func instructions(root: String) -> String {
         """
@@ -151,6 +168,9 @@ struct MCPHandler: Sendable {
         Leia os itens de revisão abertos antes de mexer numa área; ao concluir um item, marque status=done
         (bloqueado sem check aprovado quando o item tem regras). Itens, regras, ideias, agentes, comandos, skills e workflows criados por você são author=ai.
         Ideias (list_ideas) são planos futuros, não regras ativas; registre ideias novas com add_idea.
+        Antes de implementar, consulte list_stack: são as tecnologias de destaque do projeto; prefira-as e siga as notas delas.
+        Consulte também list_patterns: são os padrões de projeto (TDD, hexagonal, DDD…) que o código novo deve seguir;
+        as regras de cada padrão entram no rules_for.
         Para executar um workflow, use workflow_run_start e siga o `prompt` devolvido: você orquestra, cada etapa roda
         num subagente (que lê workflow_run_step), o veredito vai para workflow_run_record e as perguntas das etapas
         chegam por workflow_run_questions para você fazer ao usuário.
@@ -212,16 +232,18 @@ struct MCPHandler: Sendable {
     ]
 
     static let tools: [Tool] = [
+        Tool(name: "codex_usage", description: "Limites de uso atuais do Codex, consultados no App Server local.", inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
         Tool(name: "claude_usage", description: "Último uso dos limites do Claude Code (sessão de 5h e semana, em %, com horário de reset), registrado pela statusline (`vibedeck usage install`).",
              inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
         Tool(name: "cloud_check", description: "Compara a branch padrão local com a do GitHub (origin). Uma sessão do Claude Code na nuvem só vê o GitHub: se as branches forem diferentes (blocked=true), não dá para usar a nuvem até sincronizar.",
              inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
         Tool(name: "start_cloud_session", description: "Cria uma sessão do Claude Code na nuvem (claude.ai/code) com a tarefa dada, sobre o repositório no GitHub, e devolve o link. Recusa se a branch local for diferente da do GitHub, ou se houver alterações não commitadas sem allow_dirty. Só faça isso quando o usuário pedir.",
-             inputSchema: schema([
+             inputSchema: schema(["provider": ("string", "claude ou codex; padrão claude"),
+                 "environment": ("string", "ID do ambiente Codex Cloud"),
                  "description": ("string", "O que a sessão deve fazer"),
                  "allow_dirty": ("boolean", "Cria mesmo com alterações não commitadas, que a nuvem não vê (padrão: não)"),
              ], required: ["description"])),
-        Tool(name: "get_project", description: "Retorna vibedeck.json (nome, links, reviewKinds) e um resumo dos docs e grupos de revisão.", inputSchema: schema([:]),
+        Tool(name: "get_project", description: "Retorna vibedeck.json (nome, links, stack, padrões, reviewKinds) e um resumo dos docs e grupos de revisão.", inputSchema: schema([:]),
              annotations: .init(readOnlyHint: true)),
         Tool(name: "list_docs", description: "Lista os documentos markdown do projeto (slug e título).", inputSchema: schema([:]),
              annotations: .init(readOnlyHint: true)),
@@ -271,6 +293,54 @@ struct MCPHandler: Sendable {
                  "title": ("string", "Título"),
                  "tags": ("string", "Tags separadas por vírgula"),
              ], required: ["url"])),
+
+        // Stack
+        Tool(name: "list_stack", description: "Lista a stack do projeto: as tecnologias de destaque (ids do Skill Icons), na ordem, com nota de uso e o badge. Consulte antes de implementar: prefira essas tecnologias e siga as notas.",
+             inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "search_stack_icons", description: "Procura tecnologias no catálogo do Skill Icons (por id, nome ou alias, como \"postgres\", \"Next.js\", \"k8s\"), para achar o id a usar em add_stack.",
+             inputSchema: schema([
+                 "query": ("string", "Texto a procurar (vazio = tudo)"),
+                 "category": ("string", "Só ícones desta categoria"),
+                 "limit": ("integer", "Máximo de resultados (padrão 50)"),
+             ], enums: ["category": SkillIcons.categories]),
+             annotations: .init(readOnlyHint: true)),
+        Tool(name: "add_stack", description: "Adiciona tecnologias à stack (ids, nomes ou aliases do Skill Icons; nomes desconhecidos recusam tudo, com sugestões). Já existentes mantêm o lugar; a nota, se dada, substitui a delas. Atualiza o badge no README.md. Marcado como author=ai.",
+             inputSchema: schema([
+                 "icons": ("array", "Tecnologias, na ordem (ex.: [\"swift\", \"swiftui\"])"),
+                 "note": ("string", "Nota de uso para todas elas (ex.: \"Swift 6, strict concurrency\")"),
+             ], required: ["icons"])),
+        Tool(name: "remove_stack", description: "Retira tecnologias da stack (id, nome ou prefixo do id) e atualiza o badge no README.md.",
+             inputSchema: schema(["icons": ("array", "Tecnologias a retirar")], required: ["icons"])),
+        Tool(name: "update_stack", description: "Altera a nota de uso ou a posição de uma tecnologia da stack.",
+             inputSchema: schema([
+                 "icon": ("string", "Id, nome ou prefixo do id"),
+                 "note": ("string", "Nova nota (string vazia apaga)"),
+                 "position": ("integer", "Nova posição, a partir de 0"),
+             ], required: ["icon"])),
+
+        // Patterns
+        Tool(name: "list_patterns", description: "Lista os padrões de projeto (TDD, hexagonal, DDD, CQRS…) que o código deve seguir, na ordem, com nota, escopo (paths) e as regras do tópico de cada um. Consulte antes de implementar: o código novo deve seguir esses padrões; as regras deles entram no rules_for.",
+             inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "pattern_catalog", description: "Lista o catálogo embutido de padrões (id, nome, categoria, resumo, regras que traz), para achar o id a usar em add_pattern.",
+             inputSchema: schema(["query": ("string", "Texto a procurar (vazio = tudo)")]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "add_pattern", description: "Adiciona padrões de projeto. Com `patterns`: ids/nomes/aliases do catálogo (desconhecidos recusam tudo, com sugestões). Com `name` + `rules`: um padrão personalizado. Cada padrão novo cria um tópico de regras (aplicado pelo rules_for); já existentes mantêm o lugar e recebem a nota/paths dados. Marcado como author=ai.",
+             inputSchema: schema([
+                 "patterns": ("array", "Ids do catálogo (ex.: [\"tdd\", \"hexagonal\"])"),
+                 "name": ("string", "Nome de um padrão personalizado"),
+                 "summary": ("string", "Resumo do padrão personalizado"),
+                 "rules": ("array", "Regras (obrigatórias) do padrão personalizado, uma por item"),
+                 "note": ("string", "Como o projeto aplica o padrão (ex.: \"só no Core\")"),
+                 "paths": ("array", "Globs de escopo (vazio = projeto inteiro)"),
+             ])),
+        Tool(name: "remove_pattern", description: "Retira padrões do projeto (id, nome ou prefixo do id) e apaga o tópico de regras de cada um.",
+             inputSchema: schema(["patterns": ("array", "Padrões a retirar")], required: ["patterns"])),
+        Tool(name: "update_pattern", description: "Altera a nota, o escopo (paths) ou a posição de um padrão do projeto.",
+             inputSchema: schema([
+                 "pattern": ("string", "Id, nome ou prefixo do id"),
+                 "note": ("string", "Nova nota (string vazia apaga)"),
+                 "paths": ("array", "Novos globs de escopo ([] = projeto inteiro)"),
+                 "position": ("integer", "Nova posição, a partir de 0"),
+             ], required: ["pattern"])),
 
         // Rules
         Tool(name: "rules_for", description: "OBRIGATÓRIO antes de concluir uma tarefa: retorna as regras aplicáveis (tópicos globais + os que casam os arquivos + os explícitos/do item), com ids para submit_rule_check.",
@@ -353,7 +423,7 @@ struct MCPHandler: Sendable {
         Tool(name: "get_agent", description: "Retorna um agente completo (prompt e próximos passos).", inputSchema: schema(["agent": ("string", "Slug, id ou título")], required: ["agent"]),
              annotations: .init(readOnlyHint: true)),
         Tool(name: "add_agent", description: "Cria um agente do VibeDeck. Marcado author=ai.",
-             inputSchema: schema([
+             inputSchema: schema(["provider_settings": ("object", "Configurações por provedor: {codex:{model,effort},claude:{model,effort}}"),
                  "title": ("string", "Nome do agente"),
                  "summary": ("string", "Quando usar"),
                  "model": ("string", "Modelo (ex.: sonnet, opus)"),
@@ -362,7 +432,7 @@ struct MCPHandler: Sendable {
                  "tags": ("array", "Tags"),
              ], required: ["title"])),
         Tool(name: "update_agent", description: "Atualiza um agente (use add_agent_next_step para o fluxo).",
-             inputSchema: schema([
+             inputSchema: schema(["provider_settings": ("object", "Configurações por provedor: {codex:{model,effort},claude:{model,effort}}"),
                  "agent": ("string", "Slug, id ou título"),
                  "title": ("string", "Novo nome"),
                  "summary": ("string", "Nova descrição"),
@@ -381,14 +451,14 @@ struct MCPHandler: Sendable {
         Tool(name: "agent_flow", description: "JSON do fluxo de um agente (prompt + próximos passos encadeados) para orquestrar a IA.",
              inputSchema: schema(["agent": ("string", "Slug, id ou título")], required: ["agent"]), annotations: .init(readOnlyHint: true)),
         Tool(name: "import_agents", description: "Importa agentes do Claude Code (.claude/agents do projeto e do usuário) como agentes do VibeDeck. Marcados como author=ai.",
-             inputSchema: schema(["overwrite": ("boolean", "Sobrescreve existentes (padrão: não)")])),
+             inputSchema: schema(["provider": ("string", "claude ou codex; padrão claude"), "overwrite": ("boolean", "Sobrescreve existentes (padrão: não)")])),
         // Commands
         Tool(name: "list_commands", description: "Lista os comandos do VibeDeck (nome, argumentos, modelo e próximos passos). Não são os comandos do provedor de IA.",
              inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
         Tool(name: "get_command", description: "Retorna um comando completo (prompt e próximos passos).", inputSchema: schema(["command": ("string", "Slug, id ou título")], required: ["command"]),
              annotations: .init(readOnlyHint: true)),
         Tool(name: "add_command", description: "Cria um comando do VibeDeck (prompt no formato de slash command, com $ARGUMENTS). Marcado author=ai.",
-             inputSchema: schema([
+             inputSchema: schema(["provider_settings": ("object", "Configurações por provedor: {codex:{model,effort},claude:{model,effort}}"),
                  "title": ("string", "Nome do comando"),
                  "summary": ("string", "O que o comando faz"),
                  "argument_hint": ("string", "O que vai em $ARGUMENTS (ex.: <mensagem>)"),
@@ -398,7 +468,7 @@ struct MCPHandler: Sendable {
                  "tags": ("array", "Tags"),
              ], required: ["title"])),
         Tool(name: "update_command", description: "Atualiza um comando (use add_command_next_step para o fluxo).",
-             inputSchema: schema([
+             inputSchema: schema(["provider_settings": ("object", "Configurações por provedor: {codex:{model,effort},claude:{model,effort}}"),
                  "command": ("string", "Slug, id ou título"),
                  "title": ("string", "Novo nome"),
                  "summary": ("string", "Nova descrição"),
@@ -418,14 +488,14 @@ struct MCPHandler: Sendable {
         Tool(name: "command_flow", description: "JSON do fluxo de um comando (prompt + próximos passos encadeados) para orquestrar a IA.",
              inputSchema: schema(["command": ("string", "Slug, id ou título")], required: ["command"]), annotations: .init(readOnlyHint: true)),
         Tool(name: "import_commands", description: "Importa comandos do Claude Code (.claude/commands do projeto e do usuário) como comandos do VibeDeck. Marcados como author=ai.",
-             inputSchema: schema(["overwrite": ("boolean", "Sobrescreve existentes (padrão: não)")])),
+             inputSchema: schema(["provider": ("string", "claude ou codex; padrão claude"), "overwrite": ("boolean", "Sobrescreve existentes (padrão: não)")])),
         // Skills
         Tool(name: "list_skills", description: "Lista as skills do VibeDeck (nome, descrição, modelo e próximos passos). Não são as skills do provedor de IA.",
              inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
         Tool(name: "get_skill", description: "Retorna uma skill completa (instruções e próximos passos).", inputSchema: schema(["skill": ("string", "Slug, id ou título")], required: ["skill"]),
              annotations: .init(readOnlyHint: true)),
         Tool(name: "add_skill", description: "Cria uma skill do VibeDeck (instruções no formato do SKILL.md; a descrição diz quando usá-la). Marcada author=ai.",
-             inputSchema: schema([
+             inputSchema: schema(["provider_settings": ("object", "Configurações por provedor: {codex:{model,effort},claude:{model,effort}}"),
                  "title": ("string", "Nome da skill"),
                  "summary": ("string", "Quando usar a skill (é o que a dispara)"),
                  "model": ("string", "Modelo (ex.: sonnet, opus)"),
@@ -434,7 +504,7 @@ struct MCPHandler: Sendable {
                  "tags": ("array", "Tags"),
              ], required: ["title"])),
         Tool(name: "update_skill", description: "Atualiza uma skill (use add_skill_next_step para o fluxo).",
-             inputSchema: schema([
+             inputSchema: schema(["provider_settings": ("object", "Configurações por provedor: {codex:{model,effort},claude:{model,effort}}"),
                  "skill": ("string", "Slug, id ou título"),
                  "title": ("string", "Novo nome"),
                  "summary": ("string", "Nova descrição"),
@@ -453,7 +523,7 @@ struct MCPHandler: Sendable {
         Tool(name: "skill_flow", description: "JSON do fluxo de uma skill (instruções + próximos passos encadeados) para orquestrar a IA.",
              inputSchema: schema(["skill": ("string", "Slug, id ou título")], required: ["skill"]), annotations: .init(readOnlyHint: true)),
         Tool(name: "import_skills", description: "Importa skills do Claude Code (.claude/skills/<nome>/SKILL.md do projeto e do usuário) como skills do VibeDeck. Marcadas como author=ai.",
-             inputSchema: schema(["overwrite": ("boolean", "Sobrescreve existentes (padrão: não)")])),
+             inputSchema: schema(["provider": ("string", "claude ou codex; padrão claude"), "overwrite": ("boolean", "Sobrescreve existentes (padrão: não)")])),
         // Workflows
         Tool(name: "list_workflows", description: "Lista os workflows do VibeDeck: fluxos nomeados de etapas (agentes, comandos e skills do VibeDeck) com transições condicionais.",
              inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
@@ -521,7 +591,7 @@ struct MCPHandler: Sendable {
                  "input": ("string", "Entrada desta execução (sem ela, a IA pede a entrada ao usuário)"),
              ], required: ["workflow"]), annotations: .init(readOnlyHint: true)),
         Tool(name: "workflow_run_start", description: "Inicia (ou retoma, com a mesma entrada) uma execução de workflow com estado em disco e devolve {ref, action, prompt}: `prompt` é o roteiro do orquestrador — siga-o (cada etapa num subagente, veredito decide a transição, perguntas ao usuário). `from` libera mais uma volta numa execução parada a partir de uma etapa.",
-             inputSchema: schema([
+             inputSchema: schema(["provider": ("string", "claude ou codex; padrão claude"),
                  "workflow": ("string", "Slug, id ou título"),
                  "input": ("string", "Entrada da execução (a execução recebe o nome dela)"),
                  "from": ("string", "Etapa por onde começar"),
@@ -580,7 +650,7 @@ struct MCPHandler: Sendable {
 
     // MARK: Tool calls
 
-    func call(_ name: String, _ args: [String: Value]) throws -> String {
+    func call(_ name: String, _ args: [String: Value]) async throws -> String {
         func str(_ key: String) -> String? { args[key]?.stringValue.flatMap { $0.isEmpty ? nil : $0 } }
         func req(_ key: String) throws -> String {
             guard let v = str(key) else { throw MCPError.invalidParams("Parâmetro obrigatório: \(key)") }
@@ -604,7 +674,19 @@ struct MCPHandler: Sendable {
             return v
         }
 
+        func selectedProvider() throws -> AIProvider {
+            guard let value = str("provider") else { return .claude }
+            guard let provider = AIProvider(rawValue: value) else { throw MCPError.invalidParams("Provedor inválido: \(value)") }
+            return provider
+        }
+        func providerSettings() throws -> [String: AIProviderSettings]? {
+            guard let value = args["provider_settings"] else { return nil }
+            let parsed = try JSONDecoder().decode([String: AIProviderSettings].self, from: JSONEncoder().encode(value))
+            guard parsed.keys.allSatisfy({ AIProvider(rawValue: $0) != nil }) else { throw MCPError.invalidParams("Provedor inválido em provider_settings") }
+            return parsed
+        }
         switch name {
+        case "codex_usage": return try json(await CodexQueries.limits(root: store.root))
         case "get_project":
             let groups = try store.listGroups().map { ["slug": $0.slug, "title": $0.group.title, "open": "\($0.group.openCount)", "total": "\($0.group.items.count)"] }
             return try json(ProjectSummary(root: store.root.path, project: store.loadProject(), docs: store.listDocs().map(\.slug), groups: groups))
@@ -662,6 +744,10 @@ struct MCPHandler: Sendable {
             let rules = try list("rules")?.map { try store.resolveTopicSlug($0) }
             if let rules { try store.updateItem(id) { $0.rules = rules } }
             if str("status") == ReviewStatus.done.rawValue { try store.ensureVerified(id) }
+            if let k = str("kind") {
+                let kinds = try store.loadProject().reviewKinds.map(\.id)
+                guard kinds.contains(k) else { throw MCPError.invalidParams("Kind desconhecido '\(k)'. Disponíveis: \(kinds.joined(separator: ", "))") }
+            }
             let item = try store.updateItem(id) { item in
                 if let s = str("status") {
                     guard let status = ReviewStatus(rawValue: s) else { throw MCPError.invalidParams("Status inválido: \(s)") }
@@ -676,10 +762,69 @@ struct MCPHandler: Sendable {
 
         case "add_link":
             let url = try req("url")
-            let tags = str("tags")?.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) } ?? []
+            let tags = list("tags") ?? []
             let link = Link(title: str("title") ?? url, url: url, tags: tags)
             try store.updateProject { $0.links.append(link) }
             return try json(link)
+
+        case "list_stack":
+            let stack = try store.loadProject().stack
+            let badge = stack.isEmpty ? nil : try? await stackService.badge()
+            return try json(StackListing(stack: stack, badge: badge?.url))
+
+        case "search_stack_icons":
+            let icons = try await SkillIcons().search(query: str("query"), category: str("category"), limit: int("limit"))
+            let current = Set(try store.loadProject().stack.map(\.icon))
+            return try json(icons.map { IconRow(icon: $0, inStack: current.contains($0.id)) })
+
+        case "add_stack":
+            guard let icons = list("icons"), !icons.isEmpty else { throw MCPError.invalidParams("Parâmetro obrigatório: icons") }
+            return try json(await stackService.add(icons, note: args["note"]?.stringValue, author: .ai))
+
+        case "remove_stack":
+            guard let icons = list("icons"), !icons.isEmpty else { throw MCPError.invalidParams("Parâmetro obrigatório: icons") }
+            return try json(await stackService.remove(icons))
+
+        case "update_stack":
+            let icon = try req("icon")
+            var change: StackService.Change?
+            if let note = args["note"]?.stringValue { change = try await stackService.setNote(icon, note) }
+            if let position = int("position") { change = try await stackService.move(icon, to: position) }
+            guard let change else { throw MCPError.invalidParams("Informe note ou position.") }
+            return try json(change)
+
+        case "list_patterns":
+            return try json(PatternListing(store: store))
+
+        case "pattern_catalog":
+            let current = Set(try store.loadProject().patterns.map(\.id))
+            return try json(PatternCatalog.search(str("query")).map { CatalogRow(template: $0, inProject: current.contains($0.id)) })
+
+        case "add_pattern":
+            let paths = list("paths")
+            if let name = str("name") {
+                guard let rules = list("rules"), !rules.isEmpty else { throw MCPError.invalidParams("Padrão personalizado precisa de rules.") }
+                try store.addCustomPattern(name: name, summary: str("summary"), rules: rules, note: str("note"), paths: paths, author: .ai)
+            } else {
+                guard let refs = list("patterns"), !refs.isEmpty else { throw MCPError.invalidParams("Informe patterns (catálogo) ou name + rules.") }
+                try store.addPatterns(refs, note: str("note"), paths: paths, author: .ai)
+            }
+            return try json(PatternListing(store: store))
+
+        case "remove_pattern":
+            guard let refs = list("patterns"), !refs.isEmpty else { throw MCPError.invalidParams("Parâmetro obrigatório: patterns") }
+            try store.removePatterns(refs)
+            return try json(PatternListing(store: store))
+
+        case "update_pattern":
+            let ref = try req("pattern")
+            guard args["note"] != nil || args["paths"] != nil || int("position") != nil else {
+                throw MCPError.invalidParams("Informe note, paths ou position.")
+            }
+            if let note = args["note"]?.stringValue { try store.setPatternNote(ref, note) }
+            if args["paths"] != nil { try store.setPatternPaths(ref, list("paths") ?? []) }
+            if let position = int("position") { try store.movePattern(ref, to: position) }
+            return try json(PatternListing(store: store))
 
         case "rules_for":
             var files = list("files") ?? []
@@ -810,7 +955,7 @@ struct MCPHandler: Sendable {
             return try json(CloudSession.check(root: store.root))
 
         case "start_cloud_session":
-            let result = try CloudSession.launch(root: store.root, description: try req("description"), allowDirty: args["allow_dirty"]?.boolValue ?? false)
+            let result = try CloudSession.launch(root: store.root, description: try req("description"), allowDirty: args["allow_dirty"]?.boolValue ?? false, provider: try selectedProvider(), environment: str("environment"))
             return try json(CloudStart(sync: result.sync, url: result.url?.absoluteString, output: result.output))
 
         case "list_agents":
@@ -826,11 +971,17 @@ struct MCPHandler: Sendable {
             let (slug, agent) = try store.createAgent(
                 title: req("title"), summary: str("summary"), model: str("model"), tools: list("tools") ?? [],
                 prompt: str("prompt") ?? "", tags: list("tags") ?? [], author: .ai)
+            if let settings = try providerSettings() {
+                _ = try store.updateAgent(slug) { $0.providerSettings = settings }
+                return try json(SlugAnd(slug: slug, value: store.loadAgent(slug)))
+            }
             return try json(SlugAnd(slug: slug, value: agent))
 
         case "update_agent":
+            let overrides = try providerSettings()
             let tags = list("tags"), tools = list("tools")
             let (slug, agent) = try store.updateAgent(req("agent")) { a in
+                if let overrides { a.providerSettings = overrides }
                 if let t = str("title") { a.title = t }
                 if let v = str("summary") { a.summary = v }
                 if let v = str("model") { a.model = v }
@@ -853,8 +1004,8 @@ struct MCPHandler: Sendable {
             return try AgentFlow.json(from: slug, agents: store.listAgents(), commands: store.listCommands(), skills: store.listSkills()) ?? ""
 
         case "import_agents":
-            let slugs = try store.importClaudeAgents(overwrite: args["overwrite"]?.boolValue ?? false, author: .ai)
-            return try json(slugs)
+            let result = try store.importAgents(provider: try selectedProvider(), overwrite: args["overwrite"]?.boolValue ?? false, author: .ai)
+            return try selectedProvider() == .claude ? json(result.slugs) : json(ImportReport(slugs: result.slugs, warnings: result.warnings))
 
         case "list_commands":
             return try json(store.listCommands().map {
@@ -870,11 +1021,17 @@ struct MCPHandler: Sendable {
             let (slug, command) = try store.createCommand(
                 title: req("title"), summary: str("summary"), argumentHint: str("argument_hint"), model: str("model"),
                 tools: list("tools") ?? [], prompt: str("prompt") ?? "", tags: list("tags") ?? [], author: .ai)
+            if let settings = try providerSettings() {
+                _ = try store.updateCommand(slug) { $0.providerSettings = settings }
+                return try json(SlugAnd(slug: slug, value: store.loadCommand(slug)))
+            }
             return try json(SlugAnd(slug: slug, value: command))
 
         case "update_command":
+            let overrides = try providerSettings()
             let tags = list("tags"), tools = list("tools")
             let (slug, command) = try store.updateCommand(req("command")) { c in
+                if let overrides { c.providerSettings = overrides }
                 if let t = str("title") { c.title = t }
                 if let v = str("summary") { c.summary = v }
                 if let v = str("argument_hint") { c.argumentHint = v }
@@ -898,8 +1055,8 @@ struct MCPHandler: Sendable {
             return try AgentFlow.json(kind: .command, from: slug, agents: store.listAgents(), commands: store.listCommands(), skills: store.listSkills()) ?? ""
 
         case "import_commands":
-            let slugs = try store.importClaudeCommands(overwrite: args["overwrite"]?.boolValue ?? false, author: .ai)
-            return try json(slugs)
+            let result = try store.importCommands(provider: try selectedProvider(), overwrite: args["overwrite"]?.boolValue ?? false, author: .ai)
+            return try selectedProvider() == .claude ? json(result.slugs) : json(ImportReport(slugs: result.slugs, warnings: result.warnings))
 
         case "list_skills":
             return try json(store.listSkills().map {
@@ -914,11 +1071,17 @@ struct MCPHandler: Sendable {
             let (slug, skill) = try store.createSkill(
                 title: req("title"), summary: str("summary"), model: str("model"), tools: list("tools") ?? [],
                 prompt: str("prompt") ?? "", tags: list("tags") ?? [], author: .ai)
+            if let settings = try providerSettings() {
+                _ = try store.updateSkill(slug) { $0.providerSettings = settings }
+                return try json(SlugAnd(slug: slug, value: store.loadSkill(slug)))
+            }
             return try json(SlugAnd(slug: slug, value: skill))
 
         case "update_skill":
+            let overrides = try providerSettings()
             let tags = list("tags"), tools = list("tools")
             let (slug, skill) = try store.updateSkill(req("skill")) { s in
+                if let overrides { s.providerSettings = overrides }
                 if let t = str("title") { s.title = t }
                 if let v = str("summary") { s.summary = v }
                 if let v = str("model") { s.model = v }
@@ -941,8 +1104,8 @@ struct MCPHandler: Sendable {
             return try AgentFlow.json(kind: .skill, from: slug, agents: store.listAgents(), commands: store.listCommands(), skills: store.listSkills()) ?? ""
 
         case "import_skills":
-            let slugs = try store.importClaudeSkills(overwrite: args["overwrite"]?.boolValue ?? false, author: .ai)
-            return try json(slugs)
+            let result = try await store.importSkills(provider: try selectedProvider(), overwrite: args["overwrite"]?.boolValue ?? false, author: .ai)
+            return try selectedProvider() == .claude ? json(result.slugs) : json(ImportReport(slugs: result.slugs, warnings: result.warnings))
 
         case "list_workflows":
             return try json(store.listWorkflows().map {
@@ -1007,9 +1170,9 @@ struct MCPHandler: Sendable {
             return try store.workflowPlan(req("workflow"), input: str("input")).json()
 
         case "workflow_run_start":
-            let (ref, run, action) = try store.startRun(req("workflow"), input: str("input"), from: str("from"))
+            let (ref, run, action) = try store.startRun(req("workflow"), input: str("input"), from: str("from"), provider: str("provider") == nil ? nil : try selectedProvider())
             let title = (try? store.loadWorkflow(run.workflow).title) ?? run.workflow
-            return try json(RunStarted(ref: ref, action: action, prompt: WorkflowOrchestration.orchestratorPrompt(ref: ref, title: title, input: run.input)))
+            return try json(RunStarted(ref: ref, action: action, prompt: WorkflowOrchestration.orchestratorPrompt(ref: ref, title: title, input: run.input, provider: run.provider)))
 
         case "workflow_run_next":
             return try json(store.nextRunAction(req("run")))
@@ -1074,6 +1237,8 @@ struct MCPHandler: Sendable {
 
     func resources() throws -> [Resource] {
         var list = [Resource(name: "vibedeck.json", uri: "vibedeck://project", description: "Manifesto do projeto", mimeType: "application/json")]
+        list.append(Resource(name: "Stack", uri: "vibedeck://stack", description: "Tecnologias de destaque do projeto", mimeType: "application/json"))
+        list.append(Resource(name: "Padrões", uri: "vibedeck://patterns", description: "Padrões de projeto que o código deve seguir", mimeType: "application/json"))
         list += try store.listDocs().map { Resource(name: $0.title, uri: "vibedeck://docs/\($0.slug)", mimeType: "text/markdown") }
         list += try store.listGroups().map {
             Resource(name: "Revisão: \($0.group.title)", uri: "vibedeck://reviews/\($0.slug)", description: "\($0.group.openCount) aberto(s)", mimeType: "application/json")
@@ -1102,6 +1267,12 @@ struct MCPHandler: Sendable {
     func read(_ uri: String) throws -> Resource.Content {
         if uri == "vibedeck://project" {
             return .text(try String(contentsOf: store.manifestURL, encoding: .utf8), uri: uri, mimeType: "application/json")
+        }
+        if uri == "vibedeck://patterns" {
+            return .text(try json(PatternListing(store: store)), uri: uri, mimeType: "application/json")
+        }
+        if uri == "vibedeck://stack" {
+            return .text(try json(store.loadProject().stack), uri: uri, mimeType: "application/json")
         }
         if let slug = uri.stripping("vibedeck://docs/") {
             return .text(try store.readDoc(slug), uri: uri, mimeType: "text/markdown")
@@ -1132,6 +1303,80 @@ struct MCPHandler: Sendable {
 
     private func json<T: Encodable>(_ value: T) throws -> String {
         String(decoding: try VDJSON.encoder.encode(value), as: UTF8.self)
+    }
+}
+
+/// The project's patterns with the scope and rules of their topics.
+private struct PatternListing: Encodable {
+    struct Row: Encodable {
+        let pattern: ProjectPattern
+        let topic: String?
+        let paths: [String]
+        let rules: [Rule]
+
+        enum CodingKeys: String, CodingKey { case id, name, category, summary, note, topic, paths, rules, author }
+
+        func encode(to encoder: Encoder) throws {
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encode(pattern.id, forKey: .id)
+            try c.encode(pattern.name, forKey: .name)
+            try c.encodeIfPresent(pattern.category, forKey: .category)
+            try c.encodeIfPresent(pattern.summary, forKey: .summary)
+            try c.encodeIfPresent(pattern.note, forKey: .note)
+            try c.encodeIfPresent(topic, forKey: .topic)
+            try c.encode(paths, forKey: .paths)
+            try c.encode(rules, forKey: .rules)
+            try c.encode(pattern.author, forKey: .author)
+        }
+    }
+
+    let patterns: [Row]
+
+    init(store: ProjectStore) throws {
+        patterns = try store.loadProject().patterns.map { pattern in
+            let topic = store.patternTopic(pattern)
+            return Row(pattern: pattern, topic: topic?.slug, paths: topic?.topic.paths ?? [], rules: topic?.topic.rules ?? [])
+        }
+    }
+}
+
+private struct CatalogRow: Encodable {
+    let template: PatternTemplate
+    let inProject: Bool
+
+    enum CodingKeys: String, CodingKey { case id, name, category, summary, aliases, rules, inProject }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(template.id, forKey: .id)
+        try c.encode(template.name, forKey: .name)
+        try c.encode(template.category, forKey: .category)
+        try c.encode(template.summary, forKey: .summary)
+        if !template.aliases.isEmpty { try c.encode(template.aliases, forKey: .aliases) }
+        try c.encode(template.rules.map(\.text), forKey: .rules)
+        try c.encode(inProject, forKey: .inProject)
+    }
+}
+
+private struct StackListing: Encodable {
+    let stack: [StackItem]
+    let badge: String?
+}
+
+private struct IconRow: Encodable {
+    let icon: SkillIcon
+    let inStack: Bool
+
+    enum CodingKeys: String, CodingKey { case id, name, category, themed, aliases, inStack }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(icon.id, forKey: .id)
+        try c.encode(icon.name, forKey: .name)
+        try c.encodeIfPresent(icon.category, forKey: .category)
+        try c.encode(icon.themed, forKey: .themed)
+        if !icon.aliases.isEmpty { try c.encode(icon.aliases, forKey: .aliases) }
+        try c.encode(inStack, forKey: .inStack)
     }
 }
 
@@ -1319,3 +1564,5 @@ private extension String {
         hasPrefix(prefix) ? String(dropFirst(prefix.count)) : nil
     }
 }
+
+private struct ImportReport: Encodable { var slugs: [String]; var warnings: [String] }

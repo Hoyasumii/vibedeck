@@ -9,9 +9,9 @@
       "id" : "78BE5EFD-934F-4F8F-9CF5-6FCC164868E2",
       "kind" : "fix",
       "priority" : "normal",
-      "status" : "open",
+      "status" : "done",
       "title" : "Cmd+W para fechar abas ativas",
-      "updatedAt" : "2026-10-08T14:30:43Z"
+      "updatedAt" : "2026-10-08T23:36:50Z"
     }
   ],
   "title" : "Abas"

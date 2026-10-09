@@ -1,0 +1,329 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-08T21:55:18.735Z",
+  "failures" : [
+
+  ],
+  "files" : [
+    ".vibedeck/rules/conceitos-do-produto.json",
+    "Sources/VibeDeckApp/ReviewDiscover.swift",
+    "Sources/VibeDeckApp/ReviewGroupView.swift"
+  ],
+  "id" : "C451A2D2-4638-43D3-9599-DB3622A87EDB",
+  "passed" : true,
+  "results" : [
+    {
+      "note" : "AGENTS.md e checks não editados à mão",
+      "ruleId" : "9D6F362B-9F0E-4661-97B3-6158B160D478",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Regra A31D4912 editada à mão (sem comando de edição de regra no CLI/MCP) a pedido do usuário; JSON válido, mesmo id/author/createdAt/severity; `vibedeck rules show` carrega",
+      "ruleId" : "9F92A765-76E7-4EA0-A66A-78AE12EE4C8F",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "A regra editada é author=ai; nada humano removido",
+      "ruleId" : "AC4BA963-CDEE-419C-B057-9140643E115D",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Textos novos em pt-BR ('A IA não encontrou nada novo…', 'X não está instalado.', erro discoverInvalidAnswer)",
+      "ruleId" : "0E5AEC71-405E-4113-AB27-615313AB2B5F",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nada documentado no README mudou nesses arquivos",
+      "ruleId" : "306A20B6-E1FA-4BE4-96E8-2B854A3D0BC6",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem commit",
+      "ruleId" : "4095F087-1E04-46C0-9AA4-A60C8C16A72B",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem frames novos",
+      "ruleId" : "EE65A0A5-71DA-431A-A4B7-567144D40423",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Sem ViewThatFits",
+      "ruleId" : "9A4878F2-54AD-4B93-9E8B-9D7683C8F9F2",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Sem colunas",
+      "ruleId" : "047D2216-D1C9-4AFC-AA0A-D789DC1E8A60",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Aceite da proposta inalterado (mutate com undo)",
+      "ruleId" : "00E57961-FE6D-4AFC-BB1A-3DC70152D38D",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Sync de disco não alterado",
+      "ruleId" : "8385BC07-3F91-46DC-8BBD-6F62C4851DD9",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Docs/ideias não alterados",
+      "ruleId" : "B065B5AF-B93F-4698-8E43-BB4369E74351",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem campos de texto novos",
+      "ruleId" : "3D508DEA-D43E-4E33-91B7-F46039B6B53D",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Abas não alteradas",
+      "ruleId" : "329A929F-62CC-4A7D-99A3-A299F495A08C",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sidebar não alterada",
+      "ruleId" : "335DA4F8-7DBF-4120-8878-42130C661D69",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Listas não alteradas",
+      "ruleId" : "A999B857-E236-4893-97A9-07257A538B57",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhum atalho tocado",
+      "ruleId" : "DC9EED4D-8823-4FD1-83ED-3B820A83E8B4",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Toolbar não alterada",
+      "ruleId" : "492100C1-EFE3-488F-8368-08CE17A797DA",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Mesmos componentes nativos",
+      "ruleId" : "B382469C-4D35-4314-BEC2-50BCEC7C6855",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Ideias não alteradas",
+      "ruleId" : "1A4EF162-82B1-4940-8251-A2102964C3E8",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhum estado novo fora do disco",
+      "ruleId" : "9E02C127-7793-4588-A770-0E817687B02F",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Ideias não alteradas",
+      "ruleId" : "116AEA24-9A0B-431B-9FC1-8ABE22683898",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem promoção",
+      "ruleId" : "F7531E2B-4846-4C63-BE0F-3DFA1771CCCC",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Modelo de revisões inalterado",
+      "ruleId" : "BE018170-5258-45AA-876E-5B761B643714",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Status não alterado",
+      "ruleId" : "257D96B2-3561-47D2-AB56-33FA0900B331",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Severidade da regra editada mantida em must",
+      "ruleId" : "54A2D6B0-BC39-4555-A4E9-DB8D418D55CB",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Escopo de tópicos inalterado",
+      "ruleId" : "6E22946D-DF9C-4D59-B403-1BB9F3F0FFB5",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Checks não editados",
+      "ruleId" : "C637A278-87F1-4586-BB2F-0864EDB552CB",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Autoria inalterada",
+      "ruleId" : "C9BEE6A5-C314-4547-AE52-52D116B11220",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhum conceito novo",
+      "ruleId" : "B9E9DD35-4A5F-4FA3-BDDF-014238B8CB50",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Regra atualizada (aprovado pelo usuário) para Claude Code ou Codex; o botão Descubra aparece só com `!AIProvider.installed.isEmpty`, e start() usa provider.executable — a detecção única via AIProvider",
+      "ruleId" : "A31D4912-A7FA-4E2A-B1C2-CC27D577177B",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Sidebar não alterada",
+      "ruleId" : "3901FA3E-16BD-4E00-A844-DAB5A87BDFC1",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Proposta continua aceita no lugar, sem botão Salvar",
+      "ruleId" : "8D5FCA3B-9398-45CD-AF1E-03A04F22526C",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Sem mudança de sync",
+      "ruleId" : "9BBFB48C-17CC-4FD9-8D7C-F1FD71529D95",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Descubra continua no inspector do item",
+      "ruleId" : "34D2EA32-DD0D-4405-93F6-FDABEBA7CC1B",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Abas não alteradas",
+      "ruleId" : "3D22A05A-9E61-433B-A8E2-00BFA2A968EE",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Boas-vindas não alterada",
+      "ruleId" : "365080A7-DD8F-4EBE-9CDF-979D07F6A5C3",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Este check",
+      "ruleId" : "EA7C01E6-5CC5-4199-94B6-11536B1ABDFA",
+      "topic" : "fluxo-padrao",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Listagens inalteradas",
+      "ruleId" : "8F28F353-95A9-4EEC-8223-383AF2FF6140",
+      "topic" : "fluxo-padrao",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Sem item de revisão",
+      "ruleId" : "3A31B517-334E-484C-9205-0513AF158AE8",
+      "topic" : "fluxo-padrao",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhum conceito novo",
+      "ruleId" : "95C0C917-663D-47F0-A4BD-C93E1B7F2D0C",
+      "topic" : "fluxo-padrao",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhuma ideia nova",
+      "ruleId" : "09C9F3A9-5B74-496C-8A2D-F93C4294CAD2",
+      "topic" : "fluxo-padrao",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Os dois provedores terminam em state = .ready(ReviewDiscover.proposal(...)); nada é gravado antes do aceite",
+      "ruleId" : "46A96B82-5BDD-43F8-982F-BBC35B5C6EAA",
+      "topic" : "botao-de-descubra-em-onde-e-regras-nas-revisoes",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "ReviewDiscover.proposal inalterado para os dois provedores",
+      "ruleId" : "4D2EEC85-41C6-4A77-B792-F9DB87651D48",
+      "topic" : "botao-de-descubra-em-onde-e-regras-nas-revisoes",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Filtragem de arquivos/slugs fica em ReviewDiscover.proposal, usado também pelo caminho Codex",
+      "ruleId" : "06B55036-7BD0-4348-82F4-39B67519FBA0",
+      "topic" : "botao-de-descubra-em-onde-e-regras-nas-revisoes",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Claude: inalterado. Codex: CodexReadOnly usa sandbox read-only, approvalPolicy never, recusa toda requestApproval, rejeita outras requisições e desliga os mcp_servers",
+      "ruleId" : "52B60258-B539-41CF-98C3-E67E74C72F3E",
+      "topic" : "botao-de-descubra-em-onde-e-regras-nas-revisoes",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Codex: outputSchema estrito + decode de Answer; falha agora lança VibeDeckError.discoverInvalidAnswer (pt-BR) em vez do DecodingError em inglês (corrigido nesta tarefa); state = .failed sem alterar o item",
+      "ruleId" : "D670FAD9-8DC7-429F-A65F-A1280F81DF19",
+      "topic" : "botao-de-descubra-em-onde-e-regras-nas-revisoes",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Sheet de proposta inalterada (aceite por campo)",
+      "ruleId" : "A9D8FA72-F39C-48F4-92B6-9C22760A37CC",
+      "topic" : "botao-de-descubra-em-onde-e-regras-nas-revisoes",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Mesmo schema de resposta com justificativas",
+      "ruleId" : "2635526C-DBAB-471A-BD6A-CC8BA52F22E1",
+      "topic" : "botao-de-descubra-em-onde-e-regras-nas-revisoes",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Codex: timeout ReviewDiscover.timeout no CodexReadOnly; cancel() cancela a Task (withTaskCancellationHandler encerra o RPC); itemChanged() inalterado",
+      "ruleId" : "7334A6CD-9FD4-4865-9803-5B0AC0BCBCCF",
+      "topic" : "botao-de-descubra-em-onde-e-regras-nas-revisoes",
+      "verdict" : "pass"
+    }
+  ],
+  "task" : "Descubra com Codex (mudança de outra sessão, aprovada pelo usuário como intencional): regra A31D4912 atualizada para aceitar Claude Code ou Codex no app; caminho Codex do Descubra passa a mostrar discoverInvalidAnswer (pt-BR) quando a resposta não é JSON válido.",
+  "topics" : [
+    "geral",
+    "interface-do-app",
+    "conceitos-do-produto",
+    "dinamicas-da-interface",
+    "fluxo-padrao",
+    "botao-de-descubra-em-onde-e-regras-nas-revisoes"
+  ],
+  "warnings" : [
+
+  ]
+}

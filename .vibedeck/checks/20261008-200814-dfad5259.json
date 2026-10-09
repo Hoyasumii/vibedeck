@@ -1,0 +1,511 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-08T20:08:14.097Z",
+  "failures" : [
+
+  ],
+  "files" : [
+    "README.md",
+    "Sources/VibeDeckApp/ProjectModel.swift",
+    "Sources/VibeDeckApp/ProjectWindow.swift",
+    "Sources/VibeDeckApp/SkillIconCache.swift",
+    "Sources/VibeDeckApp/StackView.swift",
+    "Sources/VibeDeckCore/AgentsGuide.swift",
+    "Sources/VibeDeckCore/Models.swift",
+    "Sources/VibeDeckCore/ProjectStore.swift",
+    "Sources/VibeDeckCore/Stack.swift",
+    "Sources/vibedeck/CLI.swift",
+    "Sources/vibedeck/MCPServer.swift",
+    "Tests/VibeDeckCoreTests/StackTests.swift",
+    "schema/v1/project.schema.json",
+    "vibedeck.json",
+    "worker/public/v1/project.schema.json"
+  ],
+  "id" : "DFAD5259-2C97-46B1-9D4F-DA58F30293B9",
+  "passed" : true,
+  "results" : [
+    {
+      "note" : "Operações de stack no Core (add/remove/note/move/search/badge) têm subcomandos `vibedeck stack …` e as tools add/remove/update/list/search_stack, com a mesma semântica via StackService",
+      "ruleId" : "C604B203-A022-48C7-92DA-F343DA4AE60B",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "add_stack passa author: .ai e a descrição diz 'Marcado como author=ai.'; no CLI, só com --ai",
+      "ruleId" : "643AA948-85C0-485E-A110-E83B59C0B5BC",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhum caminho novo muda status para done",
+      "ruleId" : "30A2FC1A-16E7-4708-A559-0CA78431EDD7",
+      "topic" : "cli-e-mcp",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Instructions, rules_for e submit_rule_check intactos; só foi acrescentada a linha sobre list_stack",
+      "ruleId" : "A34C030C-D9E7-4C1A-A8E1-23E47D9B15AF",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "promote_idea não foi tocado",
+      "ruleId" : "7A76B622-C234-4B41-9ECA-C8C414AB47FE",
+      "topic" : "cli-e-mcp",
+      "verdict" : "na"
+    },
+    {
+      "note" : "icons usa list(\"icons\") + type array; testado com string separada por vírgula e com array JSON",
+      "ruleId" : "ED4D47D8-F744-4E94-A8EE-807E2AFF0670",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "vibedeckExecutablePath/MCPInstall sem alteração",
+      "ruleId" : "05F179F3-EB5F-474B-B8C1-9E4E0926B388",
+      "topic" : "cli-e-mcp",
+      "verdict" : "na"
+    },
+    {
+      "note" : "stack list/search/badge e os comandos de mudança têm --json via printJSON (VDJSON); conferido stack --json",
+      "ruleId" : "21E4D353-1916-4961-B355-EC7B8DEEB0B4",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "version não mudou",
+      "ruleId" : "4913B3AF-4F67-4717-A7D4-9600D8BF0942",
+      "topic" : "cli-e-mcp",
+      "verdict" : "na"
+    },
+    {
+      "note" : "unpromote não foi tocado",
+      "ruleId" : "D94F39E0-F874-43A0-86DC-21D9FEDEC02D",
+      "topic" : "cli-e-mcp",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Extensão do ProjectStore só com métodos e uma var computada readmeURL; o estado de rede fica em StackService/SkillIcons, fora do store",
+      "ruleId" : "5FA116B6-6FBE-45F9-8C5D-29E7548F6C2F",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "README e vibedeck.json gravados via AtomicFile.write (syncReadmeStack, updateProject); nenhum write direto no Core",
+      "ruleId" : "857149E6-8C34-46A8-9C30-439EBE78309D",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Arquivos do projeto passam por VDJSON; o JSONDecoder em Stack.swift só decodifica respostas de rede do Skill Icons, não arquivos do projeto",
+      "ruleId" : "99BF0D79-2F65-419A-87DA-0B4F37E4FEF5",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "StackItem.init(from:) só exige icon (name cai para icon, author .human); Project.stack é decodeIfPresent ?? []; coberto por teste",
+      "ruleId" : "5ED22D96-FE5F-4683-8611-E3D264113B67",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "stack vazio é omitido; category/note via encodeIfPresent (note vazia omitida); teste verifica as chaves {icon,name,author}",
+      "ruleId" : "C6D79B9C-1F50-4AE3-8CD1-8CAE5C4F6B6F",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "RuleCheck não foi tocado",
+      "ruleId" : "57ADA275-8A0F-42BA-9E14-BA3B34AB8235",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "schema/v1/project.schema.json ganhou stack + $defs.stackItem; AgentsGuide tem a seção Stack e o campo na Estrutura",
+      "ruleId" : "4133C155-F789-428E-9ED5-5EAC37C19700",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Stack não usa slugs/arquivos; itens resolvem por id, nome, prefixo único ou alias do catálogo (stackIndex/stackID)",
+      "ruleId" : "B0277971-459D-4CCB-9E9D-5990F1574F5B",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhum slug criado",
+      "ruleId" : "7F7C6B09-EBCB-4CA0-BAAF-6B18D36F15C1",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "submitCheck não foi tocado",
+      "ruleId" : "BC028BE5-D7E0-4DA3-BB5C-E8A628EBFA8A",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "verificationProblems não foi tocado",
+      "ruleId" : "64E65B59-8D5B-40DE-B381-CAF2B1BDC785",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "applicableTopics não foi tocado",
+      "ruleId" : "8D874A06-515D-41B5-A094-DC8B83BB40B6",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "promoteIdea não foi tocado",
+      "ruleId" : "35D8D7C3-1224-45CC-8A80-66D0B6291C33",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Glob não foi tocado",
+      "ruleId" : "64334D9C-327B-4811-B088-8B785EF4E0FE",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Novos cases skillIconsUnavailable, unknownStackIcons (com sugestões) e stackItemNotFound, todos em pt-BR",
+      "ruleId" : "EA5E6F7D-1587-4FC5-87D9-51CE6F130C7B",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "scripts/test.sh: 115 testes em 17 suítes passaram",
+      "ruleId" : "97510532-2FCF-44BD-9D01-75086E554EB9",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "StackTests: decode tolerante/omissão, resolve de aliases, add/remove/note/move, sync do README, marcadores citados em prosa, offline com aviso, parse JSON-RPC/SSE/erro",
+      "ruleId" : "91774D06-91B5-4945-9EC6-CDEFC57332FA",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "SchemaURL não mudou",
+      "ruleId" : "DFE3361B-6AFE-4ED3-A741-4FC0818D197D",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Tópicos não foram tocados",
+      "ruleId" : "B659FD25-792B-4C0E-BD08-6082ACFCC80A",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "unpromoteIdea não foi tocado",
+      "ruleId" : "A2B13B15-C59E-4189-8905-3A309C89DF28",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "AGENTS.md mudou só pela regeneração de refreshAgentsGuideIfNeeded a partir de AgentsGuide.swift; checks só vêm deste submit",
+      "ruleId" : "9D6F362B-9F0E-4661-97B3-6158B160D478",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "A stack do vibedeck.json foi gravada pelo MCP add_stack; vibedeck status/stack carregam sem erro",
+      "ruleId" : "9F92A765-76E7-4EA0-A66A-78AE12EE4C8F",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhum objeto humano removido; as 4 tecnologias adicionadas pela IA têm author ai",
+      "ruleId" : "AC4BA963-CDEE-419C-B057-9140643E115D",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Rótulos da UI, help do CLI, descrições do MCP, erros e guia em pt-BR",
+      "ruleId" : "0E5AEC71-405E-4113-AB27-615313AB2B5F",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "README: seção Stack, campo stack no formato do projeto e comandos CLI/MCP",
+      "ruleId" : "306A20B6-E1FA-4BE4-96E8-2B854A3D0BC6",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Sem commit (o usuário não pediu)",
+      "ruleId" : "4095F087-1E04-46C0-9AA4-A60C8C16A72B",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhum minWidth no root; os .frame de tamanho fixo estão só dentro das sheets",
+      "ruleId" : "EE65A0A5-71DA-431A-A4B7-567144D40423",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Sem ViewThatFits nas views novas",
+      "ruleId" : "9A4878F2-54AD-4B93-9E8B-9D7683C8F9F2",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhuma coluna ou inspector novo",
+      "ruleId" : "047D2216-D1C9-4AFC-AA0A-D789DC1E8A60",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Todas as mudanças da stack no app passam por model.mutateStack: grava na hora e registra undo que reaplica o valor anterior (refazer simétrico)",
+      "ruleId" : "00E57961-FE6D-4AFC-BB1A-3DC70152D38D",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "saveProject usa write(), que registra lastWritten; mudança externa no vibedeck.json é tratada em handleExternalChanges (manifestName), e StackView lê model.project.stack",
+      "ruleId" : "8385BC07-3F91-46DC-8BBD-6F62C4851DD9",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Docs/ideias não foram tocados",
+      "ruleId" : "B065B5AF-B93F-4698-8E43-BB4369E74351",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "A nota é editada num rascunho local e confirmada com Return (onSubmit) ou Salvar, gerando um único passo de undo",
+      "ruleId" : "3D508DEA-D43E-4E33-91B7-F46039B6B53D",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : ".stack entra em storageKey/init, exists=true, e 'Abrir em Nova Aba' fica no menu de contexto; restoreState só ativa ou insere a aba Stack e mantém selection = tabs[activeTab]",
+      "ruleId" : "329A929F-62CC-4A7D-99A3-A299F495A08C",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Stack é uma linha fixa (como Links), não uma seção com accordion",
+      "ruleId" : "335DA4F8-7DBF-4120-8878-42130C661D69",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Stack não é uma SectionListView; tem filtro de texto (.searchable) como Links. Não há tags (ver regra de tags)",
+      "ruleId" : "A999B857-E236-4893-97A9-07257A538B57",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhum atalho novo; o picker usa só .cancelAction/.defaultAction",
+      "ruleId" : "DC9EED4D-8823-4FD1-83ED-3B820A83E8B4",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "StackView fica na coluna de detalhe, que já tem toolbarBackgroundVisibility(.hidden)",
+      "ruleId" : "492100C1-EFE3-488F-8368-08CE17A797DA",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "SF Symbol square.stack.3d.up, cartões em Liquid Glass, sem dependências novas; os ícones de tecnologia vêm do Skill Icons (marcas sem SF Symbol)",
+      "ruleId" : "B382469C-4D35-4314-BEC2-50BCEC7C6855",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Tópicos e ideias não foram tocados",
+      "ruleId" : "1A4EF162-82B1-4940-8251-A2102964C3E8",
+      "topic" : "interface-do-app",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Só schema/v1 foi editado; worker/public foi regenerado por npm run sync e está no .gitignore",
+      "ruleId" : "EFDEC345-F90B-41DA-9484-9F470C8E3E94",
+      "topic" : "worker-e-schemas",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "npm run sync && npm run typecheck sem erros",
+      "ruleId" : "4C804BFE-C826-440C-A3DF-F22AF3D16FD5",
+      "topic" : "worker-e-schemas",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "worker/src não foi tocado",
+      "ruleId" : "A486BCE3-EAA0-47DD-8826-B20BF64166F5",
+      "topic" : "worker-e-schemas",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhum schema novo; stack é um campo do project.schema",
+      "ruleId" : "CD3057F2-1C45-4F09-A9C7-7EC146998DFA",
+      "topic" : "worker-e-schemas",
+      "verdict" : "na"
+    },
+    {
+      "note" : "$id não mudou",
+      "ruleId" : "0A89A5BC-A21B-465C-AE44-9099C3D77A9B",
+      "topic" : "worker-e-schemas",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Só um campo opcional novo (stack) na v1",
+      "ruleId" : "48A5C815-B18A-4F32-B67E-E2A8F8FB216E",
+      "topic" : "worker-e-schemas",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "A stack vive no vibedeck.json, no schema e no AGENTS.md; o cache de ícones em ~/Library/Caches é só renderização, a fonte é o arquivo",
+      "ruleId" : "9E02C127-7793-4588-A770-0E817687B02F",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Ideias não foram tocadas",
+      "ruleId" : "116AEA24-9A0B-431B-9FC1-8ABE22683898",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhum fluxo de ideias",
+      "ruleId" : "F7531E2B-4846-4C63-BE0F-3DFA1771CCCC",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Revisões não foram tocadas",
+      "ruleId" : "BE018170-5258-45AA-876E-5B761B643714",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Revisões não foram tocadas",
+      "ruleId" : "257D96B2-3561-47D2-AB56-33FA0900B331",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Cálculo do check não foi tocado",
+      "ruleId" : "54A2D6B0-BC39-4555-A4E9-DB8D418D55CB",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Escopo de tópicos não foi tocado",
+      "ruleId" : "6E22946D-DF9C-4D59-B403-1BB9F3F0FFB5",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhuma operação sobre checks",
+      "ruleId" : "C637A278-87F1-4586-BB2F-0864EDB552CB",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "StackItem.author (human no app, ai no MCP/--ai); o cartão mostra sparkles com 'Adicionada pela IA'",
+      "ruleId" : "C9BEE6A5-C314-4547-AE52-52D116B11220",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "A stack não tem tags: usa a category do Skill Icons para agrupar e filtrar (decisão do plano)",
+      "ruleId" : "B9E9DD35-4A5F-4FA3-BDDF-014238B8CB50",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "fail"
+    },
+    {
+      "note" : "Stack não é feature de IA (não usa o Claude Code)",
+      "ruleId" : "A31D4912-A7FA-4E2A-B1C2-CC27D577177B",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Stack é uma entrada fixa da sidebar, como Links, e abre uma página com filtro de texto",
+      "ruleId" : "3901FA3E-16BD-4E00-A844-DAB5A87BDFC1",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Remover e mover gravam na hora com undo; o picker (escolha em lote) e a nota são diálogos com confirmação, como o LinkEditor, e cada confirmação grava na hora e pode ser desfeita",
+      "ruleId" : "8D5FCA3B-9398-45CD-AF1E-03A04F22526C",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "O vibedeck.json alterado por CLI/MCP é recarregado em handleExternalChanges; a StackView observa model.project",
+      "ruleId" : "9BBFB48C-17CC-4FD9-8D7C-F1FD71529D95",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Stack, como Links, não tem inspector",
+      "ruleId" : "34D2EA32-DD0D-4405-93F6-FDABEBA7CC1B",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "na"
+    },
+    {
+      "note" : "'Abrir em Nova Aba' no menu de contexto da linha Stack; storageKey persiste",
+      "ruleId" : "3D22A05A-9E61-433B-A8E2-00BFA2A968EE",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "WelcomeView não foi tocada",
+      "ruleId" : "365080A7-DD8F-4EBE-9CDF-979D07F6A5C3",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Fluxo de regras intacto no AGENTS.md e nas instruções do MCP",
+      "ruleId" : "EA7C01E6-5CC5-4199-94B6-11536B1ABDFA",
+      "topic" : "fluxo-padrao",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Listagem de revisões não foi tocada",
+      "ruleId" : "8F28F353-95A9-4EEC-8223-383AF2FF6140",
+      "topic" : "fluxo-padrao",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhum item de revisão envolvido",
+      "ruleId" : "3A31B517-334E-484C-9205-0513AF158AE8",
+      "topic" : "fluxo-padrao",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Stack: app (StackView), CLI (vibedeck stack) e MCP (list/add/remove/update/search_stack + resource)",
+      "ruleId" : "95C0C917-663D-47F0-A4BD-C93E1B7F2D0C",
+      "topic" : "fluxo-padrao",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nada fora do pedido foi implementado",
+      "ruleId" : "09C9F3A9-5B74-496C-8A2D-F93C4294CAD2",
+      "topic" : "fluxo-padrao",
+      "verdict" : "na"
+    }
+  ],
+  "task" : "Feature Stack: StackItem em Project.stack, cliente do servidor MCP do Skill Icons, StackService (resolve aliases, sincroniza o badge no README), CLI `vibedeck stack`, tools MCP list/search/add/remove/update_stack + resource vibedeck://stack, página Stack no app com seletor de ícones, schema, guia e testes.",
+  "topics" : [
+    "cli-e-mcp",
+    "core-e-formato-de-dados",
+    "geral",
+    "interface-do-app",
+    "worker-e-schemas",
+    "conceitos-do-produto",
+    "dinamicas-da-interface",
+    "fluxo-padrao"
+  ],
+  "warnings" : [
+    "Todo conceito aceita tags"
+  ]
+}

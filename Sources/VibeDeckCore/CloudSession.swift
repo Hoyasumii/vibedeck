@@ -1,5 +1,5 @@
 import Foundation
-import os
+import Synchronization
 
 /// Minimal git runner for the cloud check: `/usr/bin/git` in the project root, with the login shell's PATH.
 enum Git {
@@ -154,15 +154,19 @@ public enum CloudSession {
 
     /// Checks the branch, then runs `claude --cloud <description>` and returns the session's URL.
     /// Refuses when the branches differ, and when the tree is dirty unless `allowDirty`.
-    public static func launch(root: URL, description: String, allowDirty: Bool, timeout: TimeInterval = 120) throws -> (sync: CloudSync, url: URL?, output: String) {
+    public static func launch(root: URL, description: String, allowDirty: Bool, timeout: TimeInterval = 120, provider: AIProvider = .claude, environment: String? = nil) throws -> (sync: CloudSync, url: URL?, output: String) {
         let sync = check(root: root)
         if sync.blocked { throw VibeDeckError.cloudNotSynced(sync) }
         if !sync.dirty.isEmpty, !allowDirty { throw VibeDeckError.cloudDirty(sync) }
-        guard let claude = ClaudeCode.executable else { throw VibeDeckError.claudeNotInstalled }
+        guard let executable = provider.executable else { throw VibeDeckError.cloudSessionFailed("\(provider.title) não está instalado.") }
+        let cloudEnvironment = environment ?? (try? ProjectStore(root: root).loadProject().codexCloudEnvironment)
+        if provider == .codex, cloudEnvironment?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false {
+            throw VibeDeckError.cloudSessionFailed("Configure o ambiente do Codex Cloud (--env) antes de criar a sessão.")
+        }
 
         let process = Process()
-        process.executableURL = claude
-        process.arguments = ["--cloud", description]
+        process.executableURL = executable
+        process.arguments = provider == .claude ? ["--cloud", description] : ["cloud", "exec", "--env", cloudEnvironment!, "--branch", sync.branch, description]
         process.currentDirectoryURL = root
         var environment = ProcessInfo.processInfo.environment
         environment["PATH"] = ClaudeCode.childPATH()
@@ -173,7 +177,7 @@ public enum CloudSession {
         process.standardInput = FileHandle.nullDevice
         // `--cloud` may stay attached to the session it creates, so the output is read as it arrives and
         // the process is stopped once the session's link shows up (or after `timeout`).
-        let collected = OSAllocatedUnfairLock(initialState: Data())
+        let collected = Mutex(Data())
         let found = DispatchSemaphore(value: 0)
         pipe.fileHandleForReading.readabilityHandler = { handle in
             let chunk = handle.availableData
@@ -181,7 +185,7 @@ public enum CloudSession {
                 data.append(chunk)
                 return String(decoding: data, as: UTF8.self)
             }
-            if chunk.isEmpty || parseSessionURL(text) != nil {
+            if chunk.isEmpty || parseSessionURL(text, provider: provider) != nil {
                 handle.readabilityHandler = nil
                 found.signal()
             }
@@ -192,13 +196,17 @@ public enum CloudSession {
         if process.isRunning { process.terminate() }
         process.waitUntilExit()
         let output = collected.withLock { String(decoding: $0, as: UTF8.self) }.trimmingCharacters(in: .whitespacesAndNewlines)
-        let url = parseSessionURL(output)
+        let url = parseSessionURL(output, provider: provider)
         if url == nil, process.terminationStatus != 0 || output.isEmpty { throw VibeDeckError.cloudSessionFailed(output) }
         return (sync, url, output)
     }
 
     /// First claude.ai/code link in `claude --cloud`'s output (which may carry ANSI colors).
-    public static func parseSessionURL(_ output: String) -> URL? {
+    public static func parseSessionURL(_ output: String, provider: AIProvider = .claude) -> URL? {
+        if provider == .codex {
+            guard let match = output.firstMatch(of: /https:\/\/(?:chatgpt\.com|chat\.openai\.com)\/codex\/[A-Za-z0-9_\-\/?=&.%]+/) else { return nil }
+            return URL(string: String(match.output).trimmingCharacters(in: CharacterSet(charactersIn: ".?&")))
+        }
         guard let match = output.firstMatch(of: /https:\/\/claude\.ai\/code\/[A-Za-z0-9_\-\/?=&.%]+/) else { return nil }
         var link = String(match.output)
         while let last = link.last, ".?&".contains(last) { link.removeLast() }

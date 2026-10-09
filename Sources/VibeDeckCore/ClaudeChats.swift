@@ -55,14 +55,16 @@ public struct ClaudeChatMessage: Codable, Equatable, Sendable {
 public struct ClaudeChat: Codable, Equatable, Identifiable, Sendable {
     public var id: UUID
     public var title: String
+    public var provider: AIProvider
     public var sessionId: String?
     public var createdAt: Date
     public var updatedAt: Date
     public var messages: [ClaudeChatMessage]
 
-    public init(id: UUID = UUID(), title: String, sessionId: String? = nil, createdAt: Date = .now, updatedAt: Date = .now, messages: [ClaudeChatMessage] = []) {
+    public init(id: UUID = UUID(), title: String, provider: AIProvider = .claude, sessionId: String? = nil, createdAt: Date = .now, updatedAt: Date = .now, messages: [ClaudeChatMessage] = []) {
         self.id = id
         self.title = title
+        self.provider = provider
         self.sessionId = sessionId
         self.createdAt = createdAt
         self.updatedAt = updatedAt
@@ -70,13 +72,14 @@ public struct ClaudeChat: Codable, Equatable, Identifiable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, title, sessionId, createdAt, updatedAt, messages
+        case id, title, provider, sessionId, createdAt, updatedAt, messages
     }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         title = try c.decode(String.self, forKey: .title)
         id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        provider = try c.decodeIfPresent(AIProvider.self, forKey: .provider) ?? .claude
         sessionId = try c.decodeIfPresent(String.self, forKey: .sessionId)
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? .now
         updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
@@ -105,10 +108,10 @@ public struct ClaudeChat: Codable, Equatable, Identifiable, Sendable {
     }
 
     /// What is written to Claude for a user message: the text, followed by each mentioned chat as JSON.
-    public static func wireText(_ text: String, mentioning chats: [ClaudeChat], attachments: [String] = []) -> String {
+    public static func wireText(_ text: String, mentioning chats: [ClaudeChat], attachments: [String] = [], provider: AIProvider = .claude) -> String {
         var out = text
         if !attachments.isEmpty {
-            out += "\n\nArquivos anexados pelo usuário (leia com Read se precisar):"
+            out += provider == .claude ? "\n\nArquivos anexados pelo usuário (leia com Read se precisar):" : "\n\nArquivos anexados pelo usuário (leia se precisar):"
             out += attachments.map { "\n- " + $0 }.joined()
         }
         guard !chats.isEmpty else { return out }

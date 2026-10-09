@@ -1,0 +1,12 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-08T19:50:53Z",
+  "id" : "7E4FD3ED-EF9E-4907-B18B-F5CACCC6D102",
+  "rules" : [
+
+  ],
+  "status" : "new",
+  "title" : "Tela Inicial do Aplicativo",
+  "updatedAt" : "2026-10-08T19:50:53Z"
+}

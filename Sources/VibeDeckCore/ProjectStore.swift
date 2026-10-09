@@ -31,6 +31,12 @@ public enum VibeDeckError: LocalizedError, Equatable {
     case discoverFailed(String)
     case discoverInvalidAnswer
     case discoverTimedOut
+    case skillIconsUnavailable(String)
+    case unknownStackIcons([String: [String]])
+    case stackItemNotFound(String)
+    case unknownPatterns([String: [String]])
+    case patternNotFound(String)
+    case graph(String)
 
     public var errorDescription: String? {
         switch self {
@@ -68,6 +74,20 @@ public enum VibeDeckError: LocalizedError, Equatable {
             "O Claude Code não conseguiu descobrir; nada foi alterado." + (output.isEmpty ? "" : "\n\(output)")
         case .discoverInvalidAnswer: "O Claude Code respondeu num formato inesperado; nada foi alterado. Tente de novo."
         case .discoverTimedOut: "O Descubra demorou demais e foi interrompido; nada foi alterado. Tente de novo."
+        case .skillIconsUnavailable(let s): "Skill Icons indisponível: \(s)"
+        case .unknownStackIcons(let unknown):
+            "Ícone(s) desconhecido(s) no Skill Icons; nada foi alterado:\n" + unknown.keys.sorted().map { name in
+                let suggestions = unknown[name] ?? []
+                return "- \(name)" + (suggestions.isEmpty ? "" : " (sugestões: \(suggestions.joined(separator: ", ")))")
+            }.joined(separator: "\n")
+        case .stackItemNotFound(let s): "Tecnologia não encontrada na stack: \(s)"
+        case .unknownPatterns(let unknown):
+            "Padrão(ões) desconhecido(s) no catálogo; nada foi alterado:\n" + unknown.keys.sorted().map { name in
+                let suggestions = unknown[name] ?? []
+                return "- \(name)" + (suggestions.isEmpty ? "" : " (sugestões: \(suggestions.joined(separator: ", ")))")
+            }.joined(separator: "\n") + "\nVeja `pattern_catalog` / `vibedeck patterns catalog`, ou crie um padrão personalizado."
+        case .graph(let s): "Grafo: \(s)"
+        case .patternNotFound(let s): "Padrão não encontrado no projeto: \(s)"
         }
     }
 }
@@ -363,11 +383,12 @@ public struct ProjectStore: Sendable {
 
     @discardableResult
     public func createTopic(
-        title: String, description: String? = nil, tags: [String] = [], paths: [String] = [], rules: [Rule] = [], sourceIdea: UUID? = nil
+        title: String, description: String? = nil, tags: [String] = [], paths: [String] = [], rules: [Rule] = [], sourceIdea: UUID? = nil,
+        sourcePattern: String? = nil
     ) throws -> (slug: String, topic: RuleTopic) {
         guard let title = title.trimmed.nonEmpty else { throw VibeDeckError.invalidName }
         let slug = uniqueSlug(Slug.make(title), in: rulesDir, ext: "json")
-        let topic = RuleTopic(title: title, description: description, tags: tags, paths: paths, rules: rules, sourceIdea: sourceIdea)
+        let topic = RuleTopic(title: title, description: description, tags: tags, paths: paths, rules: rules, sourceIdea: sourceIdea, sourcePattern: sourcePattern)
         try saveTopic(topic, slug: slug)
         return (slug, topic)
     }
@@ -381,10 +402,11 @@ public struct ProjectStore: Sendable {
         return topic
     }
 
-    /// Deletes the topic and unpromotes any idea it came from.
+    /// Deletes the topic, unpromotes any idea it came from and drops the pattern it enforced.
     public func deleteTopic(_ slug: String) throws {
         try FileManager.default.removeItem(at: topicURL(slug))
         try releaseOrphanedIdeas()
+        try releaseOrphanedPatterns()
     }
 
     /// Adds a rule to a topic (created on the fly if `topicRef` doesn't resolve).
@@ -740,10 +762,12 @@ public struct ProjectStore: Sendable {
                     guard overwrite else { continue }
                     try updateSkill(slug) {
                         $0.summary = parsed.description; $0.model = parsed.model; $0.tools = parsed.tools; $0.prompt = parsed.prompt
+                        $0.sourcePath = folder.appending(path: "SKILL.md").path
                     }
                 } else {
                     var skill = Skill(title: parsed.name, summary: parsed.description, model: parsed.model, tools: parsed.tools, prompt: parsed.prompt, author: author)
                     skill.tags = ["claude-code"]
+                    skill.sourcePath = folder.appending(path: "SKILL.md").path
                     try saveSkill(skill, slug: slug)
                 }
                 imported.append(slug)
@@ -937,7 +961,7 @@ public struct ProjectStore: Sendable {
     /// Starts a run of a workflow. The run is named after the input, so starting again with the same input resumes
     /// it: an unfinished run stays where it is, a finished one starts a new cycle (from `from`, or the start).
     @discardableResult
-    public func startRun(_ workflowRef: String, input: String? = nil, from: String? = nil) throws -> (ref: String, run: WorkflowRun, action: WorkflowRunAction) {
+    public func startRun(_ workflowRef: String, input: String? = nil, from: String? = nil, provider: AIProvider? = nil) throws -> (ref: String, run: WorkflowRun, action: WorkflowRunAction) {
         let slug = try resolveWorkflowSlug(workflowRef)
         let workflow = try loadWorkflow(slug)
         guard !workflow.steps.isEmpty else { throw VibeDeckError.invalidWorkflow("o workflow não tem etapas.") }
@@ -955,7 +979,7 @@ public struct ProjectStore: Sendable {
             run = try loadRun(ref)
             try WorkflowRunEngine.restart(&run, workflow: workflow, from: from)
         } else {
-            run = WorkflowRun(workflow: slug, input: input, start: workflow.steps.first?.id)
+            run = WorkflowRun(workflow: slug, input: input, start: workflow.steps.first?.id, provider: provider ?? .claude)
             if let from { try WorkflowRunEngine.restart(&run, workflow: workflow, from: from) }
         }
         try saveRun(run, ref: ref)
@@ -971,7 +995,7 @@ public struct ProjectStore: Sendable {
 
     private func nextRunAction(_ run: WorkflowRun, ref: String, workflow: Workflow) -> WorkflowRunAction {
         WorkflowRunEngine.next(run, ref: ref, workflow: workflow) { step in
-            let r = resolvedStep(step)
+            let r = resolvedStep(step, provider: run.provider)
             return (r.title, r.model)
         }
     }
@@ -1031,7 +1055,7 @@ public struct ProjectStore: Sendable {
         guard !run.isFinished, let current = run.current, let step = workflow.steps.first(where: { $0.id == current }) else {
             throw VibeDeckError.invalidWorkflow("a execução \(ref) não tem etapa a rodar (\(run.status.rawValue)).")
         }
-        let resolved = resolvedStep(step)
+        let resolved = resolvedStep(step, provider: run.provider)
         let (wf, name) = Self.splitRunRef(ref)
         return WorkflowOrchestration.stepPrompt(
             run: run, ref: ref, workflow: workflow, step: step, title: resolved.title, instructions: resolved.prompt,
@@ -1039,11 +1063,11 @@ public struct ProjectStore: Sendable {
         )
     }
 
-    private func resolvedStep(_ step: WorkflowStep) -> (title: String?, model: String?, prompt: String?) {
+    private func resolvedStep(_ step: WorkflowStep, provider: AIProvider = .claude) -> (title: String?, model: String?, prompt: String?) {
         switch step.kind {
-        case .agent: (try? loadAgent(step.ref)).map { ($0.title, $0.model, $0.prompt) } ?? (nil, nil, nil)
-        case .command: (try? loadCommand(step.ref)).map { ($0.title, $0.model, $0.prompt) } ?? (nil, nil, nil)
-        case .skill: (try? loadSkill(step.ref)).map { ($0.title, $0.model, $0.prompt) } ?? (nil, nil, nil)
+        case .agent: (try? loadAgent(step.ref)).map { ($0.title, $0.providerSettings?[provider.rawValue]?.model ?? $0.model, $0.prompt) } ?? (nil, nil, nil)
+        case .command: (try? loadCommand(step.ref)).map { ($0.title, $0.providerSettings?[provider.rawValue]?.model ?? $0.model, $0.prompt) } ?? (nil, nil, nil)
+        case .skill: (try? loadSkill(step.ref)).map { ($0.title, $0.providerSettings?[provider.rawValue]?.model ?? $0.model, $0.prompt + ($0.sourcePath.map { "\nRecursos da skill: \(URL(fileURLWithPath: $0).deletingLastPathComponent().path)" } ?? "")) } ?? (nil, nil, nil)
         }
     }
 
@@ -1208,20 +1232,24 @@ public struct ProjectStore: Sendable {
     /// `topics` alone (no files) runs exactly those topics.
     public func runRuleTests(
         files: [String] = [], topics explicit: [String] = [], reviewItem: String? = nil, onlyTopics: Bool = false,
-        runner: RuleTestRunner = .live
+        runner: RuleTestRunner = .live,
+        onEvent: @Sendable (RuleScriptEvent) -> Void = { _ in }
     ) throws -> [RuleTestRun] {
         let scope = try taskScope(files: files, topics: explicit, reviewItem: reviewItem)
         let named = Set(try explicit.map { try resolveTopicSlug($0) })
         let topics = onlyTopics ? scope.topics.filter { named.contains($0.slug) } : scope.topics
-        return runScripts(topics.flatMap { t in t.topic.rules.map { (t.slug, $0) } }, files: scope.files, runner: runner)
+        return runScripts(topics.flatMap { t in t.topic.rules.map { (t.slug, $0) } }, files: scope.files, runner: runner, onEvent: onEvent)
     }
 
     /// One at a time: scripts often share build directories (`swift test`, `npm test`) and would fight over locks.
-    private func runScripts(_ rules: [(String, Rule)], files: [String], runner: RuleTestRunner) -> [RuleTestRun] {
+    private func runScripts(_ rules: [(String, Rule)], files: [String], runner: RuleTestRunner, onEvent: @Sendable (RuleScriptEvent) -> Void = { _ in }) -> [RuleTestRun] {
         rules.compactMap { slug, rule in
             guard let command = rule.scriptCommand else { return nil }
+            onEvent(.started(topic: slug, rule: rule, at: .now))
             let outcome = runner.run(command, .init(root: root, files: files, ruleId: rule.id))
-            return RuleTestRun(topic: slug, rule: rule, command: command, outcome: outcome)
+            let run = RuleTestRun(topic: slug, rule: rule, command: command, outcome: outcome)
+            onEvent(.finished(run, at: .now))
+            return run
         }
     }
 
@@ -1254,6 +1282,35 @@ public struct ProjectStore: Sendable {
             )
         }
 
+        return try saveRuleCheck(task: task, files: files, topics: topics, itemID: itemID, answered: answered, author: author)
+    }
+
+    /// Executes a fixed snapshot rather than reloading rules between phases.
+    public func runRuleScripts(snapshot: [(slug: String, topic: RuleTopic)], runner: RuleTestRunner = .live,
+                               onEvent: @Sendable (RuleScriptEvent) -> Void = { _ in }) -> [RuleTestRun] {
+        runScripts(snapshot.flatMap { entry in entry.topic.rules.map { (entry.slug, $0) } }, files: [], runner: runner, onEvent: onEvent)
+    }
+
+    /// Saves a completed UI verification without executing its scripts again.
+    @discardableResult
+    public func completeRuleExecution(snapshot: [(slug: String, topic: RuleTopic)], results: [RuleResult]) throws -> RuleCheck {
+        for entry in snapshot {
+            guard try loadTopic(entry.slug) == entry.topic else {
+                throw RuleExecutionError.changed
+            }
+        }
+        let candidates = snapshot.flatMap { entry in entry.topic.rules.map { (entry.slug, $0) } }
+        guard results.count == candidates.count, Set(results.map(\.ruleId)).count == results.count,
+              candidates.allSatisfy({ slug, rule in
+                  results.contains { $0.ruleId == rule.id && $0.topic == slug && $0.source == (rule.scriptCommand == nil ? .agent : .script) }
+              }) else { throw RuleExecutionError.incomplete }
+        return try saveRuleCheck(task: "Verificação de regras pelo aplicativo", files: [], topics: snapshot, itemID: nil,
+                                 answered: Dictionary(uniqueKeysWithValues: results.map { ($0.ruleId, $0) }), author: .ai)
+    }
+
+    private func saveRuleCheck(task: String, files: [String], topics: [(slug: String, topic: RuleTopic)], itemID: UUID?,
+                               answered: [UUID: RuleResult], author: Author) throws -> RuleCheck {
+        let candidates = topics.flatMap { entry in entry.topic.rules.map { (entry.slug, $0) } }
         let failed = candidates.filter { answered[$0.1.id]?.verdict == .fail }
         let stale = candidates.filter { $0.1.testState == .stale }.map { "Teste desatualizado (a regra mudou): \($0.1.text)" }
         let check = RuleCheck(
@@ -1282,10 +1339,15 @@ public struct ProjectStore: Sendable {
     public func listChecks() throws -> [RuleCheck] {
         let fm = FileManager.default
         guard fm.fileExists(atPath: checksDir.path) else { return [] }
-        return try fm.contentsOfDirectory(at: checksDir, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])
+        return try fm.contentsOfDirectory(at: checksDir, includingPropertiesForKeys: [.contentModificationDateKey], options: [.skipsHiddenFiles])
             .filter { $0.pathExtension.lowercased() == "json" }
-            .compactMap { try? VDJSON.decoder.decode(RuleCheck.self, from: Data(contentsOf: $0)) }
-            .sorted { $0.createdAt > $1.createdAt }
+            .compactMap { url -> (check: RuleCheck, modified: Date)? in
+                guard let check = try? VDJSON.decoder.decode(RuleCheck.self, from: Data(contentsOf: url)) else { return nil }
+                return (check, (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? check.createdAt)
+            }
+            // JSON timestamps have second precision. Preserve actual order for checks in the same second.
+            .sorted { ($0.check.createdAt, $0.modified) > ($1.check.createdAt, $1.modified) }
+            .map(\.check)
     }
 
     /// Why an item can't be marked done yet (empty = verified). The latest check for the item must

@@ -149,6 +149,13 @@
     "updatedAt": {
       "type": "string",
       "format": "date-time"
+    },
+    "provider": {
+      "type": "string",
+      "enum": [
+        "claude",
+        "codex"
+      ]
     }
   },
   "additionalProperties": false

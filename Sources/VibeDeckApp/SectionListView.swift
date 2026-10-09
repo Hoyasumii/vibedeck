@@ -48,6 +48,9 @@ struct SectionListView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if section == .topics, let execution = model.ruleExecution {
+                RuleExecutionPanel(execution: execution).id(execution.id)
+            }
             if !allTags.isEmpty { tagBar }
             content
         }
@@ -57,22 +60,35 @@ struct SectionListView: View {
             Text("#\(token.tag)")
         }
         .toolbar {
-            if section == .agents, ClaudeCode.isInstalled {
+            // Importing reads the provider's own files, so it only shows for installed providers.
+            if [.agents, .commands, .skills].contains(section), !AIProvider.installed.isEmpty {
                 ToolbarItem {
-                    Button { importedCount = model.importClaudeAgents() } label: { Label("Importar do Claude Code", systemImage: "square.and.arrow.down") }
-                        .help("Importa os agentes de .claude/agents (projeto e usuário)")
+                    Menu("Importar", systemImage: "square.and.arrow.down") {
+                        ForEach(AIProvider.installed, id: \.self) { provider in
+                            Button("Importar de " + provider.title) {
+                                Task {
+                                    do {
+                                        guard provider.isInstalled else { return }
+                                        let result: AIImportResult
+                                        switch section {
+                                        case .agents: result = try model.store.importAgents(provider: provider)
+                                        case .commands: result = try model.store.importCommands(provider: provider)
+                                        default: result = try await model.store.importSkills(provider: provider)
+                                        }
+                                        model.reloadAgents(); model.reloadCommands(); model.reloadSkills()
+                                        importedCount = result.slugs.count
+                                        if !result.warnings.isEmpty { model.errorMessage = result.warnings.joined(separator: "\n") }
+                                    } catch { model.errorMessage = error.localizedDescription }
+                                }
+                            }
+                        }
+                    }
                 }
             }
-            if section == .commands, ClaudeCode.isInstalled {
-                ToolbarItem {
-                    Button { importedCount = model.importClaudeCommands() } label: { Label("Importar do Claude Code", systemImage: "square.and.arrow.down") }
-                        .help("Importa os comandos de .claude/commands (projeto e usuário)")
-                }
-            }
-            if section == .skills, ClaudeCode.isInstalled {
-                ToolbarItem {
-                    Button { importedCount = model.importClaudeSkills() } label: { Label("Importar do Claude Code", systemImage: "square.and.arrow.down") }
-                        .help("Importa as skills de .claude/skills (projeto e usuário)")
+            if section == .topics {
+                ToolbarItemGroup {
+                    if AIProvider.claude.isInstalled { generateMenu.disabled(model.ruleExecution?.active == true) }
+                    RuleExecutionControls()
                 }
             }
             ToolbarItem {
@@ -91,6 +107,67 @@ struct SectionListView: View {
         }
         .sheet(item: $editingTags) { row in
             TagsEditor(title: row.title, tags: row.tags) { model.setTags($0, for: row.id, undo: undo) }
+        }
+    }
+
+    // MARK: Rule tests (Regras)
+
+    private func count(_ selection: RuleTestPrompt.Selection) -> Int {
+        model.topics.reduce(0) { $0 + RuleTestPrompt.rules($1.value, selection).count }
+    }
+
+    private var scriptCount: Int {
+        model.topics.reduce(0) { $0 + $1.value.rules.filter { $0.testState == .script }.count }
+    }
+
+    @ViewBuilder
+    private var generateMenu: some View {
+        if model.isGeneratingTests {
+            let jobs = model.generatingTests.values
+            Menu {
+                Button("Cancelar geração", role: .destructive) { model.cancelTestGeneration() }
+            } label: {
+                Label {
+                    Text("Gerando \(jobs.filter { !$0.isActive }.count)/\(jobs.count)…")
+                } icon: {
+                    ProgressView().controlSize(.small)
+                }
+                .labelStyle(.titleAndIcon)
+            }
+            .help("Gerando as verificações em segundo plano, até 3 tópicos por vez")
+        } else {
+            let pending = count(.pending)
+            Menu {
+                Button("Só as que faltam (\(count(.missing)))") { model.generateAllTests(.missing) }
+                    .disabled(count(.missing) == 0)
+                Button("Só as desatualizadas (\(count(.stale)))") { model.generateAllTests(.stale) }
+                    .disabled(count(.stale) == 0)
+                Divider()
+                Button("Regenerar todas (\(count(.all)))") { model.generateAllTests(.all) }
+                    .disabled(count(.all) == 0)
+            } label: {
+                Label("Gerar verificações", systemImage: "wand.and.stars")
+            } primaryAction: {
+                model.generateAllTests(.pending)
+            }
+            .badge(pending)
+            .help(pending == 0 ? "Todas as regras já têm verificação" : "Gera as \(pending) verificação(ões) que faltam ou estão desatualizadas, em paralelo")
+        }
+    }
+
+    @ViewBuilder
+    private func generationStatus(_ row: SectionRow) -> some View {
+        if case .topic(let slug) = row.id, let state = model.generatingTests[slug] {
+            switch state {
+            case .queued:
+                Image(systemName: "clock").foregroundStyle(.secondary).help("Na fila para gerar as verificações")
+            case .running:
+                ProgressView().controlSize(.mini).help("Gerando as verificações…")
+            case .done:
+                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green).help("Verificações geradas")
+            case .failed(let message):
+                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange).help(message)
+            }
         }
     }
 
@@ -125,7 +202,10 @@ struct SectionListView: View {
                 Text(row.detail).foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail)
             }
             TableColumn("") { row in
-                Text(row.count).foregroundStyle(.secondary).monospacedDigit()
+                HStack(spacing: 6) {
+                    Text(row.count).foregroundStyle(.secondary).monospacedDigit()
+                    generationStatus(row)
+                }
             }
             .width(min: 60, ideal: 110)
             TableColumn("Tags") { row in
@@ -187,21 +267,33 @@ private struct TagsEditor: View {
     let tags: [String]
     let onSave: ([String]) -> Void
     @State private var text = ""
+    @State private var saved: [String] = []
+    @FocusState private var focused: Bool
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         Form {
             TextField("Tags (separadas por vírgula)", text: $text)
+                .focused($focused)
+                .onSubmit(commit)
         }
         .formStyle(.grouped)
         .navigationTitle(title)
         .frame(width: 420)
-        .onAppear { text = tags.joined(separator: ", ") }
+        .onAppear { text = tags.joined(separator: ", "); saved = tags }
+        .onChange(of: focused) { _, isFocused in if !isFocused { commit() } }
         .toolbar {
-            ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() } }
             ToolbarItem(placement: .confirmationAction) {
-                Button("Salvar") { onSave(Tags.parse(text)); dismiss() }
+                Button("Concluído") { commit(); dismiss() }
             }
         }
+    }
+
+    /// Writes the tags in place (one undo step) on Return, focus loss or "Concluído".
+    private func commit() {
+        let parsed = Tags.parse(text)
+        guard parsed != saved else { return }
+        saved = parsed
+        onSave(parsed)
     }
 }

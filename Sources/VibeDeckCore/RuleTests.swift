@@ -66,7 +66,7 @@ public enum ShellRunner {
         _ command: String, in root: URL, environment: [String: String] = [:], timeout: TimeInterval = 120, outputLimit: Int = 20_000
     ) -> (output: String, status: Int32) {
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh")
+        process.executableURL = URL(fileURLWithPath: ProcessInfo.processInfo.environment["SHELL"] ?? ClaudeCode.defaultShell)
         process.arguments = ["-lc", command]
         process.currentDirectoryURL = root
         if !environment.isEmpty {
@@ -112,14 +112,43 @@ public enum RuleTestPrompt {
         "\(ProjectStore.dataDirName)/tests/\(slug)/\(rule.id.uuidString.prefix(8).lowercased()).sh"
     }
 
+    /// Which rules of a topic a generation covers.
+    public enum Selection: String, CaseIterable, Sendable {
+        /// No test registered yet.
+        case missing
+        /// The rule changed since its test was registered.
+        case stale
+        /// `missing` + `stale`.
+        case pending
+        /// Every rule, current tests included.
+        case all
+    }
+
+    /// The rules of `topic` that `selection` covers.
+    public static func rules(_ topic: RuleTopic, _ selection: Selection) -> [Rule] {
+        switch selection {
+        case .missing: topic.rules.filter { $0.testState == .none }
+        case .stale: topic.rules.filter { $0.testState == .stale }
+        case .pending: topic.rules.filter { $0.testState == .none || $0.testState == .stale }
+        case .all: topic.rules
+        }
+    }
+
     /// Rules that still need a test written (none yet, or the rule changed since).
     public static func pending(_ topic: RuleTopic) -> [Rule] {
-        topic.rules.filter { $0.testState == .none || $0.testState == .stale }
+        rules(topic, .pending)
     }
 
     /// The chat prompt behind the "Gerar/Atualizar testes" button. `onlyPending` skips rules whose test is current.
     public static func generate(slug: String, topic: RuleTopic, onlyPending: Bool) -> String {
-        let rules = onlyPending ? pending(topic) : topic.rules
+        generate(slug: slug, topic: topic, selection: onlyPending ? .pending : .all)
+    }
+
+    /// Prompt for generating the tests of `selection`. `headless` (with the `cli` path) is for a background
+    /// `claude -p` run: nobody answers questions and project MCP servers may not be approved, so it registers
+    /// through the CLI and ends with a short summary.
+    public static func generate(slug: String, topic: RuleTopic, selection: Selection, headless cli: String? = nil) -> String {
+        let rules = rules(topic, selection)
         let list = rules.map { rule in
             var line = "- `\(rule.id.uuidString.prefix(8))` [\(rule.severity.rawValue)] \(rule.text)"
             if let details = rule.details?.trimmed.nonEmpty {
@@ -135,8 +164,17 @@ public enum RuleTestPrompt {
             return line
         }.joined(separator: "\n")
 
+        let register = cli.map { "Registre com `\($0) rules set-test <id> --command \"<caminho do script>\"`" }
+            ?? "Registre com `set_rule_test` (MCP) ou `vibedeck rules set-test <id> --command \"<caminho do script>\"`"
+        let manual = cli.map { "registre como manual: `\($0) rules set-test <id> --manual --reason \"<motivo>\"`" }
+            ?? "registre como manual: `set_rule_test` com `mode=manual` e `reason` explicando por quê"
+        let violation = cli == nil ? "verifique se é violação real (avise-me) ou bug do script (corrija)"
+            : "verifique se é violação real (anote no resumo final) ou bug do script (corrija)"
+        let ending = cli == nil ? "No fim, me mostre uma tabela: regra, script ou manual, resultado da primeira execução."
+            : "Você roda em segundo plano, sem ninguém para responder perguntas: não pergunte, decida. No fim, escreva um resumo curto: regra, script ou manual, resultado da primeira execução."
+
         return """
-        \(onlyPending ? "Atualize" : "Gere") os testes das regras do tópico "\(topic.title)" (`\(slug)`). \
+        \(selection == .all ? "Gere" : "Atualize") os testes das regras do tópico "\(topic.title)" (`\(slug)`). \
         O objetivo é que a verificação dessas regras rode um script, sem precisar de você a cada check.
         \(topic.isGlobal ? "O tópico vale para toda tarefa." : "Escopo do tópico: \(topic.paths.joined(separator: ", ")).")
 
@@ -150,13 +188,13 @@ public enum RuleTestPrompt {
            - `$VIBEDECK_ROOT` e `$VIBEDECK_RULE_ID`.
            Saída: `exit 0` = cumpre, `exit 77` = não se aplica a esses arquivos, qualquer outro código = viola. \
         Em caso de falha, imprima o arquivo/linha e o motivo. Seja rápido (limite de 120 s) e determinístico; sem rede.
-        3. Rode o script e confira o resultado contra o código atual. Se ele falhar, verifique se é violação real (avise-me) ou bug do script (corrija). \
+        3. Rode o script e confira o resultado contra o código atual. Se ele falhar, \(violation). \
         Nunca afrouxe a regra só para o script passar.
-        4. Registre com `set_rule_test` (MCP) ou `vibedeck rules set-test <id> --command "<caminho do script>"`.
+        4. \(register).
         5. Se a regra for subjetiva ou depender de julgamento (ex.: "README atualizado quando muda algo documentado"), \
-        registre como manual: `set_rule_test` com `mode=manual` e `reason` explicando por quê — ela continua sendo verificada por você no check.
+        \(manual) — ela continua sendo verificada pelo agente no check.
 
-        No fim, me mostre uma tabela: regra, script ou manual, resultado da primeira execução.
+        \(ending)
         """
     }
 }

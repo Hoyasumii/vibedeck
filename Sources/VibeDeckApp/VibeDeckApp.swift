@@ -32,7 +32,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 extension FocusedValues {
     /// The Claude session of the focused project window (nil when Claude Code isn't installed).
-    @Entry var claudeSession: ClaudeSession?
+    @Entry var claudeSession: AISession?
+    /// Closes the focused window's active tab (nil when it has only one tab, so ⌘W closes the window).
+    @Entry var closeActiveTab: (() -> Void)?
 }
 
 extension Notification.Name {
@@ -42,8 +44,20 @@ extension Notification.Name {
 struct AppCommands: Commands {
     @Environment(\.openWindow) private var openWindow
     @FocusedValue(\.claudeSession) private var claude
+    @FocusedValue(\.closeActiveTab) private var closeActiveTab
 
     var body: some Commands {
+        CommandGroup(replacing: .saveItem) {
+            if let closeActiveTab {
+                Button("Fechar Aba", action: closeActiveTab)
+                    .keyboardShortcut("w")
+                Button("Fechar Janela") { NSApp.keyWindow?.performClose(nil) }
+                    .keyboardShortcut("w", modifiers: [.command, .shift])
+            } else {
+                Button("Fechar Janela") { NSApp.keyWindow?.performClose(nil) }
+                    .keyboardShortcut("w")
+            }
+        }
         CommandGroup(after: .newItem) {
             Button("Abrir Projeto…") {
                 if let url = FolderPicker.pick() { openWindow(value: url) }
@@ -57,8 +71,8 @@ struct AppCommands: Commands {
         }
         CommandGroup(after: .sidebar) {
             if let claude {
-                if ClaudeCode.isInstalled {
-                    Button("Abrir Claude") { claude.requestedPage = .chat }
+                if !AIProvider.installed.isEmpty {
+                    Button("Abrir IA") { claude.requestedPage = .chat }
                         .keyboardShortcut("c", modifiers: [.command, .shift])
                 }
                 Button("Novo Terminal") { claude.openTerminal() }

@@ -1,0 +1,211 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-08T23:44:15.495Z",
+  "failures" : [
+
+  ],
+  "files" : [
+    "Package.swift",
+    "Tests/VibeDeckAppTests/TerminalDropTests.swift"
+  ],
+  "id" : "6BEB782C-EF51-481A-8D23-65F990732AD9",
+  "passed" : true,
+  "results" : [
+    {
+      "note" : "Package.swift mantém swift-tools 6.2 e .macOS(.v26); nenhuma dependência nova (o testTarget reaproveita SwiftTerm 1.11.x); o Core continua sem dependências.",
+      "ruleId" : "B6B91F0E-F8CD-43C8-85A8-333C324684C7",
+      "topic" : "build-scripts-e-ci",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhum script alterado.",
+      "ruleId" : "10F1FCB3-C0AB-4119-8CF9-85162FBCE622",
+      "topic" : "build-scripts-e-ci",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Workflows fora destes arquivos; o swift.yml roda `swift test`, que já inclui o alvo novo.",
+      "ruleId" : "A111C3ED-0A9C-4368-83DE-7C91B1697406",
+      "topic" : "build-scripts-e-ci",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Alvo só de testes; o empacotamento não muda.",
+      "ruleId" : "B7D9E63A-D446-47D8-8E57-151F9E4E1AC4",
+      "topic" : "build-scripts-e-ci",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem assets.",
+      "ruleId" : "99C049AC-A1D3-4B87-AF5E-2C3135E5549E",
+      "topic" : "build-scripts-e-ci",
+      "verdict" : "na"
+    },
+    {
+      "note" : "ProjectStore não foi tocado.",
+      "ruleId" : "5FA116B6-6FBE-45F9-8C5D-29E7548F6C2F",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Data.write direto só nos testes, em diretório temporário; nada no Core.",
+      "ruleId" : "857149E6-8C34-46A8-9C30-439EBE78309D",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem JSON do projeto.",
+      "ruleId" : "99BF0D79-2F65-419A-87DA-0B4F37E4FEF5",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem modelos.",
+      "ruleId" : "5ED22D96-FE5F-4683-8611-E3D264113B67",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem modelos.",
+      "ruleId" : "C6D79B9C-1F50-4AE3-8CD1-8CAE5C4F6B6F",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "RuleCheck não foi tocado.",
+      "ruleId" : "57ADA275-8A0F-42BA-9E14-BA3B34AB8235",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem mudança de modelo.",
+      "ruleId" : "4133C155-F789-428E-9ED5-5EAC37C19700",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem buscas por referência.",
+      "ruleId" : "B0277971-459D-4CCB-9E9D-5990F1574F5B",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem slugs.",
+      "ruleId" : "7F7C6B09-EBCB-4CA0-BAAF-6B18D36F15C1",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "submitCheck não foi tocado.",
+      "ruleId" : "BC028BE5-D7E0-4DA3-BB5C-E8A628EBFA8A",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem mudanças em revisões.",
+      "ruleId" : "64E65B59-8D5B-40DE-B381-CAF2B1BDC785",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "applicableTopics não foi tocado.",
+      "ruleId" : "8D874A06-515D-41B5-A094-DC8B83BB40B6",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "promoteIdea não foi tocado.",
+      "ruleId" : "35D8D7C3-1224-45CC-8A80-66D0B6291C33",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Glob não foi tocado.",
+      "ruleId" : "64334D9C-327B-4811-B088-8B785EF4E0FE",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem erros novos no Core.",
+      "ruleId" : "EA5E6F7D-1587-4FC5-87D9-51CE6F130C7B",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "swift test: 143 testes em 20 suítes passaram, mais as 9 da TerminalDropTests (todas passaram).",
+      "ruleId" : "97510532-2FCF-44BD-9D01-75086E554EB9",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Comportamento é do app, não do Core; já tem a TerminalDropTests.",
+      "ruleId" : "91774D06-91B5-4945-9EC6-CDEFC57332FA",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "URL de schema não muda.",
+      "ruleId" : "DFE3361B-6AFE-4ED3-A741-4FC0818D197D",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Não envolve tópicos.",
+      "ruleId" : "B659FD25-792B-4C0E-BD08-6082ACFCC80A",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Não envolve ideias.",
+      "ruleId" : "A2B13B15-C59E-4189-8905-3A309C89DF28",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "AGENTS.md e checks não foram editados à mão.",
+      "ruleId" : "9D6F362B-9F0E-4661-97B3-6158B160D478",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Sem dados do projeto.",
+      "ruleId" : "9F92A765-76E7-4EA0-A66A-78AE12EE4C8F",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem objetos em .vibedeck.",
+      "ruleId" : "AC4BA963-CDEE-419C-B057-9140643E115D",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem texto de UI nestes arquivos.",
+      "ruleId" : "0E5AEC71-405E-4113-AB27-615313AB2B5F",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "note" : "README.md:180 ainda diz `swift test  # testes do Core`, mas agora há também o alvo VibeDeckAppTests (e o scripts/test.sh só roda o Core). Vale atualizar.",
+      "ruleId" : "306A20B6-E1FA-4BE4-96E8-2B854A3D0BC6",
+      "topic" : "geral",
+      "verdict" : "fail"
+    },
+    {
+      "note" : "Sem commit.",
+      "ruleId" : "4095F087-1E04-46C0-9AA4-A60C8C16A72B",
+      "topic" : "geral",
+      "verdict" : "na"
+    }
+  ],
+  "task" : "Verificação do trabalho de arrastar arquivos para o terminal, feito em outra sessão: alvo de testes VibeDeckAppTests no Package.swift e TerminalDropTests.swift. Não fui eu que escrevi esse código; esta é uma revisão de regras feita depois.",
+  "topics" : [
+    "build-scripts-e-ci",
+    "core-e-formato-de-dados",
+    "geral"
+  ],
+  "warnings" : [
+    "README atualizado quando muda algo documentado"
+  ]
+}

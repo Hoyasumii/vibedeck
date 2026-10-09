@@ -368,6 +368,7 @@ struct ReviewItemInspector: View {
     let required: [String]
     let problems: [String]
     let mutate: (String, @escaping (inout ReviewItem) -> Void) -> Void
+    @Environment(AISession.self) private var session
     @State private var discover = ReviewDiscoverRunner()
 
     var body: some View {
@@ -402,7 +403,7 @@ struct ReviewItemInspector: View {
                 HStack {
                     Text("Onde")
                     Spacer()
-                    if ClaudeCode.isInstalled { discoverButton }
+                    if !AIProvider.installed.isEmpty { discoverButton }
                 }
             }
             rulesSection
@@ -436,7 +437,7 @@ struct ReviewItemInspector: View {
     private var discoverButton: some View {
         Button {
             let kind = kinds.first { $0.id == item.kind }?.label ?? item.kind
-            discover.start(item: item, kind: kind, topics: topics.map { ($0.slug, $0.value) }, store: store)
+            discover.start(item: item, kind: kind, topics: topics.map { ($0.slug, $0.value) }, store: store, provider: session.provider)
         } label: {
             Label("Descubra", systemImage: "sparkles")
         }

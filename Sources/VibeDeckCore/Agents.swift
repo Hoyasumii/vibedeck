@@ -43,6 +43,7 @@ public struct Agent: Codable, Equatable, Identifiable, Sendable {
     public var title: String
     public var summary: String?
     public var model: String?
+    public var providerSettings: [String: AIProviderSettings]?
     public var tools: [String]
     public var prompt: String
     public var nextSteps: [NextStep]
@@ -60,6 +61,7 @@ public struct Agent: Codable, Equatable, Identifiable, Sendable {
         self.title = title
         self.summary = summary
         self.model = model
+        self.providerSettings = nil
         self.tools = tools
         self.prompt = prompt
         self.nextSteps = []
@@ -70,7 +72,7 @@ public struct Agent: Codable, Equatable, Identifiable, Sendable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case schema = "$schema", id, title, summary, model, tools, prompt, nextSteps, tags, author, createdAt, updatedAt
+        case schema = "$schema", id, title, summary, model, providerSettings, tools, prompt, nextSteps, tags, author, createdAt, updatedAt
     }
 
     public init(from decoder: Decoder) throws {
@@ -80,6 +82,7 @@ public struct Agent: Codable, Equatable, Identifiable, Sendable {
         title = try c.decode(String.self, forKey: .title)
         summary = try c.decodeIfPresent(String.self, forKey: .summary)
         model = try c.decodeIfPresent(String.self, forKey: .model)
+        providerSettings = try c.decodeIfPresent([String: AIProviderSettings].self, forKey: .providerSettings)
         tools = try c.decodeIfPresent([String].self, forKey: .tools) ?? []
         prompt = try c.decodeIfPresent(String.self, forKey: .prompt) ?? ""
         nextSteps = try c.decodeIfPresent([NextStep].self, forKey: .nextSteps) ?? []
@@ -96,6 +99,7 @@ public struct Agent: Codable, Equatable, Identifiable, Sendable {
         try c.encode(title, forKey: .title)
         try c.encodeIfPresent(summary, forKey: .summary)
         try c.encodeIfPresent(model, forKey: .model)
+        try c.encodeIfPresent(providerSettings, forKey: .providerSettings)
         if !tools.isEmpty { try c.encode(tools, forKey: .tools) }
         try c.encode(prompt, forKey: .prompt)
         if !nextSteps.isEmpty { try c.encode(nextSteps, forKey: .nextSteps) }
@@ -193,6 +197,7 @@ public struct AgentFlowNode: Codable, Equatable, Sendable {
     public var ref: String
     public var title: String
     public var model: String?
+    public var providerSettings: [String: AIProviderSettings]?
     /// Commands only: what goes in `$ARGUMENTS`.
     public var argumentHint: String?
     public var prompt: String
@@ -219,17 +224,17 @@ public enum AgentFlow {
         let skillIndex = Dictionary(skills.map { ($0.slug, $0.skill) }, uniquingKeysWith: { a, _ in a })
         func key(_ kind: NextStepKind, _ ref: String) -> String { "\(kind.rawValue):\(ref)" }
         func node(_ kind: NextStepKind, _ slug: String, path: Set<String>) -> AgentFlowNode? {
-            let base: (title: String, model: String?, hint: String?, prompt: String, next: [NextStep])
+            let base: (title: String, model: String?, settings: [String: AIProviderSettings]?, hint: String?, prompt: String, next: [NextStep])
             switch kind {
             case .agent:
                 guard let a = agentIndex[slug] else { return nil }
-                base = (a.title, a.model, nil, a.prompt, a.nextSteps)
+                base = (a.title, a.model, a.providerSettings, nil, a.prompt, a.nextSteps)
             case .command:
                 guard let c = commandIndex[slug] else { return nil }
-                base = (c.title, c.model, c.argumentHint, c.prompt, c.nextSteps)
+                base = (c.title, c.model, c.providerSettings, c.argumentHint, c.prompt, c.nextSteps)
             case .skill:
                 guard let s = skillIndex[slug] else { return nil }
-                base = (s.title, s.model, nil, s.prompt, s.nextSteps)
+                base = (s.title, s.model, s.providerSettings, nil, s.prompt, s.nextSteps)
             }
             let here = path.union([key(kind, slug)])
             let steps = base.next.map { step -> AgentFlowStep in
@@ -247,7 +252,7 @@ public enum AgentFlow {
                 }
                 return out
             }
-            return AgentFlowNode(kind: kind, ref: slug, title: base.title, model: base.model, argumentHint: base.hint, prompt: base.prompt, next: steps)
+            return AgentFlowNode(kind: kind, ref: slug, title: base.title, model: base.model, providerSettings: base.settings, argumentHint: base.hint, prompt: base.prompt, next: steps)
         }
         return node(kind, slug, path: [])
     }

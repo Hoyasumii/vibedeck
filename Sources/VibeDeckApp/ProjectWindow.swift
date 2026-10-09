@@ -2,8 +2,9 @@ import SwiftUI
 import VibeDeckCore
 
 struct ProjectWindow: View {
+    @Environment(\.undoManager) private var undo
     @State private var model: ProjectModel
-    @State private var claude: ClaudeSession
+    @State private var claude: AISession
     @State private var selection: SidebarItem?
     /// Open tabs; `selection` always mirrors `tabs[activeTab]`.
     @State private var tabs: [SidebarItem] = [.links]
@@ -15,7 +16,7 @@ struct ProjectWindow: View {
     init(root: URL) {
         let model = ProjectModel(store: ProjectStore(root: root))
         _model = State(initialValue: model)
-        _claude = State(initialValue: ClaudeSession(root: root, projectId: model.project.id))
+        _claude = State(initialValue: AISession(root: root, projectId: model.project.id))
     }
 
     enum NewNamePrompt: Identifiable {
@@ -96,6 +97,7 @@ struct ProjectWindow: View {
         .environment(model)
         .environment(claude)
         .focusedSceneValue(\.claudeSession, claude)
+        .focusedSceneValue(\.closeActiveTab, tabs.count > 1 ? { closeTab(activeTab) } : nil)
         .task {
             model.startWatching()
             restoreState()
@@ -168,12 +170,20 @@ struct ProjectWindow: View {
     private var sidebarList: some View {
         List(selection: $selection) {
             Section {
+                Label("Stack", systemImage: "square.stack.3d.up")
+                    .badge(model.project.stack.count)
+                    .tag(SidebarItem.stack)
+                    .contextMenu { openInNewTabButton(.stack) }
+                Label("Padrões", systemImage: "building.columns")
+                    .badge(model.project.patterns.count)
+                    .tag(SidebarItem.patterns)
+                    .contextMenu { openInNewTabButton(.patterns) }
                 Label("Links", systemImage: "link")
                     .badge(model.project.links.count)
                     .tag(SidebarItem.links)
                     .contextMenu { openInNewTabButton(.links) }
-                if ClaudeCode.isInstalled {
-                    Label("Claude", systemImage: "sparkles")
+                if !AIProvider.installed.isEmpty {
+                    Label("IA", systemImage: "sparkles")
                         .tag(SidebarItem.claude)
                         .contextMenu { openInNewTabButton(.claude) }
                 }
@@ -212,7 +222,7 @@ struct ProjectWindow: View {
 
     private var sidebarFooter: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if ClaudeCode.isInstalled { ClaudeUsageView() }
+            if !AIProvider.installed.isEmpty { AIUsageView() }
             HStack {
                 Image(systemName: "folder")
                 Text(model.store.root.path(percentEncoded: false))
@@ -292,11 +302,11 @@ struct ProjectWindow: View {
                         Divider()
                         Menu("Status") {
                             ForEach(IdeaStatus.allCases, id: \.self) { status in
-                                Button(status.label) { model.mutateIdea(entry.slug, "Alterar status", undo: nil) { $0.status = status } }
+                                Button(status.label) { model.mutateIdea(entry.slug, "Alterar status", undo: undo) { $0.status = status } }
                             }
                         }
-                        if ClaudeCode.isInstalled {
-                            Button("Perguntar ao Claude sobre esta ideia") {
+                        if !AIProvider.installed.isEmpty {
+                            Button("Perguntar à IA sobre esta ideia") {
                                 claude.ask("Leia a ideia \"\(entry.value.title)\" (get_idea com \"\(entry.slug)\") e me ajude a refiná-la: aponte lacunas, riscos e regras que ela deveria ter. Se precisar de decisões minhas, me pergunte.")
                             }
                         }
@@ -399,6 +409,10 @@ struct ProjectWindow: View {
             activeTab = min(max(defaults.integer(forKey: activeTabKey), 0), saved.count - 1)
         }
         expanded = Set((defaults.stringArray(forKey: expandedKey) ?? []).compactMap(SidebarSection.init(rawValue:)))
+        // The stack is the first thing someone opening the project sees.
+        if !model.project.stack.isEmpty {
+            if let i = tabs.firstIndex(of: .stack) { activeTab = i } else { tabs.insert(.stack, at: 0); activeTab = 0 }
+        }
         selection = tabs[activeTab]
     }
 
@@ -447,6 +461,10 @@ struct ProjectWindow: View {
     @ViewBuilder
     private var detailContent: some View {
         switch selection {
+        case .stack:
+            StackView()
+        case .patterns:
+            PatternsView { selection = $0 }
         case .links, .none:
             LinksView()
         case .claude:

@@ -75,7 +75,7 @@ struct LinksView: View {
             }
         }
         .sheet(item: $editing) { link in
-            LinkEditor(link: link) { saved in
+            LinkEditor(link: link, isNew: !model.project.links.contains(where: { $0.id == link.id })) { saved in
                 if model.project.links.contains(where: { $0.id == saved.id }) {
                     model.mutateProject("Editar link", undo: undo) { p in
                         if let i = p.links.firstIndex(where: { $0.id == saved.id }) { p.links[i] = saved }
@@ -148,36 +148,63 @@ enum Tags {
     }
 }
 
+/// Creating a link confirms with "Criar"; editing one writes each field (and an undo step) on Return
+/// or when it loses focus, like the rest of the app.
 private struct LinkEditor: View {
     @State var link: ProjectLink
+    let isNew: Bool
     let onSave: (ProjectLink) -> Void
     @State private var tagsText = ""
+    /// Last value written, so Return and focus loss don't record empty undo steps.
+    @State private var original: ProjectLink?
+    @FocusState private var focused: Bool
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         Form {
-            TextField("URL", text: $link.url)
-            TextField("Título", text: $link.title)
-            TextField("Tags (separadas por vírgula)", text: $tagsText)
+            TextField("URL", text: $link.url).onSubmit(commit)
+            TextField("Título", text: $link.title).onSubmit(commit)
+            TextField("Tags (separadas por vírgula)", text: $tagsText).onSubmit(commit)
         }
+        .focused($focused)
         .formStyle(.grouped)
         .frame(width: 460)
-        .onAppear { tagsText = link.tags.joined(separator: ", ") }
+        .onAppear {
+            tagsText = link.tags.joined(separator: ", ")
+            original = normalized
+        }
+        .onChange(of: focused) { _, isFocused in if !isFocused { commit() } }
         .toolbar {
-            ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() } }
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Salvar") {
-                    var saved = link
-                    saved.url = saved.url.trimmingCharacters(in: .whitespaces)
-                    if saved.title.trimmingCharacters(in: .whitespaces).isEmpty {
-                        saved.title = URL(string: saved.url)?.host() ?? saved.url
-                    }
-                    saved.tags = Tags.parse(tagsText)
-                    onSave(saved)
-                    dismiss()
+            if isNew {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Criar") { onSave(normalized); dismiss() }
+                        .disabled(link.url.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
-                .disabled(link.url.trimmingCharacters(in: .whitespaces).isEmpty)
+            } else {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Concluído") { commit(); dismiss() }
+                }
             }
         }
+    }
+
+    private var normalized: ProjectLink {
+        var saved = link
+        saved.url = saved.url.trimmingCharacters(in: .whitespaces)
+        if saved.title.trimmingCharacters(in: .whitespaces).isEmpty {
+            saved.title = URL(string: saved.url)?.host() ?? saved.url
+        }
+        saved.tags = Tags.parse(tagsText)
+        return saved
+    }
+
+    /// Writes the edit in place; a no-op while creating, or when nothing changed or the URL is empty.
+    private func commit() {
+        guard !isNew, !link.url.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        let saved = normalized
+        guard saved != original else { return }
+        original = saved
+        onSave(saved)
     }
 }

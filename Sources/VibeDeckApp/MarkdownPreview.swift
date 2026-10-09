@@ -11,7 +11,8 @@ struct MarkdownPreview: View {
         ScrollView {
             Markdown(text, baseURL: baseURL)
                 .markdownTheme(.gitHub)
-                .markdownImageProvider(LocalImageProvider())
+                .markdownImageProvider(MarkdownImageProvider())
+                .markdownInlineImageProvider(MarkdownInlineImageProvider())
                 .textSelection(.enabled)
                 .padding(28)
                 .frame(maxWidth: 820, alignment: .leading)
@@ -20,22 +21,73 @@ struct MarkdownPreview: View {
     }
 }
 
-/// Loads `file://` images straight from disk; anything else goes through MarkdownUI's network loader.
-private struct LocalImageProvider: ImageProvider {
+/// Loads markdown images through `NSImage`, local or remote. MarkdownUI's default loaders only decode
+/// what CGImageSource does, so SVGs (e.g. the Skill Icons badge) and `file://` attachments never showed.
+@MainActor
+private enum MarkdownImageLoader {
+    struct LoadError: Error {}
+
+    private static let cache = NSCache<NSURL, NSImage>()
+
+    static func cached(_ url: URL) -> NSImage? { cache.object(forKey: url.absoluteURL as NSURL) }
+
+    static func image(at url: URL) async throws -> NSImage {
+        let key = url.absoluteURL as NSURL
+        if let image = cache.object(forKey: key) { return image }
+        let image: NSImage?
+        if url.isFileURL {
+            image = NSImage(contentsOf: url)
+        } else {
+            let (data, response) = try await URLSession.shared.data(from: url)
+            if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) { throw LoadError() }
+            image = NSImage(data: data)
+        }
+        guard let image, image.isValid else { throw LoadError() }
+        cache.setObject(image, forKey: key)
+        return image
+    }
+}
+
+/// Block images (alone in their paragraph).
+private struct MarkdownImageProvider: ImageProvider {
     func makeImage(url: URL?) -> some View {
-        if let url, url.isFileURL {
-            if let image = NSImage(contentsOf: url) {
+        MarkdownImage(url: url)
+    }
+}
+
+private struct MarkdownImage: View {
+    let url: URL?
+    @State private var image: NSImage?
+    @State private var failed = false
+
+    var body: some View {
+        Group {
+            if let image {
                 Image(nsImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(maxWidth: image.size.width)
-            } else {
-                Label(url.lastPathComponent, systemImage: "photo.badge.exclamationmark")
+            } else if failed || url == nil {
+                Label(url?.lastPathComponent ?? "Imagem", systemImage: "photo.badge.exclamationmark")
                     .foregroundStyle(.secondary)
+            } else {
+                ProgressView().controlSize(.small)
             }
-        } else {
-            DefaultImageProvider.default.makeImage(url: url)
         }
+        .task(id: url) {
+            guard let url else { return }
+            image = MarkdownImageLoader.cached(url)
+            failed = false
+            guard image == nil else { return }
+            do { image = try await MarkdownImageLoader.image(at: url) } catch { failed = true }
+        }
+    }
+}
+
+/// Images that share a paragraph with anything else (text, another image, a line break) are inline.
+private struct MarkdownInlineImageProvider: InlineImageProvider {
+    func image(with url: URL, label: String) async throws -> Image {
+        Image(nsImage: try await MarkdownImageLoader.image(at: url))
     }
 }
 

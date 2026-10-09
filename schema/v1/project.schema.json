@@ -4,43 +4,155 @@
   "title": "VibeDeck project",
   "description": "Declares a VibeDeck project. Lives at <repo>/vibedeck.json; docs and review groups live in <repo>/.vibedeck/.",
   "type": "object",
-  "required": ["version", "id", "name"],
+  "required": [
+    "version",
+    "id",
+    "name"
+  ],
   "properties": {
-    "$schema": { "type": "string" },
-    "version": { "const": 1 },
-    "id": { "type": "string", "format": "uuid" },
-    "name": { "type": "string", "minLength": 1 },
-    "description": { "type": "string" },
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string"
+    },
     "links": {
       "type": "array",
-      "items": { "$ref": "#/$defs/link" }
+      "items": {
+        "$ref": "#/$defs/link"
+      }
+    },
+    "stack": {
+      "description": "The project's highlighted technologies, in display order. Read by people opening the project and by AI agents before implementing.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/stackItem"
+      }
+    },
+    "patterns": {
+      "description": "Code patterns the AI must follow (TDD, hexagonal, DDD, CQRS…), in display order. Each one is enforced by the rule topic it points to.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/pattern"
+      }
     },
     "reviewKinds": {
       "description": "Kinds of review items available in this project.",
       "type": "array",
-      "items": { "$ref": "#/$defs/reviewKind" }
+      "items": {
+        "$ref": "#/$defs/reviewKind"
+      }
+    },
+    "codexCloudEnvironment": {
+      "type": "string",
+      "description": "Codex Cloud environment ID for this project."
     }
   },
   "additionalProperties": false,
   "$defs": {
+    "pattern": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id": { "type": "string", "description": "Catalog id (tdd, hexagonal, ddd…) or the slug of a custom pattern's name." },
+        "name": { "type": "string" },
+        "category": { "type": "string", "description": "practices, architecture, domain or custom." },
+        "summary": { "type": "string" },
+        "note": { "type": "string", "description": "How the project applies the pattern; copied into the topic description." },
+        "topic": { "type": "string", "description": "Slug of the rule topic (.vibedeck/rules/<slug>.json) that enforces the pattern." },
+        "author": { "enum": ["human", "ai"] }
+      },
+      "additionalProperties": false
+    },
     "link": {
       "type": "object",
-      "required": ["id", "title", "url"],
+      "required": [
+        "id",
+        "title",
+        "url"
+      ],
       "properties": {
-        "id": { "type": "string", "format": "uuid" },
-        "title": { "type": "string" },
-        "url": { "type": "string", "format": "uri" },
-        "tags": { "type": "array", "items": { "type": "string" } }
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "title": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "stackItem": {
+      "type": "object",
+      "required": [
+        "icon"
+      ],
+      "properties": {
+        "icon": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Skill Icons id (https://skill-icons.alanreisanjo.workers.dev)."
+        },
+        "name": {
+          "type": "string",
+          "description": "Official brand name."
+        },
+        "category": {
+          "type": "string",
+          "description": "Skill Icons category (language, frontend, database, ...)."
+        },
+        "note": {
+          "type": "string",
+          "description": "How the project uses it; handed to the AI with the stack."
+        },
+        "author": {
+          "enum": [
+            "human",
+            "ai"
+          ]
+        }
       },
       "additionalProperties": false
     },
     "reviewKind": {
       "type": "object",
-      "required": ["id", "label"],
+      "required": [
+        "id",
+        "label"
+      ],
       "properties": {
-        "id": { "type": "string", "pattern": "^[a-z0-9_-]+$" },
-        "label": { "type": "string" },
-        "symbol": { "type": "string", "description": "SF Symbol name used by the app." }
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_-]+$"
+        },
+        "label": {
+          "type": "string"
+        },
+        "symbol": {
+          "type": "string",
+          "description": "SF Symbol name used by the app."
+        }
       },
       "additionalProperties": false
     }

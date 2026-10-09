@@ -182,4 +182,14 @@ import Testing
         #expect(chosen.suffix(6) == ["--model", "sonnet", "--effort", "xhigh", "--resume", "s-1"])
         #expect(chosen.contains("plan"))
     }
+
+    @Test func headlessArgumentsPassPromptAndPreallowTools() {
+        let arguments = ClaudeLaunch.headlessArguments(prompt: "gere os testes")
+        #expect(Array(arguments.prefix(2)) == ["-p", "gere os testes"])
+        #expect(!arguments.contains("--input-format"), "o prompt vai como argumento, sem stdin")
+        #expect(arguments.contains("acceptEdits"))
+        #expect(arguments.contains("Read Edit Write Glob Grep Bash"))
+        #expect(!arguments.contains("--model"))
+        #expect(ClaudeLaunch.headlessArguments(prompt: "x", model: .sonnet).suffix(2) == ["--model", "sonnet"])
+    }
 }

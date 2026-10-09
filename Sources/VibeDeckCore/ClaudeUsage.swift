@@ -190,7 +190,7 @@ extension ClaudeCode {
         try writeSettings(settings, to: url)
     }
 
-    private static func readSettings(_ url: URL) throws -> [String: Any] {
+    static func readSettings(_ url: URL) throws -> [String: Any] {
         guard let data = try? Data(contentsOf: url), !data.isEmpty else { return [:] }
         guard let dict = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw VibeDeckError.invalidClaudeSettings(url.path)
@@ -198,7 +198,7 @@ extension ClaudeCode {
         return dict
     }
 
-    private static func writeSettings(_ settings: [String: Any], to url: URL) throws {
+    static func writeSettings(_ settings: [String: Any], to url: URL) throws {
         var data = try JSONSerialization.data(withJSONObject: settings, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
         data.append(0x0A)
         try AtomicFile.write(data, to: url)

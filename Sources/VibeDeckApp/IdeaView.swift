@@ -127,7 +127,12 @@ struct IdeaView: View {
 
             // A single HStack (not ViewThatFits): switching layouts changes the detail column's
             // min width mid-layout, which loops NavigationSplitView/inspector sizing and crashes AppKit.
-            HStack(spacing: 12) { statusPicker; tagsField; promotedBadge }
+            HStack(spacing: 12) {
+                statusPicker; tagsField; promotedBadge
+                if idea.author == .ai {
+                    Image(systemName: "sparkles").foregroundStyle(.purple).help("Criado por IA")
+                }
+            }
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
@@ -151,9 +156,13 @@ struct IdeaView: View {
             Button { openTopic(topic) } label: {
                 Label("Tópico: \(model.topic(topic)?.title ?? topic)", systemImage: "checkmark.shield")
                     .lineLimit(1)
+                    .truncationMode(.tail)
             }
             .buttonStyle(.glass)
-            .fixedSize()
+            // Bounded width: the topic title must not drive the header's minimum width, or the
+            // detail column + inspector outgrow the window and the split view loops.
+            .frame(maxWidth: 260)
+            .layoutPriority(-1)
             .help("Abrir o tópico de regras criado a partir desta ideia (clique direito para despromover)")
             .contextMenu {
                 Button("Despromover", role: .destructive) {

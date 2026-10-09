@@ -1,0 +1,133 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-09T01:24:10.661Z",
+  "failures" : [
+
+  ],
+  "files" : [
+    ".vibedeck/rules/build-scripts-e-ci.json",
+    ".vibedeck/rules/cli-e-mcp.json",
+    ".vibedeck/rules/conceitos-do-produto.json",
+    ".vibedeck/rules/core-e-formato-de-dados.json",
+    ".vibedeck/rules/geral.json",
+    ".vibedeck/rules/interface-do-app.json",
+    ".vibedeck/rules/worker-e-schemas.json",
+    ".vibedeck/tests/build-scripts-e-ci/10f1fcb3.sh",
+    ".vibedeck/tests/build-scripts-e-ci/99c049ac.sh",
+    ".vibedeck/tests/build-scripts-e-ci/a111c3ed.sh",
+    ".vibedeck/tests/build-scripts-e-ci/b6b91f0e.sh",
+    ".vibedeck/tests/build-scripts-e-ci/b7d9e63a.sh",
+    ".vibedeck/tests/cli-e-mcp/05f179f3.sh",
+    ".vibedeck/tests/cli-e-mcp/30a2fc1a.sh",
+    ".vibedeck/tests/cli-e-mcp/4913b3af.sh",
+    ".vibedeck/tests/cli-e-mcp/643aa948.sh",
+    ".vibedeck/tests/cli-e-mcp/7a76b622.sh",
+    ".vibedeck/tests/cli-e-mcp/a34c030c.sh",
+    ".vibedeck/tests/cli-e-mcp/d94f39e0.sh",
+    ".vibedeck/tests/cli-e-mcp/ed4d47d8.sh",
+    ".vibedeck/tests/conceitos-do-produto/be018170.sh",
+    ".vibedeck/tests/conceitos-do-produto/c637a278.sh",
+    ".vibedeck/tests/conceitos-do-produto/f7531e2b.sh",
+    ".vibedeck/tests/core-e-formato-de-dados/35d8d7c3.sh",
+    ".vibedeck/tests/core-e-formato-de-dados/4133c155.sh",
+    ".vibedeck/tests/core-e-formato-de-dados/57ada275.sh",
+    ".vibedeck/tests/core-e-formato-de-dados/5ed22d96.sh",
+    ".vibedeck/tests/core-e-formato-de-dados/5fa116b6.sh",
+    ".vibedeck/tests/core-e-formato-de-dados/64334d9c.sh",
+    ".vibedeck/tests/core-e-formato-de-dados/64e65b59.sh",
+    ".vibedeck/tests/core-e-formato-de-dados/7f7c6b09.sh",
+    ".vibedeck/tests/core-e-formato-de-dados/857149e6.sh",
+    ".vibedeck/tests/core-e-formato-de-dados/8d874a06.sh",
+    ".vibedeck/tests/core-e-formato-de-dados/97510532.sh",
+    ".vibedeck/tests/core-e-formato-de-dados/99bf0d79.sh",
+    ".vibedeck/tests/core-e-formato-de-dados/_lib.sh",
+    ".vibedeck/tests/core-e-formato-de-dados/a2b13b15.sh",
+    ".vibedeck/tests/core-e-formato-de-dados/b0277971.sh",
+    ".vibedeck/tests/core-e-formato-de-dados/b659fd25.sh",
+    ".vibedeck/tests/core-e-formato-de-dados/bc028be5.sh",
+    ".vibedeck/tests/core-e-formato-de-dados/c6d79b9c.sh",
+    ".vibedeck/tests/core-e-formato-de-dados/dfe3361b.sh",
+    ".vibedeck/tests/core-e-formato-de-dados/ea5e6f7d.sh",
+    ".vibedeck/tests/geral/0e5aec71.sh",
+    ".vibedeck/tests/geral/4095f087.sh",
+    ".vibedeck/tests/geral/9d6f362b.sh",
+    ".vibedeck/tests/geral/9f92a765.sh",
+    ".vibedeck/tests/geral/_validate.py",
+    ".vibedeck/tests/geral/ac4ba963.sh",
+    ".vibedeck/tests/interface-do-app/00e57961.sh",
+    ".vibedeck/tests/interface-do-app/047d2216.sh",
+    ".vibedeck/tests/interface-do-app/1a4ef162.sh",
+    ".vibedeck/tests/interface-do-app/3d508dea.sh",
+    ".vibedeck/tests/interface-do-app/492100c1.sh",
+    ".vibedeck/tests/interface-do-app/9a4878f2.sh",
+    ".vibedeck/tests/interface-do-app/a999b857.sh",
+    ".vibedeck/tests/interface-do-app/b065b5af.sh",
+    ".vibedeck/tests/interface-do-app/b382469c.sh",
+    ".vibedeck/tests/interface-do-app/dc9eed4d.sh",
+    ".vibedeck/tests/interface-do-app/ee65a0a5.sh",
+    ".vibedeck/tests/worker-e-schemas/0a89a5bc.sh",
+    ".vibedeck/tests/worker-e-schemas/48a5c815.sh",
+    ".vibedeck/tests/worker-e-schemas/4c804bfe.sh",
+    ".vibedeck/tests/worker-e-schemas/a486bce3.sh",
+    ".vibedeck/tests/worker-e-schemas/cd3057f2.sh",
+    ".vibedeck/tests/worker-e-schemas/efdec345.sh"
+  ],
+  "id" : "F12CD365-F73B-423B-AEFF-FF45A2049FD3",
+  "passed" : true,
+  "results" : [
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/9d6f362b.sh (exit 0)\n(sem saída)",
+      "ruleId" : "9D6F362B-9F0E-4661-97B3-6158B160D478",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/9f92a765.sh (exit 0)\n(sem saída)",
+      "ruleId" : "9F92A765-76E7-4EA0-A66A-78AE12EE4C8F",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/ac4ba963.sh (exit 0)\n(sem saída)",
+      "ruleId" : "AC4BA963-CDEE-419C-B057-9140643E115D",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/geral/0e5aec71.sh (exit 77)\n(sem saída)",
+      "ruleId" : "0E5AEC71-405E-4113-AB27-615313AB2B5F",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Só scripts de teste e registros de teste das regras em .vibedeck/; nada documentado no README mudou.",
+      "ruleId" : "306A20B6-E1FA-4BE4-96E8-2B854A3D0BC6",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/4095f087.sh (exit 0)\n(sem saída)",
+      "ruleId" : "4095F087-1E04-46C0-9AA4-A60C8C16A72B",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    }
+  ],
+  "task" : "Scripts de teste das regras do tópico core-e-formato-de-dados",
+  "topics" : [
+    "geral"
+  ],
+  "warnings" : [
+
+  ]
+}

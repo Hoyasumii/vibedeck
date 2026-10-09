@@ -1,4 +1,6 @@
+#if canImport(CryptoKit)
 import CryptoKit
+#endif
 import Foundation
 
 // MARK: - Rules
@@ -60,7 +62,12 @@ public struct Rule: Codable, Equatable, Hashable, Identifiable, Sendable {
 
     /// Fingerprint of what the rule asks (`text` + `details`): a test generated for another fingerprint is stale.
     public var contentHash: String {
-        let digest = SHA256.hash(data: Data((text + "\n" + (details ?? "")).utf8))
+        let data = Data((text + "\n" + (details ?? "")).utf8)
+        #if canImport(CryptoKit)
+        let digest = Array(SHA256.hash(data: data))
+        #else
+        let digest = PortableSHA256.hash(data)
+        #endif
         return digest.prefix(8).map { String(format: "%02x", $0) }.joined()
     }
 
@@ -140,9 +147,11 @@ public struct RuleTopic: Codable, Equatable, Identifiable, Sendable {
     public var paths: [String]
     public var rules: [Rule]
     public var sourceIdea: UUID?
+    /// Id of the project pattern (`vibedeck.json` `patterns`) this topic enforces.
+    public var sourcePattern: String?
     public var createdAt: Date
 
-    public init(title: String, description: String? = nil, tags: [String] = [], paths: [String] = [], rules: [Rule] = [], sourceIdea: UUID? = nil, now: Date = .now) {
+    public init(title: String, description: String? = nil, tags: [String] = [], paths: [String] = [], rules: [Rule] = [], sourceIdea: UUID? = nil, sourcePattern: String? = nil, now: Date = .now) {
         self.schema = SchemaURL.ruleTopic
         self.id = UUID()
         self.title = title
@@ -151,11 +160,12 @@ public struct RuleTopic: Codable, Equatable, Identifiable, Sendable {
         self.paths = paths
         self.rules = rules
         self.sourceIdea = sourceIdea
+        self.sourcePattern = sourcePattern
         self.createdAt = now
     }
 
     enum CodingKeys: String, CodingKey {
-        case schema = "$schema", id, title, description, tags, paths, rules, sourceIdea, createdAt
+        case schema = "$schema", id, title, description, tags, paths, rules, sourceIdea, sourcePattern, createdAt
     }
 
     public init(from decoder: Decoder) throws {
@@ -168,6 +178,7 @@ public struct RuleTopic: Codable, Equatable, Identifiable, Sendable {
         paths = try c.decodeIfPresent([String].self, forKey: .paths) ?? []
         rules = try c.decodeIfPresent([Rule].self, forKey: .rules) ?? []
         sourceIdea = try c.decodeIfPresent(UUID.self, forKey: .sourceIdea)
+        sourcePattern = try c.decodeIfPresent(String.self, forKey: .sourcePattern)
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? .now
     }
 
@@ -181,6 +192,7 @@ public struct RuleTopic: Codable, Equatable, Identifiable, Sendable {
         if !paths.isEmpty { try c.encode(paths, forKey: .paths) }
         try c.encode(rules, forKey: .rules)
         try c.encodeIfPresent(sourceIdea, forKey: .sourceIdea)
+        try c.encodeIfPresent(sourcePattern, forKey: .sourcePattern)
         try c.encode(createdAt, forKey: .createdAt)
     }
 

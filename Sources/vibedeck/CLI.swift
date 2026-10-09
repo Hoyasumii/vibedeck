@@ -8,7 +8,7 @@ struct VibeDeckCLI: AsyncParsableCommand {
         commandName: "vibedeck",
         abstract: "Gerencia projetos VibeDeck (links, docs, revisões, regras e ideias) a partir do terminal.",
         version: "0.2.0",
-        subcommands: [Init.self, Status.self, Links.self, Docs.self, Review.self, Rules.self, Ideas.self, Agents.self, Commands.self, Skills.self, Workflows.self, Runs.self, Tag.self, Usage.self, Cloud.self, MCPCommand.self]
+        subcommands: [Init.self, Status.self, Stack.self, Patterns.self, Links.self, Docs.self, Review.self, Rules.self, Ideas.self, Agents.self, Commands.self, Skills.self, Workflows.self, Runs.self, Tag.self, Hook.self, Usage.self, Cloud.self, MCPCommand.self]
     )
 }
 
@@ -94,12 +94,265 @@ struct Status: ParsableCommand {
         }
         print("\(project.name) — \(store.root.path)")
         if let d = project.description { print(d) }
+        if !project.stack.isEmpty { print("Stack: " + project.stack.map(\.name).joined(separator: ", ")) }
+        if !project.patterns.isEmpty { print("Padrões: " + project.patterns.map(\.name).joined(separator: ", ")) }
         print("\nLinks: \(project.links.count)  Docs: \(docs.count)  Grupos de revisão: \(groups.count)")
         for (slug, group) in groups {
             print("  • \(group.title) [\(slug)] — \(group.openCount) aberto(s) de \(group.items.count)")
         }
         let ruleCount = topics.reduce(0) { $0 + $1.topic.rules.count }
         print("Tópicos de regras: \(topics.count) (\(ruleCount) regra(s))  Ideias: \(ideas.count) (\(ideas.filter { !$0.idea.status.isClosed }.count) abertas)  Agentes: \(agents.count)  Comandos: \(commands.count)  Skills: \(skills.count)  Workflows: \(workflows.count)")
+    }
+}
+
+// MARK: - stack
+
+struct Stack: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Stack do projeto: as tecnologias de destaque (ícones do Skill Icons).",
+        discussion: "Ao adicionar ou retirar, o badge da stack no README.md é atualizado.",
+        subcommands: [List.self, Add.self, Remove.self, Note.self, Move.self, Search.self, Badge.self],
+        defaultSubcommand: List.self
+    )
+
+    static func report(_ change: StackService.Change, json: Bool) throws {
+        if json { return try printJSON(change) }
+        for item in change.items { print(line(item)) }
+        if let warning = change.readmeWarning { FileHandle.standardError.write(Data((warning + "\n").utf8)) }
+    }
+
+    static func line(_ item: StackItem) -> String {
+        "\(item.icon)  \(item.name)" + (item.category.map { "  [\($0)]" } ?? "") + (item.note.map { "  — \($0)" } ?? "")
+    }
+
+    struct List: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws {
+            let stack = try options.store().loadProject().stack
+            if json { return try printJSON(stack) }
+            if stack.isEmpty { print("Stack vazia. Adicione com `vibedeck stack add <tecnologias…>`.") }
+            for item in stack { print(Stack.line(item)) }
+        }
+    }
+
+    struct Add: AsyncParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Argument(help: "Ids, nomes ou aliases do Skill Icons (ex.: swift k8s \"Next.js\").") var icons: [String]
+        @Option(help: "Nota de uso para essas tecnologias.") var note: String?
+        @Flag(help: "Marca as tecnologias como adicionadas por IA.") var ai = false
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() async throws {
+            let change = try await StackService(store: options.store()).add(icons, note: note, author: ai ? .ai : .human)
+            try Stack.report(change, json: json)
+        }
+    }
+
+    struct Remove: AsyncParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Argument(help: "Id, nome ou prefixo do id.") var icons: [String]
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() async throws {
+            try Stack.report(await StackService(store: options.store()).remove(icons), json: json)
+        }
+    }
+
+    struct Note: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Define a nota de uso de uma tecnologia (vazia apaga).")
+        @OptionGroup var options: RootOptions
+        @Argument(help: "Id, nome ou prefixo do id.") var icon: String
+        @Argument(help: "Nota.") var note: String = ""
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() async throws {
+            try Stack.report(await StackService(store: options.store()).setNote(icon, note), json: json)
+        }
+    }
+
+    struct Move: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Move uma tecnologia para outra posição (a partir de 0).")
+        @OptionGroup var options: RootOptions
+        @Argument(help: "Id, nome ou prefixo do id.") var icon: String
+        @Argument(help: "Nova posição.") var position: Int
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() async throws {
+            try Stack.report(await StackService(store: options.store()).move(icon, to: position), json: json)
+        }
+    }
+
+    struct Search: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Procura tecnologias no catálogo do Skill Icons.")
+        @OptionGroup var options: RootOptions
+        @Argument(help: "Texto a procurar (vazio = tudo).") var query: String?
+        @Option(help: "Categoria: \(SkillIcons.categories.joined(separator: ", ")).") var category: String?
+        @Option(help: "Máximo de resultados.") var limit: Int = 50
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() async throws {
+            let icons = try await SkillIcons().search(query: query, category: category, limit: limit)
+            if json { return try printJSON(icons) }
+            let current = Set((try? options.store().loadProject().stack.map(\.icon)) ?? [])
+            for icon in icons {
+                print((current.contains(icon.id) ? "✓ " : "  ") + "\(icon.id)  \(icon.name)" + (icon.category.map { "  [\($0)]" } ?? ""))
+            }
+        }
+    }
+
+    struct Badge: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Mostra o badge da stack (Markdown) e, com --sync, regrava o bloco no README.md.")
+        @OptionGroup var options: RootOptions
+        @Option(help: "Tema: dark ou light.") var theme: String?
+        @Flag(help: "Regrava o bloco da stack no README.md.") var sync = false
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() async throws {
+            let service = StackService(store: try options.store())
+            if sync, let warning = await service.syncReadme() { throw ValidationError(warning) }
+            guard let badge = try await service.badge(theme: theme.flatMap(SkillIconTheme.init(rawValue:))) else {
+                if json { return print("null") }
+                return print("Stack vazia.")
+            }
+            if json { return try printJSON(badge) }
+            print(badge.markdown)
+        }
+    }
+}
+
+// MARK: - patterns
+
+struct Patterns: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Padrões de projeto que o código deve seguir (TDD, hexagonal, DDD, CQRS…).",
+        discussion: "Cada padrão cria um tópico de regras em .vibedeck/rules/, cobrado pelo `rules for` / `rules check`.",
+        subcommands: [List.self, Catalog.self, Add.self, Remove.self, Note.self, Paths.self, Move.self],
+        defaultSubcommand: List.self
+    )
+
+    static func line(_ pattern: ProjectPattern, store: ProjectStore) -> String {
+        let topic = store.patternTopic(pattern)
+        let scope = topic.map { $0.topic.paths.isEmpty ? "projeto inteiro" : $0.topic.paths.joined(separator: ", ") } ?? "sem tópico"
+        let rules = topic.map { "\($0.topic.rules.count) regra(s) em \($0.slug)" } ?? ""
+        return "\(pattern.id)  \(pattern.name)  [\(PatternCategory.label(pattern.category))]  (\(scope); \(rules))"
+            + (pattern.note.map { "\n    — \($0)" } ?? "")
+    }
+
+    static func report(_ store: ProjectStore, json: Bool) throws {
+        let patterns = try store.loadProject().patterns
+        if json { return try printJSON(patterns) }
+        if patterns.isEmpty { print("Nenhum padrão. Veja `vibedeck patterns catalog` e adicione com `vibedeck patterns add <ids…>`.") }
+        for pattern in patterns { print(line(pattern, store: store)) }
+    }
+
+    struct List: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws { try Patterns.report(options.store(), json: json) }
+    }
+
+    struct Catalog: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Lista o catálogo embutido de padrões.")
+        @OptionGroup var options: RootOptions
+        @Argument(help: "Texto a procurar (vazio = tudo).") var query: String?
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws {
+            let templates = PatternCatalog.search(query)
+            if json { return try printJSON(templates) }
+            let current = Set((try? options.store().loadProject().patterns.map(\.id)) ?? [])
+            for t in templates {
+                print((current.contains(t.id) ? "✓ " : "  ") + "\(t.id)  \(t.name)  [\(PatternCategory.label(t.category))]  — \(t.summary)")
+            }
+        }
+    }
+
+    struct Add: ParsableCommand {
+        static let configuration = CommandConfiguration(
+            abstract: "Adiciona padrões do catálogo, ou um personalizado com --custom.",
+            discussion: "Ex.: vibedeck patterns add tdd hexagonal --path 'Sources/Core/**'\n     vibedeck patterns add --custom \"Feature folders\" --rule \"Uma pasta por feature\""
+        )
+        @OptionGroup var options: RootOptions
+        @Argument(help: "Ids, nomes ou aliases do catálogo.") var patterns: [String] = []
+        @Option(help: "Nome de um padrão personalizado.") var custom: String?
+        @Option(help: "Resumo do padrão personalizado.") var summary: String?
+        @Option(help: "Regra obrigatória do padrão personalizado (repita).") var rule: [String] = []
+        @Option(help: "Como o projeto aplica o padrão.") var note: String?
+        @Option(help: "Glob de escopo (repita; sem = projeto inteiro).") var path: [String] = []
+        @Flag(help: "Marca como adicionado por IA.") var ai = false
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws {
+            let store = try options.store()
+            let author: Author = ai ? .ai : .human
+            let paths = path.isEmpty ? nil : path
+            if let custom {
+                guard !rule.isEmpty else { throw ValidationError("Padrão personalizado precisa de ao menos uma --rule.") }
+                try store.addCustomPattern(name: custom, summary: summary, rules: rule, note: note, paths: paths, author: author)
+            } else {
+                guard !patterns.isEmpty else { throw ValidationError("Informe ids do catálogo ou --custom <nome>.") }
+                try store.addPatterns(patterns, note: note, paths: paths, author: author)
+            }
+            try Patterns.report(store, json: json)
+        }
+    }
+
+    struct Remove: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Retira padrões e apaga o tópico de regras deles.")
+        @OptionGroup var options: RootOptions
+        @Argument(help: "Id, nome ou prefixo do id.") var patterns: [String]
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws {
+            let store = try options.store()
+            try store.removePatterns(patterns)
+            try Patterns.report(store, json: json)
+        }
+    }
+
+    struct Note: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Define como o projeto aplica um padrão (vazia apaga).")
+        @OptionGroup var options: RootOptions
+        @Argument(help: "Id, nome ou prefixo do id.") var pattern: String
+        @Argument(help: "Nota.") var note: String = ""
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws {
+            let store = try options.store()
+            try store.setPatternNote(pattern, note)
+            try Patterns.report(store, json: json)
+        }
+    }
+
+    struct Paths: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Define os globs de escopo de um padrão (sem globs = projeto inteiro).")
+        @OptionGroup var options: RootOptions
+        @Argument(help: "Id, nome ou prefixo do id.") var pattern: String
+        @Argument(help: "Globs (ex.: 'Sources/Core/**').") var globs: [String] = []
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws {
+            let store = try options.store()
+            try store.setPatternPaths(pattern, globs)
+            try Patterns.report(store, json: json)
+        }
+    }
+
+    struct Move: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Move um padrão para outra posição (a partir de 0).")
+        @OptionGroup var options: RootOptions
+        @Argument(help: "Id, nome ou prefixo do id.") var pattern: String
+        @Argument(help: "Nova posição.") var position: Int
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws {
+            let store = try options.store()
+            try store.movePattern(pattern, to: position)
+            try Patterns.report(store, json: json)
+        }
     }
 }
 
@@ -286,6 +539,10 @@ struct Review: ParsableCommand {
                 try store.updateItem(id) { $0.rules = slugs }
             }
             if status == .done, !force { try store.ensureVerified(id) }
+            if let kind {
+                let kinds = try store.loadProject().reviewKinds.map(\.id)
+                guard kinds.contains(kind) else { throw ValidationError("Kind desconhecido '\(kind)'. Disponíveis: \(kinds.joined(separator: ", "))") }
+            }
             let item = try store.updateItem(id) { item in
                 if let status { item.status = status }
                 if let priority { item.priority = priority }
@@ -695,13 +952,21 @@ struct Agents: ParsableCommand {
         @Argument var agent: String
         @Option var title: String?
         @Option var model: String?
+        @Option var provider: AIProvider?
+        @Option var effort: String?
         @Option var summary: String?
         @Option var prompt: String?
 
         func run() throws {
             let (slug, a) = try options.store().updateAgent(agent) { a in
                 if let title { a.title = title }
-                if let model { a.model = model.nonEmptyOrNil }
+                if let provider {
+                    var all = a.providerSettings ?? [:]
+                    var settings = all[provider.rawValue] ?? AIProviderSettings()
+                    if let model { settings.model = model.nonEmptyOrNil }
+                    if let effort { settings.effort = effort.nonEmptyOrNil }
+                    all[provider.rawValue] = settings; a.providerSettings = all
+                } else if let model { a.model = model.nonEmptyOrNil }
                 if let summary { a.summary = summary.nonEmptyOrNil }
                 if let prompt { a.prompt = prompt }
             }
@@ -748,17 +1013,20 @@ struct Agents: ParsableCommand {
         }
     }
 
-    struct Import: ParsableCommand {
+    struct Import: AsyncParsableCommand {
         static let configuration = CommandConfiguration(abstract: "Importa agentes do Claude Code (.claude/agents do projeto e do usuário).")
         @OptionGroup var options: RootOptions
+        @Option(help: "Provedor: claude ou codex.") var provider: AIProvider = .claude
         @Flag(help: "Sobrescreve agentes já existentes.") var overwrite = false
         @Option(help: "Diretório extra com arquivos .md de agentes.") var dir: String?
         @Flag(help: "Marca os agentes como criados por IA.") var ai = false
 
-        func run() throws {
+        func run() async throws {
             let store = try options.store()
             let dirs = dir.map { [URL(fileURLWithPath: $0)] }
-            let slugs = try store.importClaudeAgents(from: dirs, overwrite: overwrite, author: ai ? .ai : .human)
+            let result = try store.importAgents(provider: provider, from: dirs, overwrite: overwrite, author: ai ? .ai : .human)
+            result.warnings.forEach { FileHandle.standardError.write(Data(($0 + "\n").utf8)) }
+            let slugs = result.slugs
             slugs.forEach { print($0) }
             if slugs.isEmpty { print("Nada para importar.") }
         }
@@ -831,6 +1099,8 @@ struct Commands: ParsableCommand {
         @Argument var command: String
         @Option var title: String?
         @Option var model: String?
+        @Option var provider: AIProvider?
+        @Option var effort: String?
         @Option var summary: String?
         @Option var argumentHint: String?
         @Option var prompt: String?
@@ -838,7 +1108,13 @@ struct Commands: ParsableCommand {
         func run() throws {
             let (slug, c) = try options.store().updateCommand(command) { c in
                 if let title { c.title = title }
-                if let model { c.model = model.nonEmptyOrNil }
+                if let provider {
+                    var all = c.providerSettings ?? [:]
+                    var settings = all[provider.rawValue] ?? AIProviderSettings()
+                    if let model { settings.model = model.nonEmptyOrNil }
+                    if let effort { settings.effort = effort.nonEmptyOrNil }
+                    all[provider.rawValue] = settings; c.providerSettings = all
+                } else if let model { c.model = model.nonEmptyOrNil }
                 if let summary { c.summary = summary.nonEmptyOrNil }
                 if let argumentHint { c.argumentHint = argumentHint.nonEmptyOrNil }
                 if let prompt { c.prompt = prompt }
@@ -886,17 +1162,20 @@ struct Commands: ParsableCommand {
         }
     }
 
-    struct Import: ParsableCommand {
+    struct Import: AsyncParsableCommand {
         static let configuration = CommandConfiguration(abstract: "Importa comandos do Claude Code (.claude/commands do projeto e do usuário).")
         @OptionGroup var options: RootOptions
+        @Option(help: "Provedor: claude ou codex.") var provider: AIProvider = .claude
         @Flag(help: "Sobrescreve comandos já existentes.") var overwrite = false
         @Option(help: "Diretório extra com arquivos .md de comandos.") var dir: String?
         @Flag(help: "Marca os comandos como criados por IA.") var ai = false
 
-        func run() throws {
+        func run() async throws {
             let store = try options.store()
             let dirs = dir.map { [URL(fileURLWithPath: $0)] }
-            let slugs = try store.importClaudeCommands(from: dirs, overwrite: overwrite, author: ai ? .ai : .human)
+            let result = try store.importCommands(provider: provider, from: dirs, overwrite: overwrite, author: ai ? .ai : .human)
+            result.warnings.forEach { FileHandle.standardError.write(Data(($0 + "\n").utf8)) }
+            let slugs = result.slugs
             slugs.forEach { print($0) }
             if slugs.isEmpty { print("Nada para importar.") }
         }
@@ -965,13 +1244,21 @@ struct Skills: ParsableCommand {
         @Argument var skill: String
         @Option var title: String?
         @Option var model: String?
+        @Option var provider: AIProvider?
+        @Option var effort: String?
         @Option var summary: String?
         @Option var prompt: String?
 
         func run() throws {
             let (slug, s) = try options.store().updateSkill(skill) { s in
                 if let title { s.title = title }
-                if let model { s.model = model.nonEmptyOrNil }
+                if let provider {
+                    var all = s.providerSettings ?? [:]
+                    var settings = all[provider.rawValue] ?? AIProviderSettings()
+                    if let model { settings.model = model.nonEmptyOrNil }
+                    if let effort { settings.effort = effort.nonEmptyOrNil }
+                    all[provider.rawValue] = settings; s.providerSettings = all
+                } else if let model { s.model = model.nonEmptyOrNil }
                 if let summary { s.summary = summary.nonEmptyOrNil }
                 if let prompt { s.prompt = prompt }
             }
@@ -1018,17 +1305,20 @@ struct Skills: ParsableCommand {
         }
     }
 
-    struct Import: ParsableCommand {
+    struct Import: AsyncParsableCommand {
         static let configuration = CommandConfiguration(abstract: "Importa skills do Claude Code (.claude/skills/<nome>/SKILL.md do projeto e do usuário).")
         @OptionGroup var options: RootOptions
+        @Option(help: "Provedor: claude ou codex.") var provider: AIProvider = .claude
         @Flag(help: "Sobrescreve skills já existentes.") var overwrite = false
         @Option(help: "Diretório extra com pastas de skills (cada uma com SKILL.md).") var dir: String?
         @Flag(help: "Marca as skills como criadas por IA.") var ai = false
 
-        func run() throws {
+        func run() async throws {
             let store = try options.store()
             let dirs = dir.map { [URL(fileURLWithPath: $0)] }
-            let slugs = try store.importClaudeSkills(from: dirs, overwrite: overwrite, author: ai ? .ai : .human)
+            let result = try await store.importSkills(provider: provider, from: dirs, overwrite: overwrite, author: ai ? .ai : .human)
+            result.warnings.forEach { FileHandle.standardError.write(Data(($0 + "\n").utf8)) }
+            let slugs = result.slugs
             slugs.forEach { print($0) }
             if slugs.isEmpty { print("Nada para importar.") }
         }
@@ -1275,6 +1565,7 @@ struct Runs: ParsableCommand {
     struct Start: ParsableCommand {
         static let configuration = CommandConfiguration(abstract: "Inicia (ou retoma, com a mesma entrada) uma execução e imprime a próxima ação.")
         @OptionGroup var options: RootOptions
+        @Option(help: "Provedor da nova execução: claude ou codex.") var provider: AIProvider?
         @Argument var workflow: String
         @Option(help: "Entrada da execução (a execução recebe o nome dela).") var input: String?
         @Option(help: "Etapa por onde começar (libera mais uma volta numa execução parada).") var from: String?
@@ -1283,10 +1574,10 @@ struct Runs: ParsableCommand {
 
         func run() throws {
             let store = try options.store()
-            let (ref, _, action) = try store.startRun(workflow, input: input, from: from)
+            let (ref, run, action) = try store.startRun(workflow, input: input, from: from, provider: provider)
             if prompt {
                 let w = try store.loadWorkflow(store.resolveWorkflowSlug(workflow))
-                return print(WorkflowOrchestration.orchestratorPrompt(ref: ref, title: w.title, input: input, cli: cliInvocation()))
+                return print(WorkflowOrchestration.orchestratorPrompt(ref: ref, title: w.title, input: input, cli: cliInvocation(), provider: run.provider))
             }
             try printRunAction(action, json: json)
         }
@@ -1398,7 +1689,7 @@ struct Runs: ParsableCommand {
             let ref = try store.resolveRunRef(execution)
             let r = try store.loadRun(ref)
             let title = (try? store.loadWorkflow(r.workflow).title) ?? r.workflow
-            print(WorkflowOrchestration.orchestratorPrompt(ref: ref, title: title, input: r.input, cli: cliInvocation()))
+            print(WorkflowOrchestration.orchestratorPrompt(ref: ref, title: title, input: r.input, cli: cliInvocation(), provider: r.provider))
         }
     }
 }
@@ -1437,6 +1728,188 @@ private extension String {
     var nonEmptyOrNil: String? { trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : self }
 }
 
+// MARK: - hook (portão de regras no Stop do Claude Code e do Codex)
+
+extension HookAgent: ExpressibleByArgument {}
+extension AIProvider: ExpressibleByArgument {}
+
+enum HookScope: String, ExpressibleByArgument, CaseIterable {
+    case local, project
+}
+
+/// Onde cada agente lê os hooks deste projeto. O Codex só tem o arquivo versionado (`.codex/hooks.json`).
+func hookFileURL(agent: HookAgent, scope: HookScope, root: URL) -> URL? {
+    switch (agent, scope) {
+    case (.claude, .local): root.appending(path: ".claude/settings.local.json")
+    case (.claude, .project): root.appending(path: ".claude/settings.json")
+    case (.codex, .project): root.appending(path: ".codex/hooks.json")
+    case (.codex, .local): nil
+    }
+}
+
+/// Entrada comum dos hooks do Claude Code e do Codex (o Codex pode mandar `transcript_path: null`).
+struct HookInput: Decodable {
+    var sessionId: String?
+    var transcriptPath: String?
+    var cwd: String?
+
+    enum CodingKeys: String, CodingKey {
+        case sessionId = "session_id", transcriptPath = "transcript_path", cwd
+    }
+
+    static func read() -> HookInput? {
+        try? JSONDecoder().decode(HookInput.self, from: FileHandle.standardInput.readDataToEndOfFile())
+    }
+
+    /// Arquivo temporário da sessão (`start` marca o início; `count`, os bloqueios seguidos).
+    func stateURL(_ kind: String) -> URL {
+        FileManager.default.temporaryDirectory.appending(path: "vibedeck-\(kind)-\(sessionId ?? "sem-sessao")")
+    }
+}
+
+struct Hook: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Hook Stop do Claude Code ou do Codex: o agente não conclui a resposta com alterações sem check de regras aprovado.",
+        subcommands: [Status.self, Stop.self, Start.self, Install.self, Uninstall.self],
+        defaultSubcommand: Status.self
+    )
+
+    struct Status: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Mostra onde o hook está ligado e quais alterações ele bloquearia agora.")
+        @OptionGroup var options: RootOptions
+        @Flag(help: "Saída JSON.") var json = false
+
+        struct Installed: Encodable {
+            let agent: String
+            let scope: String
+            let file: String
+            let on: Bool
+        }
+
+        struct Summary: Encodable {
+            let hooks: [Installed]
+            let unverified: [UnverifiedChange]
+        }
+
+        func run() throws {
+            let store = try options.store()
+            let hooks = try HookAgent.allCases.flatMap { agent in
+                try HookScope.allCases.compactMap { scope -> Installed? in
+                    guard let url = hookFileURL(agent: agent, scope: scope, root: store.root) else { return nil }
+                    return Installed(agent: agent.rawValue, scope: scope.rawValue, file: url.path, on: try ClaudeCode.hasStopHook(settings: url))
+                }
+            }
+            let unverified = try store.unverifiedChanges(store.workingTreeChanges(since: .distantPast))
+            if json { return try printJSON(Summary(hooks: hooks, unverified: unverified)) }
+            for h in hooks { print("\(h.agent) \(h.scope): \(h.on ? "ligado" : "desligado") (\(h.file))") }
+            if unverified.isEmpty { return print("Nenhuma alteração pendente de check.") }
+            print(ProjectStore.stopGateReason(unverified))
+        }
+    }
+
+    struct Stop: ParsableCommand {
+        static let configuration = CommandConfiguration(
+            abstract: "Comando do hook Stop: lê o JSON do agente no stdin e bloqueia o fim da resposta se faltar check.",
+            discussion: """
+            Considera os arquivos alterados (git) desde o início da sessão. Cada arquivo com regras aplicáveis precisa
+            de um check aprovado, registrado depois da última alteração, cobrindo os tópicos dele.
+            """
+        )
+        @OptionGroup var options: RootOptions
+        @Option(help: "Bloqueios seguidos na sessão antes de liberar com aviso ao usuário (evita laço infinito).") var maxBlocks = 3
+
+        func run() throws {
+            let input = HookInput.read()
+            let start = options.root == nil ? input?.cwd.map { URL(fileURLWithPath: $0) } ?? options.startURL : options.startURL
+            // Fora de um projeto VibeDeck o hook não tem o que verificar.
+            guard let store = try? ProjectStore.locate(from: start) else { return }
+            // A sessão começa quando o transcript nasce (Claude Code) ou quando `hook start` rodou (Codex):
+            // alterações anteriores (do usuário) não são cobradas.
+            let created = { (path: String) in (try? FileManager.default.attributesOfItem(atPath: path))?[.creationDate] as? Date }
+            let since = input?.transcriptPath.flatMap(created)
+                ?? input.flatMap { created($0.stateURL("start").path) }
+                ?? .distantPast
+            let unverified = try store.unverifiedChanges(store.workingTreeChanges(since: since))
+
+            let counter = input?.stateURL("count") ?? HookInput().stateURL("count")
+            guard !unverified.isEmpty else {
+                try? FileManager.default.removeItem(at: counter)
+                return
+            }
+            let blocks = (try? String(contentsOf: counter, encoding: .utf8)).flatMap { Int($0) } ?? 0
+            if blocks >= maxBlocks {
+                try? FileManager.default.removeItem(at: counter)
+                let files = unverified.map(\.file).joined(separator: ", ")
+                return try printHookOutput(["systemMessage": "⚠️ VibeDeck: o agente parou sem check de regras aprovado para: \(files)"])
+            }
+            try? String(blocks + 1).write(to: counter, atomically: true, encoding: .utf8)
+            try printHookOutput(["decision": "block", "reason": ProjectStore.stopGateReason(unverified)])
+        }
+
+        private func printHookOutput(_ output: [String: String]) throws {
+            print(String(decoding: try JSONSerialization.data(withJSONObject: output, options: [.withoutEscapingSlashes]), as: UTF8.self))
+        }
+    }
+
+    struct Start: ParsableCommand {
+        static let configuration = CommandConfiguration(
+            abstract: "Comando do hook SessionStart: marca o início da sessão (para agentes que não informam o transcript, como o Codex)."
+        )
+
+        func run() throws {
+            guard let input = HookInput.read(), input.sessionId != nil else { return }
+            let marker = input.stateURL("start")
+            // Retomar ou compactar a sessão não muda o início: só a primeira chamada cria a marca.
+            if !FileManager.default.fileExists(atPath: marker.path) {
+                FileManager.default.createFile(atPath: marker.path, contents: nil)
+            }
+        }
+    }
+
+    struct Install: ParsableCommand {
+        static let configuration = CommandConfiguration(
+            abstract: "Liga o hook neste projeto, no Claude Code ou no Codex.",
+            discussion: """
+            Claude Code: .claude/settings.local.json (--scope local, padrão) ou .claude/settings.json (--scope project).
+            Codex: .codex/hooks.json (só --scope project); depois aprove o hook com /hooks no Codex.
+            """
+        )
+        @OptionGroup var options: RootOptions
+        @Option(name: [.short, .long], help: "Agente: claude ou codex.") var agent: HookAgent = .claude
+        @Option(name: [.short, .long], help: "Escopo: local (só você) ou project (versionado, para o time). Padrão: local no Claude Code, project no Codex.") var scope: HookScope?
+
+        func run() throws {
+            let scope = scope ?? (agent == .codex ? .project : .local)
+            guard let url = hookFileURL(agent: agent, scope: scope, root: try options.store().root) else {
+                throw ValidationError("O Codex não tem um arquivo de hooks só seu por projeto. Use --scope project (.codex/hooks.json).")
+            }
+            // Arquivos versionados usam o comando do PATH em vez de um caminho absoluto desta máquina.
+            try ClaudeCode.installStopHook(
+                executable: scope == .project ? "vibedeck" : vibedeckExecutablePath(), settings: url,
+                sessionStart: agent.needsSessionStart
+            )
+            print("Hook ligado em \(url.path).")
+            if agent == .codex { print("No Codex, aprove o hook com /hooks antes da próxima resposta (hooks novos só rodam depois de aprovados).") }
+        }
+    }
+
+    struct Uninstall: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Desliga o hook do VibeDeck neste projeto.")
+        @OptionGroup var options: RootOptions
+        @Option(name: [.short, .long], help: "Agente: claude ou codex.") var agent: HookAgent = .claude
+        @Option(name: [.short, .long], help: "Escopo: local ou project. Padrão: local no Claude Code, project no Codex.") var scope: HookScope?
+
+        func run() throws {
+            let scope = scope ?? (agent == .codex ? .project : .local)
+            guard let url = hookFileURL(agent: agent, scope: scope, root: try options.store().root) else {
+                throw ValidationError("O Codex só tem o escopo project (.codex/hooks.json).")
+            }
+            try ClaudeCode.uninstallStopHook(settings: url)
+            print("Hook do VibeDeck removido de \(url.path).")
+        }
+    }
+}
+
 // MARK: - usage (limites do Claude Code)
 
 struct Usage: ParsableCommand {
@@ -1446,11 +1919,18 @@ struct Usage: ParsableCommand {
         defaultSubcommand: Show.self
     )
 
-    struct Show: ParsableCommand {
+    struct Show: AsyncParsableCommand {
         static let configuration = CommandConfiguration(abstract: "Mostra o último uso informado pelo Claude Code.")
         @Flag(help: "Saída JSON.") var json = false
+        @Option var provider: AIProvider = .claude
 
-        func run() throws {
+        func run() async throws {
+            if provider == .codex {
+                let result = try await CodexQueries.limits(root: URL(fileURLWithPath: FileManager.default.currentDirectoryPath))
+                if json { return try printJSON(result) }
+                for limit in CodexRateLimit.list(result) { print("\(limit.id): \(Int(limit.usedPercent))% · \(Int(limit.minutes)) min") }
+                return
+            }
             guard let usage = ClaudeCode.loadUsage() else {
                 throw ValidationError("Nenhum uso registrado ainda. Rode `vibedeck usage install` e use o Claude Code.")
             }
@@ -1537,6 +2017,8 @@ struct Cloud: ParsableCommand {
     struct Start: ParsableCommand {
         static let configuration = CommandConfiguration(abstract: "Cria uma sessão na nuvem com a tarefa dada, se a branch estiver sincronizada.")
         @OptionGroup var options: RootOptions
+        @Option var provider: AIProvider = .claude
+        @Option(name: .customLong("env"), help: "ID do ambiente Codex Cloud.") var environment: String?
         @Argument(help: "O que a sessão deve fazer.") var description: String
         @Flag(help: "Cria mesmo com alterações não commitadas (a nuvem não as vê).") var allowDirty = false
         @Flag(help: "Saída JSON.") var json = false
@@ -1549,7 +2031,7 @@ struct Cloud: ParsableCommand {
 
         func run() throws {
             do {
-                let result = try CloudSession.launch(root: try options.store().root, description: description, allowDirty: allowDirty)
+                let result = try CloudSession.launch(root: try options.store().root, description: description, allowDirty: allowDirty, provider: provider, environment: environment)
                 if json { return try printJSON(Result(sync: result.sync, url: result.url?.absoluteString, output: result.output)) }
                 print(result.url.map { "Sessão criada: \($0.absoluteString)" } ?? result.output)
             } catch let error as VibeDeckError {

@@ -1,3 +1,4 @@
+#if canImport(CoreServices)
 import CoreServices
 import Foundation
 
@@ -55,3 +56,4 @@ public final class FileWatcher: @unchecked Sendable {
         if !relevant.isEmpty { handler(relevant) }
     }
 }
+#endif

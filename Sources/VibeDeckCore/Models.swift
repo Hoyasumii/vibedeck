@@ -25,6 +25,11 @@ public struct Project: Codable, Equatable, Sendable {
     public var name: String
     public var description: String?
     public var links: [Link]
+    /// The project's highlighted technologies (Skill Icons ids), in display order.
+    public var stack: [StackItem]
+    /// Code patterns the AI must follow (TDD, hexagonal…), in display order; each one is enforced by its rule topic.
+    public var patterns: [ProjectPattern]
+    public var codexCloudEnvironment: String?
     public var reviewKinds: [ReviewKind]
 
     public init(name: String, description: String? = nil) {
@@ -34,11 +39,14 @@ public struct Project: Codable, Equatable, Sendable {
         self.name = name
         self.description = description
         self.links = []
+        self.stack = []
+        self.patterns = []
+        self.codexCloudEnvironment = nil
         self.reviewKinds = ReviewKind.defaults
     }
 
     enum CodingKeys: String, CodingKey {
-        case schema = "$schema", version, id, name, description, links, reviewKinds
+        case schema = "$schema", version, id, name, description, links, stack, patterns, codexCloudEnvironment, reviewKinds
     }
 
     public init(from decoder: Decoder) throws {
@@ -49,8 +57,25 @@ public struct Project: Codable, Equatable, Sendable {
         name = try c.decode(String.self, forKey: .name)
         description = try c.decodeIfPresent(String.self, forKey: .description)
         links = try c.decodeIfPresent([Link].self, forKey: .links) ?? []
+        stack = try c.decodeIfPresent([StackItem].self, forKey: .stack) ?? []
+        patterns = try c.decodeIfPresent([ProjectPattern].self, forKey: .patterns) ?? []
+        codexCloudEnvironment = try c.decodeIfPresent(String.self, forKey: .codexCloudEnvironment)
         let kinds = try c.decodeIfPresent([ReviewKind].self, forKey: .reviewKinds) ?? []
         reviewKinds = kinds.isEmpty ? ReviewKind.defaults : kinds
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encodeIfPresent(schema, forKey: .schema)
+        try c.encode(version, forKey: .version)
+        try c.encode(id, forKey: .id)
+        try c.encode(name, forKey: .name)
+        try c.encodeIfPresent(description, forKey: .description)
+        try c.encode(links, forKey: .links)
+        if !stack.isEmpty { try c.encode(stack, forKey: .stack) }
+        if !patterns.isEmpty { try c.encode(patterns, forKey: .patterns) }
+        try c.encodeIfPresent(codexCloudEnvironment, forKey: .codexCloudEnvironment)
+        try c.encode(reviewKinds, forKey: .reviewKinds)
     }
 
     public func kind(_ id: String) -> ReviewKind {

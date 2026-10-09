@@ -11,7 +11,9 @@ public struct Skill: Codable, Equatable, Identifiable, Sendable {
     /// When to use the skill: it is what triggers it, so it should be specific.
     public var summary: String?
     public var model: String?
+    public var providerSettings: [String: AIProviderSettings]?
     public var tools: [String]
+    public var sourcePath: String?
     public var prompt: String
     public var nextSteps: [NextStep]
     public var tags: [String]
@@ -28,7 +30,9 @@ public struct Skill: Codable, Equatable, Identifiable, Sendable {
         self.title = title
         self.summary = summary
         self.model = model
+        self.providerSettings = nil
         self.tools = tools
+        self.sourcePath = nil
         self.prompt = prompt
         self.nextSteps = []
         self.tags = tags
@@ -38,7 +42,7 @@ public struct Skill: Codable, Equatable, Identifiable, Sendable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case schema = "$schema", id, title, summary, model, tools, prompt, nextSteps, tags, author, createdAt, updatedAt
+        case schema = "$schema", id, title, summary, model, providerSettings, tools, sourcePath, prompt, nextSteps, tags, author, createdAt, updatedAt
     }
 
     public init(from decoder: Decoder) throws {
@@ -48,7 +52,9 @@ public struct Skill: Codable, Equatable, Identifiable, Sendable {
         title = try c.decode(String.self, forKey: .title)
         summary = try c.decodeIfPresent(String.self, forKey: .summary)
         model = try c.decodeIfPresent(String.self, forKey: .model)
+        providerSettings = try c.decodeIfPresent([String: AIProviderSettings].self, forKey: .providerSettings)
         tools = try c.decodeIfPresent([String].self, forKey: .tools) ?? []
+        sourcePath = try c.decodeIfPresent(String.self, forKey: .sourcePath)
         prompt = try c.decodeIfPresent(String.self, forKey: .prompt) ?? ""
         nextSteps = try c.decodeIfPresent([NextStep].self, forKey: .nextSteps) ?? []
         tags = try c.decodeIfPresent([String].self, forKey: .tags) ?? []
@@ -64,7 +70,9 @@ public struct Skill: Codable, Equatable, Identifiable, Sendable {
         try c.encode(title, forKey: .title)
         try c.encodeIfPresent(summary, forKey: .summary)
         try c.encodeIfPresent(model, forKey: .model)
+        try c.encodeIfPresent(providerSettings, forKey: .providerSettings)
         if !tools.isEmpty { try c.encode(tools, forKey: .tools) }
+        try c.encodeIfPresent(sourcePath, forKey: .sourcePath)
         try c.encode(prompt, forKey: .prompt)
         if !nextSteps.isEmpty { try c.encode(nextSteps, forKey: .nextSteps) }
         if !tags.isEmpty { try c.encode(tags, forKey: .tags) }

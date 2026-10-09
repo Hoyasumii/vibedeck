@@ -18,6 +18,7 @@
     },
     "rules": { "type": "array", "items": { "$ref": "#/$defs/rule" } },
     "sourceIdea": { "type": "string", "format": "uuid", "description": "Idea this topic was promoted from." },
+    "sourcePattern": { "type": "string", "description": "Id of the project pattern (vibedeck.json `patterns`) this topic enforces." },
     "createdAt": { "type": "string", "format": "date-time" }
   },
   "additionalProperties": false,

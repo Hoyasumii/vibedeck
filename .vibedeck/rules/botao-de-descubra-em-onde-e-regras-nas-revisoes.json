@@ -15,6 +15,12 @@
       "createdAt" : "2026-10-08T15:00:05Z",
       "id" : "46A96B82-5BDD-43F8-982F-BBC35B5C6EAA",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/botao-de-descubra-em-onde-e-regras-nas-revisoes/46a96b82.sh",
+        "generatedAt" : "2026-10-09T01:31:23Z",
+        "mode" : "script",
+        "ruleHash" : "cb1cda8e9eb5b968"
+      },
       "text" : "O Descubra nunca grava direto: mostra uma proposta e o usuário aceita (tudo ou por campo); cada aceite é um único passo de undo."
     },
     {
@@ -23,6 +29,12 @@
       "details" : "Protege o gate de check aprovado antes de concluir o item.",
       "id" : "4D2EEC85-41C6-4A77-B792-F9DB87651D48",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/botao-de-descubra-em-onde-e-regras-nas-revisoes/4d2eec85.sh",
+        "generatedAt" : "2026-10-09T01:31:23Z",
+        "mode" : "script",
+        "ruleHash" : "bb550f693c27a388"
+      },
       "text" : "O Descubra só adiciona tópicos de regras ao item; nunca remove um tópico já marcado."
     },
     {
@@ -30,6 +42,12 @@
       "createdAt" : "2026-10-08T15:00:05Z",
       "id" : "06B55036-7BD0-4348-82F4-39B67519FBA0",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/botao-de-descubra-em-onde-e-regras-nas-revisoes/06b55036.sh",
+        "generatedAt" : "2026-10-09T01:31:23Z",
+        "mode" : "script",
+        "ruleHash" : "67080f55363e2507"
+      },
       "text" : "Arquivos sugeridos precisam existir no projeto e slugs sugeridos precisam ser tópicos existentes; o resto é descartado antes de mostrar a proposta."
     },
     {
@@ -37,6 +55,12 @@
       "createdAt" : "2026-10-08T15:00:05Z",
       "id" : "52B60258-B539-41CF-98C3-E67E74C72F3E",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/botao-de-descubra-em-onde-e-regras-nas-revisoes/52b60258.sh",
+        "generatedAt" : "2026-10-09T01:31:23Z",
+        "mode" : "script",
+        "ruleHash" : "4eab7bcd92a5501e"
+      },
       "text" : "A chamada ao Claude do Descubra roda só com ferramentas de leitura (Read/Grep/Glob), sem Edit/Write/Bash."
     },
     {
@@ -44,6 +68,12 @@
       "createdAt" : "2026-10-08T15:00:05Z",
       "id" : "D670FAD9-8DC7-429F-A65F-A1280F81DF19",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/botao-de-descubra-em-onde-e-regras-nas-revisoes/d670fad9.sh",
+        "generatedAt" : "2026-10-09T01:31:23Z",
+        "mode" : "script",
+        "ruleHash" : "476bd21a6327f1f3"
+      },
       "text" : "A resposta do Claude é JSON validado; se o parse falhar, mostra um erro claro e não altera o item."
     },
     {
@@ -51,6 +81,12 @@
       "createdAt" : "2026-10-08T15:00:05Z",
       "id" : "A9D8FA72-F39C-48F4-92B6-9C22760A37CC",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/botao-de-descubra-em-onde-e-regras-nas-revisoes/a9d8fa72.sh",
+        "generatedAt" : "2026-10-09T01:31:23Z",
+        "mode" : "script",
+        "ruleHash" : "86fe92e90752decd"
+      },
       "text" : "Campos do Onde já preenchidos não são sobrescritos sem o usuário aceitar explicitamente aquela troca."
     },
     {
@@ -58,6 +94,12 @@
       "createdAt" : "2026-10-08T15:00:05Z",
       "id" : "2635526C-DBAB-471A-BD6A-CC8BA52F22E1",
       "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/botao-de-descubra-em-onde-e-regras-nas-revisoes/2635526c.sh",
+        "generatedAt" : "2026-10-09T01:31:23Z",
+        "mode" : "script",
+        "ruleHash" : "779cc9541b68aac1"
+      },
       "text" : "Cada sugestão vem com uma justificativa curta (onde encontrou, ex.: arquivo:linha)."
     },
     {
@@ -65,6 +107,12 @@
       "createdAt" : "2026-10-08T15:00:05Z",
       "id" : "7334A6CD-9FD4-4865-9803-5B0AC0BCBCCF",
       "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/botao-de-descubra-em-onde-e-regras-nas-revisoes/7334a6cd.sh",
+        "generatedAt" : "2026-10-09T01:31:23Z",
+        "mode" : "script",
+        "ruleHash" : "57f17cfdf7695257"
+      },
       "text" : "O Descubra tem botão de cancelar e timeout, e descarta a resposta se o item mudou ou deixou de estar selecionado durante a chamada."
     }
   ],

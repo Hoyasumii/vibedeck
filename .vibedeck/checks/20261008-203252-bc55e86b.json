@@ -1,0 +1,90 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-08T20:32:52.420Z",
+  "failures" : [
+
+  ],
+  "files" : [
+    "README.md",
+    "scripts/vibedeck-codex-mcp.py"
+  ],
+  "id" : "BC55E86B-900F-4DE7-97BD-244B232D21AA",
+  "passed" : true,
+  "results" : [
+    {
+      "note" : "Alterações limitadas ao adaptador Python e documentação; sem novas dependências Swift, edição manual do guia/dados ou remoção de itens humanos. Negociação MCP, 75 ferramentas e list_stack verificados; documentação em pt-BR.",
+      "ruleId" : "B6B91F0E-F8CD-43C8-85A8-333C324684C7",
+      "topic" : "build-scripts-e-ci",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Adaptador Python; não compila Swift nem usa shell.",
+      "ruleId" : "10F1FCB3-C0AB-4119-8CF9-85162FBCE622",
+      "topic" : "build-scripts-e-ci",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Workflows de CI não foram alterados.",
+      "ruleId" : "A111C3ED-0A9C-4368-83DE-7C91B1697406",
+      "topic" : "build-scripts-e-ci",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Empacotamento não foi alterado.",
+      "ruleId" : "B7D9E63A-D446-47D8-8E57-151F9E4E1AC4",
+      "topic" : "build-scripts-e-ci",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Ícones e fundo não foram alterados.",
+      "ruleId" : "99C049AC-A1D3-4B87-AF5E-2C3135E5549E",
+      "topic" : "build-scripts-e-ci",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Alterações limitadas ao adaptador Python e documentação; sem novas dependências Swift, edição manual do guia/dados ou remoção de itens humanos. Negociação MCP, 75 ferramentas e list_stack verificados; documentação em pt-BR.",
+      "ruleId" : "9D6F362B-9F0E-4661-97B3-6158B160D478",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Alterações limitadas ao adaptador Python e documentação; sem novas dependências Swift, edição manual do guia/dados ou remoção de itens humanos. Negociação MCP, 75 ferramentas e list_stack verificados; documentação em pt-BR.",
+      "ruleId" : "9F92A765-76E7-4EA0-A66A-78AE12EE4C8F",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Alterações limitadas ao adaptador Python e documentação; sem novas dependências Swift, edição manual do guia/dados ou remoção de itens humanos. Negociação MCP, 75 ferramentas e list_stack verificados; documentação em pt-BR.",
+      "ruleId" : "AC4BA963-CDEE-419C-B057-9140643E115D",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Alterações limitadas ao adaptador Python e documentação; sem novas dependências Swift, edição manual do guia/dados ou remoção de itens humanos. Negociação MCP, 75 ferramentas e list_stack verificados; documentação em pt-BR.",
+      "ruleId" : "0E5AEC71-405E-4113-AB27-615313AB2B5F",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Alterações limitadas ao adaptador Python e documentação; sem novas dependências Swift, edição manual do guia/dados ou remoção de itens humanos. Negociação MCP, 75 ferramentas e list_stack verificados; documentação em pt-BR.",
+      "ruleId" : "306A20B6-E1FA-4BE4-96E8-2B854A3D0BC6",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhum commit solicitado ou criado.",
+      "ruleId" : "4095F087-1E04-46C0-9AA4-A60C8C16A72B",
+      "topic" : "geral",
+      "verdict" : "na"
+    }
+  ],
+  "task" : "Corrigir negociação MCP do Codex com SDK Swift experimental",
+  "topics" : [
+    "build-scripts-e-ci",
+    "geral"
+  ],
+  "warnings" : [
+
+  ]
+}

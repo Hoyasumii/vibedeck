@@ -13,6 +13,13 @@
       "details" : "Comentário em VibeDeckApp.swift: \"No min-size frame here: on macOS 26+ it fights NavigationSplitView/inspector column sizing and crashes AppKit's constraint pass. Columns set their own limits.\" Vale para o conteúdo do WindowGroup e para o ProjectWindow raiz. minWidth em subviews internas (ex.: editor/preview em DocView) é permitido.\nVerificar: nenhum .frame(minWidth:/minHeight:) no root.",
       "id" : "EE65A0A5-71DA-431A-A4B7-567144D40423",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/interface-do-app/ee65a0a5.sh",
+        "generatedAt" : "2026-10-09T00:50:49Z",
+        "mode" : "script",
+        "reason" : "Sem min-size/frame no root (WindowGroup, WelcomeView, ProjectWindow)",
+        "ruleHash" : "f8c2a89f675d28e3"
+      },
       "text" : "Nada de minWidth/min-size no root da janela"
     },
     {
@@ -21,6 +28,13 @@
       "details" : "IdeaView.header e ReviewGroupView.header: trocar de layout muda a largura mínima da coluna de detalhe no meio do layout, o que faz o sizing de NavigationSplitView/inspector entrar em loop e derruba o AppKit (crash corrigido no check EDDE4EEC). Use um HStack único.\nVerificar: `grep ViewThatFits Sources/VibeDeckApp` vazio nessas views.",
       "id" : "9A4878F2-54AD-4B93-9E8B-9D7683C8F9F2",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/interface-do-app/9a4878f2.sh",
+        "generatedAt" : "2026-10-09T00:50:49Z",
+        "mode" : "script",
+        "reason" : "Sem ViewThatFits em código de views com .inspector",
+        "ruleHash" : "f49f318b15efc2b1"
+      },
       "text" : "Nada de ViewThatFits em headers de views com .inspector"
     },
     {
@@ -29,6 +43,13 @@
       "details" : "Sidebar min 200, ideal 240, max 320 (ProjectWindow); inspectors min 260, ideal 300-320, max 420-440. Não controlar largura de coluna com .frame.\nVerificar: colunas/inspectors novos usam esses modificadores.",
       "id" : "047D2216-D1C9-4AFC-AA0A-D789DC1E8A60",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/interface-do-app/047d2216.sh",
+        "generatedAt" : "2026-10-09T00:50:49Z",
+        "mode" : "script",
+        "reason" : "Valores de inspectorColumnWidth/navigationSplitViewColumnWidth",
+        "ruleHash" : "95929952301fb436"
+      },
       "text" : "Limites de coluna só via navigationSplitViewColumnWidth / inspectorColumnWidth"
     },
     {
@@ -37,6 +58,13 @@
       "details" : "ProjectModel é um espelho em memória que grava cada mudança imediatamente (mutateGroup e equivalentes) e registra um undo que restaura o valor anterior; desfazer registra o inverso, então Shift+Cmd+Z refaz. Use os helpers mutate* do ProjectModel em vez de chamar o ProjectStore direto das views.\nVerificar: a ação nova pode ser desfeita com Cmd+Z e refeita com Shift+Cmd+Z, e o arquivo no disco reflete a mudança na hora.",
       "id" : "00E57961-FE6D-4AFC-BB1A-3DC70152D38D",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/interface-do-app/00e57961.sh",
+        "generatedAt" : "2026-10-09T00:50:49Z",
+        "mode" : "script",
+        "reason" : "Views não mutam ProjectStore direto; mutate* do ProjectModel registram undo",
+        "ruleHash" : "e67b7acaf70c1924"
+      },
       "text" : "Toda mutação é gravada no disco na hora e registra undo"
     },
     {
@@ -45,6 +73,12 @@
       "details" : "ProjectModel guarda os últimos bytes que gravou por caminho, para que o FSEvents (FileWatcher, que reporta também as escritas do próprio app) não dispare reload. Mudança externa (CLI, MCP, IA) é aplicada: no doc, como edição desfazível (\"Alteração externa\", MarkdownEditor); na ideia, só se não houver digitação pendente (IdeaView).\nVerificar: editar o arquivo pelo CLI com o app aberto atualiza a tela sem perder o que o usuário digitava.",
       "id" : "8385BC07-3F91-46DC-8BBD-6F62C4851DD9",
       "severity" : "must",
+      "test" : {
+        "generatedAt" : "2026-10-09T00:50:49Z",
+        "mode" : "manual",
+        "reason" : "Comportamento em runtime (FSEvents + digitação pendente + edição externa via CLI); só verificável rodando o app.",
+        "ruleHash" : "962bd9d3414c9a34"
+      },
       "text" : "Escritas próprias não recarregam; escritas externas são aplicadas"
     },
     {
@@ -53,6 +87,13 @@
       "details" : "model.undoManager(forDoc:) dá um histórico por doc (ideias usam a chave idea:<slug>), que sobrevive a autosave e troca de doc, para Cmd+Z nunca cruzar documentos. O undo do NSTextView não é duplicado no da janela.\nVerificar: editar dois docs e desfazer em cada um só afeta o próprio doc.",
       "id" : "B065B5AF-B93F-4698-8E43-BB4369E74351",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/interface-do-app/b065b5af.sh",
+        "generatedAt" : "2026-10-09T00:50:49Z",
+        "mode" : "script",
+        "reason" : "UndoManager por doc/ideia via model.undoManager(forDoc:)",
+        "ruleHash" : "f1c87584cf556664"
+      },
       "text" : "Cada doc/ideia tem seu UndoManager"
     },
     {
@@ -61,6 +102,13 @@
       "details" : "O campo de texto de ReviewGroupView edita um rascunho local e confirma no Return/blur, para que cada edição seja um passo de undo, e não um por tecla. O editor de tags (LinksView) segue o mesmo contrato. Campos novos que gravam no modelo usam esse componente.\nVerificar: digitar uma palavra e dar Cmd+Z desfaz a edição inteira.",
       "id" : "3D508DEA-D43E-4E33-91B7-F46039B6B53D",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/interface-do-app/3d508dea.sh",
+        "generatedAt" : "2026-10-09T00:50:49Z",
+        "mode" : "script",
+        "reason" : "CommitTextField (rascunho + Return/blur) usado em ReviewGroupView e LinksView",
+        "ruleHash" : "6e4f08dfbd057873"
+      },
       "text" : "Campos de texto confirmam no Return ou ao perder o foco"
     },
     {
@@ -69,6 +117,12 @@
       "details" : "selection sempre espelha tabs[activeTab]; clicar no espaço vazio da sidebar não troca a página, continua na aba ativa; abas de itens apagados (pelo app ou no disco) fecham sozinhas; \"Abrir em Nova Aba\" no menu de contexto da sidebar e da tabela da seção; a TabBar só aparece com mais de uma aba; clique do meio fecha a aba; as abas são persistidas.\nVerificar: abrir, fechar, apagar o item de uma aba e reabrir a janela.",
       "id" : "329A929F-62CC-4A7D-99A3-A299F495A08C",
       "severity" : "must",
+      "test" : {
+        "generatedAt" : "2026-10-09T00:50:49Z",
+        "mode" : "manual",
+        "reason" : "Contrato com vários comportamentos de estado/UI (abas, fechamento por exclusão em disco, persistência); exige abrir/fechar/apagar no app.",
+        "ruleHash" : "ffe20de9ee234e35"
+      },
       "text" : "Contrato das abas"
     },
     {
@@ -77,6 +131,12 @@
       "details" : "O chevron é um botão que só abre/fecha a seção, sem selecionar a linha nem trocar de página; várias seções podem ficar abertas; o estado fica persistido; a seção do item selecionado abre.\nVerificar: clicar no chevron não muda o conteúdo do detalhe.",
       "id" : "335DA4F8-7DBF-4120-8878-42130C661D69",
       "severity" : "must",
+      "test" : {
+        "generatedAt" : "2026-10-09T00:50:49Z",
+        "mode" : "manual",
+        "reason" : "Comportamento de interação (chevron não seleciona nem troca de página); só verificável no app.",
+        "ruleHash" : "9db1a99e1a1fcdd0"
+      },
       "text" : "O accordion da sidebar não depende da seleção"
     },
     {
@@ -85,6 +145,13 @@
       "details" : "SectionListView (Docs, Revisões, Regras, Ideias) filtra por texto livre e por tokens #tag ou pela barra de tags; chips de tag clicáveis filtram. Seção nova segue o mesmo padrão.\nVerificar: digitar #ui filtra só os itens com essa tag.",
       "id" : "A999B857-E236-4893-97A9-07257A538B57",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/interface-do-app/a999b857.sh",
+        "generatedAt" : "2026-10-09T00:50:49Z",
+        "mode" : "script",
+        "reason" : "SectionListView com filtro texto/#tag/tag bar/chips; seções só via SectionListView",
+        "ruleHash" : "ff08eff2df3d9b86"
+      },
       "text" : "Listas de seção filtráveis por texto e por #tag"
     },
     {
@@ -93,6 +160,13 @@
       "details" : "Cmd+O abrir projeto, Cmd+Z/Shift+Cmd+Z desfazer/refazer, Cmd+E alternar editar/ler no doc, Shift+Cmd+N focar o campo de novo item de revisão, Opt+Cmd+I mostrar/ocultar o painel do item (tabela no README). Não reaproveitar essas combinações para outra coisa.\nVerificar: testar cada atalho na tela afetada.",
       "id" : "DC9EED4D-8823-4FD1-83ED-3B820A83E8B4",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/interface-do-app/dc9eed4d.sh",
+        "generatedAt" : "2026-10-09T00:50:49Z",
+        "mode" : "script",
+        "reason" : "Atalhos presentes e combinações não reaproveitadas",
+        "ruleHash" : "f81e01fb0879dae0"
+      },
       "text" : "Os atalhos documentados continuam funcionando"
     },
     {
@@ -101,6 +175,13 @@
       "details" : ".toolbarBackgroundVisibility(.hidden, for: .windowToolbar) na WelcomeView e na coluna de detalhe do ProjectWindow, para o header ter a mesma cor do conteúdo e das barras laterais (check 04D2DF8D). Janelas/colunas novas seguem isso.\nVerificar: não aparece faixa de cor diferente no topo.",
       "id" : "492100C1-EFE3-488F-8368-08CE17A797DA",
       "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/interface-do-app/492100c1.sh",
+        "generatedAt" : "2026-10-09T00:50:49Z",
+        "mode" : "script",
+        "reason" : "toolbarBackgroundVisibility(.hidden) em WelcomeView e ProjectWindow",
+        "ruleHash" : "0c67aab9e95e470f"
+      },
       "text" : "Sem faixa de toolbar separada"
     },
     {
@@ -109,6 +190,13 @@
       "details" : "SwiftUI com Liquid Glass (ex.: editor de tags em cápsula de vidro), SF Symbols para ícones (reviewKinds e IdeaStatus.symbol já são SF Symbols), componentes nativos (Table, NavigationSplitView, .inspector). Para links, use o Link do Core via Aliases.swift, não SwiftUI.Link. Sem dependências de UI além do MarkdownUI e do SwiftTerm (terminal do painel, fixado em 1.11.x porque 1.12+ exige o Metal Toolchain).\nVerificar: nenhum asset de ícone próprio onde existe SF Symbol.",
       "id" : "B382469C-4D35-4314-BEC2-50BCEC7C6855",
       "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/interface-do-app/b382469c.sh",
+        "generatedAt" : "2026-10-09T00:50:49Z",
+        "mode" : "script",
+        "reason" : "Sem assets de ícone, sem SwiftUI.Link, dependências de UI restritas",
+        "ruleHash" : "dd83bb23d7b17f26"
+      },
       "text" : "Visual nativo do macOS 26"
     },
     {
@@ -117,6 +205,13 @@
       "details" : "\"Mover para o Lixo\" no tópico chama releaseOrphanedIdeas; tópicos apagados fora do app (Finder, rm, outro processo) são pegos em handleExternalChanges e na abertura do projeto. Depois disso o badge \"Tópico: …\" some e o botão volta a \"Promover para Regras\". \"Despromover\" fica no menu de contexto do badge da ideia.\nVerificar: apagar o tópico pelo Finder com o app aberto e conferir a ideia.",
       "id" : "1A4EF162-82B1-4940-8251-A2102964C3E8",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/interface-do-app/1a4ef162.sh",
+        "generatedAt" : "2026-10-09T00:50:49Z",
+        "mode" : "script",
+        "reason" : "releaseOrphanedIdeas em deleteTopic, handleExternalChanges e abertura; UI de despromover",
+        "ruleHash" : "53de0d52ea08aef5"
+      },
       "text" : "Tópico apagado de qualquer jeito despromove a ideia no app"
     }
   ],

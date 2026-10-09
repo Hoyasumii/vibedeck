@@ -13,14 +13,32 @@
         "interface-do-app",
         "dinamicas-da-interface"
       ],
-      "status" : "open",
+      "status" : "done",
       "target" : {
         "component" : "TabBar",
         "file" : "Sources/VibeDeckApp/TabBar.swift",
         "selector" : ".scrollIndicators(.never)"
       },
       "title" : "Adicionar a barra de Scroll",
-      "updatedAt" : "2026-10-08T15:33:38Z"
+      "updatedAt" : "2026-10-08T23:36:02Z"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-08T23:57:14Z",
+      "id" : "A300BF3B-A1BF-4973-A5A6-6BB28CD27233",
+      "kind" : "fix",
+      "priority" : "normal",
+      "rules" : [
+        "interface-do-app",
+        "dinamicas-da-interface"
+      ],
+      "status" : "done",
+      "target" : {
+        "component" : "ProjectTerminalView",
+        "file" : "Sources/VibeDeckApp/ProjectTerminalView.swift"
+      },
+      "title" : "Scroll não funciona para o conteúdo do terminal que já passou",
+      "updatedAt" : "2026-10-09T01:40:22Z"
     }
   ],
   "title" : "Terminal"

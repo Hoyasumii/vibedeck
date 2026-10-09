@@ -54,5 +54,35 @@
       "symbol" : "note.text"
     }
   ],
+  "stack" : [
+    {
+      "author" : "ai",
+      "category" : "language",
+      "icon" : "swift",
+      "name" : "Swift",
+      "note" : "Swift 6.2 / SwiftPM; app em SwiftUI (Liquid Glass, macOS 26), CLI com swift-argument-parser e MCP com o swift-sdk"
+    },
+    {
+      "author" : "ai",
+      "category" : "os",
+      "icon" : "apple",
+      "name" : "Apple",
+      "note" : "App nativo macOS 26; o CLI/MCP também compila em Linux"
+    },
+    {
+      "author" : "ai",
+      "category" : "cloud",
+      "icon" : "workers",
+      "name" : "Cloudflare Workers",
+      "note" : "worker/ serve os JSON Schemas (schema/v1 é a fonte)"
+    },
+    {
+      "author" : "ai",
+      "category" : "language",
+      "icon" : "typescript",
+      "name" : "TypeScript",
+      "note" : "worker/ serve os JSON Schemas (schema/v1 é a fonte)"
+    }
+  ],
   "version" : 1
 }

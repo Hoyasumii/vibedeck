@@ -4,33 +4,128 @@
   "title": "VibeDeck skill",
   "description": "Instructions the AI loads when the task matches the description (like a Claude Code SKILL.md) and the next steps that chain it into a flow. Lives at <repo>/.vibedeck/skills/<slug>.json.",
   "type": "object",
-  "required": ["id", "title", "prompt", "author", "createdAt", "updatedAt"],
+  "required": [
+    "id",
+    "title",
+    "prompt",
+    "author",
+    "createdAt",
+    "updatedAt"
+  ],
   "properties": {
-    "$schema": { "type": "string" },
-    "id": { "type": "string", "format": "uuid" },
-    "title": { "type": "string", "minLength": 1, "description": "Skill name." },
-    "summary": { "type": "string", "description": "When to use the skill (what triggers it)." },
-    "model": { "type": "string", "description": "Model alias or id (e.g. sonnet, opus)." },
-    "tools": { "type": "array", "items": { "type": "string" }, "description": "Allowed tools." },
-    "prompt": { "type": "string", "description": "Skill instructions (Markdown), the body of SKILL.md." },
+    "$schema": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Skill name."
+    },
+    "summary": {
+      "type": "string",
+      "description": "When to use the skill (what triggers it)."
+    },
+    "model": {
+      "type": "string",
+      "description": "Model alias or id (e.g. sonnet, opus)."
+    },
+    "tools": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Allowed tools."
+    },
+    "prompt": {
+      "type": "string",
+      "description": "Skill instructions (Markdown), the body of SKILL.md."
+    },
     "nextSteps": {
       "type": "array",
       "description": "Flow: what acts on this skill's result. `ref` is a slug of a VibeDeck agent/command/skill, never the AI provider's.",
       "items": {
         "type": "object",
-        "required": ["kind", "ref"],
+        "required": [
+          "kind",
+          "ref"
+        ],
         "properties": {
-          "kind": { "enum": ["agent", "command", "skill"] },
-          "ref": { "type": "string", "minLength": 1 },
-          "note": { "type": "string" }
+          "kind": {
+            "enum": [
+              "agent",
+              "command",
+              "skill"
+            ]
+          },
+          "ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "note": {
+            "type": "string"
+          }
         },
         "additionalProperties": false
       }
     },
-    "tags": { "type": "array", "items": { "type": "string" } },
-    "author": { "enum": ["human", "ai"] },
-    "createdAt": { "type": "string", "format": "date-time" },
-    "updatedAt": { "type": "string", "format": "date-time" }
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "author": {
+      "enum": [
+        "human",
+        "ai"
+      ]
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "providerSettings": {
+      "type": "object",
+      "properties": {
+        "claude": {
+          "type": "object",
+          "properties": {
+            "model": {
+              "type": "string"
+            },
+            "effort": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "codex": {
+          "type": "object",
+          "properties": {
+            "model": {
+              "type": "string"
+            },
+            "effort": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "sourcePath": {
+      "type": "string",
+      "description": "Absolute path to the imported SKILL.md; supporting resources remain here."
+    }
   },
   "additionalProperties": false
 }

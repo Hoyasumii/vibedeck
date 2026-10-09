@@ -4,7 +4,7 @@ import VibeDeckCore
 struct RuleTopicView: View {
     let slug: String
     @Environment(ProjectModel.self) private var model
-    @Environment(ClaudeSession.self) private var claude
+    @Environment(AISession.self) private var claude
     @Environment(\.undoManager) private var undo
     @State private var showChecks = true
 
@@ -16,6 +16,9 @@ struct RuleTopicView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
+            if let execution = model.ruleExecution, execution.scope.contains(slug) {
+                RuleExecutionPanel(execution: execution).id(execution.id)
+            }
             RuleListEditor(
                 rules: topic.rules,
                 emptyTitle: "Nenhuma regra ainda",
@@ -34,16 +37,8 @@ struct RuleTopicView: View {
         .navigationSubtitle("\(topic.rules.count) regra(s) · \(topic.isGlobal ? "vale para toda tarefa" : "\(topic.paths.count) escopo(s)")")
         .toolbar {
             ToolbarItemGroup {
-                if ClaudeCode.isInstalled { testsMenu }
-                Button { model.runTests(topic: slug) } label: {
-                    if model.runningTests.contains(slug) {
-                        ProgressView().controlSize(.small)
-                    } else {
-                        Label("Rodar testes", systemImage: "play")
-                    }
-                }
-                .disabled(scriptCount == 0 || model.runningTests.contains(slug))
-                .help(scriptCount == 0 ? "Nenhuma regra tem script ainda" : "Rodar os \(scriptCount) script(s) deste tópico (não grava verificação)")
+                if !AIProvider.installed.isEmpty { testsMenu }
+                RuleExecutionControls(topic: slug)
             }
             ToolbarItem {
                 Button { showChecks.toggle() } label: { Label("Verificações", systemImage: "checkmark.seal") }
@@ -54,7 +49,20 @@ struct RuleTopicView: View {
     }
 
     /// "Gerar testes" asks Claude (in the chat) to turn each rule into a script; afterwards checks run the scripts.
+    @ViewBuilder
     private var testsMenu: some View {
+        if model.generatingTests[slug]?.isActive == true {
+            // A background batch (Regras → Gerar verificações) is on this topic: don't start a second one.
+            Label("Gerando testes…", systemImage: "hammer")
+                .labelStyle(.titleAndIcon)
+                .foregroundStyle(.secondary)
+                .help("As verificações deste tópico estão sendo geradas em segundo plano")
+        } else {
+            chatTestsMenu
+        }
+    }
+
+    private var chatTestsMenu: some View {
         Menu {
             Button("Só as pendentes (\(pendingTests))") { generateTests(onlyPending: true) }
                 .disabled(pendingTests == 0)
@@ -64,7 +72,7 @@ struct RuleTopicView: View {
         } primaryAction: {
             generateTests(onlyPending: hasAnyTest && pendingTests > 0)
         }
-        .disabled(topic.rules.isEmpty)
+        .disabled(topic.rules.isEmpty || model.ruleExecution?.active == true)
         .badge(hasAnyTest ? pendingTests : 0)
         .help(hasAnyTest
             ? "Pedir ao Claude para criar os testes das regras novas ou alteradas (\(pendingTests) pendente(s))"
@@ -109,6 +117,11 @@ struct RuleTopicView: View {
 
             if let source = topic.sourceIdea, let idea = model.ideas.first(where: { $0.value.id == source }) {
                 Label("Veio da ideia \"\(idea.value.title)\"", systemImage: "lightbulb")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            if let source = topic.sourcePattern, let pattern = model.project.patterns.first(where: { $0.id == source }) {
+                Label("Regras do padrão de projeto \"\(pattern.name)\"; apagar o tópico retira o padrão", systemImage: "building.columns")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

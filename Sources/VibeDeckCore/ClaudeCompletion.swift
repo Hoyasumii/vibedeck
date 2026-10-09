@@ -163,7 +163,7 @@ public enum ShellCommand {
     static let interactivePrograms: Set<String> = [
         "vi", "vim", "nvim", "nano", "emacs", "pico", "micro", "hx",
         "top", "htop", "btop", "less", "more", "man", "watch", "tig", "lazygit",
-        "ssh", "mosh", "telnet", "ftp", "sftp", "tmux", "screen", "claude",
+        "ssh", "mosh", "telnet", "ftp", "sftp", "tmux", "screen", "claude", "codex",
     ]
     /// REPLs: interactive only when started without a script or command.
     static let repls: Set<String> = ["python", "python3", "node", "irb", "ruby", "swift", "bash", "zsh", "sh", "fish", "psql", "mysql", "sqlite3", "redis-cli"]

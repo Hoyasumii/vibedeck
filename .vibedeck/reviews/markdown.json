@@ -1,0 +1,36 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/review-group.schema.json",
+  "createdAt" : "2026-10-08T20:19:06Z",
+  "id" : "C5F08A70-C0F7-4C97-A256-75C71AB8CE34",
+  "items" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-08T20:19:18Z",
+      "id" : "69186B21-73BB-4B4E-B7D1-8BD255FB52D7",
+      "kind" : "fix",
+      "priority" : "normal",
+      "status" : "done",
+      "title" : "O Visualizador de Markdown não rendereiza Imagens",
+      "updatedAt" : "2026-10-08T23:36:50Z"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-09T00:00:24Z",
+      "id" : "D0AA5F5A-42B1-41B3-A1AB-EE44A18B6DC5",
+      "kind" : "fix",
+      "priority" : "normal",
+      "rules" : [
+        "interface-do-app",
+        "dinamicas-da-interface"
+      ],
+      "status" : "done",
+      "target" : {
+        "component" : "MarkdownPreview",
+        "file" : "Sources/VibeDeckApp/MarkdownPreview.swift"
+      },
+      "title" : "Markdown não renderiza Imagens",
+      "updatedAt" : "2026-10-09T01:40:22Z"
+    }
+  ],
+  "title" : "Markdown"
+}

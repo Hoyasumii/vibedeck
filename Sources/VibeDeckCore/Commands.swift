@@ -12,6 +12,7 @@ public struct Command: Codable, Equatable, Identifiable, Sendable {
     /// What goes in `$ARGUMENTS` (e.g. `<mensagem>`).
     public var argumentHint: String?
     public var model: String?
+    public var providerSettings: [String: AIProviderSettings]?
     public var tools: [String]
     public var prompt: String
     public var nextSteps: [NextStep]
@@ -30,6 +31,7 @@ public struct Command: Codable, Equatable, Identifiable, Sendable {
         self.summary = summary
         self.argumentHint = argumentHint
         self.model = model
+        self.providerSettings = nil
         self.tools = tools
         self.prompt = prompt
         self.nextSteps = []
@@ -40,7 +42,7 @@ public struct Command: Codable, Equatable, Identifiable, Sendable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case schema = "$schema", id, title, summary, argumentHint, model, tools, prompt, nextSteps, tags, author, createdAt, updatedAt
+        case schema = "$schema", id, title, summary, argumentHint, model, providerSettings, tools, prompt, nextSteps, tags, author, createdAt, updatedAt
     }
 
     public init(from decoder: Decoder) throws {
@@ -51,6 +53,7 @@ public struct Command: Codable, Equatable, Identifiable, Sendable {
         summary = try c.decodeIfPresent(String.self, forKey: .summary)
         argumentHint = try c.decodeIfPresent(String.self, forKey: .argumentHint)
         model = try c.decodeIfPresent(String.self, forKey: .model)
+        providerSettings = try c.decodeIfPresent([String: AIProviderSettings].self, forKey: .providerSettings)
         tools = try c.decodeIfPresent([String].self, forKey: .tools) ?? []
         prompt = try c.decodeIfPresent(String.self, forKey: .prompt) ?? ""
         nextSteps = try c.decodeIfPresent([NextStep].self, forKey: .nextSteps) ?? []
@@ -68,6 +71,7 @@ public struct Command: Codable, Equatable, Identifiable, Sendable {
         try c.encodeIfPresent(summary, forKey: .summary)
         try c.encodeIfPresent(argumentHint, forKey: .argumentHint)
         try c.encodeIfPresent(model, forKey: .model)
+        try c.encodeIfPresent(providerSettings, forKey: .providerSettings)
         if !tools.isEmpty { try c.encode(tools, forKey: .tools) }
         try c.encode(prompt, forKey: .prompt)
         if !nextSteps.isEmpty { try c.encode(nextSteps, forKey: .nextSteps) }

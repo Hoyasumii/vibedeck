@@ -47,10 +47,19 @@ public enum ClaudeCode {
         return candidateDirectories(home: home, path: base).joined(separator: ":")
     }
 
+    /// Shell used when `$SHELL` is unset: zsh on macOS, sh elsewhere (Linux images rarely ship zsh).
+    static var defaultShell: String {
+        #if os(macOS)
+        "/bin/zsh"
+        #else
+        "/bin/sh"
+        #endif
+    }
+
     /// Runs `command` in the user's login shell and returns its stdout, or nil on failure.
     static func loginShell(_ command: String) -> String? {
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh")
+        process.executableURL = URL(fileURLWithPath: ProcessInfo.processInfo.environment["SHELL"] ?? ClaudeCode.defaultShell)
         process.arguments = ["-lc", command]
         let out = Pipe()
         process.standardOutput = out

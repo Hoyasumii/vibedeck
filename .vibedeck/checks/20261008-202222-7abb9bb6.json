@@ -1,0 +1,380 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-08T20:22:22.020Z",
+  "failures" : [
+
+  ],
+  "files" : [
+    "README.md",
+    "Sources/VibeDeckCore/AgentsGuide.swift",
+    "Sources/VibeDeckCore/ClaudeUsage.swift",
+    "Sources/VibeDeckCore/StopGate.swift",
+    "Sources/vibedeck/CLI.swift",
+    "Tests/VibeDeckCoreTests/StopGateTests.swift"
+  ],
+  "id" : "7ABB9BB6-851E-4769-BB1D-E8AA8C3DBBF4",
+  "passed" : true,
+  "results" : [
+    {
+      "note" : "Só CLI, justificado: `hook stop` é chamado pelo próprio Claude Code (não por agentes), e `hook install` muda as settings do Claude Code — decisão humana, como `usage install`, que também não tem tool MCP. A consulta do que falta já existe no MCP via rules_for/submit_rule_check.",
+      "ruleId" : "C604B203-A022-48C7-92DA-F343DA4AE60B",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhum registro do projeto é criado.",
+      "ruleId" : "643AA948-85C0-485E-A110-E83B59C0B5BC",
+      "topic" : "cli-e-mcp",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhum caminho muda status de item.",
+      "ruleId" : "30A2FC1A-16E7-4708-A559-0CA78431EDD7",
+      "topic" : "cli-e-mcp",
+      "verdict" : "na"
+    },
+    {
+      "note" : "MCPServer.swift não foi tocado por esta tarefa.",
+      "ruleId" : "A34C030C-D9E7-4C1A-A8E1-23E47D9B15AF",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Sem relação com ideias.",
+      "ruleId" : "7A76B622-C234-4B41-9ECA-C8C414AB47FE",
+      "topic" : "cli-e-mcp",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhum parâmetro MCP novo.",
+      "ruleId" : "ED4D47D8-F744-4E94-A8EE-807E2AFF0670",
+      "topic" : "cli-e-mcp",
+      "verdict" : "na"
+    },
+    {
+      "note" : "vibedeckExecutablePath inalterado; hook install --scope project grava `vibedeck` do PATH, como o mcp install.",
+      "ruleId" : "05F179F3-EB5F-474B-B8C1-9E4E0926B388",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "`hook status --json` adicionado (usa printJSON/VDJSON); rodado e validado com json.load.",
+      "ruleId" : "21E4D353-1916-4961-B355-EC7B8DEEB0B4",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Linha version: \"0.2.0\" intacta.",
+      "ruleId" : "4913B3AF-4F67-4717-A7D4-9600D8BF0942",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Sem relação com ideias.",
+      "ruleId" : "D94F39E0-F874-43A0-86DC-21D9FEDEC02D",
+      "topic" : "cli-e-mcp",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Só extensão com funções; ProjectStore continua sem estado.",
+      "ruleId" : "5FA116B6-6FBE-45F9-8C5D-29E7548F6C2F",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Escrita no Core só via writeSettings → AtomicFile.write. O contador temporário do hook fica no CLI.",
+      "ruleId" : "857149E6-8C34-46A8-9C30-439EBE78309D",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhum arquivo do projeto fora do VDJSON; JSONDecoder só para o stdin do Claude Code, JSONSerialization só para as settings do Claude (padrão do installStatusLine).",
+      "ruleId" : "99BF0D79-2F65-419A-87DA-0B4F37E4FEF5",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhum modelo persistido novo.",
+      "ruleId" : "5ED22D96-FE5F-4683-8611-E3D264113B67",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhum modelo persistido novo.",
+      "ruleId" : "C6D79B9C-1F50-4AE3-8CD1-8CAE5C4F6B6F",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "RuleCheck intocado.",
+      "ruleId" : "57ADA275-8A0F-42BA-9E14-BA3B34AB8235",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhum modelo alterado; AgentsGuide atualizado com o hook.",
+      "ruleId" : "4133C155-F789-428E-9ED5-5EAC37C19700",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhuma busca por referência nova.",
+      "ruleId" : "B0277971-459D-4CCB-9E9D-5990F1574F5B",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhum slug criado.",
+      "ruleId" : "7F7C6B09-EBCB-4CA0-BAAF-6B18D36F15C1",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "submitCheck intocado; RulesTests passam (e o próprio check incompleto anterior foi recusado como esperado).",
+      "ruleId" : "BC028BE5-D7E0-4DA3-BB5C-E8A628EBFA8A",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "verificationProblems intocado.",
+      "ruleId" : "64E65B59-8D5B-40DE-B381-CAF2B1BDC785",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Reutiliza applicableTopics sem alterar.",
+      "ruleId" : "8D874A06-515D-41B5-A094-DC8B83BB40B6",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Sem relação com ideias.",
+      "ruleId" : "35D8D7C3-1224-45CC-8A80-66D0B6291C33",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Glob intocado.",
+      "ruleId" : "64334D9C-327B-4811-B088-8B785EF4E0FE",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nenhum erro novo; reaproveita invalidClaudeSettings.",
+      "ruleId" : "EA5E6F7D-1587-4FC5-87D9-51CE6F130C7B",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "scripts/test.sh: Test run with 119 tests in 18 suites passed.",
+      "ruleId" : "97510532-2FCF-44BD-9D01-75086E554EB9",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "StopGateTests com 4 @Test.",
+      "ruleId" : "91774D06-91B5-4945-9EC6-CDEFC57332FA",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "URL de schema intocada.",
+      "ruleId" : "DFE3361B-6AFE-4ED3-A741-4FC0818D197D",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem relação.",
+      "ruleId" : "B659FD25-792B-4C0E-BD08-6082ACFCC80A",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem relação.",
+      "ruleId" : "A2B13B15-C59E-4189-8905-3A309C89DF28",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Não editei AGENTS.md nem checks à mão; o diff prévio do AGENTS.md vem de outro trabalho em andamento.",
+      "ruleId" : "9D6F362B-9F0E-4661-97B3-6158B160D478",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhum dado do projeto editado.",
+      "ruleId" : "9F92A765-76E7-4EA0-A66A-78AE12EE4C8F",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Nada apagado em .vibedeck/.",
+      "ruleId" : "AC4BA963-CDEE-419C-B057-9140643E115D",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Textos visíveis em pt-BR.",
+      "ruleId" : "0E5AEC71-405E-4113-AB27-615313AB2B5F",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "README atualizado.",
+      "ruleId" : "306A20B6-E1FA-4BE4-96E8-2B854A3D0BC6",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Sem commit.",
+      "ruleId" : "4095F087-1E04-46C0-9AA4-A60C8C16A72B",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Gate só lê disco + git.",
+      "ruleId" : "9E02C127-7793-4588-A770-0E817687B02F",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "applicableTopics não inclui regras de ideia.",
+      "ruleId" : "116AEA24-9A0B-431B-9FC1-8ABE22683898",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Sem relação.",
+      "ruleId" : "F7531E2B-4846-4C63-BE0F-3DFA1771CCCC",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Revisões intocadas.",
+      "ruleId" : "BE018170-5258-45AA-876E-5B761B643714",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Revisões intocadas.",
+      "ruleId" : "257D96B2-3561-47D2-AB56-33FA0900B331",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Gate exige passed=true, que só depende de must.",
+      "ruleId" : "54A2D6B0-BC39-4555-A4E9-DB8D418D55CB",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "O gate usa applicableTopics por arquivo: teste checkMustCoverEveryTopicOfTheFile mostra Package.swift (fora do glob) exigindo só o tópico global e Sources/App/View.swift exigindo global + interface.",
+      "ruleId" : "6E22946D-DF9C-4D59-B403-1BB9F3F0FFB5",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Só lê checks.",
+      "ruleId" : "C637A278-87F1-4586-BB2F-0864EDB552CB",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Nenhuma entidade com autoria.",
+      "ruleId" : "C9BEE6A5-C314-4547-AE52-52D116B11220",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Não é conceito de dados.",
+      "ruleId" : "B9E9DD35-4A5F-4FA3-BDDF-014238B8CB50",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem UI nova.",
+      "ruleId" : "A31D4912-A7FA-4E2A-B1C2-CC27D577177B",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem UI.",
+      "ruleId" : "3901FA3E-16BD-4E00-A844-DAB5A87BDFC1",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem UI.",
+      "ruleId" : "8D5FCA3B-9398-45CD-AF1E-03A04F22526C",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem UI.",
+      "ruleId" : "9BBFB48C-17CC-4FD9-8D7C-F1FD71529D95",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem UI.",
+      "ruleId" : "34D2EA32-DD0D-4405-93F6-FDABEBA7CC1B",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem UI.",
+      "ruleId" : "3D22A05A-9E61-433B-A8E2-00BFA2A968EE",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sem UI.",
+      "ruleId" : "365080A7-DD8F-4EBE-9CDF-979D07F6A5C3",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Fluxo continua descrito; o hook o reforça.",
+      "ruleId" : "EA7C01E6-5CC5-4199-94B6-11536B1ABDFA",
+      "topic" : "fluxo-padrao",
+      "verdict" : "pass"
+    },
+    {
+      "note" : "Intocado.",
+      "ruleId" : "8F28F353-95A9-4EEC-8223-383AF2FF6140",
+      "topic" : "fluxo-padrao",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Intocado.",
+      "ruleId" : "3A31B517-334E-484C-9205-0513AF158AE8",
+      "topic" : "fluxo-padrao",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Integração com o Claude Code, não conceito de dados; toggle no app sugerido ao usuário.",
+      "ruleId" : "95C0C917-663D-47F0-A4BD-C93E1B7F2D0C",
+      "topic" : "fluxo-padrao",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Sugestões fora do escopo comunicadas ao usuário.",
+      "ruleId" : "09C9F3A9-5B74-496C-8A2D-F93C4294CAD2",
+      "topic" : "fluxo-padrao",
+      "verdict" : "pass"
+    }
+  ],
+  "task" : "Hook Stop do Claude Code (vibedeck hook status/stop/install/uninstall): bloqueia o fim da resposta enquanto arquivo alterado na sessão tiver regras aplicáveis sem check aprovado posterior",
+  "topics" : [
+    "cli-e-mcp",
+    "core-e-formato-de-dados",
+    "geral",
+    "conceitos-do-produto",
+    "dinamicas-da-interface",
+    "fluxo-padrao"
+  ],
+  "warnings" : [
+
+  ]
+}

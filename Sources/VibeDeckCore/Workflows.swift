@@ -222,6 +222,7 @@ public struct WorkflowPlanStep: Codable, Equatable, Sendable {
     /// Resolved agent/command/skill (nil when the ref is missing).
     public var title: String?
     public var model: String?
+    public var providerSettings: [String: AIProviderSettings]?
     /// Commands only: what goes in `$ARGUMENTS`.
     public var argumentHint: String?
     public var note: String?
@@ -275,13 +276,13 @@ public struct WorkflowPlan: Codable, Equatable, Sendable {
             var warnings: [String] = []
             switch step.kind {
             case .agent:
-                if let a = agentIndex[step.ref] { (out.title, out.model, out.prompt) = (a.title, a.model, a.prompt) }
+                if let a = agentIndex[step.ref] { (out.title, out.model, out.prompt, out.providerSettings) = (a.title, a.model, a.prompt, a.providerSettings) }
                 else { warnings.append("Agente não encontrado: \(step.ref)") }
             case .command:
-                if let c = commandIndex[step.ref] { (out.title, out.model, out.argumentHint, out.prompt) = (c.title, c.model, c.argumentHint, c.prompt) }
+                if let c = commandIndex[step.ref] { (out.title, out.model, out.argumentHint, out.prompt, out.providerSettings) = (c.title, c.model, c.argumentHint, c.prompt, c.providerSettings) }
                 else { warnings.append("Comando não encontrado: \(step.ref)") }
             case .skill:
-                if let s = skillIndex[step.ref] { (out.title, out.model, out.prompt) = (s.title, s.model, s.prompt) }
+                if let s = skillIndex[step.ref] { (out.title, out.model, out.prompt, out.providerSettings) = (s.title, s.model, s.prompt + (s.sourcePath.map { "\nRecursos da skill: \(URL(fileURLWithPath: $0).deletingLastPathComponent().path)" } ?? ""), s.providerSettings) }
                 else { warnings.append("Skill não encontrada: \(step.ref)") }
             }
             for t in step.transitions where !ids.contains(t.to) { warnings.append("Transição para etapa inexistente: \(t.to)") }

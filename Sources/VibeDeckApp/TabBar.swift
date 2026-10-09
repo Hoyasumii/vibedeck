@@ -8,23 +8,36 @@ struct TabBar: View {
     let onSelect: (Int) -> Void
     let onClose: (Int) -> Void
     @Environment(ProjectModel.self) private var model
-    @Environment(ClaudeSession.self) private var claude
+    @Environment(AISession.self) private var claude
 
     var body: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 4) {
-                ForEach(Array(tabs.enumerated()), id: \.offset) { index, item in
-                    TabButton(title: title(for: item), symbol: model.symbol(for: item), isActive: index == active) {
-                        onSelect(index)
-                    } onClose: {
-                        onClose(index)
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal) {
+                HStack(spacing: 4) {
+                    ForEach(Array(tabs.enumerated()), id: \.offset) { index, item in
+                        TabButton(title: title(for: item), symbol: model.symbol(for: item), isActive: index == active) {
+                            onSelect(index)
+                        } onClose: {
+                            onClose(index)
+                        }
+                        .id(index)
                     }
                 }
+                .padding(.horizontal, 8)
+                .padding(.top, 6)
+                // Room for the scroller so it doesn't cover the tabs.
+                .padding(.bottom, 10)
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
+            .scrollIndicators(.visible)
+            // A horizontal ScrollView is greedy on the cross axis; without this the bar takes the whole
+            // column height and pushes short pages (empty states) below it.
+            .fixedSize(horizontal: false, vertical: true)
+            // Keep the active tab in view when it changes (new tab, ⌘W, selection from the sidebar).
+            .onAppear { proxy.scrollTo(active) }
+            .onChange(of: active) { _, new in
+                withAnimation(.easeInOut(duration: 0.18)) { proxy.scrollTo(new) }
+            }
         }
-        .scrollIndicators(.never)
         .background(.bar)
         .overlay(alignment: .bottom) { Divider() }
     }

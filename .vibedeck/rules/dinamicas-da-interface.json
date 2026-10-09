@@ -14,6 +14,12 @@
       "details" : "Links, Docs, Revisões, Regras e Ideias. Clicar na seção abre a lista (filtro por texto e #tag); os filhos abrem o item no detalhe. Conceito novo ganha sua seção seguindo o mesmo padrão.\nVerificar: todas as seções aparecem e abrem lista filtrável.",
       "id" : "3901FA3E-16BD-4E00-A844-DAB5A87BDFC1",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/dinamicas-da-interface/3901fa3e.sh",
+        "generatedAt" : "2026-10-09T01:26:45Z",
+        "mode" : "script",
+        "ruleHash" : "6dd3d548beee1b4c"
+      },
       "text" : "A sidebar tem uma seção por conceito, cada uma com lista filtrável"
     },
     {
@@ -22,6 +28,12 @@
       "details" : "O usuário edita no lugar (título, status, tipo, prioridade, texto, tags…). Cada mudança vai para o disco imediatamente e entra no undo (⌘Z / ⇧⌘Z). Exceção: diálogos de criação (Criar/Cancelar).\nVerificar: a ação nova não exige confirmação para salvar e pode ser desfeita.",
       "id" : "8D5FCA3B-9398-45CD-AF1E-03A04F22526C",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/dinamicas-da-interface/8d5fca3b.sh",
+        "generatedAt" : "2026-10-09T01:26:45Z",
+        "mode" : "script",
+        "ruleHash" : "8711d6da3129a201"
+      },
       "text" : "Edição direta: sem botão Salvar, toda mudança é gravada na hora e pode ser desfeita"
     },
     {
@@ -30,6 +42,12 @@
       "details" : "O que a IA, o CLI, o MCP ou um editor de texto mudam em .vibedeck/ ou vibedeck.json aparece no app sem reabrir, sem perder o que o usuário está digitando. Item apagado no disco some da tela e suas abas fecham.\nVerificar: com o app aberto, alterar via CLI e ver a tela atualizar.",
       "id" : "9BBFB48C-17CC-4FD9-8D7C-F1FD71529D95",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/dinamicas-da-interface/9bbfb48c.sh",
+        "generatedAt" : "2026-10-09T01:26:45Z",
+        "mode" : "script",
+        "ruleHash" : "5dcf28c934185de2"
+      },
       "text" : "Mudanças feitas fora do app aparecem ao vivo"
     },
     {
@@ -38,6 +56,12 @@
       "details" : "Revisões: painel do item selecionado (tipo, status, prioridade, alvo, regras ligadas). Ideias: regras rascunho e promoção. Regras: verificações registradas do tópico. ⌥⌘I mostra/oculta em todos.\nVerificar: ⌥⌘I alterna o painel em cada tipo de página.",
       "id" : "34D2EA32-DD0D-4405-93F6-FDABEBA7CC1B",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/dinamicas-da-interface/34d2ea32.sh",
+        "generatedAt" : "2026-10-09T01:26:45Z",
+        "mode" : "script",
+        "ruleHash" : "afb0fca9e5ffc77b"
+      },
       "text" : "Detalhe + inspector: o painel lateral mostra o contexto do item (⌥⌘I)"
     },
     {
@@ -46,6 +70,12 @@
       "details" : "\"Abrir em Nova Aba\" no menu de contexto da sidebar e das listas; barra de abas só com mais de uma aba; clique do meio fecha; abas persistem entre aberturas.\nVerificar: abrir dois itens em abas, fechar e reabrir a janela.",
       "id" : "3D22A05A-9E61-433B-A8E2-00BFA2A968EE",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/dinamicas-da-interface/3d22a05a.sh",
+        "generatedAt" : "2026-10-09T01:26:45Z",
+        "mode" : "script",
+        "ruleHash" : "e791e7badabad5a1"
+      },
       "text" : "Qualquer item pode abrir em aba"
     },
     {
@@ -54,6 +84,12 @@
       "details" : "A tela de boas-vindas abre pasta (⌘O), lista recentes e, quando a pasta não é um projeto VibeDeck, oferece criar um (nome do projeto) em vez de dar erro.\nVerificar: abrir uma pasta vazia mostra a opção.",
       "id" : "365080A7-DD8F-4EBE-9CDF-979D07F6A5C3",
       "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/dinamicas-da-interface/365080a7.sh",
+        "generatedAt" : "2026-10-09T01:26:45Z",
+        "mode" : "script",
+        "ruleHash" : "d0beb3e702e73e54"
+      },
       "text" : "Pasta sem vibedeck.json oferece \"Inicializar projeto\""
     }
   ],

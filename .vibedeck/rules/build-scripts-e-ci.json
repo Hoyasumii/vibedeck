@@ -16,6 +16,12 @@
       "details" : "platforms: [.macOS(.v26)] e swift-tools-version: 6.2; três produtos (VibeDeckApp, vibedeck, VibeDeckCore); dependências só swift-argument-parser, swift-sdk (MCP), swift-markdown-ui e SwiftTerm (só no app, fixado em 1.11.x: 1.12+ compila um shader Metal que exige o Metal Toolchain). O VibeDeckCore não depende de nada externo nem de SwiftUI.\nVerificar: dependência nova é justificada e não entra no Core.",
       "id" : "B6B91F0E-F8CD-43C8-85A8-333C324684C7",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/build-scripts-e-ci/b6b91f0e.sh",
+        "generatedAt" : "2026-10-09T01:20:58Z",
+        "mode" : "script",
+        "ruleHash" : "fb968f046f6cfb7f"
+      },
       "text" : "macOS 26 e swift-tools 6.2 no Package.swift"
     },
     {
@@ -24,6 +30,12 @@
       "details" : "env.sh usa o SDK 26 quando só há Command Line Tools sem o plugin SwiftUIMacros (o SDK 27 transforma @State em macro). Scripts que compilam Swift fazem `cd \"$(dirname \"$0\")/..\"` e `source scripts/env.sh`; test.sh é a exceção documentada (compila só o alvo de testes com o SDK padrão).\nVerificar: script novo segue o cabeçalho.",
       "id" : "10F1FCB3-C0AB-4119-8CF9-85162FBCE622",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/build-scripts-e-ci/10f1fcb3.sh",
+        "generatedAt" : "2026-10-09T01:20:58Z",
+        "mode" : "script",
+        "ruleHash" : "cbaac33f62fc703a"
+      },
       "text" : "Scripts usam set -euo pipefail e source scripts/env.sh"
     },
     {
@@ -32,6 +44,12 @@
       "details" : "swift.yml tem paths-ignore worker/** e roda `swift test` no macos-latest com Xcode latest-stable; worker.yml só dispara com worker/**, schema/** ou o próprio workflow, e o job deploy (wrangler, concurrency worker-deploy, secrets CLOUDFLARE_*) só roda em push na main, depois do check.\nVerificar: workflows novos ou alterados mantêm esses filtros.",
       "id" : "A111C3ED-0A9C-4368-83DE-7C91B1697406",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/build-scripts-e-ci/a111c3ed.sh",
+        "generatedAt" : "2026-10-09T01:20:58Z",
+        "mode" : "script",
+        "ruleHash" : "7569bbd6ef9e5632"
+      },
       "text" : "Os workflows ignoram os paths um do outro; deploy só na main"
     },
     {
@@ -40,6 +58,12 @@
       "details" : "Gera build/VibeDeck.app com o app em Contents/MacOS/VibeDeck, o CLI em Contents/Helpers/vibedeck, bundles SwiftPM em Resources, AppIcon.icns, Info.plist com a versão do CLI, e o DMG build/VibeDeck-<versão>.dmg; --install-cli faz um symlink em ~/.local/bin. build/ não é versionado.\nVerificar: rodar scripts/build-app.sh e abrir o app.",
       "id" : "B7D9E63A-D446-47D8-8E57-151F9E4E1AC4",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/build-scripts-e-ci/b7d9e63a.sh",
+        "generatedAt" : "2026-10-09T01:20:58Z",
+        "mode" : "script",
+        "ruleHash" : "230aa6c790baf577"
+      },
       "text" : "build-app.sh empacota o CLI dentro do app e gera o DMG"
     },
     {
@@ -48,6 +72,12 @@
       "details" : "assets/AppIcon.icns vem de `swift scripts/make-icon.swift` e o fundo do DMG de scripts/make-dmg-background.swift. Para mudar, altere o script e regenere, em vez de editar o binário à mão.\nVerificar: o diff de assets/ vem junto com o script correspondente.",
       "id" : "99C049AC-A1D3-4B87-AF5E-2C3135E5549E",
       "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/build-scripts-e-ci/99c049ac.sh",
+        "generatedAt" : "2026-10-09T01:20:58Z",
+        "mode" : "script",
+        "ruleHash" : "60c031e0c816462b"
+      },
       "text" : "Ícone e fundo do DMG são gerados por script"
     }
   ],

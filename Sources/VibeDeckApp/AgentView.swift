@@ -64,6 +64,15 @@ struct AgentView: View {
             .font(.title2.weight(.semibold))
             .textFieldStyle(.plain)
 
+            // Hidden, not disabled, when no AI provider is installed.
+            if !AIProvider.installed.isEmpty {
+                AIProviderSettingsView(settings: agent.providerSettings) { provider, settings in
+                    model.mutateAgent(slug, "Configurar provedor", undo: undo) {
+                        var all = $0.providerSettings ?? [:]; all[provider] = settings; $0.providerSettings = all
+                    }
+                }
+            }
+
             // A single HStack (not ViewThatFits): see IdeaView.
             HStack(spacing: 12) {
                 CommitTextField("Modelo (ex.: sonnet, opus)", value: agent.model ?? "") { value in

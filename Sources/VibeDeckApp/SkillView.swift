@@ -73,6 +73,15 @@ struct SkillView: View {
             .textFieldStyle(.plain)
             .foregroundStyle(.secondary)
 
+            // Hidden, not disabled, when no AI provider is installed.
+            if !AIProvider.installed.isEmpty {
+                AIProviderSettingsView(settings: skill.providerSettings) { provider, settings in
+                    model.mutateSkill(slug, "Configurar provedor", undo: undo) {
+                        var all = $0.providerSettings ?? [:]; all[provider] = settings; $0.providerSettings = all
+                    }
+                }
+            }
+
             // A single HStack (not ViewThatFits): see IdeaView.
             HStack(spacing: 12) {
                 CommitTextField("Modelo (ex.: sonnet, opus)", value: skill.model ?? "") { value in

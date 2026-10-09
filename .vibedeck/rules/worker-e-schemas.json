@@ -14,6 +14,13 @@
       "details" : "`npm run sync` apaga worker/public e copia ../schema/v1 para public/v1 (roda em dev, deploy e no CI). Edite sempre schema/v1/*.schema.json; mudanças em worker/public se perdem.\nVerificar: o diff não toca em worker/public/**.",
       "id" : "EFDEC345-F90B-41DA-9484-9F470C8E3E94",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/worker-e-schemas/efdec345.sh",
+        "generatedAt" : "2026-10-09T01:24:02Z",
+        "mode" : "script",
+        "reason" : "Falha se VIBEDECK_FILES toca worker/public/**, se algo em worker/public é versionado, se deixa de ser ignorado ou se o script sync não regenera public a partir de ../schema/v1.",
+        "ruleHash" : "5b85fd2dfba2253f"
+      },
       "text" : "schema/v1 é a fonte; worker/public é gerado"
     },
     {
@@ -22,6 +29,13 @@
       "details" : "No diretório worker/: `npm ci && npm run sync && npm run typecheck` (o mesmo job check de .github/workflows/worker.yml).\nVerificar: rodar e anexar o resultado na nota do check.",
       "id" : "4C804BFE-C826-440C-A3DF-F22AF3D16FD5",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/worker-e-schemas/4c804bfe.sh",
+        "generatedAt" : "2026-10-09T01:24:02Z",
+        "mode" : "script",
+        "reason" : "Em worker/: npm ci --offline (só se node_modules diverge do package-lock), npm run sync e npm run typecheck.",
+        "ruleHash" : "428dbe3f86f05d87"
+      },
       "text" : "npm run typecheck passa"
     },
     {
@@ -30,6 +44,13 @@
       "details" : "worker/src/index.ts: OPTIONS -> 204 com CORS; outros métodos -> 405 com CORS; asset inexistente -> 404 com CORS; asset encontrado -> headers do asset + CORS. Editores e validadores buscam os schemas de outras origens.\nVerificar: toda resposta nova inclui os headers CORS.",
       "id" : "A486BCE3-EAA0-47DD-8826-B20BF64166F5",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/worker-e-schemas/a486bce3.sh",
+        "generatedAt" : "2026-10-09T01:24:02Z",
+        "mode" : "script",
+        "reason" : "CORS com Allow-Origin * e métodos GET, HEAD, OPTIONS; OPTIONS 204, outros 405, asset ausente 404, todos com CORS; todo new Response/Response.json em worker/src leva headers CORS.",
+        "ruleHash" : "38d523f732627081"
+      },
       "text" : "CORS em todas as respostas; só GET/HEAD/OPTIONS"
     },
     {
@@ -38,6 +59,13 @@
       "details" : "/, /v1 e /v1/ devolvem {name, schemas:{project, reviewGroup, ruleTopic, idea, ruleCheck}}. Schema novo entra nesse índice, em SchemaURL (Models.swift) e no AGENTS.md (linha \"Schemas:\").\nVerificar: os três lugares listam o mesmo conjunto.",
       "id" : "CD3057F2-1C45-4F09-A9C7-7EC146998DFA",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/worker-e-schemas/cd3057f2.sh",
+        "generatedAt" : "2026-10-09T01:24:02Z",
+        "mode" : "script",
+        "reason" : "Mesmo conjunto de schemas no índice do worker, em SchemaURL (Models.swift), na linha Schemas: do AgentsGuide.swift/.vibedeck/AGENTS.md e em schema/v1; chaves do índice iguais aos nomes do SchemaURL.",
+        "ruleHash" : "5717a25161e7c2ef"
+      },
       "text" : "O índice lista todos os schemas"
     },
     {
@@ -46,6 +74,13 @@
       "details" : "Os arquivos gravados pelo app têm $schema = SchemaURL.*; o $id de cada schema/v1/*.schema.json deve ser a mesma URL, para os editores resolverem.\nVerificar: `grep \"\\$id\" schema/v1/*.json` usa a base de Models.swift.",
       "id" : "0A89A5BC-A21B-465C-AE44-9099C3D77A9B",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/worker-e-schemas/0a89a5bc.sh",
+        "generatedAt" : "2026-10-09T01:24:02Z",
+        "mode" : "script",
+        "reason" : "O $id de cada schema/*/*.schema.json é igual à URL derivada de SchemaURL.base em Models.swift.",
+        "ruleHash" : "1940a99ecf47dd8b"
+      },
       "text" : "O $id dos schemas bate com SchemaURL.base"
     },
     {
@@ -54,6 +89,13 @@
       "details" : "Arquivos existentes apontam para /v1/... Tornar um campo obrigatório, renomear ou remover um campo quebra projetos já criados; nesse caso, crie schema/v2 (e suba version no Project) em vez de alterar a v1. Mudanças compatíveis (campo opcional novo) podem ir na v1.\nVerificar: diffs em schema/v1 só adicionam campos opcionais.",
       "id" : "48A5C815-B18A-4F32-B67E-E2A8F8FB216E",
       "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/worker-e-schemas/48a5c815.sh",
+        "generatedAt" : "2026-10-09T01:24:02Z",
+        "mode" : "script",
+        "reason" : "Compara schema/v1 com o HEAD: falha se um schema ou campo some, se surge required novo, se type/const/pattern/format mudam, se um enum perde valores, se limites min/max apertam ou se additionalProperties vira false.",
+        "ruleHash" : "59bb64a7fbfde2ba"
+      },
       "text" : "Mudança incompatível de schema vai para nova versão"
     }
   ],

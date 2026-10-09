@@ -1,0 +1,36 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/review-group.schema.json",
+  "createdAt" : "2026-10-08T21:36:12Z",
+  "id" : "3A80EA41-E6EE-4571-B28C-0908890DA7EA",
+  "items" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-08T21:36:27Z",
+      "id" : "B511D796-1C9C-4004-A184-8E78549D6B1B",
+      "kind" : "fix",
+      "priority" : "normal",
+      "status" : "done",
+      "title" : "Tem muitas colunas e o texto de descrição fica quebrado",
+      "updatedAt" : "2026-10-08T23:36:50Z"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-08T23:53:55Z",
+      "id" : "016BB127-B298-4E5C-884D-F424037C6438",
+      "kind" : "fix",
+      "priority" : "normal",
+      "rules" : [
+        "interface-do-app",
+        "dinamicas-da-interface"
+      ],
+      "status" : "done",
+      "target" : {
+        "component" : "StackView",
+        "file" : "Sources/VibeDeckApp/StackView.swift"
+      },
+      "title" : "Alinhar tamanhos dos Cards de Stack",
+      "updatedAt" : "2026-10-09T01:40:22Z"
+    }
+  ],
+  "title" : "Tela de Stack"
+}

@@ -73,7 +73,10 @@ final class ProjectTerminal {
     }
 
     private func makeView() -> LocalProcessTerminalView {
-        let view = LocalProcessTerminalView(frame: NSRect(x: 0, y: 0, width: 340, height: 400))
+        let view = ProjectTerminalView(frame: NSRect(x: 0, y: 0, width: 340, height: 400))
+        view.canReceiveDrop = { [weak self] in self?.isRunning == true }
+        // SwiftTerm keeps only 500 lines by default; long builds and test runs scroll past that.
+        view.getTerminal().changeHistorySize(10_000)
         view.font = Self.font(size: 12)
         view.nativeForegroundColor = .textColor
         // Same as the rest of the window, so the terminal doesn't read as a separate box.
@@ -130,7 +133,7 @@ final class ProjectTerminal {
 /// One project terminal, shown as a page (and tab) of the detail column.
 struct TerminalPage: View {
     let id: UUID
-    @Environment(ClaudeSession.self) private var claude
+    @Environment(AISession.self) private var claude
 
     var body: some View {
         // The terminal is gone for a moment after `exit`, until the window closes its tab.

@@ -6,7 +6,7 @@ import VibeDeckCore
 /// window: chats are saved as JSON outside the project (`ClaudeChatStore`), and the open one keeps a
 /// process alive between turns, resumed with `--resume` when the chat is reopened.
 @Observable @MainActor
-final class ClaudeSession {
+final class AISession {
     struct Entry: Identifiable, Equatable {
         enum Kind: Equatable {
             case user(String)
@@ -25,6 +25,35 @@ final class ClaudeSession {
         var attachments: [String] = []
     }
 
+    private(set) var provider: AIProvider = .claude
+    private var codexDefaultModel: String?
+    private(set) var codexModels: [CodexModel] = []
+    private(set) var codexSkills: [CodexSkill] = []
+    var codexModel = UserDefaults.standard.string(forKey: "codexModel") ?? "" {
+        didSet { UserDefaults.standard.set(codexModel, forKey: "codexModel") }
+    }
+    var codexEffort = UserDefaults.standard.string(forKey: "codexEffort") ?? "" {
+        didSet { UserDefaults.standard.set(codexEffort, forKey: "codexEffort") }
+    }
+    /// Local permission preference, shared with future Codex conversations.
+    var codexAutoReview = UserDefaults.standard.bool(forKey: "codexAutoReview") {
+        didSet { UserDefaults.standard.set(codexAutoReview, forKey: "codexAutoReview") }
+    }
+    private(set) var codexLimits: [CodexRateLimit] = []
+    private(set) var codexStatus: String?
+    @ObservationIgnored private var codex: CodexRPC?
+    @ObservationIgnored private var codexStarting: Task<Void, Error>?
+    @ObservationIgnored private var codexItems: [String: JSONValue] = [:]
+    @ObservationIgnored private var codexRequests: [String: (id: JSONValue, method: String, params: JSONValue)] = [:]
+    @ObservationIgnored private var codexTurn: String?
+    @ObservationIgnored private var codexTask: Task<Void, Never>?
+    @ObservationIgnored private var workflowTask: Task<Void, Never>?
+    @ObservationIgnored private var turnWaiter: CheckedContinuation<String, Error>?
+    @ObservationIgnored private var turnOutput = ""
+    @ObservationIgnored private var workflowQuestions: [String: Int] = [:]
+    private var workflowRef: String?
+    private var workflowProject: ProjectStore?
+    private var selectedProviderKey: String { "aiProvider.\(store.dir.lastPathComponent)" }
     let root: URL
     private(set) var entries: [Entry] = []
     /// All saved chats of the project, most recent first.
@@ -86,12 +115,13 @@ final class ClaudeSession {
         currentKey = "claudeChat.\(projectId.uuidString)"
         chosenModel = ClaudeModel(rawValue: UserDefaults.standard.string(forKey: "claudeModel") ?? "") ?? .automatic
         effort = ClaudeEffort(rawValue: UserDefaults.standard.string(forKey: "claudeEffort") ?? "") ?? .automatic
+        provider = AIProvider(rawValue: UserDefaults.standard.string(forKey: selectedProviderKey) ?? "") ?? AIProvider.installed.first ?? .claude
         migrateLegacySession(key: "claudeSession.\(projectId.uuidString)")
         chats = store.list()
         if let id = UserDefaults.standard.string(forKey: currentKey).flatMap(UUID.init(uuidString:)), let chat = store.load(id) {
             show(chat)
         } else if chats.isEmpty {
-            current = ClaudeChat(title: ClaudeChat.untitled)
+            current = ClaudeChat(title: ClaudeChat.untitled, provider: provider)
         }
     }
 
@@ -110,13 +140,14 @@ final class ClaudeSession {
 
     func newChat() {
         stop()
-        show(ClaudeChat(title: ClaudeChat.untitled))
+        draft = ""; draftMentions = []; draftAttachments = []
+        show(ClaudeChat(title: ClaudeChat.untitled, provider: provider))
     }
 
     func open(_ id: UUID) {
         guard id != current?.id else { return }
         stop()
-        if let chat = store.load(id) { show(chat) }
+        if let chat = store.load(id) { draft = ""; draftMentions = []; draftAttachments = []; show(chat) }
     }
 
     /// Back to the chat list; the chat can be reopened later.
@@ -173,7 +204,9 @@ final class ClaudeSession {
     }
 
     private func show(_ chat: ClaudeChat) {
+        provider = chat.provider
         current = chat
+        if provider == .codex { refreshCodex() }
         entries = chat.messages.map(Entry.init)
         lastCost = nil
     }
@@ -216,10 +249,12 @@ final class ClaudeSession {
     /// `attachments` are files referenced by absolute path in the prompt (nothing is copied).
     func send(_ text: String, mentions: [UUID] = [], attachments: [URL] = []) {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !isWorking else { return }
+        if provider == .codex, handleLocalCommand(text) { return }
         let paths = attachments.map(\.path)
         guard !text.isEmpty || !paths.isEmpty else { return }
         if needsRestart, !isWorking { stop() }
-        if current == nil { current = ClaudeChat(title: ClaudeChat.untitled) }
+        if current == nil { current = ClaudeChat(title: ClaudeChat.untitled, provider: provider) }
         guard let chatId = current?.id else { return }
         if current?.title == ClaudeChat.untitled, !entries.contains(where: { if case .user = $0.kind { true } else { false } }) {
             current?.title = ClaudeChat.title(from: text.isEmpty ? attachments.map(\.lastPathComponent).joined(separator: ", ") : text)
@@ -228,15 +263,36 @@ final class ClaudeSession {
         entries.append(Entry(kind: .user(text), mentions: mentioned.map(\.id), attachments: paths))
         isWorking = true
         persist()
-        var wire = ClaudeChat.wireText(text, mentioning: mentioned, attachments: paths)
+        let expanded = provider == .codex ? ((try? ProjectStore(root: root).expandAICommand(text)) ?? text) : text
+        var wire = ClaudeChat.wireText(expanded, mentioning: mentioned, attachments: paths, provider: provider)
         if !shellContext.isEmpty {
             wire = shellContext.joined(separator: "\n") + "\n\n" + wire
             shellContext = []
         }
-        Task {
-            await ensureStarted()
-            guard current?.id == chatId else { return }
-            write(ClaudeInput.userMessage(wire))
+        if provider == .codex {
+            let wireCommand = text
+            let words = text.split(maxSplits: 1, whereSeparator: \.isWhitespace)
+            let command = words.first.map(String.init) ?? ""
+            if let skill = codexSkills.first(where: { "/" + $0.name == command }), expanded == text {
+                wire = "Use a skill em \(skill.path).\n" + wire
+            }
+            let text = wire
+            codexTask = Task {
+                do {
+                    try await connectCodex()
+                    let options = try ProjectStore(root: root).commandProviderSettings(wireCommand, provider: .codex, availableModels: codexModels.map(\.id), fallback: effectiveCodexModel)
+                    if let warning = options?.warning { entries.append(Entry(kind: .notice(warning))) }
+                    try await prepareCodexThread(settings: options?.settings)
+                    guard current?.id == chatId else { return }
+                    try await launchCodexTurn(text, settings: options?.settings)
+                } catch is CancellationError {} catch { fail(error.localizedDescription) }
+            }
+        } else {
+            Task {
+                await ensureStarted()
+                guard current?.id == chatId else { return }
+                write(ClaudeInput.userMessage(wire))
+            }
         }
     }
 
@@ -254,7 +310,7 @@ final class ClaudeSession {
     func suggestions(for trigger: ClaudeTrigger, mentioned: [UUID]) -> [ClaudeSuggestion] {
         switch trigger.kind {
         case .command:
-            let all = ClaudeCompletion.commands(root: root, reported: reportedCommands)
+            let all = provider == .claude ? ClaudeCompletion.commands(root: root, reported: reportedCommands) : codexSuggestions()
             return ClaudeCompletion.rank(all, query: trigger.query)
         case .mention:
             let chats = chats.filter { $0.id != current?.id && !mentioned.contains($0.id) }
@@ -297,7 +353,7 @@ final class ClaudeSession {
             openTerminal(running: command)
             return
         }
-        if current == nil { current = ClaudeChat(title: ClaudeChat.untitled) }
+        if current == nil { current = ClaudeChat(title: ClaudeChat.untitled, provider: provider) }
         let entry = Entry(kind: .tool(name: "Terminal", summary: command, result: nil, isError: false), toolUseId: "shell-\(UUID().uuidString)")
         entries.append(entry)
         let root = root
@@ -329,6 +385,17 @@ final class ClaudeSession {
 
     func interrupt() {
         guard isWorking else { return }
+        if provider == .codex {
+            if let ref = workflowRef, let store = workflowProject { _ = try? store.stopRun(ref, reason: "Interrompido pelo usuário") }
+            if let thread = current?.sessionId, let turn = codexTurn, let codex {
+                Task { _ = try? await codex.request("turn/interrupt", params: ["threadId": .string(thread), "turnId": .string(turn)]) }
+            }
+            if codexTurn == nil, pending.first?.id != "workflow-questions" { stop(); return }
+            workflowTask?.cancel(); workflowTask = nil
+            codexRequests = [:]; pending = []; isWorking = false
+            turnWaiter?.resume(throwing: CancellationError()); turnWaiter = nil
+            return
+        }
         for request in pending { write(ClaudeInput.deny(request, message: "Interrompido pelo usuário.")) }
         pending.removeAll()
         write(ClaudeInput.interrupt())
@@ -338,7 +405,7 @@ final class ClaudeSession {
     func setPermissionMode(_ mode: ClaudePermissionMode) {
         guard mode != permissionMode else { return }
         permissionMode = mode
-        if process != nil { write(ClaudeInput.setPermissionMode(mode)) }
+        if provider == .claude, process != nil { write(ClaudeInput.setPermissionMode(mode)) }
     }
 
     func setModel(_ model: ClaudeModel) {
@@ -356,6 +423,13 @@ final class ClaudeSession {
     /// Ends the process, saving the transcript so far.
     func stop() {
         persist()
+        codexTask?.cancel(); codexTask = nil
+        workflowTask?.cancel(); workflowTask = nil
+        codexStarting?.cancel(); codexStarting = nil
+        codex?.stop(); codex = nil
+        turnWaiter?.resume(throwing: CancellationError()); turnWaiter = nil
+        codexRequests = [:]; codexItems = [:]; codexTurn = nil
+        workflowRef = nil; workflowProject = nil; workflowQuestions = [:]
         readers.forEach { $0.cancel() }
         readers.removeAll()
         process?.terminationHandler = nil
@@ -374,6 +448,7 @@ final class ClaudeSession {
     }
 
     func decide(_ request: ClaudePermissionRequest, _ decision: Decision) {
+        if provider == .codex { decideCodex(request, decision); return }
         switch decision {
         case .allowOnce: write(ClaudeInput.allow(request))
         case .allowSession: write(ClaudeInput.allow(request, always: .session))
@@ -384,6 +459,7 @@ final class ClaudeSession {
     }
 
     func answer(_ request: ClaudePermissionRequest, _ answers: [String: [String]]) {
+        if provider == .codex { answerCodex(request, answers); return }
         write(ClaudeInput.answer(request, answers))
         pending.removeAll { $0.id == request.id }
     }
@@ -405,6 +481,11 @@ final class ClaudeSession {
     }
 
     func decline(_ request: ClaudePermissionRequest) {
+        if provider == .codex {
+            if request.requestId == "workflow-questions" { interrupt() }
+            else { answerCodex(request, [:]) }
+            return
+        }
         write(ClaudeInput.deny(request, message: "O usuário preferiu não responder."))
         pending.removeAll { $0.id == request.id }
     }
@@ -561,7 +642,7 @@ final class ClaudeSession {
 
 // MARK: - Saved messages
 
-extension ClaudeSession.Entry {
+extension AISession.Entry {
     init(_ message: ClaudeChatMessage) {
         switch message.role {
         case .user: self.init(kind: .user(message.text), mentions: message.mentions ?? [], attachments: message.attachments ?? [])
@@ -583,5 +664,319 @@ extension ClaudeSession.Entry {
         case .notice(let text): ClaudeChatMessage(role: .notice, text: text)
         case .error(let text): ClaudeChatMessage(role: .error, text: text)
         }
+    }
+}
+
+// MARK: - Codex and provider selection
+extension AISession {
+    func selectProvider(_ value: AIProvider, referencing: Bool = false) {
+        guard value != provider else { return }
+        let previous = current?.id
+        stop()
+        provider = value
+        if value == .codex, permissionMode == .auto { permissionMode = .default }
+        UserDefaults.standard.set(value.rawValue, forKey: selectedProviderKey)
+        newChat()
+        draft = ""
+        draftMentions = referencing ? previous.map { [$0] } ?? [] : []
+        draftAttachments = []
+        if value == .codex { refreshCodex() }
+    }
+
+    func refreshCodex() {
+        guard provider == .codex, AIProvider.codex.isInstalled else { return }
+        Task {
+            do { try await connectCodex() }
+            catch { codexStatus = error.localizedDescription }
+        }
+    }
+
+    private func connectCodex() async throws {
+        if let starting = codexStarting { return try await starting.value }
+        if codex != nil { return }
+        let task = Task { @MainActor [self] in
+            let rpc = CodexRPC()
+            rpc.onNotification = { [weak self] method, params in self?.codexNotification(method, params) }
+            rpc.onRequest = { [weak self, weak rpc] id, method, params in
+                guard let self, self.provider == .codex,
+                      params["threadId"]?.string == self.current?.sessionId else {
+                    rpc?.reject(id: id, message: "Solicitação fora da conversa ativa")
+                    return
+                }
+                var detail = params.object ?? [:]
+                if let itemId = params["itemId"]?.string, let item = self.codexItems[itemId] {
+                    detail["changes"] = item["changes"]
+                }
+                guard let request = CodexProtocol.permission(id: id, method: method, params: .object(detail)) else {
+                    rpc?.reject(id: id, message: "Solicitação não suportada pelo VibeDeck")
+                    return
+                }
+                self.codexRequests[request.id] = (id, method, params)
+                self.pending.append(request)
+            }
+            rpc.onDisconnect = { [weak self] message in
+                guard let self else { return }
+                self.codex = nil
+                self.pending = []; self.codexRequests = [:]
+                self.turnWaiter?.resume(throwing: CodexRPCError.server(message)); self.turnWaiter = nil
+                self.fail(message)
+            }
+            do { try await rpc.start(root: root); try Task.checkCancellation() }
+            catch { rpc.stop(); throw error }
+            codex = rpc
+            // Catalog and quota failures should not prevent conversations from starting.
+            do {
+                var models: [CodexModel] = [], cursor: String?
+                repeat {
+                    var params: [String: JSONValue] = ["limit": .number(100)]
+                    if let cursor { params["cursor"] = .string(cursor) }
+                    let page = try await rpc.request("model/list", params: params)
+                    models += CodexModel.list(page); cursor = page["nextCursor"]?.string
+                } while cursor != nil
+                codexModels = models
+                let config = try await rpc.request("config/read", params: ["includeLayers": .bool(false)])
+                let configured = config["config"]?["model"]?.string
+                codexDefaultModel = configured.flatMap { chosen in models.contains { $0.id == chosen } ? chosen : nil } ?? models.first(where: \.isDefault)?.id
+            } catch { codexStatus = error.localizedDescription }
+            do {
+                codexSkills = CodexSkill.list(try await rpc.request("skills/list", params: ["cwds": .array([.string(root.path)])]))
+            } catch { codexStatus = error.localizedDescription }
+            await updateCodexLimits()
+        }
+        codexStarting = task
+        defer { codexStarting = nil }
+        try await task.value
+    }
+
+    func updateCodexLimits() async {
+        guard let codex else { return }
+        do {
+            codexLimits = CodexRateLimit.list(try await codex.request("account/rateLimits/read"))
+            codexStatus = codexLimits.isEmpty ? "Esta conta não informa limites de uso." : nil
+        } catch { codexStatus = error.localizedDescription }
+    }
+
+    var availableCodexEfforts: [String] { codexModels.first(where: { $0.id == effectiveCodexModel })?.efforts ?? [] }
+
+    private var effectiveCodexModel: String? {
+        if !codexModel.isEmpty { return codexModel }
+        return codexDefaultModel ?? codexModels.first(where: \.isDefault)?.id ?? codexModels.first?.id
+    }
+
+    private func prepareCodexThread(fresh: Bool = false, settings: AIProviderSettings? = nil) async throws {
+        try await connectCodex()
+        try Task.checkCancellation()
+        guard let rpc = codex else { throw CodexRPCError.disconnected }
+        var params = CodexProtocol.threadParameters(root: root, mode: permissionMode, model: settings?.model ?? effectiveCodexModel, autoReview: codexAutoReview)
+        params["config"] = .object(CodexMCP.sessionConfig(root: root, cli: ClaudeUsageView.cliPath))
+        params["developerInstructions"] = .string("Você trabalha no VibeDeck. Leia .vibedeck/AGENTS.md para usar os registros e regras do projeto. Ao importar registros ou iniciar workflows pelo MCP, informe provider: codex. Não use ferramentas exclusivas do Claude.")
+        let method: String
+        if !fresh, let id = current?.sessionId { method = "thread/resume"; params["threadId"] = .string(id) }
+        else { method = "thread/start" }
+        let response = try await rpc.request(method, params: params)
+        guard let thread = response["thread"]?["id"]?.string else { throw CodexRPCError.invalidResponse }
+        current?.sessionId = thread
+        model = response["model"]?.string ?? settings?.model ?? effectiveCodexModel
+        persist()
+    }
+
+    private func launchCodexTurn(_ text: String, settings: AIProviderSettings? = nil, schema: JSONValue? = nil) async throws {
+        guard let rpc = codex, let thread = current?.sessionId else { throw CodexRPCError.disconnected }
+        let chosen = settings?.model ?? effectiveCodexModel
+        var effort = settings?.effort ?? (codexEffort.isEmpty ? nil : codexEffort)
+        if let value = effort, let item = codexModels.first(where: { $0.id == chosen }), !item.efforts.contains(value) {
+            entries.append(Entry(kind: .notice("Esforço \(value) indisponível para \(item.title); usando o padrão do modelo.")))
+            effort = nil
+        }
+        var params = CodexProtocol.turnParameters(thread: thread, text: text, mode: permissionMode, model: chosen, effort: effort, autoReview: codexAutoReview)
+        if let schema { params["outputSchema"] = schema }
+        turnOutput = ""; codexTurn = nil
+        let response = try await rpc.request("turn/start", params: params)
+        if isWorking { codexTurn = response["turn"]?["id"]?.string }
+    }
+
+    private func codexNotification(_ method: String, _ params: JSONValue) {
+        if method == "account/rateLimits/updated" { codexLimits = CodexRateLimit.list(params); return }
+        if method == "skills/changed" {
+            Task { if let codex { codexSkills = CodexSkill.list((try? await codex.request("skills/list", params: ["cwds": .array([.string(root.path)]), "forceReload": .bool(true)])) ?? .null) } }
+            return
+        }
+        guard let thread = params["threadId"]?.string, thread == current?.sessionId else { return }
+        if method == "item/started", let id = params["item"]?["id"]?.string { codexItems[id] = params["item"] }
+        if method == "turn/started" { codexTurn = params["turn"]?["id"]?.string; isWorking = true }
+        if method == "serverRequest/resolved", let id = params["requestId"] {
+            let key = CodexProtocol.key(id); pending.removeAll { $0.id == key }; codexRequests[key] = nil
+        }
+        if method == "item/agentMessage/delta" { turnOutput += params["delta"]?.string ?? "" }
+        if method == "item/completed", params["item"]?["type"]?.string == "agentMessage", turnOutput.isEmpty {
+            let text = params["item"]?["text"]?.string ?? ""
+            turnOutput = text
+            if !text.isEmpty { handle(.textDelta(text)) }
+        }
+        let event = CodexProtocol.event(method, params)
+        handle(event)
+        if case .result(let result) = event {
+            let waiter = turnWaiter; turnWaiter = nil
+            if result.isError { waiter?.resume(throwing: CodexRPCError.server(result.text ?? "A etapa falhou")) }
+            else if params["turn"]?["status"]?.string == "interrupted" { waiter?.resume(throwing: CancellationError()) }
+            else { waiter?.resume(returning: turnOutput) }
+            codexRequests = [:]; codexTurn = nil
+            Task { await updateCodexLimits() }
+        }
+    }
+
+    func canRemember(_ request: ClaudePermissionRequest) -> Bool {
+        provider == .claude || codexRequests[request.id]?.params["proposedExecpolicyAmendment"]?.array?.isEmpty == false
+    }
+
+    private func decideCodex(_ request: ClaudePermissionRequest, _ decision: Decision) {
+        guard let original = codexRequests.removeValue(forKey: request.id), let codex else { return }
+        let value: JSONValue
+        switch original.method {
+        case "item/permissions/requestApproval":
+            value = .object(["permissions": decision == .deny ? .object([:]) : original.params["permissions"] ?? .object([:]), "scope": .string(decision == .allowSession ? "session" : "turn")])
+        case "item/tool/requestApproval":
+            value = .object(["decision": .string(decision == .deny ? "decline" : decision == .allowSession ? "acceptForSession" : "accept")])
+        default:
+            let choice: JSONValue
+            if decision == .allowAlways, let amendment = original.params["proposedExecpolicyAmendment"], amendment.array?.isEmpty == false {
+                choice = .object(["acceptWithExecpolicyAmendment": .object(["execpolicy_amendment": amendment])])
+            } else { choice = .string(decision == .deny ? "decline" : decision == .allowSession ? "acceptForSession" : "accept") }
+            value = .object(["decision": choice])
+        }
+        do { try codex.respond(id: original.id, result: value) } catch { fail(error.localizedDescription) }
+        pending.removeAll { $0.id == request.id }
+    }
+
+    private func answerCodex(_ request: ClaudePermissionRequest, _ answers: [String: [String]]) {
+        if request.id == "workflow-questions" {
+            guard let ref = workflowRef, let store = workflowProject else { return }
+            do {
+                for (text, number) in workflowQuestions {
+                    guard let selected = answers[text], !selected.isEmpty else { continue }
+                    _ = try store.answerRun(ref, number: number, answer: selected.joined(separator: ", "))
+                }
+                pending.removeAll { $0.id == request.id }
+                workflowTask = Task { await continueCodexWorkflow(ref, store: store) }
+            } catch { fail(error.localizedDescription) }
+            return
+        }
+        guard let original = codexRequests.removeValue(forKey: request.id), let codex else { return }
+        do { try codex.respond(id: original.id, result: CodexProtocol.answer(params: original.params, answers: answers)) }
+        catch { fail(error.localizedDescription) }
+        pending.removeAll { $0.id == request.id }
+    }
+
+    private func codexSuggestions() -> [ClaudeSuggestion] {
+        var suggestions = [ClaudeSuggestion(kind: .command, name: "/clear", detail: "Limpar esta conversa"), ClaudeSuggestion(kind: .command, name: "/compact", detail: "Compactar o contexto"), ClaudeSuggestion(kind: .command, name: "/context", detail: "Informações da sessão")]
+        suggestions += codexSkills.map { ClaudeSuggestion(kind: .command, name: "/" + $0.name, detail: $0.description) }
+        do {
+            let store = ProjectStore(root: root)
+            suggestions += ((try? store.listCommands()) ?? []).map { ClaudeSuggestion(kind: .command, name: "/" + $0.slug, detail: $0.command.summary) }
+            suggestions += ((try? store.listSkills()) ?? []).map { ClaudeSuggestion(kind: .command, name: "/" + $0.slug, detail: $0.skill.summary) }
+            suggestions += ((try? store.listAgents()) ?? []).map { ClaudeSuggestion(kind: .command, name: "/agent:" + $0.slug, detail: $0.agent.summary) }
+        }
+        return suggestions
+    }
+
+    private func handleLocalCommand(_ text: String) -> Bool {
+        if text == "/clear" { if let id = current?.id { clear(id) }; return true }
+        if text == "/context" {
+            entries.append(Entry(kind: .notice("Codex · \(model ?? "modelo padrão") · \(current?.sessionId ?? "nova sessão")"))); persist(); return true
+        }
+        if text == "/compact" {
+            guard let codex, let thread = current?.sessionId else { return true }
+            Task {
+                do { _ = try await codex.request("thread/compact/start", params: ["threadId": .string(thread)]); entries.append(Entry(kind: .notice("Compactação solicitada ao Codex."))); persist() }
+                catch { fail(error.localizedDescription) }
+            }
+            return true
+        }
+        return false
+    }
+
+    // The VibeDeck engine owns transitions; each Codex step starts a clean thread.
+    func executeWorkflow(_ workflow: String, input: String?, from: String? = nil, store: ProjectStore) {
+        do {
+            let (ref, run, _) = try store.startRun(workflow, input: input, from: from, provider: provider)
+            resumeWorkflow(ref, run: run, store: store)
+        } catch { fail(error.localizedDescription) }
+    }
+    func resumeWorkflow(_ ref: String, run: WorkflowRun, store: ProjectStore) {
+        guard !isWorking else { return }
+        if provider != run.provider { selectProvider(run.provider) }
+        guard run.provider.isInstalled else { fail("\(run.provider.title) não está instalado; esta execução pertence a ele."); return }
+        if run.provider == .claude {
+            ask(WorkflowOrchestration.orchestratorPrompt(ref: ref, title: (try? store.loadWorkflow(run.workflow).title) ?? run.workflow, input: run.input, cli: ClaudeUsageView.cliPath ?? "vibedeck"))
+        } else {
+            newChat()
+            current?.title = "Workflow · \((try? store.loadWorkflow(run.workflow).title) ?? run.workflow)"
+            requestedPage = .chat
+            workflowRef = ref; workflowProject = store
+            workflowTask = Task { await continueCodexWorkflow(ref, store: store) }
+        }
+    }
+
+    private func workflowTurn(_ text: String, settings: AIProviderSettings? = nil, schema: JSONValue? = nil) async throws -> String {
+        try Task.checkCancellation()
+        isWorking = true
+        try await prepareCodexThread(fresh: true, settings: settings)
+        return try await withCheckedThrowingContinuation { continuation in
+            turnWaiter = continuation
+            codexTask = Task {
+                do { try await launchCodexTurn(text, settings: settings, schema: schema) }
+                catch { let waiter = turnWaiter; turnWaiter = nil; waiter?.resume(throwing: error) }
+            }
+        }
+    }
+
+    private func continueCodexWorkflow(_ ref: String, store: ProjectStore) async {
+        do {
+            isWorking = true
+            try await connectCodex()
+            while true {
+                try Task.checkCancellation()
+                let action = try store.nextRunAction(ref)
+                switch action.action {
+                case .done, .stop:
+                    let run = try store.loadRun(ref)
+                    let rows = run.history.enumerated().map { "\($0.offset + 1) | \($0.element.step) | \($0.element.verdict ?? "—")" }.joined(separator: "\n")
+                    entries.append(Entry(kind: .notice("Workflow \(run.status.rawValue): \(action.reason)\n\(rows)")))
+                    isWorking = false; persist(); workflowRef = nil; return
+                case .ask:
+                    workflowQuestions = [:]
+                    let questions: [JSONValue] = (action.questions ?? []).map { q in
+                        workflowQuestions[q.question] = q.number
+                        return .object(["question": .string(q.question), "header": .string("\(q.step) \(q.number)"), "multiSelect": .bool(q.multiple), "options": .array(q.options.map { .object(["label": .string($0.label), "description": .string($0.description ?? "")]) })])
+                    }
+                    pending = [ClaudePermissionRequest(requestId: "workflow-questions", toolName: "AskUserQuestion", input: ["questions": .array(questions)], description: nil, suggestions: [])]
+                    isWorking = true; persist(); return
+                case .runStep:
+                    entries.append(Entry(kind: .notice("▶ Etapa \(action.step ?? "") — \(action.title ?? "")")))
+                    let settings = try store.runProviderSettings(ref, availableModels: codexModels.map(\.id), fallback: effectiveCodexModel)
+                    if let warning = settings.warning { entries.append(Entry(kind: .notice(warning))) }
+                    let prompt = try store.runStepPrompt(ref, cli: ClaudeUsageView.cliPath ?? "vibedeck")
+                    let output = try await workflowTurn(prompt, settings: settings.settings)
+                    let verdict = output.split(whereSeparator: \.isNewline).last.map(String.init)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                    guard !verdict.isEmpty else { throw CodexRPCError.server("A etapa terminou sem veredito.") }
+                    if verdict == "PERGUNTA" {
+                        guard !(try store.loadRun(ref)).openQuestions.isEmpty else { throw CodexRPCError.server("A etapa retornou PERGUNTA sem registrar perguntas.") }
+                        continue
+                    }
+                    var next = try store.recordRun(ref, verdict: verdict, summary: String(output.prefix(2000)))
+                    if next.action == .decide {
+                        let candidates = String(decoding: try VDJSON.encode(next.candidates ?? []), as: UTF8.self)
+                        let schema: JSONValue = .object(["type": .string("object"), "properties": .object(["to": .object(["type": .array([.string("string"), .string("null")])])]), "required": .array([.string("to")]), "additionalProperties": .bool(false)])
+                        let choice = try await workflowTurn("Avalie as condições na ordem sobre a saída da etapa. Retorne {\"to\":\"id\"} para a primeira condição verdadeira, ou {\"to\":null}.\nCondições: \(candidates)\nSaída: \(output)", schema: schema)
+                        let value = try JSONDecoder().decode(JSONValue.self, from: Data(choice.utf8))
+                        guard let target = value["to"] else { throw CodexRPCError.invalidResponse }
+                        next = try store.recordRun(ref, verdict: verdict, summary: String(output.prefix(2000)), to: target.string, noneHolds: target == .null)
+                    }
+                    _ = next
+                case .decide: throw CodexRPCError.server("Transição pendente sem saída da etapa.")
+                }
+            }
+        } catch is CancellationError { isWorking = false }
+        catch { fail(error.localizedDescription) }
     }
 }

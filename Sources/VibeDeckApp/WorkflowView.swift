@@ -8,7 +8,7 @@ struct WorkflowView: View {
     let slug: String
     let open: (SidebarItem) -> Void
     @Environment(ProjectModel.self) private var model
-    @Environment(ClaudeSession.self) private var claude
+    @Environment(AISession.self) private var claude
     @Environment(\.undoManager) private var undo
     @State private var showMap = true
     @State private var running = false
@@ -38,11 +38,11 @@ struct WorkflowView: View {
         .navigationTitle(workflow.title)
         .navigationSubtitle("\(workflow.steps.count) etapa(s) · até \(workflow.maxSteps ?? Workflow.defaultMaxSteps) por execução")
         .toolbar {
-            if ClaudeCode.isInstalled {
+            if !AIProvider.installed.isEmpty {
                 ToolbarItem {
                     Button { running = true } label: { Label("Executar", systemImage: "play") }
                         .disabled(workflow.steps.isEmpty)
-                        .help("Executa o workflow no Claude Code: o chat orquestra, cada etapa roda num subagente e o veredito decide a transição")
+                        .help("Executa o workflow no provedor selecionado: o chat orquestra, cada etapa roda num subagente e o veredito decide a transição")
                 }
             }
             ToolbarItem(placement: .principal) {
@@ -67,8 +67,7 @@ struct WorkflowView: View {
                 title: workflow.title, inputHint: workflow.input, warnings: model.workflowPlan(slug)?.allWarnings ?? [],
                 runs: model.runs(of: slug).map(\.value)
             ) { input in
-                guard let prompt = model.startRun(slug, input: input.isEmpty ? nil : input) else { return }
-                claude.ask(prompt)
+                claude.executeWorkflow(slug, input: input.isEmpty ? nil : input, store: model.store)
             }
         }
     }
@@ -173,7 +172,7 @@ struct WorkflowView: View {
                 Section("Execuções") {
                     ForEach(runs) { entry in
                         WorkflowRunRow(ref: entry.slug, run: entry.value, label: { label(of: $0, in: steps) }) {
-                            claude.ask(model.orchestratorPrompt(entry.slug, entry.value))
+                            claude.resumeWorkflow(entry.slug, run: entry.value, store: model.store)
                         }
                     }
                 }
@@ -467,7 +466,7 @@ private struct WorkflowRunRow: View {
     let label: (String) -> String
     let resume: () -> Void
     @Environment(ProjectModel.self) private var model
-    @Environment(ClaudeSession.self) private var claude
+    @Environment(AISession.self) private var claude
     @State private var expanded = false
 
     var body: some View {
@@ -485,10 +484,11 @@ private struct WorkflowRunRow: View {
                     Label(q.question, systemImage: "questionmark.bubble").font(.caption).foregroundStyle(.orange)
                 }
                 HStack {
-                    if ClaudeCode.isInstalled, run.status != .done {
+                    if !AIProvider.installed.isEmpty, run.status != .done {
                         Button(run.isFinished ? "Retomar" : "Continuar") {
-                            if run.isFinished, let prompt = model.startRun(run.workflow, input: run.input) {
-                                claude.ask(prompt)
+                            if run.isFinished {
+                                if claude.provider != run.provider { claude.selectProvider(run.provider) }
+                                claude.executeWorkflow(run.workflow, input: run.input, store: model.store)
                             } else {
                                 resume()
                             }

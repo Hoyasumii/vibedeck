@@ -14,6 +14,12 @@
       "details" : "vibedeck.json (nome, links, reviewKinds) + .vibedeck/ (docs/*.md, reviews/*.json, rules/*.json, ideas/*.json, checks/*.json). Nada de banco, cache oculto ou estado que só o app conhece: o que aparece na tela tem que estar no disco.\nVerificar: um conceito novo ou campo novo é salvo nesses arquivos e descrito no schema e no AGENTS.md.",
       "id" : "9E02C127-7793-4588-A770-0E817687B02F",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/conceitos-do-produto/9e02c127.sh",
+        "generatedAt" : "2026-10-09T01:27:12Z",
+        "mode" : "script",
+        "ruleHash" : "ee57bc59526c67c3"
+      },
       "text" : "Os dados do projeto vivem em arquivos do repo, legíveis por humano e IA"
     },
     {
@@ -22,6 +28,12 @@
       "details" : "Regras rascunho de uma ideia nunca entram em rules_for nem em checks. Promover cria um tópico real; sincronizar leva regras novas sem duplicar; apagar o tópico despromove (vínculo some, approved volta para exploring, rascunhos ficam).\nVerificar: rules_for não retorna regras de ideia não promovida.",
       "id" : "116AEA24-9A0B-431B-9FC1-8ABE22683898",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/conceitos-do-produto/116aea24.sh",
+        "generatedAt" : "2026-10-09T01:27:12Z",
+        "mode" : "script",
+        "ruleHash" : "08d26ae7b59b49d6"
+      },
       "text" : "Ideias não são regras ativas: só valem depois de promovidas"
     },
     {
@@ -30,6 +42,12 @@
       "details" : "Transformar ideia em regra ativa (ou desfazer isso) é decisão humana. No app é um botão explícito; agentes só chamam promote_idea/unpromote_idea quando o usuário pede.\nVerificar: nenhum fluxo automático promove ou despromove ideias.",
       "id" : "F7531E2B-4846-4C63-BE0F-3DFA1771CCCC",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/conceitos-do-produto/f7531e2b.sh",
+        "generatedAt" : "2026-10-09T01:27:12Z",
+        "mode" : "script",
+        "ruleHash" : "afadd8e4e63ca631"
+      },
       "text" : "Promover ou despromover ideia só a pedido do usuário"
     },
     {
@@ -38,6 +56,12 @@
       "details" : "Cada reviews/<slug>.json é um tema (\"Tela de login\") com seus itens. Item tem kind (um dos reviewKinds do projeto), priority (low/normal/high), target opcional (arquivo, rota, componente, seletor), author e rules opcionais. Itens podem ser movidos entre grupos.\nVerificar: criar item sempre aponta para um grupo; kind vem de reviewKinds.",
       "id" : "BE018170-5258-45AA-876E-5B761B643714",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/conceitos-do-produto/be018170.sh",
+        "generatedAt" : "2026-10-09T01:27:12Z",
+        "mode" : "script",
+        "ruleHash" : "f6f73c1fe391f8e4"
+      },
       "text" : "Revisões são agrupadas por tema, um grupo por arquivo"
     },
     {
@@ -46,6 +70,12 @@
       "details" : "done e wontfix (Não fazer) são estados fechados (isClosed); a lista separa Abertos e Concluídos e permite reabrir.\nVerificar: telas e filtros novos tratam os quatro status e usam isClosed.",
       "id" : "257D96B2-3561-47D2-AB56-33FA0900B331",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/conceitos-do-produto/257d96b2.sh",
+        "generatedAt" : "2026-10-09T01:27:12Z",
+        "mode" : "script",
+        "ruleHash" : "66d2c4a59e5a1d27"
+      },
       "text" : "Status de item de revisão: open → in_progress → done ou wontfix"
     },
     {
@@ -54,6 +84,12 @@
       "details" : "Um check com algum must em fail tem passed=false e não libera conclusão nem done. should em fail mantém passed=true, mas o agente avisa o usuário.\nVerificar: cálculo de passed e mensagens seguem essa diferença.",
       "id" : "54A2D6B0-BC39-4555-A4E9-DB8D418D55CB",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/conceitos-do-produto/54a2d6b0.sh",
+        "generatedAt" : "2026-10-09T01:27:12Z",
+        "mode" : "script",
+        "ruleHash" : "55cc75cdc246333e"
+      },
       "text" : "Regra must bloqueia; regra should só avisa"
     },
     {
@@ -62,6 +98,12 @@
       "details" : "Tópicos aplicáveis = globais + os que casam os arquivos alterados + os explícitos (pedidos ou ligados ao item de revisão). No app, tópico sem escopo mostra \"Sem escopo: vale para toda tarefa\".\nVerificar: rules_for com um arquivo fora de qualquer glob retorna só os tópicos globais.",
       "id" : "6E22946D-DF9C-4D59-B403-1BB9F3F0FFB5",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/conceitos-do-produto/6e22946d.sh",
+        "generatedAt" : "2026-10-09T01:27:12Z",
+        "mode" : "script",
+        "ruleHash" : "c9833be5458b5512"
+      },
       "text" : "Tópico sem paths vale para toda tarefa; com paths, só quando um arquivo alterado casa"
     },
     {
@@ -70,6 +112,12 @@
       "details" : "Cada submit_rule_check grava um arquivo novo em .vibedeck/checks/ com veredito pass/fail/na e nota para cada regra aplicável. Nada no app, CLI ou MCP edita ou apaga checks; um check reprovado é seguido por outro, não corrigido.\nVerificar: nenhuma operação de update/delete de checks.",
       "id" : "C637A278-87F1-4586-BB2F-0864EDB552CB",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/conceitos-do-produto/c637a278.sh",
+        "generatedAt" : "2026-10-09T01:27:12Z",
+        "mode" : "script",
+        "ruleHash" : "d6557f5f59ad7d48"
+      },
       "text" : "Check é histórico imutável"
     },
     {
@@ -78,6 +126,12 @@
       "details" : "Itens de revisão, regras e ideias têm author. O que vem do app é human; o que vem do MCP ou do CLI com --ai é ai, e o app mostra \"Criado por IA\". A IA não apaga o que é de humano.\nVerificar: entidade nova com autoria tem o campo author e o badge no app.",
       "id" : "C9BEE6A5-C314-4547-AE52-52D116B11220",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/conceitos-do-produto/c9bee6a5.sh",
+        "generatedAt" : "2026-10-09T01:27:12Z",
+        "mode" : "script",
+        "ruleHash" : "001a1697d7ca0d82"
+      },
       "text" : "Autoria human/ai sempre registrada"
     },
     {
@@ -86,15 +140,27 @@
       "details" : "Docs (frontmatter tags), links, grupos de revisão, tópicos de regras e ideias. Conceito novo deve ter tags e entrar no filtro #tag.\nVerificar: o conceito novo aparece filtrável por #tag.",
       "id" : "B9E9DD35-4A5F-4FA3-BDDF-014238B8CB50",
       "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/conceitos-do-produto/b9e9dd35.sh",
+        "generatedAt" : "2026-10-09T01:27:12Z",
+        "mode" : "script",
+        "ruleHash" : "d4014df16aabd2fe"
+      },
       "text" : "Todo conceito aceita tags"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T04:24:18Z",
-      "details" : "Toda feature que depende de IA (importar agentes, executar agentes/fluxos, etc.) exige o Claude Code instalado na máquina do usuário. Se não for detectado, as opções não são mostradas na UI (botões, menus, seções), em vez de aparecerem desabilitadas ou darem erro. Outros provedores (Codex etc.) não são suportados por ora.\nVerificar: sem o Claude Code instalado (sem `claude` no PATH e sem ~/.claude), nenhuma opção de IA aparece no app; a detecção é única e reutilizada por toda feature nova de IA.",
+      "details" : "Toda feature que depende de IA (importar agentes, executar agentes/fluxos, Descubra, etc.) exige um provedor suportado instalado na máquina do usuário: Claude Code ou Codex, detectados por AIProvider (AIProvider.installed / provider.isInstalled). Se nenhum for detectado, as opções não são mostradas na UI (botões, menus, seções), em vez de aparecerem desabilitadas ou darem erro; uma feature que só existe para um dos provedores só aparece quando ele está instalado. Fora do app, o Codex também é suportado onde o protocolo é compatível: servidor MCP, CLI e o hook de regras (`vibedeck hook install --agent codex`). Outros provedores não são suportados por ora.\nVerificar: sem Claude Code e sem Codex instalados, nenhuma opção de IA aparece no app; a detecção é única (AIProvider) e reutilizada por toda feature nova de IA",
       "id" : "A31D4912-A7FA-4E2A-B1C2-CC27D577177B",
       "severity" : "must",
-      "text" : "Funcionalidades de IA só funcionam com o Claude Code; sem ele na máquina, nem aparecem"
+      "test" : {
+        "command" : ".vibedeck/tests/conceitos-do-produto/a31d4912.sh",
+        "generatedAt" : "2026-10-09T01:27:12Z",
+        "mode" : "script",
+        "ruleHash" : "248e56105c29005c"
+      },
+      "text" : "Funcionalidades de IA do app exigem um provedor suportado (Claude Code ou Codex); sem nenhum na máquina, nem aparecem"
     }
   ],
   "tags" : [

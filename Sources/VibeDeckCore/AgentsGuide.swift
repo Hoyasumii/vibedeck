@@ -23,10 +23,34 @@ public enum AgentsGuide {
     Itens de revisão ligados a regras (`rules`, ou `target.file` casando os `paths` de um tópico)
     não podem ir para `done` sem um check aprovado para aquele item.
 
+    Com o hook `Stop` ligado (`vibedeck hook install`, ou `--agent codex`), o Claude Code ou o Codex não deixa você encerrar a resposta
+    enquanto um arquivo alterado na sessão tiver regras aplicáveis sem check aprovado depois da alteração:
+    o motivo do bloqueio lista os arquivos e tópicos que faltam.
+
+    ## Stack — consulte antes de implementar
+
+    `stack` no `vibedeck.json` lista as tecnologias de destaque do projeto (ids do [Skill Icons](https://skill-icons.alanreisanjo.workers.dev)),
+    na ordem, com `note` dizendo como o projeto usa cada uma. Antes de implementar algo, leia a stack (`list_stack` /
+    `vibedeck stack --json`): prefira essas tecnologias e siga as notas. Para mudar: `add_stack` / `vibedeck stack add <ids…> --ai`,
+    `remove_stack` / `vibedeck stack remove <ids…>`, `update_stack` / `vibedeck stack note <id> "..."`; ache ids com
+    `search_stack_icons` / `vibedeck stack search <texto>`. O badge da stack no README.md (bloco
+    `<!-- vibedeck:stack:start -->`) é regravado a cada mudança; não o edite à mão.
+
+    ## Padrões de projeto — siga ao implementar
+
+    `patterns` no `vibedeck.json` lista os padrões de código que o projeto adotou (TDD, arquitetura hexagonal, DDD,
+    CQRS…), com `note` dizendo como o projeto aplica cada um. Antes de implementar, leia os padrões (`list_patterns` /
+    `vibedeck patterns --json`) e escreva o código seguindo-os, para manter o projeto consistente.
+    Cada padrão tem um tópico de regras em `.vibedeck/rules/` (`sourcePattern` aponta para ele; `paths` dá o escopo),
+    então as regras dele chegam pelo `rules_for` e são cobradas no check como qualquer outra.
+    Para mudar: `pattern_catalog` / `vibedeck patterns catalog` mostra o catálogo; `add_pattern` / `vibedeck patterns add <ids…> --ai`
+    (ou `--custom "<nome>" --rule "..."`), `remove_pattern` / `vibedeck patterns remove <id>` (apaga o tópico),
+    `update_pattern` / `vibedeck patterns note|paths <id> ...`. Apagar o tópico de um padrão retira o padrão.
+
     ## Estrutura
 
     ```
-    vibedeck.json                 # declara o projeto: nome, links, tipos de revisão (reviewKinds)
+    vibedeck.json                 # declara o projeto: nome, links, stack, padrões (patterns), tipos de revisão (reviewKinds)
     .vibedeck/
       AGENTS.md                   # este arquivo (regenerado pelo app; não edite)
       docs/<slug>.md              # documentos markdown (título = frontmatter `title:` ou primeiro `# `)
@@ -86,13 +110,22 @@ public enum AgentsGuide {
     as regras rascunho ficam na ideia); apagar o tópico de outro jeito também despromove a ideia
     (`approved` volta para `exploring`). Registre ideias que surgirem com `add_idea`.
 
+    ## Provedores de IA
+
+    Registros e workflows são compartilhados entre Claude e Codex. Ao importar ou iniciar uma execução pelo
+    MCP, informe `provider: "codex"` quando estiver no Codex; pela CLI use `--provider codex`.
+    Conversas e execuções persistem o provedor e não mudam automaticamente para outro.
+    Agentes, comandos e skills aceitam `providerSettings` (`claude`/`codex`, com `model` e `effort`).
+    Modelos incompatíveis com o provedor usam o modelo da sessão, com aviso. Não passe modelos Claude ao Codex.
+    `codex_usage` / `vibedeck usage --provider codex` consulta os limites do Codex sem statusline.
+
     ## Agentes
     
     Agentes (`agents/*.json`) são agentes **do VibeDeck**: `title` (nome), `model`, `prompt` (markdown), `tools` e
     `nextSteps` — `{kind: agent|command|skill, ref, note}` apontando para outros agentes/comandos/skills do **VibeDeck**
     (nunca do provedor de IA). Os próximos passos formam um fluxo: o próximo atua sobre o resultado do anterior.
     `agent_flow` / `vibedeck agents flow <ref>` devolve o JSON do fluxo (prompt + passos encadeados) para orquestrar
-    a IA. `import_agents` / `vibedeck agents import` traz os agentes do Claude Code (`.claude/agents`).
+    a IA. `import_agents` / `vibedeck agents import` traz os agentes do Claude Code (`.claude/agents`); `--provider codex` importa os TOML de `.codex/agents`.
 
     ## Comandos
 
@@ -100,7 +133,7 @@ public enum AgentsGuide {
     `argumentHint` (o que vai em `$ARGUMENTS`), `model`, `tools`, `prompt` (markdown) e `nextSteps`, com o mesmo
     fluxo dos agentes — um agente pode ter um comando como próximo passo e vice-versa. `ref` de um passo `command`
     precisa ser um comando existente. `command_flow` / `vibedeck commands flow <ref>` devolve o JSON do fluxo;
-    `import_commands` / `vibedeck commands import` traz os comandos do Claude Code (`.claude/commands`).
+    `import_commands` / `vibedeck commands import` traz os comandos do Claude Code (`.claude/commands`); `--provider codex` importa prompts legados de `.codex/prompts`.
 
     ## Skills
 
@@ -108,7 +141,8 @@ public enum AgentsGuide {
     skill — é o que a dispara), `model`, `tools`, `prompt` (as instruções, em markdown) e `nextSteps`, com o mesmo
     fluxo dos agentes e comandos. `ref` de um passo `skill` precisa ser uma skill existente. `skill_flow` /
     `vibedeck skills flow <ref>` devolve o JSON do fluxo; `import_skills` / `vibedeck skills import` traz as skills do
-    Claude Code (`.claude/skills/<nome>/SKILL.md`; só o `SKILL.md`, os arquivos de apoio ficam onde estão).
+    Claude Code (`.claude/skills/<nome>/SKILL.md`) ou, com `--provider codex`, as skills descobertas pelo Codex.
+    O caminho do `SKILL.md` importado é preservado para que os recursos de apoio possam ser lidos.
 
     ## Workflows
 
@@ -139,6 +173,9 @@ public enum AgentsGuide {
     - Paradas de segurança: `maxSteps`, `maxVisits` e "a etapa voltou para si com o mesmo veredito". Para liberar
       mais uma volta: `runs start <workflow> --input "..." --from <etapa>`.
 
+    No painel do Codex, o VibeDeck controla esse ciclo e cada etapa usa uma thread nova com contexto limpo.
+    Perguntas são apresentadas no painel e gravadas antes de retomar a etapa.
+
     `workflow_flow` / `vibedeck workflows flow <ref>` continua devolvendo o JSON do workflow (sem estado em disco).
 
     ## Tags
@@ -147,6 +184,9 @@ public enum AgentsGuide {
     Use `set_tags` (MCP) ou `vibedeck tag <doc|review|rules|idea|agent|command|skill|workflow> <ref> <tags...>`.
 
     ## Sessões na nuvem
+
+    Codex: use `provider: "codex"` e `environment` no MCP, ou `--provider codex --env <id>` na CLI.
+    O ambiente também pode ficar em `codexCloudEnvironment` no projeto.
 
     `start_cloud_session` / `vibedeck cloud start "<tarefa>"` cria uma sessão do Claude Code na nuvem sobre o
     GitHub. Ela só é criada se a branch padrão local for **igual** à `origin` (`cloud_check` / `vibedeck cloud check`);
@@ -165,6 +205,10 @@ public enum AgentsGuide {
 
     ```sh
     vibedeck status                              # resumo do projeto
+    vibedeck stack --json                        # tecnologias de destaque (consulte antes de implementar)
+    vibedeck stack search postgres | vibedeck stack add postgres --note "17, via Prisma" --ai
+    vibedeck patterns --json                     # padrões de projeto a seguir (TDD, hexagonal, DDD…)
+    vibedeck patterns catalog | vibedeck patterns add tdd hexagonal --path 'src/core/**' --ai
     vibedeck review list --status open --json    # itens abertos
     vibedeck review add "Tela de login" --kind hide "Esconder link de cadastro" --file src/Login.tsx --ai
     vibedeck review set <id> --status done       # id completo ou prefixo (>= 4 chars)

@@ -47,6 +47,8 @@ enum SidebarSection: String, CaseIterable, Hashable {
 }
 
 enum SidebarItem: Hashable {
+    case stack
+    case patterns
     case links
     case claude
     case terminal(UUID)
@@ -62,6 +64,8 @@ enum SidebarItem: Hashable {
 
     var storageKey: String {
         switch self {
+        case .stack: "stack"
+        case .patterns: "patterns"
         case .links: "links"
         case .claude: "claude"
         case .terminal(let id): "terminal:\(id.uuidString)"
@@ -79,7 +83,9 @@ enum SidebarItem: Hashable {
 
     init?(storageKey: String?) {
         guard let key = storageKey else { return nil }
-        if key == "links" { self = .links }
+        if key == "stack" { self = .stack }
+        else if key == "patterns" { self = .patterns }
+        else if key == "links" { self = .links }
         else if key == "claude" { self = .claude }
         else if key.hasPrefix("terminal:") {
             guard let id = UUID(uuidString: String(key.dropFirst(9))) else { return nil }
@@ -107,7 +113,7 @@ enum SidebarItem: Hashable {
     /// The sidebar section this item lives in (expanded while it is selected).
     var section: SidebarSection? {
         switch self {
-        case .links, .claude, .terminal: nil
+        case .stack, .patterns, .links, .claude, .terminal: nil
         case .section(let section): section
         case .doc: .docs
         case .group: .groups
@@ -155,6 +161,7 @@ final class ProjectModel {
     var testRuns: [UUID: RuleTestOutcome] = [:]
     /// Topics whose scripts are running right now.
     var runningTests: Set<String> = []
+    var ruleExecution: RuleExecutionModel?
     var errorMessage: String?
 
     /// Bumped whenever a doc file changes on disk from outside the app.
@@ -183,6 +190,7 @@ final class ProjectModel {
         try? store.refreshAgentsGuideIfNeeded()
         // Topics deleted while the app was closed unpromote their ideas.
         _ = try? store.releaseOrphanedIdeas()
+        _ = try? store.releaseOrphanedPatterns()
         reloadDocs()
         reloadGroups()
         reloadTopics()
@@ -247,6 +255,8 @@ final class ProjectModel {
         }
         // A topic deleted outside the app (Finder, rm, CLI) unpromotes the idea it came from.
         if topicsChanged, let released = try? store.releaseOrphanedIdeas(), !released.isEmpty { ideasChanged = true }
+        // ...and drops the pattern it enforced.
+        if topicsChanged, let dropped = try? store.releaseOrphanedPatterns(), !dropped.isEmpty { projectChanged = true }
         if projectChanged, let p = try? store.loadProject(), p != project { project = p }
         if docsChanged { reloadDocs() }
         if groupsChanged { reloadGroups() }
@@ -330,6 +340,93 @@ final class ProjectModel {
             model.mutateProject(actionName, undo: undo) { $0 = old }
         }
         undo?.setActionName(actionName)
+    }
+
+    /// Changes the stack like `mutateProject`, then rewrites README.md's stack badge in the background.
+    func mutateStack(_ actionName: String, undo: UndoManager?, _ change: (inout [StackItem]) -> Void) {
+        let old = project.stack
+        var new = old
+        change(&new)
+        guard new != old else { return }
+        project.stack = new
+        saveProject()
+        syncReadmeStack()
+        undo?.registerUndo(withTarget: self) { model in
+            model.mutateStack(actionName, undo: undo) { $0 = old }
+        }
+        undo?.setActionName(actionName)
+    }
+
+    // MARK: Patterns
+
+    /// The patterns plus the files of their rule topics: what a pattern change touches, so undo can put it back.
+    struct PatternsSnapshot {
+        var patterns: [ProjectPattern]
+        var topics: [String: Data]
+    }
+
+    private func patternsSnapshot() -> PatternsSnapshot {
+        let topics = ((try? store.listTopics()) ?? []).filter { $0.topic.sourcePattern != nil }
+        var files: [String: Data] = [:]
+        for (slug, _) in topics { files[slug] = FileManager.default.contents(atPath: store.topicURL(slug).path) }
+        return PatternsSnapshot(patterns: (try? store.loadProject().patterns) ?? project.patterns, topics: files)
+    }
+
+    /// Writes a snapshot back: pattern topics not in it are deleted, the others rewritten, the patterns restored.
+    private func restorePatterns(_ snapshot: PatternsSnapshot, _ actionName: String, undo: UndoManager?) {
+        let current = patternsSnapshot()
+        for slug in current.topics.keys where snapshot.topics[slug] == nil {
+            try? FileManager.default.removeItem(at: store.topicURL(slug))
+        }
+        for (slug, data) in snapshot.topics where current.topics[slug] != data { write(data, to: store.topicURL(slug)) }
+        project.patterns = snapshot.patterns
+        saveProject()
+        reloadTopics()
+        undo?.registerUndo(withTarget: self) { model in model.restorePatterns(current, actionName, undo: undo) }
+        undo?.setActionName(actionName)
+    }
+
+    /// Runs a pattern change through the store (it also writes the pattern's rule topic), then refreshes both.
+    /// Undo restores the patterns and their topic files as they were.
+    @discardableResult
+    func changePatterns<T>(_ actionName: String, undo: UndoManager?, _ change: (ProjectStore) throws -> T) -> T? {
+        let before = patternsSnapshot()
+        do {
+            let result = try change(store)
+            reloadProject()
+            reloadTopics()
+            undo?.registerUndo(withTarget: self) { model in model.restorePatterns(before, actionName, undo: undo) }
+            undo?.setActionName(actionName)
+            return result
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+
+    /// Moves a pattern (order only lives in vibedeck.json, so it can be undone).
+    func movePatterns(from source: IndexSet, to destination: Int, undo: UndoManager?) {
+        mutateProject("Reordenar padrões", undo: undo) { $0.patterns.move(fromOffsets: source, toOffset: destination) }
+    }
+
+    private func reloadProject() {
+        if let p = try? store.loadProject(), p != project { project = p }
+    }
+
+    @ObservationIgnored private var readmeSync: Task<Void, Never>?
+    /// Last README.md sync problem (offline Skill Icons, unwritable file); shown in the Stack page.
+    var readmeWarning: String?
+
+    private func syncReadmeStack() {
+        readmeSync?.cancel()
+        let service = StackService(store: store)
+        readmeSync = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled else { return }
+            let warning = await service.syncReadme()
+            guard !Task.isCancelled else { return }
+            self?.readmeWarning = warning
+        }
     }
 
     private func saveProject() {
@@ -477,6 +574,16 @@ final class ProjectModel {
         trash(store.topicURL(slug)) {
             reloadTopics()
             releaseOrphanedIdeas()
+            releaseOrphanedPatterns()
+        }
+    }
+
+    /// Drops patterns whose topic is gone and refreshes the project.
+    private func releaseOrphanedPatterns() {
+        do {
+            if try !store.releaseOrphanedPatterns().isEmpty { reloadProject() }
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 
@@ -495,17 +602,66 @@ final class ProjectModel {
 
     /// Runs the scripts of a topic's rules off the main thread and keeps each outcome in `testRuns`.
     func runTests(topic slug: String) {
-        guard !runningTests.contains(slug) else { return }
-        runningTests.insert(slug)
-        let store = store
-        Task {
-            let result = await Task.detached { Result { try store.runRuleTests(topics: [slug], onlyTopics: true) } }.value
-            runningTests.remove(slug)
-            switch result {
-            case .success(let runs): for run in runs { testRuns[run.rule.id] = run.outcome }
-            case .failure(let error): errorMessage = error.localizedDescription
-            }
+        startRuleExecution(topic: slug)
+    }
+
+    func runAllTests() {
+        startRuleExecution()
+    }
+
+    enum TestGeneration: Equatable {
+        case queued, running, done
+        case failed(String)
+        var isActive: Bool { self == .queued || self == .running }
+    }
+
+    /// Background test generation per topic (see `generateAllTests`); finished entries stay until the next batch.
+    var generatingTests: [String: TestGeneration] = [:]
+    private var generationTask: Task<Void, Never>?
+    var isGeneratingTests: Bool { generatingTests.values.contains(where: \.isActive) }
+
+    /// Writes the tests of `selection` for every topic that has such rules, one background `claude -p` per
+    /// topic, at most `maxConcurrent` at a time. The scripts register themselves through the CLI, so the
+    /// topics reload from disk as each job ends.
+    func generateAllTests(_ selection: RuleTestPrompt.Selection, maxConcurrent: Int = 3) {
+        guard !isGeneratingTests, ruleExecution?.active != true else { return }
+        let cli = ClaudeUsageView.cliPath ?? "vibedeck"
+        let jobs = topics.compactMap { entry -> (slug: String, prompt: String)? in
+            guard !RuleTestPrompt.rules(entry.value, selection).isEmpty else { return nil }
+            return (entry.slug, RuleTestPrompt.generate(slug: entry.slug, topic: entry.value, selection: selection, headless: cli))
         }
+        guard !jobs.isEmpty else { return }
+        generatingTests = Dictionary(uniqueKeysWithValues: jobs.map { ($0.slug, .queued) })
+        let root = store.root
+        generationTask = Task {
+            await withTaskGroup(of: (String, String?).self) { group in
+                var queue = jobs[...]
+                var active = 0
+                while true {
+                    while active < maxConcurrent, !Task.isCancelled, let job = queue.popFirst() {
+                        generatingTests[job.slug] = .running
+                        active += 1
+                        group.addTask {
+                            do { try await RuleTestGenerator.run(root: root, prompt: job.prompt); return (job.slug, nil) }
+                            catch { return (job.slug, error.localizedDescription) }
+                        }
+                    }
+                    guard let (slug, failure) = await group.next() else { break }
+                    active -= 1
+                    reloadTopics()
+                    guard !Task.isCancelled else { continue }
+                    generatingTests[slug] = failure.map(TestGeneration.failed) ?? .done
+                    if let failure, let title = topic(slug)?.title { errorMessage = "Testes de \"\(title)\": \(failure)" }
+                }
+            }
+            generationTask = nil
+        }
+    }
+
+    /// Stops the batch: running `claude` processes are terminated and queued topics dropped.
+    func cancelTestGeneration() {
+        generationTask?.cancel()
+        generatingTests = generatingTests.filter { !$0.value.isActive }
     }
 
     /// Checks that verified at least one rule of the topic, newest first.
@@ -690,7 +846,7 @@ final class ProjectModel {
     /// Prompt that makes the chat continue orchestrating an existing run.
     func orchestratorPrompt(_ ref: String, _ run: WorkflowRun) -> String {
         WorkflowOrchestration.orchestratorPrompt(
-            ref: ref, title: workflow(run.workflow)?.title ?? run.workflow, input: run.input, cli: ClaudeUsageView.cliPath ?? "vibedeck"
+            ref: ref, title: workflow(run.workflow)?.title ?? run.workflow, input: run.input, cli: ClaudeUsageView.cliPath ?? "vibedeck", provider: run.provider
         )
     }
 
@@ -833,15 +989,17 @@ final class ProjectModel {
         case .command(let slug): store.commandURL(slug)
         case .skill(let slug): store.skillURL(slug)
         case .workflow(let slug): store.workflowURL(slug)
-        case .links, .claude, .terminal, .section: nil
+        case .stack, .patterns, .links, .claude, .terminal, .section: nil
         }
     }
 
     /// Display title for a tab showing `item`.
     func title(for item: SidebarItem) -> String {
         switch item {
+        case .stack: "Stack"
+        case .patterns: "Padrões"
         case .links: "Links"
-        case .claude: "Claude"
+        case .claude: "IA"
         case .terminal: "Terminal"
         case .section(let section): section.title
         case .doc(let slug): docs.first { $0.slug == slug }?.title ?? slug
@@ -858,6 +1016,8 @@ final class ProjectModel {
     /// SF Symbol for a tab showing `item`.
     func symbol(for item: SidebarItem) -> String {
         switch item {
+        case .stack: "square.stack.3d.up"
+        case .patterns: "building.columns"
         case .links: "link"
         case .claude: "sparkles"
         case .terminal: "terminal"
@@ -876,8 +1036,8 @@ final class ProjectModel {
     /// Whether `item` still exists in the project (pages always do; files may have been deleted).
     func exists(_ item: SidebarItem) -> Bool {
         switch item {
-        case .links, .terminal, .section: true
-        case .claude: ClaudeCode.isInstalled
+        case .stack, .patterns, .links, .terminal, .section: true
+        case .claude: !AIProvider.installed.isEmpty
         case .doc(let slug): docs.contains { $0.slug == slug }
         case .group(let slug): group(slug) != nil
         case .topic(let slug): topic(slug) != nil
@@ -899,7 +1059,7 @@ final class ProjectModel {
         case .command(let slug): deleteCommand(slug)
         case .skill(let slug): deleteSkill(slug)
         case .workflow(let slug): deleteWorkflow(slug)
-        case .links, .claude, .terminal, .section: break
+        case .stack, .patterns, .links, .claude, .terminal, .section: break
         }
     }
 
@@ -913,7 +1073,7 @@ final class ProjectModel {
         case .command(let slug): mutateCommand(slug, "Editar tags", undo: undo) { $0.tags = tags }
         case .skill(let slug): mutateSkill(slug, "Editar tags", undo: undo) { $0.tags = tags }
         case .workflow(let slug): mutateWorkflow(slug, "Editar tags", undo: undo) { $0.tags = tags }
-        case .links, .claude, .terminal, .section: break
+        case .stack, .patterns, .links, .claude, .terminal, .section: break
         }
     }
 

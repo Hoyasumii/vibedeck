@@ -1,14 +1,4 @@
 # Sobre o projeto
 
-Anotações
----
-- asda
-- asda 
+[![Tecnologias](https://skill-icons.alanreisanjo.workers.dev/icons?i=swift,apple,workers,ts)](https://skill-icons.alanreisanjo.workers.dev)
 
-| title | description |
-| --- | --- |
-| afsa | sfdsf |
-| ada | asda |
-> edsa
-> asda
-> 

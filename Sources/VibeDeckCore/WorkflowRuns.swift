@@ -126,6 +126,7 @@ public struct WorkflowRun: Codable, Equatable, Identifiable, Sendable {
     public var id: UUID
     /// Slug of the workflow.
     public var workflow: String
+    public var provider: AIProvider
     public var input: String?
     public var status: WorkflowRunStatus
     /// Step to run next (nil once finished).
@@ -138,10 +139,11 @@ public struct WorkflowRun: Codable, Equatable, Identifiable, Sendable {
     public var createdAt: Date
     public var updatedAt: Date
 
-    public init(workflow: String, input: String?, start: String?, now: Date = .now) {
+    public init(workflow: String, input: String?, start: String?, provider: AIProvider = .claude, now: Date = .now) {
         self.schema = SchemaURL.workflowRun
         self.id = UUID()
         self.workflow = workflow
+        self.provider = provider
         self.input = input
         self.status = start == nil ? .done : .running
         self.current = start
@@ -154,7 +156,7 @@ public struct WorkflowRun: Codable, Equatable, Identifiable, Sendable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case schema = "$schema", id, workflow, input, status, current, reason, cycle, history, questions, createdAt, updatedAt
+        case schema = "$schema", id, workflow, provider, input, status, current, reason, cycle, history, questions, createdAt, updatedAt
     }
 
     public init(from decoder: Decoder) throws {
@@ -162,6 +164,7 @@ public struct WorkflowRun: Codable, Equatable, Identifiable, Sendable {
         schema = try c.decodeIfPresent(String.self, forKey: .schema)
         id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
         workflow = try c.decode(String.self, forKey: .workflow)
+        provider = try c.decodeIfPresent(AIProvider.self, forKey: .provider) ?? .claude
         input = try c.decodeIfPresent(String.self, forKey: .input)
         status = try c.decodeIfPresent(WorkflowRunStatus.self, forKey: .status) ?? .running
         current = try c.decodeIfPresent(String.self, forKey: .current)
@@ -178,6 +181,7 @@ public struct WorkflowRun: Codable, Equatable, Identifiable, Sendable {
         try c.encodeIfPresent(schema, forKey: .schema)
         try c.encode(id, forKey: .id)
         try c.encode(workflow, forKey: .workflow)
+        try c.encode(provider, forKey: .provider)
         try c.encodeIfPresent(input, forKey: .input)
         try c.encode(status, forKey: .status)
         try c.encodeIfPresent(current, forKey: .current)
@@ -467,8 +471,8 @@ public enum WorkflowOrchestration {
     }
 
     /// Message that makes the chat the orchestrator of a run, like `/conduzir` + the `operador` of claude-kit.
-    public static func orchestratorPrompt(ref: String, title: String, input: String?, cli: String = "vibedeck") -> String {
-        """
+    public static func orchestratorPrompt(ref: String, title: String, input: String?, cli: String = "vibedeck", provider: AIProvider = .claude) -> String {
+        let prompt = """
         Conduza a execução `\(ref)` do workflow "\(title)" do VibeDeck\(input.map { " (entrada: \($0))" } ?? ""). \
         Rodar o workflow autoriza o que as etapas fazem, no modo de permissão desta sessão.
 
@@ -509,5 +513,9 @@ public enum WorkflowOrchestration {
         - Estado final (`done`/`stop`) e o `reason`
         - Próximo passo humano
         """
+        guard provider == .codex else { return prompt }
+        return prompt.replacingOccurrences(of: "(`Agent`, ", with: "(a ferramenta de subagente disponível no Codex, ")
+            .replacingOccurrences(of: "`subagent_type: \"general-purpose\"`, `model` = o `model` da ação quando houver, `description: \"<step>\"`)", with: "contexto limpo; use o modelo configurado para Codex quando disponível)")
+            .replacingOccurrences(of: "faça-as com `AskUserQuestion` (até 4 por vez, na ", with: "apresente-as ao usuário (até 4 por vez, na ")
     }
 }

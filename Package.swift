@@ -36,5 +36,10 @@ let package = Package(
             ]
         ),
         .testTarget(name: "VibeDeckCoreTests", dependencies: ["VibeDeckCore"]),
+        .testTarget(
+            name: "VibeDeckAppTests",
+            dependencies: ["VibeDeckApp", .product(name: "SwiftTerm", package: "SwiftTerm")],
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
     ]
 )

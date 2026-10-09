@@ -84,6 +84,19 @@ public enum ClaudeLaunch {
         if let sessionId { arguments += ["--resume", sessionId] }
         return arguments
     }
+
+    /// Arguments for a one-shot background `claude -p` job (rule test generation): nobody answers permission
+    /// prompts, so edits go through and the tools the job needs are pre-allowed.
+    public static func headlessArguments(prompt: String, model: ClaudeModel = .automatic, effort: ClaudeEffort = .automatic) -> [String] {
+        var arguments = [
+            "-p", prompt, "--output-format", "stream-json", "--verbose",
+            "--permission-mode", ClaudePermissionMode.acceptEdits.rawValue,
+            "--allowedTools", "Read Edit Write Glob Grep Bash",
+        ]
+        if model != .automatic { arguments += ["--model", model.rawValue] }
+        if effort != .automatic { arguments += ["--effort", effort.rawValue] }
+        return arguments
+    }
 }
 
 /// A question asked through Claude Code's AskUserQuestion tool.
@@ -106,6 +119,9 @@ public struct ClaudePermissionRequest: Equatable, Sendable, Identifiable {
     public var input: [String: JSONValue]
     public var description: String?
     public var suggestions: [JSONValue]
+    public init(requestId: String, toolName: String, input: [String: JSONValue], description: String? = nil, suggestions: [JSONValue] = []) {
+        self.requestId = requestId; self.toolName = toolName; self.input = input; self.description = description; self.suggestions = suggestions
+    }
     public var id: String { requestId }
 
     public var isQuestion: Bool { toolName == "AskUserQuestion" }
