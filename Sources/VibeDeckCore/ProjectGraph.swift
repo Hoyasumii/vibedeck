@@ -61,6 +61,14 @@ public struct ProjectGraph: Sendable {
         return try ProjectGraph(data: VDJSON.encode(JSONValue.object(object)))
     }
 
+    /// Generation metadata records an actual completed operation, never a file's modification date.
+    public func generated(at date: Date, provider: AIProvider) throws -> ProjectGraph {
+        var object = value.object ?? [:]
+        object["vibedeck_generated_at"] = .string(date.ISO8601Format())
+        object["vibedeck_provider"] = .string(provider.rawValue)
+        return try ProjectGraph(data: VDJSON.encode(JSONValue.object(object)))
+    }
+
     public var summary: JSONValue {
         .object(["nodes": .number(Double(nodes.count)), "links": .number(Double(links.count)),
                  "generatedAt": value["vibedeck_generated_at"] ?? .null,

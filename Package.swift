@@ -17,7 +17,7 @@ let package = Package(
         .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", .upToNextMinor(from: "1.11.0")),
     ],
     targets: [
-        .target(name: "VibeDeckCore"),
+        .target(name: "VibeDeckCore", resources: [.copy("GraphResources")]),
         .executableTarget(
             name: "VibeDeckApp",
             dependencies: [
