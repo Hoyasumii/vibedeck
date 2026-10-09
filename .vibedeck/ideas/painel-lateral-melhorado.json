@@ -1,0 +1,13 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "human",
+  "body" : "A ideia do Painel lateral melhorado consiste em:\n\n- Omitir tópicos de revisões que não estão sendo trabalhados(tópicos sem issues abertas). Eles devem poder ser visto no painel de revisões, e não no painel lateral. \n\n![Captura de Tela 2026-10-09 às 13.06.47.png](../attachments/painel-lateral-melhorado-captura-de-tela-2026-10-09-as-13-06-47.png)\n\n- Omitir ideias já implementadas(elas podem ser vistas na tela de ideias):\n\n![Captura de Tela 2026-10-09 às 13.08.52.png](../attachments/painel-lateral-melhorado-captura-de-tela-2026-10-09-as-13-08-52.png)",
+  "createdAt" : "2026-10-09T15:59:00Z",
+  "id" : "70094A4A-1578-40DB-88FB-A19346569612",
+  "rules" : [
+
+  ],
+  "status" : "new",
+  "title" : "Painel Lateral Melhorado",
+  "updatedAt" : "2026-10-09T16:09:24Z"
+}

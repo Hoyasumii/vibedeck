@@ -1,0 +1,13 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "human",
+  "body": "A ideia da Reescrita do VibeDeck é botar o Core do Aplicativo em Rust, assim como o CLI e o MCP, e manter o pacote de Swift apenas para a interface do Aplicativo",
+  "createdAt" : "2026-10-09T16:06:01Z",
+  "id" : "35806341-8605-43B0-A13A-456DB1369B35",
+  "rules" : [
+
+  ],
+  "status" : "new",
+  "title" : "Reescrita do VibeDeck",
+  "updatedAt" : "2026-10-09T16:06:01Z"
+}
