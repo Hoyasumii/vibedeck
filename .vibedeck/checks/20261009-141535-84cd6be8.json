@@ -1,0 +1,112 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-09T14:15:35.372Z",
+  "failures" : [
+
+  ],
+  "files" : [
+    ".vibedeck/AGENTS.md",
+    ".vibedeck/guide.md",
+    ".vibedeck/rules/eficiencia-de-ia.json",
+    ".vibedeck/tests/eficiencia-de-ia/6088cc95.sh"
+  ],
+  "id" : "84CD6BE8-4625-45C6-AA62-A9CF045FE70E",
+  "passed" : true,
+  "pending" : [
+    "README atualizado quando muda algo documentado",
+    "Instruções comuns têm uma fonte compartilhada",
+    "Economia nunca dispensa verificações obrigatórias",
+    "Economia se aplica aos provedores suportados"
+  ],
+  "results" : [
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/9d6f362b.sh (exit 0)\n(sem saída)",
+      "ruleId" : "9D6F362B-9F0E-4661-97B3-6158B160D478",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/9f92a765.sh (exit 0)\n(sem saída)",
+      "ruleId" : "9F92A765-76E7-4EA0-A66A-78AE12EE4C8F",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/ac4ba963.sh (exit 0)\n(sem saída)",
+      "ruleId" : "AC4BA963-CDEE-419C-B057-9140643E115D",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/geral/0e5aec71.sh (exit 77)\n(sem saída)",
+      "ruleId" : "0E5AEC71-405E-4113-AB27-615313AB2B5F",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/geral/4095f087.sh (exit 1)\núltimo commit (429bde9): última linha deve ser 'Co-Authored-By: Claude ... <noreply@anthropic.com>', veio: Merge branch 'main' of github.com:Hoyasumii/vibedeck",
+      "ruleId" : "4095F087-1E04-46C0-9AA4-A60C8C16A72B",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/2f64266b.sh (exit 0)\n◇ Test run started.\n↳ Testing Library Version: 2084\n↳ Target Platform: arm64e-apple-macos14.0\n◇ Suite AIEfficiencyTests started.\n◇ Test workflowKeepsOldDecisionsAndFullOutputs() started.\n◇ Test contextPagesAreLosslessImmutableAndConfined() started.\n◇ Test mentionedChatIsRecoverableAndFullModeRemainsAvailable() started.\n✔ Test workflowKeepsOldDecisionsAndFullOutputs() passed after 0.012 seconds.\n✔ Test mentionedChatIsRecoverableAndFullModeRemainsAvailable() passed after 0.023 seconds.\n✔ Test contextPagesAreLosslessImmutableAndConfined() passed after 0.050 seconds.\n✔ Suite AIEfficiencyTests passed after 0.050 seconds.\n✔ Test run with 3 tests in 1 suite passed after 0.050 seconds.",
+      "ruleId" : "2F64266B-FD73-4B70-B293-D9317C7228A1",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/64f3eca8.sh (exit 0)\n[1 / 1]\nBuild complete! (0,72 seg)\n◇ Test run started.\n↳ Testing Library Version: 2084\n↳ Target Platform: arm64e-apple-macos14.0\n◇ Suite AIRecoveryTests started.\n◇ Test invalidAnswerGetsOneRecoveryWithoutChangingSettings() started.\n◇ Test persistentFailureStopsAndTransportErrorsDoNotRetry() started.\n✔ Test invalidAnswerGetsOneRecoveryWithoutChangingSettings() passed after 0.010 seconds.\n✔ Test persistentFailureStopsAndTransportErrorsDoNotRetry() passed after 0.012 seconds.\n✔ Suite AIRecoveryTests passed after 0.012 seconds.\n✔ Test run with 2 tests in 1 suite passed after 0.012 seconds.",
+      "ruleId" : "64F3ECA8-2A3F-400C-8D41-5853009B7F91",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/fc9a5733.sh (exit 0)\nBuilding for debugging...\n[Computing dependencies]\n[Using on-disk description]\nBuild complete! (0,60 seg)\n◇ Test run started.\n↳ Testing Library Version: 2084\n↳ Target Platform: arm64e-apple-macos14.0\n◇ Suite AIEfficiencyTests started.\n◇ Test usageSeparatesMissingZeroCacheAndCumulativeCounts() started.\n✔ Test usageSeparatesMissingZeroCacheAndCumulativeCounts() passed after 0.004 seconds.\n✔ Suite AIEfficiencyTests passed after 0.004 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.004 seconds.",
+      "ruleId" : "FC9A5733-DC0E-4606-BB85-A3CC7592A4BC",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/6088cc95.sh (exit 0)\n◇ Test catalogPaginatesWithoutSendingUserPrompts() started.\n◇ Test guideReducesInitialContextWithoutLosingDocumentation() started.\n◇ Test ruleCheckSummaryKeepsEveryVerdictAndPointsToTheFullCheck() started.\n◇ Test sharedPolicyAppearsOnceInTheGuide() started.\n◇ Test compactRulesForKeepsEveryRuleAndResolvesItsIds() started.\n✔ Test sharedPolicyAppearsOnceInTheGuide() passed after 0.001 seconds.\n✔ Test ruleCheckSummaryKeepsEveryVerdictAndPointsToTheFullCheck() passed after 0.002 seconds.\n✔ Test catalogPaginatesWithoutSendingUserPrompts() passed after 0.006 seconds.\n✔ Test guideReducesInitialContextWithoutLosingDocumentation() passed after 0.018 seconds.\n✔ Test compactRulesForKeepsEveryRuleAndResolvesItsIds() passed after 0.039 seconds.\n✔ Suite AIEfficiencyTests passed after 0.039 seconds.\n✔ Test run with 5 tests in 1 suite passed after 0.039 seconds.\ninstructions: 2803 -> 988 (65% menor)\ntools: 42434 -> 29535 (31% menor)\nrules_for: 17018 -> 7364 (57% menor)",
+      "ruleId" : "6088CC95-37DF-4923-ACD6-B12FCCA307EC",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/7974ee31.sh (exit 0)\nBuilding for debugging...\n[Computing dependencies]\n[Using on-disk description]\nBuild complete! (0,60 seg)\n◇ Test run started.\n↳ Testing Library Version: 2084\n↳ Target Platform: arm64e-apple-macos14.0\n◇ Suite AIRecoveryTests started.\n◇ Test generationChecksOnlySelectedRulesAndRejectsChangedRequirements() started.\n✔ Test generationChecksOnlySelectedRulesAndRejectsChangedRequirements() passed after 0.014 seconds.\n✔ Suite AIRecoveryTests passed after 0.014 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.014 seconds.",
+      "ruleId" : "7974EE31-FD02-492A-8258-C2F15D594E77",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    }
+  ],
+  "task" : "6088CC95 volta a apontar para .vibedeck/tests/eficiencia-de-ia/6088cc95.sh (agora com os 5 testes de eficiência + modo mcp); AGENTS.md e guide.md regenerados com o build novo.",
+  "topics" : [
+    "geral",
+    "eficiencia-de-ia"
+  ],
+  "warnings" : [
+    "Commits terminam com a linha Co-Authored-By"
+  ]
+}

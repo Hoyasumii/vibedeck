@@ -87,7 +87,7 @@ struct SectionListView: View {
             }
             if section == .topics {
                 ToolbarItemGroup {
-                    if AIProvider.claude.isInstalled { generateMenu.disabled(model.ruleExecution?.active == true) }
+                    if !AIProvider.installed.isEmpty { generateMenu.disabled(model.ruleExecution?.active == true) }
                     RuleExecutionControls()
                 }
             }
@@ -138,17 +138,18 @@ struct SectionListView: View {
         } else {
             let pending = count(.pending)
             Menu {
-                Button("Só as que faltam (\(count(.missing)))") { model.generateAllTests(.missing) }
-                    .disabled(count(.missing) == 0)
-                Button("Só as desatualizadas (\(count(.stale)))") { model.generateAllTests(.stale) }
-                    .disabled(count(.stale) == 0)
-                Divider()
-                Button("Regenerar todas (\(count(.all)))") { model.generateAllTests(.all) }
-                    .disabled(count(.all) == 0)
+                ForEach(AIProvider.installed, id: \.self) { provider in
+                    Menu(provider.title) {
+                        Button("Só as que faltam (\(count(.missing)))") { model.generateAllTests(.missing, provider: provider) }
+                            .disabled(count(.missing) == 0)
+                        Button("Só as desatualizadas (\(count(.stale)))") { model.generateAllTests(.stale, provider: provider) }
+                            .disabled(count(.stale) == 0)
+                        Button("Regenerar todas (\(count(.all)))") { model.generateAllTests(.all, provider: provider) }
+                            .disabled(count(.all) == 0)
+                    }
+                }
             } label: {
                 Label("Gerar verificações", systemImage: "wand.and.stars")
-            } primaryAction: {
-                model.generateAllTests(.pending)
             }
             .badge(pending)
             .help(pending == 0 ? "Todas as regras já têm verificação" : "Gera as \(pending) verificação(ões) que faltam ou estão desatualizadas, em paralelo")

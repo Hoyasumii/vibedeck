@@ -56,8 +56,9 @@ extension ProjectStore {
         VibeDeck: a tarefa não pode ser concluída sem um check de regras aprovado depois das alterações. \
         Arquivos alterados sem check:
         \((listed + more).joined(separator: "\n"))
-        Chame `rules_for` (ou `vibedeck rules for <arquivos> --json`) com esses arquivos, verifique cada regra \
-        e envie `submit_rule_check` (ou `vibedeck rules check`). Se falhar, corrija e envie de novo.
+        Chame `rules_for` (ou `vibedeck rules for <arquivos> --json`) com esses arquivos e envie \
+        `submit_rule_check` (ou `vibedeck rules check`) sem `results`: ele roda os scripts. Regras manuais só se o usuário pedir. \
+        Se falhar, corrija e envie de novo.
         """
     }
 }

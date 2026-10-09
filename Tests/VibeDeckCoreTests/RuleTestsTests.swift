@@ -122,7 +122,7 @@ private final class StubRunner: @unchecked Sendable {
         let stub = StubRunner()
 
         #expect(throws: VibeDeckError.self) {
-            try store.submitCheck(task: "x", files: [], answers: [RuleAnswer(ruleId: manual.id.uuidString, verdict: .pass)], runner: stub.runner)
+            try store.submitCheck(task: "x", files: [], answers: [RuleAnswer(ruleId: manual.id.uuidString, verdict: .pass)], verifyManual: true, runner: stub.runner)
         }
         #expect(stub.ran.isEmpty, "check incompleto não roda scripts")
 
@@ -133,6 +133,7 @@ private final class StubRunner: @unchecked Sendable {
                 RuleAnswer(ruleId: untested.id.uuidString, verdict: .fail),
                 RuleAnswer(ruleId: passing.id.uuidString, verdict: .fail, note: "o agente não decide"),
             ],
+            verifyManual: true,
             runner: stub.runner
         )
         #expect(stub.ran == ["ok", "skip"])
@@ -146,6 +147,31 @@ private final class StubRunner: @unchecked Sendable {
         #expect(byRule[skipped.id]?.verdict == .na)
         #expect(byRule[manual.id]?.source == .agent)
         #expect(check.results.count == 4)
+    }
+
+    @Test func scriptsOnlyCheckLeavesManualRulesPending() throws {
+        let store = try ProjectStore.initialize(at: tempDir())
+        let (_, scripted) = try store.addRule(Rule(text: "roda script"), toTopic: "Geral")
+        let (_, mustManual) = try store.addRule(Rule(text: "julgamento obrigatório"), toTopic: "Geral")
+        let (_, shouldManual) = try store.addRule(Rule(text: "julgamento recomendado", severity: .should), toTopic: "Geral")
+        try store.setRuleTest(scripted.id.uuidString, mode: .script, command: "ok")
+        let (_, item) = try store.addItem(ReviewItem(kind: "fix", title: "Item", rules: ["geral"]), toGroup: "G")
+        let ref = item.id.uuidString
+
+        let check = try store.submitCheck(task: "x", files: [], reviewItem: ref, answers: [], runner: StubRunner().runner)
+        #expect(check.passed)
+        #expect(check.results.map(\.ruleId) == [scripted.id])
+        #expect(check.pending == ["julgamento obrigatório", "julgamento recomendado"])
+        let (_, group, index) = try store.findItem(ref)
+        #expect(try store.verificationProblems(for: group.items[index]).count == 1, "só a manual 'must' segura o item")
+
+        let full = try store.submitCheck(
+            task: "x", files: [], reviewItem: ref,
+            answers: [RuleAnswer(ruleId: mustManual.id.uuidString, verdict: .pass), RuleAnswer(ruleId: shouldManual.id.uuidString, verdict: .pass)],
+            verifyManual: true, runner: StubRunner().runner
+        )
+        #expect(full.pending.isEmpty)
+        try store.ensureVerified(ref)
     }
 
     @Test func failingScriptBlocksMustAndWarnsShould() throws {
@@ -169,8 +195,8 @@ private final class StubRunner: @unchecked Sendable {
         try store.updateRule(rule.id.uuidString) { $0.text = "depois" }
         let stub = StubRunner()
 
-        #expect(throws: VibeDeckError.self) { try store.submitCheck(task: "x", files: [], answers: [], runner: stub.runner) }
-        let check = try store.submitCheck(task: "x", files: [], answers: [RuleAnswer(ruleId: rule.id.uuidString, verdict: .pass)], runner: stub.runner)
+        #expect(throws: VibeDeckError.self) { try store.submitCheck(task: "x", files: [], answers: [], verifyManual: true, runner: stub.runner) }
+        let check = try store.submitCheck(task: "x", files: [], answers: [RuleAnswer(ruleId: rule.id.uuidString, verdict: .pass)], verifyManual: true, runner: stub.runner)
         #expect(stub.ran.isEmpty)
         #expect(check.passed)
         #expect(check.warnings == ["Teste desatualizado (a regra mudou): depois"])

@@ -28,8 +28,14 @@ struct AIProviderSettingsView: View {
 }
 
 struct AIUsageView: View {
+    private enum Sheet: String, Identifiable {
+        case history, guide
+        var id: String { rawValue }
+    }
+
     @Environment(AISession.self) private var session
     @Environment(ProjectModel.self) private var model
+    @State private var sheet: Sheet?
     @State private var message: String?
     /// Provider waiting on the "take the conversation as reference" choice.
     @State private var providerReference: AIProvider?
@@ -39,12 +45,23 @@ struct AIUsageView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             carouselHeader
+            HStack {
+                Button("Consumo por tarefa") { sheet = .history }
+                Spacer()
+                Button("Guia de IA") { sheet = .guide }
+            }.font(.caption).buttonStyle(.borderless)
             usage
                 .id(session.provider)
                 .transition(.push(from: forward ? .trailing : .leading))
         }
+        .sheet(item: $sheet) { sheet in
+            switch sheet {
+            case .history: AIUsageHistoryView(root: session.root)
+            case .guide: AIGuideView()
+            }
+        }
         .clipped()
-        .gesture(DragGesture(minimumDistance: 30).onEnded { drag in
+        .simultaneousGesture(DragGesture(minimumDistance: 30).onEnded { drag in
             if abs(drag.translation.width) > abs(drag.translation.height) { step(drag.translation.width < 0 ? 1 : -1) }
         })
         .confirmationDialog("Nova conversa em outro provedor", isPresented: Binding(get: { providerReference != nil }, set: { if !$0 { providerReference = nil } })) {

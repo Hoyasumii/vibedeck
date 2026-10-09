@@ -116,4 +116,16 @@ private func tempStore() throws -> ProjectStore {
         try store.movePattern("solid", to: 0)
         #expect(try store.loadProject().patterns.map(\.id) == ["solid", "tdd"])
     }
+
+    @Test func patternTagsRoundTripAndAreOmittedWhenEmpty() throws {
+        let store = try tempStore()
+        try store.addPatterns(["tdd"], author: .human)
+        #expect(!String(decoding: try Data(contentsOf: store.root.appending(path: "vibedeck.json")), as: UTF8.self).contains("\"tags\""))
+        try store.setPatternTags("tdd", ["qualidade", "testes"])
+        #expect(try store.loadProject().patterns[0].tags == ["qualidade", "testes"])
+        try store.setPatternTags("tdd", [])
+        #expect(try store.loadProject().patterns[0].tags.isEmpty)
+        let handWritten = try VDJSON.decoder.decode(ProjectPattern.self, from: Data(#"{"id":"x"}"#.utf8))
+        #expect(handWritten.tags.isEmpty)
+    }
 }

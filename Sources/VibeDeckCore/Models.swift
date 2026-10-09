@@ -313,6 +313,14 @@ public struct DocInfo: Equatable, Hashable, Identifiable, Sendable {
 // MARK: - JSON
 
 public enum VDJSON {
+    /// Single-line output for agents (`rules_for`): indentation is pure token cost there. Files use `encoder`.
+    public static let compactEncoder: JSONEncoder = {
+        let e = JSONEncoder()
+        e.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
+        e.dateEncodingStrategy = .iso8601
+        return e
+    }()
+
     public static let encoder: JSONEncoder = {
         let e = JSONEncoder()
         e.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]

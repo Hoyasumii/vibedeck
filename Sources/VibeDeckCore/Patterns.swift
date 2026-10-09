@@ -14,19 +14,21 @@ public struct ProjectPattern: Codable, Equatable, Hashable, Identifiable, Sendab
     public var note: String?
     /// Slug of the rule topic that enforces the pattern.
     public var topic: String?
+    public var tags: [String]
     public var author: Author
 
-    public init(id: String, name: String, category: String? = nil, summary: String? = nil, note: String? = nil, topic: String? = nil, author: Author = .human) {
+    public init(id: String, name: String, category: String? = nil, summary: String? = nil, note: String? = nil, topic: String? = nil, tags: [String] = [], author: Author = .human) {
         self.id = id
         self.name = name
         self.category = category
         self.summary = summary
         self.note = note
         self.topic = topic
+        self.tags = tags
         self.author = author
     }
 
-    enum CodingKeys: String, CodingKey { case id, name, category, summary, note, topic, author }
+    enum CodingKeys: String, CodingKey { case id, name, category, summary, note, topic, tags, author }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -36,6 +38,7 @@ public struct ProjectPattern: Codable, Equatable, Hashable, Identifiable, Sendab
         summary = try c.decodeIfPresent(String.self, forKey: .summary)
         note = try c.decodeIfPresent(String.self, forKey: .note)
         topic = try c.decodeIfPresent(String.self, forKey: .topic)
+        tags = try c.decodeIfPresent([String].self, forKey: .tags) ?? []
         author = try c.decodeIfPresent(Author.self, forKey: .author) ?? .human
     }
 
@@ -47,6 +50,7 @@ public struct ProjectPattern: Codable, Equatable, Hashable, Identifiable, Sendab
         if let summary, !summary.isEmpty { try c.encode(summary, forKey: .summary) }
         if let note, !note.isEmpty { try c.encode(note, forKey: .note) }
         try c.encodeIfPresent(topic, forKey: .topic)
+        if !tags.isEmpty { try c.encode(tags, forKey: .tags) }
         try c.encode(author, forKey: .author)
     }
 
@@ -58,13 +62,14 @@ public struct ProjectPattern: Codable, Equatable, Hashable, Identifiable, Sendab
 }
 
 public enum PatternCategory {
-    public static let all = ["practices", "architecture", "domain", "custom"]
+    public static let all = ["practices", "architecture", "domain", "design", "custom"]
 
     public static func label(_ id: String?) -> String {
         switch id {
         case "practices": "Práticas"
         case "architecture": "Arquitetura"
         case "domain": "Domínio"
+        case "design": "Design"
         case "custom": "Personalizados"
         case let other?: other.capitalized
         case nil: "Outros"
@@ -308,6 +313,107 @@ public enum PatternCatalog {
                 PatternRule("A interface do repositório é do domínio; a implementação é da infraestrutura",
                             "Verificar: o protocolo fica junto do domínio e fala em entidades; a implementação concreta fica fora e pode ser trocada em testes."),
             ]),
+        // Padrões de design (GoF)
+        PatternTemplate(
+            id: "strategy", name: "Strategy", category: "design",
+            summary: "Algoritmos intercambiáveis atrás de uma interface comum, escolhidos em tempo de execução em vez de if/switch espalhados.",
+            aliases: ["estrategia", "strategy pattern"],
+            rules: [
+                PatternRule("Variações de comportamento viram implementações de um protocolo",
+                            "Verificar: não há cadeias de if/switch por tipo repetidas em vários pontos; cada variante é um tipo que implementa a mesma interface."),
+                PatternRule("O cliente depende do protocolo, não da implementação concreta",
+                            "Verificar: quem usa a estratégia recebe o protocolo por parâmetro ou injeção."),
+            ]),
+        PatternTemplate(
+            id: "observer", name: "Observer", category: "design",
+            summary: "Um sujeito notifica observadores interessados sem conhecê-los, desacoplando quem emite de quem reage.",
+            aliases: ["pub/sub", "publish subscribe", "observador", "observer pattern"],
+            rules: [
+                PatternRule("O emissor não conhece os observadores concretos",
+                            "Verificar: o emissor expõe inscrição/cancelamento (callback, AsyncStream, Combine, delegate) e não referencia tipos de quem reage."),
+                PatternRule("Toda inscrição tem cancelamento claro",
+                            "Verificar: observadores são removidos ao fim do ciclo de vida, sem vazar memória nem retain cycles."),
+            ]),
+        PatternTemplate(
+            id: "factory", name: "Factory", category: "design",
+            summary: "Centraliza a criação de objetos (Factory Method / Abstract Factory), escondendo qual tipo concreto é instanciado.",
+            aliases: ["factory method", "abstract factory", "fabrica"],
+            rules: [
+                PatternRule("A criação de variantes passa por uma fábrica",
+                            "Verificar: o código cliente não escolhe o tipo concreto com if/switch; pede à fábrica."),
+                PatternRule("A fábrica devolve o protocolo/tipo abstrato",
+                            "Verificar: o tipo de retorno é abstrato, para o cliente não depender da classe concreta."),
+            ]),
+        PatternTemplate(
+            id: "builder", name: "Builder", category: "design",
+            summary: "Constrói objetos complexos passo a passo, separando a construção da representação final.",
+            aliases: ["construtor passo a passo", "builder pattern"],
+            rules: [
+                PatternRule("Objetos com muitos parâmetros opcionais são montados por um builder",
+                            "Verificar: não há inicializadores com longas listas de parâmetros opcionais; a montagem é encadeada e legível."),
+                PatternRule("O resultado do builder é válido ou a construção falha",
+                            "Verificar: build() valida invariantes e não devolve objeto parcial."),
+            ]),
+        PatternTemplate(
+            id: "adapter", name: "Adapter", category: "design",
+            summary: "Converte a interface de um componente existente na interface que o cliente espera.",
+            aliases: ["adaptador", "wrapper", "adapter pattern"],
+            rules: [
+                PatternRule("Código de terceiros/legado é isolado por um adapter",
+                            "Verificar: o resto do código usa a interface do projeto, não a API externa diretamente."),
+                PatternRule("O adapter só traduz, sem regra de negócio",
+                            "Verificar: o adapter converte formatos e chamadas; a lógica de domínio fica fora dele."),
+            ]),
+        PatternTemplate(
+            id: "decorator", name: "Decorator", category: "design",
+            summary: "Acrescenta comportamento a um objeto envolvendo-o em outro com a mesma interface, sem herança.",
+            aliases: ["decorador", "decorator pattern"],
+            rules: [
+                PatternRule("Comportamento transversal é adicionado por composição",
+                            "Verificar: log, cache, retry etc. envolvem o objeto original com o mesmo protocolo em vez de subclasses ou flags."),
+                PatternRule("O decorator preserva o contrato do objeto decorado",
+                            "Verificar: mesma interface e mesma semântica; quem usa não distingue o decorado do original."),
+            ]),
+        PatternTemplate(
+            id: "facade", name: "Facade", category: "design",
+            summary: "Oferece uma interface simples para um subsistema complexo.",
+            aliases: ["fachada", "facade pattern"],
+            rules: [
+                PatternRule("Subsistemas complexos expõem uma fachada com poucas operações",
+                            "Verificar: os clientes chamam a fachada, não vários componentes internos em sequência."),
+                PatternRule("A fachada não duplica nem esconde regras do subsistema",
+                            "Verificar: ela delega e orquestra; a lógica continua nos componentes internos."),
+            ]),
+        PatternTemplate(
+            id: "command", name: "Command", category: "design",
+            summary: "Encapsula uma ação como objeto, permitindo enfileirar, registrar, repetir e desfazer.",
+            aliases: ["comando", "command pattern", "undo"],
+            rules: [
+                PatternRule("Ações de usuário/sistema passíveis de fila, histórico ou desfazer são objetos de comando",
+                            "Verificar: a ação tem um tipo próprio com tudo que precisa para executar (e desfazer, se aplicável)."),
+                PatternRule("Quem dispara o comando não conhece quem o executa",
+                            "Verificar: invoker e receiver ficam desacoplados pelo protocolo do comando."),
+            ]),
+        PatternTemplate(
+            id: "state", name: "State", category: "design",
+            summary: "O comportamento de um objeto muda conforme seu estado interno, modelado como tipos ou casos explícitos.",
+            aliases: ["maquina de estados", "state machine", "state pattern"],
+            rules: [
+                PatternRule("Estados e transições são explícitos",
+                            "Verificar: existe um enum/tipo por estado e as transições válidas ficam em um só lugar, sem flags booleanas combinadas."),
+                PatternRule("Transições inválidas são impossíveis ou rejeitadas",
+                            "Verificar: o código não permite ir para um estado não previsto; há teste das transições."),
+            ]),
+        PatternTemplate(
+            id: "singleton", name: "Singleton", category: "design",
+            summary: "Uma única instância compartilhada. Use com parcimônia: prefira injetar a instância.",
+            aliases: ["instancia unica", "singleton pattern"],
+            rules: [
+                PatternRule("Singletons não são acessados diretamente por quem os usa",
+                            "Verificar: o acesso ao singleton acontece na composição (raiz da app) e chega aos demais por injeção de dependência."),
+                PatternRule("O estado compartilhado é seguro para concorrência",
+                            "Verificar: acesso protegido (actor, lock ou imutabilidade)."),
+            ]),
     ]
 }
 
@@ -406,6 +512,18 @@ extension ProjectStore {
             pattern = project.patterns[i]
         }
         if let (slug, _) = patternTopic(pattern) { try updateTopic(slug) { $0.description = pattern.topicDescription } }
+        return pattern
+    }
+
+    /// Replaces the pattern's tags (empty removes them).
+    @discardableResult
+    public func setPatternTags(_ ref: String, _ tags: [String]) throws -> ProjectPattern {
+        var pattern: ProjectPattern!
+        try updateProject { project in
+            let i = try patternIndex(ref, in: project.patterns)
+            project.patterns[i].tags = tags
+            pattern = project.patterns[i]
+        }
         return pattern
     }
 

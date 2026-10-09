@@ -13,15 +13,17 @@ public struct StackItem: Codable, Equatable, Hashable, Identifiable, Sendable {
     public var category: String?
     /// How the project uses it ("Swift 6, strict concurrency"); handed to the AI with the stack.
     public var note: String?
+    public var tags: [String]
     public var author: Author
 
     public var id: String { icon }
 
-    public init(icon: String, name: String, category: String? = nil, note: String? = nil, author: Author = .human) {
+    public init(icon: String, name: String, category: String? = nil, note: String? = nil, tags: [String] = [], author: Author = .human) {
         self.icon = icon
         self.name = name
         self.category = category
         self.note = note
+        self.tags = tags
         self.author = author
     }
 
@@ -29,7 +31,7 @@ public struct StackItem: Codable, Equatable, Hashable, Identifiable, Sendable {
         self.init(icon: icon.id, name: icon.name, category: icon.category, note: note, author: author)
     }
 
-    enum CodingKeys: String, CodingKey { case icon, name, category, note, author }
+    enum CodingKeys: String, CodingKey { case icon, name, category, note, tags, author }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -37,6 +39,7 @@ public struct StackItem: Codable, Equatable, Hashable, Identifiable, Sendable {
         name = try c.decodeIfPresent(String.self, forKey: .name) ?? icon
         category = try c.decodeIfPresent(String.self, forKey: .category)
         note = try c.decodeIfPresent(String.self, forKey: .note)
+        tags = try c.decodeIfPresent([String].self, forKey: .tags) ?? []
         author = try c.decodeIfPresent(Author.self, forKey: .author) ?? .human
     }
 
@@ -46,6 +49,7 @@ public struct StackItem: Codable, Equatable, Hashable, Identifiable, Sendable {
         try c.encode(name, forKey: .name)
         try c.encodeIfPresent(category, forKey: .category)
         if let note, !note.isEmpty { try c.encode(note, forKey: .note) }
+        if !tags.isEmpty { try c.encode(tags, forKey: .tags) }
         try c.encode(author, forKey: .author)
     }
 }
@@ -384,6 +388,18 @@ extension ProjectStore {
         try updateProject { project in
             let i = try stackIndex(ref, in: project.stack)
             project.stack[i].note = note?.isEmpty == true ? nil : note
+            item = project.stack[i]
+        }
+        return item
+    }
+
+    /// Replaces the item's tags (empty removes them).
+    @discardableResult
+    public func setStackTags(_ ref: String, _ tags: [String]) throws -> StackItem {
+        var item: StackItem!
+        try updateProject { project in
+            let i = try stackIndex(ref, in: project.stack)
+            project.stack[i].tags = tags
             item = project.stack[i]
         }
         return item

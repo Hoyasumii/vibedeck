@@ -9,6 +9,7 @@ struct ClaudeChatPage: View {
     @State private var pickingFiles = false
     @State private var droppingFiles = false
     @State private var launchingCloud = false
+    @State private var showingUsage = false
     @State private var selection = 0
     /// Draft whose suggestions were dismissed with Esc.
     @State private var dismissed: String?
@@ -48,6 +49,11 @@ struct ClaudeChatPage: View {
         .background(.background)
         .toolbar {
             ToolbarItemGroup {
+                Button { showingUsage = true } label: { Label("Consumo de IA", systemImage: "chart.bar") }
+                if !mentions.isEmpty {
+                    Toggle("Incluir conversas completas", isOn: Binding(get: { claude.includeFullMentions }, set: { claude.includeFullMentions = $0 }))
+                        .help("Desligado: a IA recebe referências e lê trechos conforme necessário")
+                }
                 if claude.isWorking {
                     Button { claude.interrupt() } label: { Label("Parar", systemImage: "stop.fill") }
                         .help("Interromper a resposta")
@@ -62,6 +68,7 @@ struct ClaudeChatPage: View {
                     .help("Começar uma nova conversa")
             }
         }
+        .sheet(isPresented: $showingUsage) { AIUsageHistoryView(root: claude.root) }
         .sheet(isPresented: $launchingCloud) { CloudLaunchSheet(root: claude.root, provider: claude.provider) }
         .onChange(of: claude.current?.id) { inputFocused = true }
     }
@@ -85,6 +92,7 @@ struct ClaudeChatPage: View {
                 .padding([.horizontal, .top], 10)
                 .frame(maxWidth: Self.columnWidth)
             }
+            if let error = claude.usageError { Text(error).font(.caption).foregroundStyle(.red) }
             composer
         }
         .onAppear { inputFocused = true; claude.loadProjectFiles() }

@@ -75,6 +75,7 @@ public enum ReviewDiscover {
             "-p", "--output-format", "json", "--json-schema", schema,
             "--tools", tools, "--allowedTools", tools,
             "--strict-mcp-config", "--no-session-persistence",
+            "--append-system-prompt", AIPromptPolicy.instructions,
         ]
     }
 
@@ -88,7 +89,7 @@ public enum ReviewDiscover {
     public static func prompt(item: ReviewItem, kind: String, topics: [(slug: String, topic: RuleTopic)]) -> String {
         var lines = [
             "Você está preenchendo um item de revisão do VibeDeck neste repositório (o diretório atual).",
-            "Use Read, Grep e Glob para encontrar no código onde o item se aplica. Não altere nada.",
+            "Use leitura e busca para encontrar no código onde o item se aplica. Não altere nada.",
             "",
             "## Item",
             "Título: \(item.title)",

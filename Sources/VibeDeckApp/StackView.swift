@@ -44,10 +44,12 @@ struct StackView: View {
     private var items: [StackItem] {
         let q = search.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { return model.project.stack }
+        let tag = q.hasPrefix("#") ? String(q.dropFirst()) : q
         return model.project.stack.filter {
-            $0.name.localizedCaseInsensitiveContains(q) || $0.icon.localizedCaseInsensitiveContains(q)
+            $0.tags.contains { $0.localizedCaseInsensitiveContains(tag) } || !q.hasPrefix("#") && (
+                $0.name.localizedCaseInsensitiveContains(q) || $0.icon.localizedCaseInsensitiveContains(q)
                 || ($0.note ?? "").localizedCaseInsensitiveContains(q)
-                || StackCategory.label($0.category).localizedCaseInsensitiveContains(q)
+                || StackCategory.label($0.category).localizedCaseInsensitiveContains(q))
         }
     }
 
@@ -82,7 +84,7 @@ struct StackView: View {
             }
         }
         .navigationTitle("Stack")
-        .searchable(text: $search, placement: .toolbar, prompt: "Filtrar stack")
+        .searchable(text: $search, placement: .toolbar, prompt: "Filtrar stack (texto ou #tag)")
         .toolbar {
             ToolbarItem {
                 Button(action: copyBadge) {
@@ -105,6 +107,10 @@ struct StackView: View {
                 model.mutateStack("Editar nota", undo: undo) { stack in
                     if let i = stack.firstIndex(where: { $0.id == item.id }) { stack[i].note = note.isEmpty ? nil : note }
                 }
+            } onTags: { tags in
+                model.mutateStack("Editar tags", undo: undo) { stack in
+                    if let i = stack.firstIndex(where: { $0.id == item.id }) { stack[i].tags = tags }
+                }
             }
         }
         .task { await SkillIconCache.shared.loadCatalog() }
@@ -121,6 +127,9 @@ struct StackView: View {
                 // the full note is in the tooltip and the editor.
                 Text(item.note ?? "").font(.caption).foregroundStyle(.secondary)
                     .lineLimit(3, reservesSpace: true)
+                if !item.tags.isEmpty {
+                    Text(item.tags.map { "#" + $0 }.joined(separator: " ")).font(.caption2).foregroundStyle(.tertiary).lineLimit(1)
+                }
             }
             Spacer(minLength: 0)
             if item.author == .ai {
@@ -333,6 +342,8 @@ private struct StackPicker: View {
 private struct StackNoteEditor: View {
     let item: StackItem
     let onSave: (String) -> Void
+    let onTags: ([String]) -> Void
+    @Environment(ProjectModel.self) private var model
     @State private var note = ""
     @State private var saved = ""
     @FocusState private var focused: Bool
@@ -350,6 +361,8 @@ private struct StackNoteEditor: View {
                 .focused($focused)
                 .onSubmit(commit)
             Text("A IA recebe essa nota junto com a stack.").font(.caption).foregroundStyle(.secondary)
+            // Live value: the sheet's `item` is a snapshot, the tags are committed one undo step at a time.
+            TagsField(tags: model.project.stack.first { $0.id == item.id }?.tags ?? item.tags, onCommit: onTags)
         }
         .formStyle(.grouped)
         .frame(width: 420)

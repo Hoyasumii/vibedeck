@@ -1,0 +1,131 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "createdAt" : "2026-10-09T13:04:58Z",
+  "description" : "Economia de contexto sem perda de requisitos ou verificações, em todas as instalações e provedores.",
+  "id" : "D0BE7F4D-7EFB-4E50-A189-DAAB3AB10541",
+  "paths" : [
+    "Sources/**",
+    "Tests/**",
+    "scripts/test-ai-efficiency.sh"
+  ],
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T13:04:58Z",
+      "details" : "Guia curto, catálogo paginado e referências recuperáveis. Não truncar requisitos, decisões ou evidências; falha ao criar uma referência mantém o conteúdo integral.",
+      "id" : "2F64266B-FD73-4B70-B293-D9317C7228A1",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/eficiencia-de-ia/2f64266b.sh",
+        "generatedAt" : "2026-10-09T13:07:49Z",
+        "mode" : "script",
+        "ruleHash" : "a7eb00a0f6830c76"
+      },
+      "text" : "Contexto sob demanda preserva as fontes completas"
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T13:04:58Z",
+      "details" : "App, CLI, MCP, chat e funções estruturadas usam AIPromptPolicy. Prompts personalizados permanecem intactos.",
+      "id" : "F12AA1DD-0FFB-48F8-912D-236E271AA842",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/eficiencia-de-ia/f12aa1dd.sh",
+        "generatedAt" : "2026-10-09T14:17:31Z",
+        "mode" : "script",
+        "ruleHash" : "69e1ce320e1e733d"
+      },
+      "text" : "Instruções comuns têm uma fonte compartilhada"
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T13:04:58Z",
+      "details" : "Tarefas simples podem reduzir exploração e delegação, sem eliminar critérios, regras ou etapas explícitas. Falta de evidência não é aprovação.",
+      "id" : "3301BC0E-BBC5-4E4F-9609-CA119DD2C8F3",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/eficiencia-de-ia/3301bc0e.sh",
+        "generatedAt" : "2026-10-09T14:17:31Z",
+        "mode" : "script",
+        "ruleHash" : "f4a53743a64e2c34"
+      },
+      "text" : "Economia nunca dispensa verificações obrigatórias"
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T13:04:58Z",
+      "details" : "Só respostas inválidas de funções sem escrita permitem uma recuperação. Cancelamento, erro de transporte e ações externas não são repetidos automaticamente.",
+      "id" : "64F3ECA8-2A3F-400C-8D41-5853009B7F91",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/eficiencia-de-ia/64f3eca8.sh",
+        "generatedAt" : "2026-10-09T13:07:49Z",
+        "mode" : "script",
+        "ruleHash" : "e831b1f73f5f2e9b"
+      },
+      "text" : "Recuperação é limitada e mantém modelo e provedor"
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T13:04:59Z",
+      "details" : "Tokens ausentes permanecem ausentes; caracteres não são tokens. Contadores cumulativos não são somados. Contabilizar tentativas e informar cobertura parcial.",
+      "id" : "FC9A5733-DC0E-4606-BB85-A3CC7592A4BC",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/eficiencia-de-ia/fc9a5733.sh",
+        "generatedAt" : "2026-10-09T13:07:49Z",
+        "mode" : "script",
+        "ruleHash" : "313e247f4d36616e"
+      },
+      "text" : "Métricas distinguem uso informado e tamanho de texto"
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T13:04:59Z",
+      "details" : "Comparar contexto inicial com o anterior e testar recuperação sem perda, preservação de contratos e compatibilidade. Meta de 30% em cenários redundantes, sem cortar conteúdo essencial.",
+      "id" : "6088CC95-37DF-4923-ACD6-B12FCCA307EC",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/eficiencia-de-ia/6088cc95.sh",
+        "generatedAt" : "2026-10-09T14:14:57Z",
+        "mode" : "script",
+        "reason" : "Integridade e economia: guia, catálogo, resumo do submit_rule_check, rules_for compacto, política única e contrato/orçamento do MCP contra Tests/Fixtures.",
+        "ruleHash" : "2d8bd2c41f1f39ce"
+      },
+      "text" : "Otimizações têm testes de integridade e economia"
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T13:04:59Z",
+      "details" : "Todos os ids solicitados devem manter o conteúdo da regra e ter teste válido registrado; regras fora da seleção não impedem a conclusão dessa seleção.",
+      "id" : "7974EE31-FD02-492A-8258-C2F15D594E77",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/eficiencia-de-ia/7974ee31.sh",
+        "generatedAt" : "2026-10-09T13:07:49Z",
+        "mode" : "script",
+        "ruleHash" : "8436083b4d7f4c2b"
+      },
+      "text" : "Geração de testes valida os registros produzidos"
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T13:04:59Z",
+      "details" : "Recursos de IA usam a política compartilhada; modelos escolhidos não são rebaixados ou trocados automaticamente. Registrar limitações de cobertura com honestidade.",
+      "id" : "EE39F0E7-7C01-4142-A7CD-6234BF40C8F4",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/eficiencia-de-ia/ee39f0e7.sh",
+        "generatedAt" : "2026-10-09T14:17:31Z",
+        "mode" : "script",
+        "ruleHash" : "d929e5007ce93b64"
+      },
+      "text" : "Economia se aplica aos provedores suportados"
+    }
+  ],
+  "tags" : [
+    "ia",
+    "eficiencia"
+  ],
+  "title" : "Eficiência de IA"
+}

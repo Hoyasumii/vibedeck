@@ -140,4 +140,14 @@ private struct FakeSkillIcons: SkillIconsAPI {
             try SkillIcons.decodeToolText(Result.self, from: Data(error.utf8))
         }
     }
+
+    @Test func stackTagsRoundTripAndAreOmittedWhenEmpty() throws {
+        let store = try tempStore()
+        try store.addStackItems([SkillIcon(id: "swift", name: "Swift", category: "language")], author: .human)
+        #expect(!String(decoding: try Data(contentsOf: store.root.appending(path: "vibedeck.json")), as: UTF8.self).contains("\"tags\""))
+        try store.setStackTags("swift", ["app", "cli"])
+        #expect(try store.loadProject().stack[0].tags == ["app", "cli"])
+        let handWritten = try VDJSON.decoder.decode(StackItem.self, from: Data(#"{"icon":"swift"}"#.utf8))
+        #expect(handWritten.tags.isEmpty)
+    }
 }

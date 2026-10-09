@@ -28,9 +28,10 @@
         "additionalProperties": false
       }
     },
-    "passed": { "type": "boolean", "description": "False when any must rule failed." },
+    "passed": { "type": "boolean", "description": "False when any must rule failed. Says nothing about the rules in `pending`." },
     "warnings": { "type": "array", "items": { "type": "string" } },
     "failures": { "type": "array", "items": { "type": "string" } },
+    "pending": { "type": "array", "items": { "type": "string" }, "description": "Texts of manual rules the check left unverified (scripts-only check). Absent = none." },
     "author": { "enum": ["human", "ai"] },
     "createdAt": { "type": "string", "format": "date-time" }
   },

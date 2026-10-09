@@ -8,7 +8,7 @@ struct VibeDeckCLI: AsyncParsableCommand {
         commandName: "vibedeck",
         abstract: "Gerencia projetos VibeDeck (links, docs, revisões, regras e ideias) a partir do terminal.",
         version: "0.2.0",
-        subcommands: [Init.self, Status.self, Stack.self, Patterns.self, Links.self, Docs.self, Review.self, Rules.self, Ideas.self, Agents.self, Commands.self, Skills.self, Workflows.self, Runs.self, Tag.self, Hook.self, Usage.self, Cloud.self, MCPCommand.self]
+        subcommands: [AI.self, Init.self, Status.self, Stack.self, Patterns.self, Links.self, Docs.self, Review.self, Rules.self, Ideas.self, Agents.self, Commands.self, Skills.self, Workflows.self, Runs.self, Tag.self, Hook.self, Usage.self, Cloud.self, MCPCommand.self]
     )
 }
 
@@ -20,7 +20,11 @@ struct RootOptions: ParsableArguments {
         URL(fileURLWithPath: root.map { NSString(string: $0).expandingTildeInPath } ?? FileManager.default.currentDirectoryPath)
     }
 
-    func store() throws -> ProjectStore { try ProjectStore.locate(from: startURL) }
+    func store() throws -> ProjectStore {
+        let store = try ProjectStore.locate(from: startURL)
+        try? store.refreshAgentsGuideIfNeeded()
+        return store
+    }
 }
 
 func hashtags(_ tags: [String]) -> String {
@@ -656,6 +660,7 @@ struct Rules: ParsableCommand {
         @Argument(help: "Arquivos alterados.") var files: [String] = []
         @Option(parsing: .upToNextOption, help: "Tópicos extras.") var topics: [String] = []
         @Option(help: "Id do item de revisão relacionado.") var item: String?
+        @Flag(help: "Lista também as regras manuais (por padrão só as de script, as outras viram contagem).") var manual = false
         @Flag(help: "Saída JSON.") var json = false
 
         func run() throws {
@@ -667,7 +672,7 @@ struct Rules: ParsableCommand {
                 if let file = group.items[index].target?.file { files.append(file) }
             }
             let applicable = try store.applicableTopics(files: files, explicit: topics)
-            if json { return try printJSON(applicable.map { TopicChecklist(slug: $0.slug, topic: $0.topic) }) }
+            if json { return try printJSON(applicable.map { TopicChecklist(slug: $0.slug, topic: $0.topic, includeManual: manual) }) }
             if applicable.isEmpty { return print("Nenhuma regra aplicável.") }
             for (slug, t) in applicable {
                 print("## \(t.title) [\(slug)]")
@@ -737,8 +742,9 @@ struct Rules: ParsableCommand {
         static let configuration = CommandConfiguration(
             abstract: "Registra a verificação das regras aplicáveis.",
             discussion: """
-            Lê de stdin (ou --results) um JSON: [{"ruleId": "ab12", "verdict": "pass|fail|na", "note": "..."}]
-            Regras com script (⚙ em `rules for`) são decididas rodando o script; responda só as outras.
+            Por padrão só roda os scripts das regras (⚙ em `rules for`); as manuais ficam pendentes.
+            Com --manual, lê de stdin (ou --results) um JSON e exige a resposta de todas as manuais:
+            [{"ruleId": "ab12", "verdict": "pass|fail|na", "note": "..."}]
             """
         )
         @OptionGroup var options: RootOptions
@@ -748,19 +754,21 @@ struct Rules: ParsableCommand {
         @Option(help: "Id do item de revisão relacionado.") var item: String?
         @Option(help: "JSON dos resultados (padrão: stdin).") var results: String?
         @Flag(help: "Marca o check como feito por IA.") var ai = false
+        @Flag(help: "Exige a resposta de todas as regras manuais (a parte feita pela IA).") var manual = false
         @Flag(help: "Saída JSON.") var json = false
 
         func run() throws {
-            let raw = results.map { Data($0.utf8) } ?? FileHandle.standardInput.readDataToEndOfFile()
+            let raw = results.map { Data($0.utf8) } ?? (manual ? FileHandle.standardInput.readDataToEndOfFile() : Data())
             let answers = try JSONDecoder().decode([RuleAnswer].self, from: raw.isEmpty ? Data("[]".utf8) : raw)
             let check = try options.store().submitCheck(
-                task: task, files: files, topics: topics, reviewItem: item, answers: answers, author: ai ? .ai : .human
+                task: task, files: files, topics: topics, reviewItem: item, answers: answers, verifyManual: manual, author: ai ? .ai : .human
             )
             if json { return try printJSON(check) }
             let scripted = check.results.filter { $0.source == .script }.count
             print(check.passed ? "✅ Aprovado (\(check.results.count) regra(s), \(scripted) por script)" : "❌ Reprovado")
             for f in check.failures { print("  ✗ \(f)") }
             for w in check.warnings { print("  ⚠ \(w)") }
+            if !check.pending.isEmpty { print("  ⏭ \(check.pending.count) regra(s) manual(is) não verificada(s) (use --manual)") }
             if !check.passed { throw ExitCode.failure }
         }
     }
@@ -873,7 +881,14 @@ struct Ideas: ParsableCommand {
         static let configuration = CommandConfiguration(abstract: "Transforma as regras da ideia em um tópico de regras ativo.")
         @OptionGroup var options: RootOptions
         @Argument var idea: String
-        func run() throws { print(try options.store().promoteIdea(idea)) }
+        func run() throws {
+            let store = try options.store()
+            let stale = try store.unmatchedIdeaPaths(idea)
+            print(try store.promoteIdea(idea))
+            if !stale.isEmpty {
+                FileHandle.standardError.write(Data("Aviso: globs da ideia que não casam nenhum arquivo foram copiados: \(stale.joined(separator: ", "))\n".utf8))
+            }
+        }
     }
 
     struct Unpromote: ParsableCommand {
@@ -1699,12 +1714,12 @@ extension WorkflowRunStatus: ExpressibleByArgument {}
 // MARK: - tag
 
 struct Tag: ParsableCommand {
-    static let configuration = CommandConfiguration(abstract: "Define as tags de um doc, grupo de revisão, tópico de regras, ideia, agente, comando, skill ou workflow (sem tags: remove todas).")
+    static let configuration = CommandConfiguration(abstract: "Define as tags de um doc, grupo de revisão, tópico de regras, ideia, agente, comando, skill, workflow, tecnologia da stack ou padrão (sem tags: remove todas).")
 
-    enum Kind: String, ExpressibleByArgument, CaseIterable { case doc, review, rules, idea, agent, command, skill, workflow }
+    enum Kind: String, ExpressibleByArgument, CaseIterable { case doc, review, rules, idea, agent, command, skill, workflow, stack, pattern }
 
     @OptionGroup var options: RootOptions
-    @Argument(help: "doc, review, rules, idea, agent, command, skill ou workflow.") var kind: Kind
+    @Argument(help: "doc, review, rules, idea, agent, command, skill, workflow, stack ou pattern.") var kind: Kind
     @Argument(help: "Slug, id ou título.") var ref: String
     @Argument(help: "Tags (substituem as atuais).") var tags: [String] = []
 
@@ -1719,6 +1734,8 @@ struct Tag: ParsableCommand {
         case .command: try store.updateCommand(ref) { $0.tags = tags }
         case .skill: try store.updateSkill(ref) { $0.tags = tags }
         case .workflow: try store.updateWorkflow(ref) { $0.tags = tags }
+        case .stack: try store.setStackTags(ref, tags)
+        case .pattern: try store.setPatternTags(ref, tags)
         }
         print(tags.isEmpty ? "Tags removidas." : "Tags: " + tags.joined(separator: ", "))
     }

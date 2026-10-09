@@ -11,14 +11,14 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:33:31Z",
-      "details" : "rules_for com os arquivos alterados (e o item) → verificar cada regra de verdade → submit_rule_check com pass/fail/na para todas → se passed=false, corrigir e reenviar. O produto (AGENTS.md, instruções do MCP, CLI) sempre comunica esse fluxo.\nVerificar: AGENTS.md e instruções do MCP continuam descrevendo os passos.",
+      "details" : "rules_for com os arquivos alterados (e o item) → submit_rule_check, que roda só os scripts (as regras manuais ficam pending) → se passed=false, corrigir e reenviar. A verificação das manuais é sob demanda (verify_manual / --manual, pass/fail/na para todas). O produto (AGENTS.md, instruções do MCP, CLI) sempre comunica esse fluxo.\nVerificar: AGENTS.md e instruções do MCP continuam descrevendo os passos.",
       "id" : "EA7C01E6-5CC5-4199-94B6-11536B1ABDFA",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/fluxo-padrao/ea7c01e6.sh",
-        "generatedAt" : "2026-10-09T01:42:20Z",
+        "generatedAt" : "2026-10-09T12:34:17Z",
         "mode" : "script",
-        "ruleHash" : "57a9838fb73cd05c"
+        "ruleHash" : "9571e9edae3b0cc1"
       },
       "text" : "Nenhuma tarefa está concluída sem check aprovado"
     },
@@ -39,14 +39,14 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:33:31Z",
-      "details" : "Ao começar, in_progress; ao terminar, done. Se o item tem regras (campo rules ou target.file casando um tópico), done é bloqueado sem check aprovado para o item (humano pode forçar com --force no CLI).\nVerificar: tentar marcar done sem check falha com mensagem em pt-BR.",
+      "details" : "Ao começar, in_progress; ao terminar, done. Se o item tem regras (campo rules ou target.file casando um tópico), done é bloqueado sem check aprovado para o item e sem as regras manuais 'must' verificadas (humano pode forçar com --force no CLI).\nVerificar: tentar marcar done sem check falha com mensagem em pt-BR.",
       "id" : "3A31B517-334E-484C-9205-0513AF158AE8",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/fluxo-padrao/3a31b517.sh",
-        "generatedAt" : "2026-10-09T01:42:20Z",
+        "generatedAt" : "2026-10-09T12:34:17Z",
         "mode" : "script",
-        "ruleHash" : "004f98faff045018"
+        "ruleHash" : "ef74ed6f5e732512"
       },
       "text" : "Item em trabalho fica in_progress; com regras, só vai a done após check aprovado"
     },

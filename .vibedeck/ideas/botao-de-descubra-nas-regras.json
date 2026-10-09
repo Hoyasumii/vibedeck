@@ -1,0 +1,110 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "human",
+  "body" : "A ideia é poder fazer com que a IA busque as tags e os globs de cada uma das regras. Além disso, deve ter um novo botão que vai pegar os dados informados (título, descrição, globs, tags), e a IA vai perguntar para o usuário coisas para gerar regras.\n\nIsso serve também para ideias.\n\n## Refinamento\n\n**Onde fica:** um único botão \"Descubra\" no editor do tópico de regras e no da ideia, com o mesmo componente.\n\n**Fluxo:** sob demanda, no mesmo botão. Primeiro a IA propõe `paths` (globs) e `tags`. Depois faz a entrevista para gerar regras.\n\n**Globs na ideia:** a ideia ganha um campo `paths` (globs sugeridos, opcional no schema `idea.schema.json`). O Descubra propõe globs também na ideia, e eles ficam guardados nela. Na promoção (`promoteIdea`), o tópico novo nasce com esses `paths`. Se a ideia já tem tópico, os globs da ideia são somados aos do tópico, sem remover nenhum.\n\n**Entrevista:** painel próprio com perguntas estruturadas. A IA devolve JSON com perguntas (e opções de resposta), o app mostra um formulário e roda rodadas curtas. Tem limite de perguntas por rodada e um \"gerar com o que já tenho\".\n\n**Contexto enviado:** título, descrição, globs, tags atuais, vocabulário de tags existente e os tópicos/regras existentes (para evitar duplicata e conflito). A IA lê o repositório só com Read/Grep/Glob.\n\n**Destino:** em ideias, as regras entram como rascunho (`idea.rules`). Em tópicos, aparecem como proposta e só viram regras ao aceitar. Nada é gravado direto.\n\n## Riscos\n- Globs inventados ou largos demais (`**/*`) fazem o tópico entrar em toda tarefa e gastam tokens.\n- Globs guardados na ideia podem envelhecer até a promoção (arquivo renomeado ou apagado).\n- Tags novas parecidas (\"ui\", \"interface\") poluem o vocabulário.\n- Regras duplicadas, conflitantes, vagas ou não testáveis.\n- Escrita acidental pelo `claude -p`, custo e latência por clique, e corrida com edição do usuário.\n- Entrevista em loop gastando tokens sem convergir.\n\n## Fora de escopo por ora\nExpor por MCP/CLI e marcar autoria por campo.",
+  "createdAt" : "2026-10-09T03:25:51Z",
+  "id" : "0D332B0B-98FC-4D41-982D-F522CC36E501",
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T14:52:18Z",
+      "id" : "F3E9484E-53EA-44BB-A3B4-87B3040E4BEC",
+      "severity" : "must",
+      "text" : "O Descubra das regras nunca grava direto: mostra uma proposta (atual → sugerido) e o usuário aceita tudo ou por item; cada aceite é um único passo de undo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T14:52:18Z",
+      "id" : "80C236FE-674B-4613-A937-FB1422629E22",
+      "severity" : "must",
+      "text" : "A chamada ao Claude roda só com ferramentas de leitura (Read/Grep/Glob), sem Edit/Write/Bash."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T14:52:18Z",
+      "id" : "779E0132-897E-432C-8033-6DB13C89EDF6",
+      "severity" : "must",
+      "text" : "A resposta do Claude é JSON validado; se o parse falhar, mostra erro claro e não altera nada."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T14:52:18Z",
+      "id" : "4A586270-00BA-44D8-9159-70D581B11A92",
+      "severity" : "must",
+      "text" : "Globs sugeridos precisam casar ao menos um arquivo existente e não podem ser catch-all (`**`, `*`, `**/*`)."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T14:52:18Z",
+      "id" : "B59A36C1-8F3C-48C1-B291-ADC251C9943F",
+      "severity" : "must",
+      "text" : "Tags sugeridas vêm do vocabulário existente; tag nova só entra com aceite explícito."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T14:52:18Z",
+      "id" : "53449BEB-40E8-478E-B810-FEC1579F4966",
+      "severity" : "must",
+      "text" : "Globs e tags só são adicionados, nunca removidos ou sobrescritos sem aceite explícito."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T14:52:18Z",
+      "id" : "EEC021E0-538C-489A-B7E2-469B12E6E597",
+      "severity" : "must",
+      "text" : "Regras geradas vêm como rascunho com severidade (must/should): em ideias vão para idea.rules; em tópicos só viram regras ativas após aceite."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T14:52:18Z",
+      "id" : "331249BB-38FD-429C-8714-1E689059B6FD",
+      "severity" : "must",
+      "text" : "A entrevista tem limite de perguntas por rodada e permite parar e gerar com o que já foi respondido."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T14:52:18Z",
+      "id" : "3EC4C2CA-D633-482F-9B22-D8932BD07B0B",
+      "severity" : "should",
+      "text" : "Cada sugestão vem com justificativa curta (arquivo:linha ou regra existente que a motivou)."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T14:52:18Z",
+      "id" : "74C84D3C-4834-408A-96C0-F49D26C6D486",
+      "severity" : "should",
+      "text" : "Regras que duplicam ou conflitam com as existentes são sinalizadas na proposta."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T14:52:18Z",
+      "id" : "5119C311-3CBD-47D7-B779-74F96730D6EB",
+      "severity" : "should",
+      "text" : "Há cancelar e timeout, e a resposta é descartada se o item mudou ou deixou de estar selecionado durante a chamada."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T14:52:18Z",
+      "id" : "48639695-AAF3-4735-AFDC-728FC1E8D23F",
+      "severity" : "should",
+      "text" : "Cada regra gerada é atômica e verificável (um comportamento por regra)."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T14:55:58Z",
+      "id" : "29057318-0B3D-4B45-BE16-97FB4C43F831",
+      "severity" : "must",
+      "text" : "Globs aceitos numa ideia ficam guardados em idea.paths e, na promoção, viram os paths do tópico; se o tópico já existe, são somados sem remover os atuais."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T14:55:58Z",
+      "id" : "42470BFE-510E-41C3-8C53-E5539669A5FA",
+      "severity" : "should",
+      "text" : "Na promoção, globs da ideia que não casam mais nenhum arquivo são avisados ao usuário em vez de copiados em silêncio."
+    }
+  ],
+  "status" : "exploring",
+  "title" : "Botão de Descubra nas regras",
+  "updatedAt" : "2026-10-09T14:55:58Z"
+}

@@ -1,15 +1,18 @@
 import Foundation
 
-/// Short isolated exploration call for Descubra. MCP integrations are disabled, writes and
-/// approvals are denied, and its ephemeral thread cannot pollute the project's chat history.
+/// Isolated structured calls. Read-only by default; test generation explicitly requests workspace writes.
+/// MCP integrations and approvals stay disabled; ephemeral threads do not enter chat history.
 @MainActor public final class CodexReadOnly {
     private let rpc = CodexRPC()
     private var waiter: CheckedContinuation<String, Error>?
     private var output = ""
     private var thread: String?
     private var timeoutTask: Task<Void, Never>?
+    public private(set) var tokens = AITokenUsage()
+    public private(set) var model: String?
     public init() {}
-    public func run(root: URL, prompt: String, schema: JSONValue, timeout: Duration = .seconds(90)) async throws -> String {
+    public func run(root: URL, prompt: String, schema: JSONValue, timeout: Duration = .seconds(90), settings: AIProviderSettings = .init(), workspaceWrites: Bool = false) async throws -> String {
+        output = ""; tokens = .init()
         defer { stop() }
         return try await withTaskCancellationHandler {
             try await rpc.start(root: root)
@@ -18,7 +21,10 @@ import Foundation
             for name in config["config"]?["mcp_servers"]?.object?.keys ?? Dictionary<String, JSONValue>().keys {
                 overrides["mcp_servers.\(name).enabled"] = .bool(false)
             }
-            let response = try await rpc.request("thread/start", params: ["cwd": .string(root.path), "ephemeral": .bool(true), "approvalPolicy": .string("never"), "sandbox": .string("read-only"), "config": .object(overrides)])
+            var params: [String: JSONValue] = ["cwd": .string(root.path), "ephemeral": .bool(true), "approvalPolicy": .string("never"), "sandbox": .string(workspaceWrites ? "workspace-write" : "read-only"), "config": .object(overrides), "developerInstructions": .string(AIPromptPolicy.instructions)]
+            if let model = settings.model { params["model"] = .string(model) }
+            let response = try await rpc.request("thread/start", params: params)
+            model = response["model"]?.string ?? settings.model
             guard let id = response["thread"]?["id"]?.string else { throw CodexRPCError.invalidResponse }
             thread = id
             rpc.onRequest = { [weak self] id, method, _ in
@@ -30,6 +36,7 @@ import Foundation
             rpc.onDisconnect = { [weak self] error in self?.finish(.failure(CodexRPCError.server(error))) }
             rpc.onNotification = { [weak self] method, params in
                 guard let self, params["threadId"]?.string == self.thread else { return }
+                if method == "thread/tokenUsage/updated" { self.tokens = .codex(params["tokenUsage"]?["total"]) }
                 if method == "item/agentMessage/delta" { self.output += params["delta"]?.string ?? "" }
                 if method == "item/completed", params["item"]?["type"]?.string == "agentMessage", self.output.isEmpty { self.output = params["item"]?["text"]?.string ?? "" }
                 if method == "turn/completed" {
@@ -47,7 +54,9 @@ import Foundation
                 }
                 Task {
                     do {
-                        _ = try await rpc.request("turn/start", params: ["threadId": .string(id), "input": .array([.object(["type": .string("text"), "text": .string(prompt), "text_elements": .array([])])]), "outputSchema": Self.strictSchema(schema)])
+                        var turn: [String: JSONValue] = ["threadId": .string(id), "input": .array([.object(["type": .string("text"), "text": .string(prompt), "text_elements": .array([])])]), "outputSchema": Self.strictSchema(schema)]
+                        if let effort = settings.effort { turn["effort"] = .string(effort) }
+                        _ = try await rpc.request("turn/start", params: turn)
                     } catch { finish(.failure(error)) }
                 }
             }

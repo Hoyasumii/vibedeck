@@ -431,7 +431,14 @@ public enum WorkflowOrchestration {
         lines.append("- Entrada da execução: \(input.isEmpty ? "(nenhuma)" : input)")
         lines.append("- Pasta da execução (`$RUN_DIR`): `\(runDir.path)` — leia o que as etapas anteriores gravaram e grave aqui o que esta etapa produz.")
         if step.kind != .command, let note = step.note?.trimmed.nonEmpty { lines.append("- Instrução extra desta etapa: \(note)") }
-        let previous = run.history.suffix(12)
+        lines.append("- Histórico completo e decisões anteriores: `\(runDir.appending(path: "run.json").path)`. Consulte quando uma referência ou decisão anterior for necessária.")
+        if run.history.count > 3 {
+            lines.append("Histórico anterior (consulte run.json para evidências e pendências):")
+            for entry in run.history.dropLast(3) {
+                lines.append("- `\(entry.step)` → \(entry.verdict ?? "sem veredito")")
+            }
+        }
+        let previous = run.history.suffix(3)
         if !previous.isEmpty {
             lines.append("")
             lines.append("## Etapas anteriores")
@@ -439,14 +446,15 @@ public enum WorkflowOrchestration {
                 lines.append("\(n + 1). `\(e.step)` → \(e.verdict ?? "—")\(e.summary.map { ": \($0)" } ?? "")")
             }
         }
-        let answers = run.answers(for: step.id)
+        let answers = run.questions.filter { $0.answer != nil }
         if !answers.isEmpty {
             lines.append("")
-            lines.append("## Respostas do usuário a esta etapa")
+            lines.append("## Decisões do usuário nesta execução")
             lines.append("São decisões do usuário: use cada uma quando chegar àquele ponto, sem perguntar de novo.")
             for q in answers { lines.append("- **\(q.question)** → \(q.answer ?? "")") }
         }
         lines.append("")
+        lines.append(AIPromptPolicy.instructions)
         lines.append("## Instruções da etapa")
         lines.append("")
         lines.append(body.trimmed.nonEmpty ?? "(a etapa não tem instruções: \(step.kind.rawValue) `\(step.ref)` não encontrado)")

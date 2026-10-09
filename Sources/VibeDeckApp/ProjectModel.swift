@@ -626,12 +626,12 @@ final class ProjectModel {
     /// Writes the tests of `selection` for every topic that has such rules, one background `claude -p` per
     /// topic, at most `maxConcurrent` at a time. The scripts register themselves through the CLI, so the
     /// topics reload from disk as each job ends.
-    func generateAllTests(_ selection: RuleTestPrompt.Selection, maxConcurrent: Int = 3) {
+    func generateAllTests(_ selection: RuleTestPrompt.Selection, provider: AIProvider = .claude, maxConcurrent: Int = 3) {
         guard !isGeneratingTests, ruleExecution?.active != true else { return }
         let cli = ClaudeUsageView.cliPath ?? "vibedeck"
-        let jobs = topics.compactMap { entry -> (slug: String, prompt: String)? in
+        let jobs = topics.compactMap { entry -> (slug: String, prompt: String, rules: [Rule])? in
             guard !RuleTestPrompt.rules(entry.value, selection).isEmpty else { return nil }
-            return (entry.slug, RuleTestPrompt.generate(slug: entry.slug, topic: entry.value, selection: selection, headless: cli))
+            return (entry.slug, RuleTestPrompt.generate(slug: entry.slug, topic: entry.value, selection: selection, headless: cli), RuleTestPrompt.rules(entry.value, selection))
         }
         guard !jobs.isEmpty else { return }
         generatingTests = Dictionary(uniqueKeysWithValues: jobs.map { ($0.slug, .queued) })
@@ -645,7 +645,11 @@ final class ProjectModel {
                         generatingTests[job.slug] = .running
                         active += 1
                         group.addTask {
-                            do { try await RuleTestGenerator.run(root: root, prompt: job.prompt); return (job.slug, nil) }
+                            do {
+                                try await RuleTestGenerator.run(root: root, prompt: job.prompt, provider: provider,
+                                    operation: "Gerar testes · " + job.slug, topic: job.slug, expectedRules: job.rules)
+                                return (job.slug, nil)
+                            }
                             catch { return (job.slug, error.localizedDescription) }
                         }
                     }
@@ -682,6 +686,17 @@ final class ProjectModel {
     func requiredTopics(for item: ReviewItem) -> [String] {
         _ = topics
         return ((try? store.requiredTopics(for: item)) ?? []).map(\.slug)
+    }
+
+    /// Tags already used by docs, review groups, topics and ideas: the vocabulary the rules Descubra prefers.
+    var tagVocabulary: [String] {
+        let all = docs.flatMap(\.tags) + groups.flatMap(\.group.tags) + topics.flatMap(\.value.tags) + ideas.flatMap(\.value.tags)
+        return Array(Set(all)).sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+    }
+
+    /// Rules of the other topics, so the Descubra can flag duplicates and conflicts.
+    func knownTopics(excluding slug: String? = nil) -> [RuleDiscover.KnownTopic] {
+        topics.filter { $0.slug != slug }.map { .init(slug: $0.slug, title: $0.value.title, rules: $0.value.rules.map(\.text)) }
     }
 
     // MARK: Ideas
@@ -877,9 +892,9 @@ final class ProjectModel {
     }
 
     /// Promotes the idea's rules to an enforced topic. Returns the topic slug.
-    func promoteIdea(_ slug: String) -> String? {
+    func promoteIdea(_ slug: String, skippingPaths: Set<String> = []) -> String? {
         do {
-            let topic = try store.promoteIdea(slug)
+            let topic = try store.promoteIdea(slug, skippingPaths: skippingPaths)
             reloadTopics()
             reloadIdeas()
             return topic

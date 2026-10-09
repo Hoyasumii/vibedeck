@@ -51,6 +51,29 @@ final class AISession {
     @ObservationIgnored private var turnWaiter: CheckedContinuation<String, Error>?
     @ObservationIgnored private var turnOutput = ""
     @ObservationIgnored private var workflowQuestions: [String: Int] = [:]
+    @ObservationIgnored private var activeUsage: AIUsageRecord?
+    @ObservationIgnored private var codexUsageTotals: [String: AITokenUsage] = [:]
+    @ObservationIgnored private var codexUsageBaseline: AITokenUsage?
+    private(set) var usageError: String?
+
+    private func beginUsage(_ text: String, model: String?) {
+        var record = AIUsageRecord(taskID: workflowRef ?? UUID().uuidString,
+            operation: workflowRef.map { "Workflow " + $0 } ?? "Chat", provider: provider, model: model, prompt: text)
+        record.coverage = "provider-reported; external calls may be absent"
+        activeUsage = record
+        if provider == .codex, let thread = current?.sessionId { codexUsageBaseline = codexUsageTotals[thread] }
+    }
+
+    private func finishUsage(_ status: String, result: ClaudeResult? = nil) {
+        guard var usage = activeUsage else { return }
+        activeUsage = nil
+        if provider == .claude, let result { usage.tokens = result.tokens; usage.costUSD = result.costUSD }
+        usage.model = model ?? usage.model
+        usage.finish(status)
+        do { try AIUsageStore(root: root).save(usage) }
+        catch { usageError = "Não foi possível registrar o consumo: " + error.localizedDescription }
+    }
+
     private var workflowRef: String?
     private var workflowProject: ProjectStore?
     private var selectedProviderKey: String { "aiProvider.\(store.dir.lastPathComponent)" }
@@ -86,6 +109,7 @@ final class AISession {
     /// Set to ask the window to show the conversation or a terminal tab; the window clears it.
     var requestedPage: Page?
     /// Composer text, mentioned chats and attached files, kept here so they survive switching tabs.
+    var includeFullMentions = false
     var draft = ""
     var draftMentions: [UUID] = []
     var draftAttachments: [URL] = []
@@ -264,7 +288,7 @@ final class AISession {
         isWorking = true
         persist()
         let expanded = provider == .codex ? ((try? ProjectStore(root: root).expandAICommand(text)) ?? text) : text
-        var wire = ClaudeChat.wireText(expanded, mentioning: mentioned, attachments: paths, provider: provider)
+        var wire = ClaudeChat.wireText(expanded, mentioning: mentioned, attachments: paths, provider: provider, contextStore: AIContextStore(root: root), includeFullChats: includeFullMentions)
         if !shellContext.isEmpty {
             wire = shellContext.joined(separator: "\n") + "\n\n" + wire
             shellContext = []
@@ -291,6 +315,7 @@ final class AISession {
             Task {
                 await ensureStarted()
                 guard current?.id == chatId else { return }
+                beginUsage(wire, model: model ?? chosenModel.rawValue)
                 write(ClaudeInput.userMessage(wire))
             }
         }
@@ -422,6 +447,7 @@ final class AISession {
 
     /// Ends the process, saving the transcript so far.
     func stop() {
+        finishUsage("cancelled")
         persist()
         codexTask?.cancel(); codexTask = nil
         workflowTask?.cancel(); workflowTask = nil
@@ -566,6 +592,7 @@ final class AISession {
     }
 
     private func fail(_ message: String) {
+        finishUsage("failed")
         entries.append(Entry(kind: .error(message)))
         isWorking = false
         isThinking = false
@@ -607,6 +634,7 @@ final class AISession {
         case .unsupportedControl(let requestId):
             write(ClaudeInput.unsupported(requestId: requestId))
         case .result(let result):
+            finishUsage(result.isError ? "failed" : "completed", result: result)
             isWorking = false
             isThinking = false
             pending.removeAll()
@@ -769,13 +797,14 @@ extension AISession {
         guard let rpc = codex else { throw CodexRPCError.disconnected }
         var params = CodexProtocol.threadParameters(root: root, mode: permissionMode, model: settings?.model ?? effectiveCodexModel, autoReview: codexAutoReview)
         params["config"] = .object(CodexMCP.sessionConfig(root: root, cli: ClaudeUsageView.cliPath))
-        params["developerInstructions"] = .string("Você trabalha no VibeDeck. Leia .vibedeck/AGENTS.md para usar os registros e regras do projeto. Ao importar registros ou iniciar workflows pelo MCP, informe provider: codex. Não use ferramentas exclusivas do Claude.")
+        params["developerInstructions"] = .string("Você trabalha no VibeDeck. Leia .vibedeck/AGENTS.md. Use provider: codex no MCP. " + AIPromptPolicy.instructions)
         let method: String
         if !fresh, let id = current?.sessionId { method = "thread/resume"; params["threadId"] = .string(id) }
         else { method = "thread/start" }
         let response = try await rpc.request(method, params: params)
         guard let thread = response["thread"]?["id"]?.string else { throw CodexRPCError.invalidResponse }
         current?.sessionId = thread
+        if method == "thread/start" { codexUsageTotals[thread] = .init(input: 0, output: 0, cachedInput: 0, cacheWrite: 0, reasoningOutput: 0) }
         model = response["model"]?.string ?? settings?.model ?? effectiveCodexModel
         persist()
     }
@@ -790,6 +819,7 @@ extension AISession {
         }
         var params = CodexProtocol.turnParameters(thread: thread, text: text, mode: permissionMode, model: chosen, effort: effort, autoReview: codexAutoReview)
         if let schema { params["outputSchema"] = schema }
+        beginUsage(text, model: chosen)
         turnOutput = ""; codexTurn = nil
         let response = try await rpc.request("turn/start", params: params)
         if isWorking { codexTurn = response["turn"]?["id"]?.string }
@@ -802,6 +832,18 @@ extension AISession {
             return
         }
         guard let thread = params["threadId"]?.string, thread == current?.sessionId else { return }
+        if method == "thread/tokenUsage/updated" {
+            let total = AITokenUsage.codex(params["tokenUsage"]?["total"])
+            if activeUsage != nil {
+                if codexUsageBaseline == nil {
+                    codexUsageBaseline = total.since(.codex(params["tokenUsage"]?["last"]))
+                    activeUsage?.coverage = "partial: resumed thread without initial usage"
+                }
+                activeUsage?.tokens = total.since(codexUsageBaseline ?? .init())
+            }
+            codexUsageTotals[thread] = total
+            return
+        }
         if method == "item/started", let id = params["item"]?["id"]?.string { codexItems[id] = params["item"] }
         if method == "turn/started" { codexTurn = params["turn"]?["id"]?.string; isWorking = true }
         if method == "serverRequest/resolved", let id = params["requestId"] {
@@ -917,14 +959,15 @@ extension AISession {
         }
     }
 
-    private func workflowTurn(_ text: String, settings: AIProviderSettings? = nil, schema: JSONValue? = nil) async throws -> String {
+    private func workflowTurn(_ text: String, settings: AIProviderSettings? = nil, schema: JSONValue? = nil, operation: String = "Transição") async throws -> String {
         try Task.checkCancellation()
         isWorking = true
         try await prepareCodexThread(fresh: true, settings: settings)
         return try await withCheckedThrowingContinuation { continuation in
             turnWaiter = continuation
             codexTask = Task {
-                do { try await launchCodexTurn(text, settings: settings, schema: schema) }
+                do { try await launchCodexTurn(text, settings: settings, schema: schema)
+                    activeUsage?.operation = "Workflow · " + operation }
                 catch { let waiter = turnWaiter; turnWaiter = nil; waiter?.resume(throwing: error) }
             }
         }
@@ -956,21 +999,22 @@ extension AISession {
                     let settings = try store.runProviderSettings(ref, availableModels: codexModels.map(\.id), fallback: effectiveCodexModel)
                     if let warning = settings.warning { entries.append(Entry(kind: .notice(warning))) }
                     let prompt = try store.runStepPrompt(ref, cli: ClaudeUsageView.cliPath ?? "vibedeck")
-                    let output = try await workflowTurn(prompt, settings: settings.settings)
+                    let output = try await workflowTurn(prompt, settings: settings.settings, operation: action.title ?? action.step ?? "Etapa")
                     let verdict = output.split(whereSeparator: \.isNewline).last.map(String.init)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                     guard !verdict.isEmpty else { throw CodexRPCError.server("A etapa terminou sem veredito.") }
                     if verdict == "PERGUNTA" {
                         guard !(try store.loadRun(ref)).openQuestions.isEmpty else { throw CodexRPCError.server("A etapa retornou PERGUNTA sem registrar perguntas.") }
                         continue
                     }
-                    var next = try store.recordRun(ref, verdict: verdict, summary: String(output.prefix(2000)))
+                    let outputReference = try store.saveRunOutput(ref, output: output)
+                    var next = try store.recordRun(ref, verdict: verdict, summary: outputReference)
                     if next.action == .decide {
                         let candidates = String(decoding: try VDJSON.encode(next.candidates ?? []), as: UTF8.self)
                         let schema: JSONValue = .object(["type": .string("object"), "properties": .object(["to": .object(["type": .array([.string("string"), .string("null")])])]), "required": .array([.string("to")]), "additionalProperties": .bool(false)])
-                        let choice = try await workflowTurn("Avalie as condições na ordem sobre a saída da etapa. Retorne {\"to\":\"id\"} para a primeira condição verdadeira, ou {\"to\":null}.\nCondições: \(candidates)\nSaída: \(output)", schema: schema)
+                        let choice = try await workflowTurn("Avalie as condições na ordem sobre a saída da etapa. Retorne {\"to\":\"id\"} para a primeira condição verdadeira, ou {\"to\":null}.\nCondições: \(candidates)\nSaída: \(outputReference). Leia a fonte para avaliar; ausência de evidência não torna uma condição verdadeira.", schema: schema)
                         let value = try JSONDecoder().decode(JSONValue.self, from: Data(choice.utf8))
                         guard let target = value["to"] else { throw CodexRPCError.invalidResponse }
-                        next = try store.recordRun(ref, verdict: verdict, summary: String(output.prefix(2000)), to: target.string, noneHolds: target == .null)
+                        next = try store.recordRun(ref, verdict: verdict, summary: outputReference, to: target.string, noneHolds: target == .null)
                     }
                     _ = next
                 case .decide: throw CodexRPCError.server("Transição pendente sem saída da etapa.")

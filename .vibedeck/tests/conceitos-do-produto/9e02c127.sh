@@ -78,6 +78,8 @@ LOCAL_OK = {
     "Sources/VibeDeckCore/ClaudeUsage.swift",    # uso do Claude Code (statusline)
     "Sources/VibeDeckApp/ProjectTerminalView.swift",  # estado do terminal
     "Sources/VibeDeckApp/SkillIconCache.swift",  # cache de ícones baixados
+    "Sources/VibeDeckApp/AIReadOnlyOperation.swift",  # modelo/esforço do provedor escolhidos no painel (preferência da máquina)
+    "Sources/VibeDeckCore/AIPromptPolicy.swift",  # snapshots de contexto e uso de IA da máquina (Application Support), fora do repo
     "Sources/VibeDeckApp/RuleExecutionModel.swift",  # cache de duração dependente da máquina; regras/resultados continuam no repo
 }
 for f, s in allsrc.items():

@@ -42,10 +42,14 @@ printf '%s' "$r1" | grep -q '"isError":true' || { echo "Sources/vibedeck/MCPServ
 printf '%s' "$r1" | grep -q "$MSG" || { echo "Sources/vibedeck/MCPServer.swift: bloqueio do done sem mensagem em pt-BR: $r1"; fail=1; }
 printf '%s\n' "$out" | response 2 | grep -q '"isError":true' && { echo "Sources/vibedeck/MCPServer.swift: update_review_item status=in_progress falhou"; fail=1; }
 
-# Check reprovado ainda bloqueia; aprovado libera.
-printf '[{"ruleId":"%s","verdict":"fail","note":"x"}]' "$rule" | "$VD" rules check --task t --item "$by_rules" >/dev/null 2>&1 || true
+# Check só de scripts deixa a regra manual 'must' pendente: ainda bloqueia.
+"$VD" rules check --task t --item "$by_rules" >/dev/null 2>&1 || true
+"$VD" review set "$by_rules" --status done >/dev/null 2>&1 && { echo "Sources/VibeDeckCore/ProjectStore.swift: check sem as regras manuais 'must' liberou o done"; fail=1; }
+
+# Check reprovado ainda bloqueia; aprovado (com as manuais verificadas) libera.
+printf '[{"ruleId":"%s","verdict":"fail","note":"x"}]' "$rule" | "$VD" rules check --manual --task t --item "$by_rules" >/dev/null 2>&1 || true
 "$VD" review set "$by_rules" --status done >/dev/null 2>&1 && { echo "Sources/VibeDeckCore/ProjectStore.swift: check reprovado liberou o done"; fail=1; }
-printf '[{"ruleId":"%s","verdict":"pass","note":"ok"}]' "$rule" | "$VD" rules check --task t --item "$by_rules" >/dev/null 2>&1 || true
+printf '[{"ruleId":"%s","verdict":"pass","note":"ok"}]' "$rule" | "$VD" rules check --manual --task t --item "$by_rules" >/dev/null 2>&1 || true
 "$VD" review set "$by_rules" --status done >/dev/null 2>&1 || { echo "Sources/VibeDeckCore/ProjectStore.swift: check aprovado não liberou o done"; fail=1; }
 
 # Humano força com --force.

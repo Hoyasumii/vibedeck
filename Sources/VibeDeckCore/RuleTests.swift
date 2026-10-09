@@ -193,7 +193,7 @@ public enum RuleTestPrompt {
         Nunca afrouxe a regra só para o script passar.
         4. \(register).
         5. Se a regra for subjetiva ou depender de julgamento (ex.: "README atualizado quando muda algo documentado"), \
-        \(manual) — ela continua sendo verificada pelo agente no check.
+        \(manual) — ela permanece pendente até a verificação manual solicitada; nunca marque como aprovada sem evidência.
 
         \(ending)
         """

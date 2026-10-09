@@ -78,6 +78,7 @@ public enum ClaudeLaunch {
             "-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
             "--include-partial-messages", "--permission-prompt-tool", "stdio",
             "--permission-mode", mode.rawValue,
+            "--append-system-prompt", AIPromptPolicy.instructions,
         ]
         if model != .automatic { arguments += ["--model", model.rawValue] }
         if effort != .automatic { arguments += ["--effort", effort.rawValue] }
@@ -92,6 +93,9 @@ public enum ClaudeLaunch {
             "-p", prompt, "--output-format", "stream-json", "--verbose",
             "--permission-mode", ClaudePermissionMode.acceptEdits.rawValue,
             "--allowedTools", "Read Edit Write Glob Grep Bash",
+            // No MCP servers: their tool catalogs are a fixed per-run token cost, and the job uses the `vibedeck` CLI via Bash.
+            "--strict-mcp-config", "--no-session-persistence",
+            "--append-system-prompt", AIPromptPolicy.instructions,
         ]
         if model != .automatic { arguments += ["--model", model.rawValue] }
         if effort != .automatic { arguments += ["--effort", effort.rawValue] }
@@ -152,6 +156,7 @@ public struct ClaudeResult: Equatable, Sendable {
     public var isError: Bool
     public var text: String?
     public var costUSD: Double?
+    public var tokens: AITokenUsage = .init()
 }
 
 /// One line of `claude -p --output-format stream-json`, reduced to what the panel shows.
@@ -239,7 +244,8 @@ public enum ClaudeStream {
             return .result(ClaudeResult(
                 isError: json["is_error"]?.bool ?? (json["subtype"]?.string != "success"),
                 text: json["result"]?.string,
-                costUSD: json["total_cost_usd"]?.number
+                costUSD: json["total_cost_usd"]?.number,
+                tokens: .claude(json["usage"])
             ))
 
         default:

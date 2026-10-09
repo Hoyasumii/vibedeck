@@ -37,7 +37,7 @@ struct RuleTopicView: View {
         .navigationSubtitle("\(topic.rules.count) regra(s) · \(topic.isGlobal ? "vale para toda tarefa" : "\(topic.paths.count) escopo(s)")")
         .toolbar {
             ToolbarItemGroup {
-                if !AIProvider.installed.isEmpty { testsMenu }
+                if !AIProvider.installed.isEmpty { discoverButton; testsMenu }
                 RuleExecutionControls(topic: slug)
             }
             ToolbarItem {
@@ -46,6 +46,24 @@ struct RuleTopicView: View {
                     .help("Mostrar/ocultar verificações (⌥⌘I)")
             }
         }
+    }
+
+    /// "Descubra": globs, tags and an interview that drafts rules; each accept is one undo step.
+    private var discoverButton: some View {
+        RuleDiscoverButton(
+            subject: .init(topic: topic),
+            current: { .init(topic: topic) },
+            vocabulary: model.tagVocabulary,
+            topics: model.knownTopics(excluding: slug),
+            store: model.store,
+            applyScope: { scope, paths, tags in
+                model.mutateTopic(slug, "Descubra: globs e tags", undo: undo) { scope.apply(paths: paths, tags: tags, to: &$0.paths, tags: &$0.tags) }
+            },
+            applyRules: { drafts, chosen in
+                model.mutateTopic(slug, "Descubra: regras", undo: undo) { drafts.apply(chosen, to: &$0.rules) }
+            }
+        )
+        .id(slug)
     }
 
     /// "Gerar testes" asks Claude (in the chat) to turn each rule into a script; afterwards checks run the scripts.
