@@ -1126,6 +1126,16 @@ public struct ProjectStore: Sendable {
         try FileManager.default.removeItem(at: ideaURL(slug))
     }
 
+    /// Commits a removed idea on its own: `git commit -- <file>` records only that path, so anything else staged
+    /// stays staged. Returns false (and does nothing) outside a git repo, when the idea was never tracked or when
+    /// the commit fails (e.g. a pre-commit hook rejected it).
+    @discardableResult
+    public func commitIdeaRemoval(_ slug: String, title: String) -> Bool {
+        let path = String(ideaURL(slug).path.dropFirst(root.path.count + 1))
+        guard Git.run(["ls-files", "--error-unmatch", "--", path], in: root).ok else { return false }
+        return Git.run(["commit", "--quiet", "-m", "chore(ideas): remove \"\(title)\"", "--", path], in: root).ok
+    }
+
     @discardableResult
     public func addRule(_ rule: Rule, toIdea ideaRef: String) throws -> (slug: String, rule: Rule) {
         let (slug, _) = try updateIdea(ideaRef) { $0.rules.append(rule) }
