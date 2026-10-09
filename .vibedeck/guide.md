@@ -65,6 +65,15 @@ vibedeck.json                 # declara o projeto: nome, links, stack, padrões 
 
 Schemas: https://vibedeck-schema.alanreisanjo.workers.dev/v1/{project,review-group,rule-topic,idea,agent,command,skill,workflow,workflow-run,rule-check}.schema.json
 
+No app, a lista de **Docs** oferece **Gerar documentos** quando há Claude Code ou Codex instalado.
+A geração usa o provedor ativo somente para leitura, com cancelamento e timeout de 180 segundos por chamada.
+A proposta permite editar título e conteúdo, pré-visualizar Markdown, descartar documentos e aceitar todos
+ou apenas os selecionados. Nada em `.vibedeck/docs` é gravado antes do aceite. São propostos até 8 documentos;
+campos vazios e conteúdos acima de 40.000 caracteres são descartados. O prompt exige referências aos arquivos de origem.
+O aceite cria Markdown com `author: ai` no frontmatter e slugs únicos, atualiza a lista e é um único passo de undo.
+Os documentos podem ser lidos por `vibedeck docs cat` e MCP `read_doc`; criação com autoria também está disponível
+em `vibedeck docs new "Título" --body "Conteúdo" --ai` e MCP `write_doc` (`title`, `content`, `generated: true`).
+
 ## Itens de revisão
 
 Cada item de `reviews/*.json` descreve algo a ajustar no projeto
@@ -106,7 +115,9 @@ discarded | done, `body` em markdown, `rules` rascunho e `paths` (globs sugerido
 transforma as regras da ideia em um tópico de regras real (aí passam a valer); os `paths` da ideia viram os
 do tópico (ou são somados aos dele, sem remover nenhum). `unpromote_idea` desfaz isso (apaga o tópico,
 as regras rascunho ficam na ideia); apagar o tópico de outro jeito também despromove a ideia
-(`approved` volta para `exploring`). Registre ideias que surgirem com `add_idea`.
+(`approved` volta para `exploring`). `readiness` é o veredito da IA no app (Descubra/Verificar) sobre a ideia
+estar pronta para implementar; qualquer mudança em título, body, paths ou regras o invalida, e o botão
+"Implementar" só habilita com regras e veredito viável e atual. Registre ideias que surgirem com `add_idea`.
 
 ## Provedores de IA
 

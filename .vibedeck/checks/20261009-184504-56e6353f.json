@@ -1,0 +1,69 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-09T18:45:04.264Z",
+  "failures" : [
+
+  ],
+  "files" : [
+    ".vibedeck/ideas/painel-lateral-melhorado.json",
+    ".vibedeck/reviews/revisoes.json"
+  ],
+  "id" : "56E6353F-E19C-4C5D-9FEA-C37C5F212AD0",
+  "passed" : true,
+  "results" : [
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/9d6f362b.sh (exit 0)\n(sem saída)",
+      "ruleId" : "9D6F362B-9F0E-4661-97B3-6158B160D478",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/9f92a765.sh (exit 0)\n(sem saída)",
+      "ruleId" : "9F92A765-76E7-4EA0-A66A-78AE12EE4C8F",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/ac4ba963.sh (exit 0)\n(sem saída)",
+      "ruleId" : "AC4BA963-CDEE-419C-B057-9140643E115D",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/geral/0e5aec71.sh (exit 77)\n(sem saída)",
+      "ruleId" : "0E5AEC71-405E-4113-AB27-615313AB2B5F",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Este check cobre apenas status done via MCP. Nenhuma documentação mudou depois do check 07a9a4ce, que aprovou o README atualizado para sidebar, Grafo e CLI/MCP.",
+      "ruleId" : "306A20B6-E1FA-4BE4-96E8-2B854A3D0BC6",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/4095f087.sh (exit 0)\n(sem saída)",
+      "ruleId" : "4095F087-1E04-46C0-9AA4-A60C8C16A72B",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    }
+  ],
+  "task" : "Validar encerramento dos registros após implementação aprovada no check 07a9a4ce, sem manuais pendentes.",
+  "topics" : [
+    "geral"
+  ],
+  "warnings" : [
+
+  ]
+}

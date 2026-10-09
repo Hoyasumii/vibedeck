@@ -1,9 +1,21 @@
 {
   "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
   "author" : "human",
-  "body" : "A ideia do MD Viewer melhorado é simples:\n- O mesmo textarea que é escrito o markdown, é o mesmo textarea que é renderizado o markdown\n- É semelhante com o Typora",
+  "body" : "## Problema\nO MD Viewer usa dois componentes separados: `MarkdownEditor` (NSTextView com texto markdown puro e realce simples) e `MarkdownPreview` (MarkdownUI, tema `.gitHub`), que são alternados ou exibidos lado a lado em Editar / Dividir / Ler. Quem escreve não vê o resultado renderizado no mesmo lugar. Além disso, o fundo do texto markdown tem uma cor diferente do fundo da janela.\n\n## Proposta\n- O mesmo textarea em que se escreve o markdown é o textarea em que ele é renderizado, de forma semelhante ao Typora.\n- O modo de edição padrão é WYSIWYG: um único `NSTextView`, sem painel de preview ao lado.\n- O texto continua sendo markdown puro. O binding `text` e `textView.string` recebem exatamente os caracteres digitados, sem perda nem reescrita. A renderização muda só atributos de exibição.\n- A sintaxe markdown (`#`, `**`, `` ` ``, `[]()`, marcadores) fica oculta ou esmaecida nas linhas fora do cursor e visível na linha ou bloco em que o cursor está.\n- Imagens e links relativos (`../attachments/…`) continuam resolvendo contra `docsDir`/`ideasDir`. As imagens aparecem renderizadas no lugar do texto fora do cursor.\n- O fundo do editor e do visualizador de markdown usa a mesma cor de fundo da janela, sem cor própria. Nenhum `.background` de cor fixa nem tema com `backgroundColor` distinto em `DocView`, `IdeaView`, `MarkdownEditor` e `MarkdownPreview`.\n- Se o `MarkdownPreview` continuar existindo (modos Ler/Dividir e a proposta do `DocGenerate`), o tema dele não define fundo e herda o do contexto. Isso exige trocar ou ajustar `.markdownTheme(.gitHub)` em `MarkdownPreview.swift:13`, que hoje traz fundo próprio. Conferir também `DocGenerate.swift:104`.\n- Continuam funcionando:\n  - Undo/redo (⌘Z/⇧⌘Z) com um `UndoManager` por documento.\n  - Importação de anexos por arrastar e colar.\n  - O botão Anexar (`MarkdownInsertion`).\n  - A alteração externa do arquivo como edição desfazível (\"Alteração externa\").\n- Desempenho: o editor não trava em documentos grandes (~5000 linhas). A re-renderização fica limitada ao trecho editado ou fora do caminho de digitação. Hoje `MarkdownHighlighter.apply` reaplica todas as regex ao texto inteiro a cada edição, e isso precisa mudar.\n- `AgentView`, `CommandView` e `SkillView` usam o `MarkdownEditor` e mantêm o comportamento atual de edição, foco e undo. Eles ganham o mesmo fundo da janela.\n\n## Escopo\n- `Sources/VibeDeckApp/MarkdownEditor.swift`: `MarkdownEditor`, `AttachmentTextView` e `MarkdownHighlighter` (atributos, ocultar/esmaecer sintaxe conforme o cursor, mudança de seleção, imagens).\n- `Sources/VibeDeckApp/MarkdownPreview.swift`: tema sem fundo próprio. Também contém `MarkdownViewMode`, `MarkdownModePicker`, `AttachButton` e os carregadores de imagem.\n- `Sources/VibeDeckApp/DocView.swift` (`editor`/`preview`/`content`, linhas ~47-72) e `Sources/VibeDeckApp/IdeaView.swift` (linhas ~82-117): o modo padrão não monta `MarkdownPreview` ao lado do editor.\n- `Sources/VibeDeckApp/AgentView.swift:21`, `CommandView.swift:22` e `SkillView.swift:22`: verificar o fundo e a ausência de regressão.\n- `Sources/VibeDeckApp/DocGenerate.swift:104`: fundo do preview.\n- Testes novos em `Tests/VibeDeckAppTests` para o `MarkdownHighlighter`.\n- Atualizar o README se algo documentado mudar.\n- Restrições do projeto:\n  - Texto visível ao usuário em pt-BR.\n  - Sem minWidth no root da janela.\n  - Toda mutação é gravada no disco na hora e registra undo.\n  - Visual nativo do macOS 26.\n  - Os atalhos documentados continuam funcionando.\n\n## Critérios de aceite\n1. Em `DocView` e `IdeaView`, o modo padrão tem uma única view de texto editável, sem `MarkdownPreview` ao lado.\n2. Digitar `**a**` e `# t` deixa `textView.string` e o binding idênticos ao digitado. Salvar não altera o arquivo.\n3. Mover o cursor mostra os marcadores só na linha ou bloco do cursor. As demais linhas mostram só o texto formatado.\n4. O fundo é igual ao da janela em modo claro e escuro, sem `.background` de cor fixa nem tema com fundo próprio.\n5. ⌘Z/⇧⌘Z, o `UndoManager` por documento, arrastar/colar anexos, o botão Anexar e a \"Alteração externa\" desfazível funcionam.\n6. Imagens anexadas aparecem renderizadas fora do cursor, e os links relativos resolvem.\n7. Um markdown de ~5000 linhas aceita digitação sem atraso perceptível e sem reaplicar regex ao texto inteiro a cada tecla.\n8. Agent, Command e Skill editam como antes, com o mesmo fundo da janela.\n9. `swift test` passa, com casos novos cobrindo os atributos aplicados por `MarkdownHighlighter` (oculto/visível conforme o cursor) e o fundo.\n10. `graphify update .` é rodado depois da mudança de código.\n\nPremissa de implementação: os modos Dividir e Ler continuam existindo com o `MarkdownPreview` (sem fundo próprio). Só o modo padrão Editar vira WYSIWYG.",
   "createdAt" : "2026-10-08T03:15:27Z",
   "id" : "7DAA596A-E122-481B-9E02-97698E92F112",
+  "paths" : [
+    "Sources/VibeDeckApp/MarkdownEditor.swift",
+    "Sources/VibeDeckApp/MarkdownPreview.swift",
+    "Sources/VibeDeckApp/DocView.swift",
+    "Sources/VibeDeckApp/IdeaView.swift"
+  ],
+  "promotedTopic" : "melhorar-o-md-viewer",
+  "readiness" : {
+    "checkedAt" : "2026-10-09T19:09:36Z",
+    "fingerprint" : "9f57c9476c3fcb1f",
+    "viable" : true
+  },
   "rules" : [
     {
       "author" : "human",
@@ -12,9 +24,93 @@
       "id" : "0DD08791-BEDE-416F-9AD4-766540952496",
       "severity" : "must",
       "text" : "Semelhança com o Typora"
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T19:09:02Z",
+      "details" : "Em DocView e IdeaView, o modo padrão não monta MarkdownPreview ao lado do MarkdownEditor; só existe uma view de texto editável.",
+      "id" : "6B1849E4-6A0C-4140-9706-54E6EB95A61A",
+      "severity" : "must",
+      "text" : "O modo de edição WYSIWYG usa um único NSTextView para escrever e para exibir o markdown renderizado, sem painel de preview separado."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T19:09:02Z",
+      "details" : "Teste: digitar '**a**' e '# t' e conferir que textView.string e o binding são idênticos ao digitado; salvar não altera o arquivo.",
+      "id" : "F8FDC0F6-4F90-40AF-9A18-2FA6139565A3",
+      "severity" : "must",
+      "text" : "O texto digitado no editor continua sendo markdown puro: a renderização muda só atributos de exibição e o binding text recebe exatamente os caracteres markdown, sem perda nem reescrita."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T19:09:02Z",
+      "details" : "Verificar movendo o cursor: a linha com o cursor mostra os marcadores; as demais mostram só o texto formatado, como no Typora.",
+      "id" : "501B105D-5D4B-4BE3-A68B-06A64DCBEAFA",
+      "severity" : "must",
+      "text" : "A sintaxe markdown (#, **, `, [](), marcadores) fica oculta ou esmaecida nas linhas fora do cursor e visível na linha/bloco em que o cursor está."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T19:09:02Z",
+      "details" : "Nenhum .background com cor fixa nem tema com backgroundColor distinto em DocView, IdeaView, MarkdownEditor e MarkdownPreview; comparar visualmente em modo claro e escuro.",
+      "id" : "DB31B66D-C3D7-41D0-B755-B66665E8F441",
+      "severity" : "must",
+      "text" : "O fundo do editor/visualizador de markdown usa a mesma cor de fundo da janela, sem cor de fundo própria diferente."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T19:09:02Z",
+      "details" : "Substituir ou ajustar .markdownTheme(.gitHub) para remover o background (ex.: .markdownTextStyle/.markdownBlockStyle sem BackgroundColor) e conferir em DocGenerate.swift:104 também.",
+      "id" : "BF5BA615-1D1B-4DB7-B210-BA07AB133792",
+      "severity" : "should",
+      "text" : "Se o MarkdownPreview continuar existindo (leitura/DocGenerate), seu tema não define fundo próprio e herda o fundo do contexto."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T19:09:02Z",
+      "details" : "Testar: digitar, desfazer; soltar um arquivo; clicar em Anexar; mudança externa do arquivo vira edição desfazível ('Alteração externa').",
+      "id" : "ADA320A2-579B-409E-8B90-B1EFD90805E7",
+      "severity" : "must",
+      "text" : "Undo/redo (⌘Z/⇧⌘Z), UndoManager por documento, importação de anexos por arrastar/colar e inserção pelo botão Anexar continuam funcionando no novo editor."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T19:09:02Z",
+      "details" : "Abrir um doc com imagem anexada e conferir que ela é exibida no lugar do texto fora do cursor.",
+      "id" : "D4086F37-888E-4FAB-B1CA-B9BC8C75B01B",
+      "severity" : "should",
+      "text" : "Imagens e links relativos (../attachments/…) continuam resolvendo contra docsDir/ideasDir e aparecem renderizados no editor WYSIWYG."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T19:09:02Z",
+      "details" : "Abrir um markdown de ~5000 linhas e digitar; sem atraso perceptível nem reaplicar regex em todo o texto a cada tecla.",
+      "id" : "27AC8B98-7A40-44C9-A3F2-F3DB43A24B19",
+      "severity" : "should",
+      "text" : "O editor renderizado não trava ao digitar em documentos grandes: a re-renderização é limitada ao trecho editado ou ocorre fora do caminho de digitação."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T19:09:02Z",
+      "details" : "Conferir AgentView.swift:21, CommandView.swift:22, SkillView.swift:22 após a mudança; sem regressão de foco ou undo.",
+      "id" : "A1657562-8F5C-4BBE-A007-717DA3C7C4D8",
+      "severity" : "should",
+      "text" : "Os agentes, comandos e skills que usam MarkdownEditor (AgentView, CommandView, SkillView) mantêm o comportamento atual de edição e ganham o mesmo fundo da janela."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T19:09:02Z",
+      "details" : "swift test passa com casos novos em Tests/VibeDeckAppTests cobrindo os atributos aplicados por MarkdownHighlighter.",
+      "id" : "5C7F52C8-DC84-4FFE-AF21-5167DB99F96A",
+      "severity" : "should",
+      "text" : "A mudança vem com testes de unidade para a lógica de estilização do markdown (o que fica oculto/visível conforme o cursor) e o fundo."
     }
   ],
-  "status" : "new",
+  "status" : "done",
+  "tags" : [
+    "ui",
+    "swiftui"
+  ],
   "title" : "Melhorar o MD Viewer",
-  "updatedAt" : "2026-10-08T03:16:59Z"
+  "updatedAt" : "2026-10-09T19:43:17Z"
 }

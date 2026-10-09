@@ -125,6 +125,9 @@ resource `vibedeck://patterns`.
   ficam em `paths`. Por fim a IA reescreve a **descrição** com o que foi reunido (na ideia: Problema, Proposta,
   Escopo e Critérios de aceite; no tópico: quando ele se aplica), mostrada antes/depois para aceitar ou manter a
   atual. Cada aceite é um único ⌘Z; editar o tópico/ideia durante a chamada descarta a resposta.
+- **Markdown de documentos e ideias**: Editar formata o próprio campo de texto, mantendo o markdown original.
+  A sintaxe fica esmaecida fora da linha/bloco do cursor, e imagens anexadas aparecem no editor. Dividir e Ler
+  continuam disponíveis, com fundo herdado da janela; ⌘E alterna edição/leitura e ⌘Z/⇧⌘Z desfaz/refaz.
 - **Ideias**: brainstorm com status, tags, globs (`paths`), texto markdown e regras rascunho. "Promover" cria um tópico
   de regras real com essas regras e globs (se o tópico já existe, os globs são somados; globs que não casam mais
   nenhum arquivo são avisados antes). Apagar esse tópico (no app, no Finder ou com `vibedeck ideas unpromote`)
@@ -168,9 +171,20 @@ resource `vibedeck://patterns`.
   criticar → implementar → avaliar → abrir-pull-request` (e `buscar-review` para PR já publicado), agentes
   `viabilizador`, `explorador`, `planejador`, `critico`, `implementador`, `verificador` e `revisor-pr`, e a skill
   `status-no-github-project`. Requer `gh auth refresh -s project`.
+- **Gerar documentos**: No app, a lista de **Docs** oferece **Gerar documentos** quando há Claude Code ou Codex instalado. A geração usa o provedor ativo somente para leitura, com cancelamento e timeout de 180 segundos por chamada. A proposta permite editar título e conteúdo, pré-visualizar Markdown, descartar documentos e aceitar todos ou apenas os selecionados. Nada em `.vibedeck/docs` é gravado antes do aceite. São propostos até 8 documentos; campos vazios e conteúdos acima de 40.000 caracteres são descartados. O prompt exige referências aos arquivos de origem. O aceite cria Markdown com `author: ai` no frontmatter e slugs únicos, atualiza a lista e é um único passo de undo. Os documentos podem ser lidos por `vibedeck docs cat` e MCP `read_doc`; criação com autoria também está disponível em `vibedeck docs new "Título" --body "Conteúdo" --ai` e MCP `write_doc` (`title`, `content`, `generated: true`).
 - **Tags**: docs (frontmatter `tags: [a, b]`), revisões, regras, ideias, agentes, comandos, skills e workflows. Cada seção da sidebar abre
   uma lista filtrável por texto e por `#tag`.
+  A sidebar também tem um campo de busca por texto e `#tag` para os filhos de todas as seções;
+  múltiplas tags e o texto são combinados. Ela omite revisões sem itens abertos e ideias implementadas,
+  que continuam acessíveis nas listas centrais e nas abas já abertas.
 
+- **Grafo**: a visualização usa recursos locais e começa por comunidades, com até 180 nós e 300 relações
+  por vista. Oferece busca, zoom, centralização, inspeção por teclado e origem no Finder quando válida.
+  **Gerar** e **Atualizar** executam estrutura de código e análise semântica com o provedor selecionado;
+  não iniciam ao abrir a aba. Uma execução por projeto, com progresso e cancelamento. A publicação do
+  JSON e HTML ocorre após validação, preservando o resultado anterior em falhas. A data mostrada é a
+  última geração registrada, não a data do arquivo. Para exportar a visualização offline pelo terminal:
+  `vibedeck graph export` ou MCP `export_graph` (não consomem IA). Validação do renderer: `node scripts/test-graph-renderer.cjs`.
 - **IA no app**: o painel **IA** na sidebar (⇧⌘C) oferece Claude e Codex em uma interface compartilhada.
   Claude usa `claude -p` em stream-json; Codex usa `codex app-server --stdio`. Ambos oferecem streaming,
   histórico persistente, perguntas, aprovações, interrupção, anexos e referências a outras conversas.

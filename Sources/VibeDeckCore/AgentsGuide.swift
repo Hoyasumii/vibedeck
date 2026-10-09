@@ -107,6 +107,15 @@ public enum AgentsGuide {
 
     Schemas: \(SchemaURL.base)/{project,review-group,rule-topic,idea,agent,command,skill,workflow,workflow-run,rule-check}.schema.json
 
+    No app, a lista de **Docs** oferece **Gerar documentos** quando há Claude Code ou Codex instalado.
+    A geração usa o provedor ativo somente para leitura, com cancelamento e timeout de 180 segundos por chamada.
+    A proposta permite editar título e conteúdo, pré-visualizar Markdown, descartar documentos e aceitar todos
+    ou apenas os selecionados. Nada em `.vibedeck/docs` é gravado antes do aceite. São propostos até 8 documentos;
+    campos vazios e conteúdos acima de 40.000 caracteres são descartados. O prompt exige referências aos arquivos de origem.
+    O aceite cria Markdown com `author: ai` no frontmatter e slugs únicos, atualiza a lista e é um único passo de undo.
+    Os documentos podem ser lidos por `vibedeck docs cat` e MCP `read_doc`; criação com autoria também está disponível
+    em `vibedeck docs new "Título" --body "Conteúdo" --ai` e MCP `write_doc` (`title`, `content`, `generated: true`).
+
     ## Itens de revisão
 
     Cada item de `reviews/*.json` descreve algo a ajustar no projeto

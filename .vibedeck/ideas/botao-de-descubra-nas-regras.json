@@ -1,13 +1,18 @@
 {
   "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
   "author" : "human",
-  "body" : "A ideia é poder fazer com que a IA busque as tags e os globs de cada uma das regras. Além disso, deve ter um novo botão que vai pegar os dados informados (título, descrição, globs, tags), e a IA vai perguntar para o usuário coisas para gerar regras.\n\nIsso serve também para ideias.\n\n## Refinamento\n\n**Onde fica:** um único botão \"Descubra\" no editor do tópico de regras e no da ideia, com o mesmo componente.\n\n**Fluxo:** sob demanda, no mesmo botão. Primeiro a IA propõe `paths` (globs) e `tags`. Depois faz a entrevista para gerar regras.\n\n**Globs na ideia:** a ideia ganha um campo `paths` (globs sugeridos, opcional no schema `idea.schema.json`). O Descubra propõe globs também na ideia, e eles ficam guardados nela. Na promoção (`promoteIdea`), o tópico novo nasce com esses `paths`. Se a ideia já tem tópico, os globs da ideia são somados aos do tópico, sem remover nenhum.\n\n**Entrevista:** painel próprio com perguntas estruturadas. A IA devolve JSON com perguntas (e opções de resposta), o app mostra um formulário e roda rodadas curtas. Tem limite de perguntas por rodada e um \"gerar com o que já tenho\".\n\n**Contexto enviado:** título, descrição, globs, tags atuais, vocabulário de tags existente e os tópicos/regras existentes (para evitar duplicata e conflito). A IA lê o repositório só com Read/Grep/Glob.\n\n**Destino:** em ideias, as regras entram como rascunho (`idea.rules`). Em tópicos, aparecem como proposta e só viram regras ao aceitar. Nada é gravado direto.\n\n## Riscos\n- Globs inventados ou largos demais (`**/*`) fazem o tópico entrar em toda tarefa e gastam tokens.\n- Globs guardados na ideia podem envelhecer até a promoção (arquivo renomeado ou apagado).\n- Tags novas parecidas (\"ui\", \"interface\") poluem o vocabulário.\n- Regras duplicadas, conflitantes, vagas ou não testáveis.\n- Escrita acidental pelo `claude -p`, custo e latência por clique, e corrida com edição do usuário.\n- Entrevista em loop gastando tokens sem convergir.\n\n## Fora de escopo por ora\nExpor por MCP/CLI e marcar autoria por campo.",
+  "body" : "## Problema\n\nHoje o usuário escreve à mão os globs, as tags e as regras de um tópico de regras ou de uma ideia. Falta ajuda da IA para descobrir o escopo (globs e tags) e para levantar regras boas fazendo perguntas ao usuário. Isso vale para tópicos e para ideias.\n\n## Proposta\n\nUm único botão **Descubra**, com o mesmo componente, no editor do tópico de regras (`Sources/VibeDeckApp/RulesView.swift`) e no da ideia (`Sources/VibeDeckApp/IdeaView.swift`). O fluxo é sob demanda, no mesmo botão:\n\n1. **Escopo.** A IA propõe `paths` (globs) e `tags`, cada um com justificativa curta (arquivo:linha ou regra existente).\n2. **Entrevista.** Um painel próprio mostra perguntas estruturadas. A IA devolve JSON com perguntas e opções de resposta, e o app mostra um formulário em rodadas curtas. Há limite de perguntas por rodada (`RuleDiscover.maxQuestions`) e de rodadas (`maxRounds`), e um botão \"gerar com o que já tenho\".\n3. **Regras.** A IA gera as regras como rascunho, cada uma com severidade (must/should), atômica e verificável. Duplicatas e conflitos com regras existentes são sinalizados.\n\n**Contexto enviado à IA:** título, descrição, globs e tags atuais, vocabulário de tags existente e os tópicos/regras existentes. A IA lê o repositório só com Read/Grep/Glob.\n\n**Destino, sem gravar direto:**\n- Em ideias, as regras aceitas entram em `idea.rules` como rascunho, e os globs aceitos ficam em `idea.paths`.\n- Em tópicos, aparecem como proposta e só viram regras ao aceitar.\n- Cada aceite é um único passo de undo.\n\n**Globs na ideia.** A ideia ganha o campo opcional `paths` (`schema/v1/idea.schema.json`, espelhado em `worker/public/v1/idea.schema.json`).\n- Na promoção (`ProjectStore.promoteIdea`), o tópico novo nasce com esses `paths`.\n- Se a ideia já tem tópico, os globs dela são somados aos do tópico, sem remover nenhum.\n- Globs que não casam mais nenhum arquivo são avisados ao usuário (`unmatchedIdeaPaths`) em vez de copiados em silêncio.\n\n**Segurança e robustez:**\n- A chamada ao Claude roda só com ferramentas de leitura, sem Edit/Write/Bash.\n- A resposta é JSON validado. Se o parse falhar, mostra erro claro e não altera nada.\n- Globs precisam casar ao menos um arquivo existente e não podem ser catch-all (`*`, `**`, `**/*`).\n- Tags vêm do vocabulário existente. Tag nova só entra com aceite explícito.\n- Globs e tags só são adicionados, nunca removidos ou sobrescritos sem aceite.\n- Há cancelar e timeout, e a resposta é descartada se o item mudou ou deixou de estar selecionado durante a chamada.\n\n## Escopo\n\n- `Sources/VibeDeckCore/RuleDiscover.swift`: prompts, schemas JSON, validação e `RuleDiscoverScope` / `RuleDiscoverDrafts`.\n- `Sources/VibeDeckCore/Rules.swift`: `Idea.paths`.\n- `Sources/VibeDeckCore/ProjectStore.swift`: `promoteIdea` e `unmatchedIdeaPaths`.\n- `Sources/VibeDeckApp/RuleDiscover.swift`, `RulesView.swift`, `IdeaView.swift`, `ProjectModel.swift`: UI, painel de entrevista e integração com undo.\n- `schema/v1/idea.schema.json` e `worker/public/v1/idea.schema.json`.\n- `README.md` e o guia (`.vibedeck/guide.md`), se a documentação mudar.\n- Testes em `Tests/`: validação de globs/tags, promoção com soma de paths e parse da resposta.\n- Fora de escopo: expor por MCP/CLI e marcar autoria por campo.\n\n## Critérios de aceite\n\n- O botão Descubra aparece no tópico e na ideia, e só quando há provedor de IA suportado.\n- Nada é gravado sem aceite. Cada aceite é um passo de undo.\n- Globs catch-all ou sem arquivo correspondente são descartados antes da proposta.\n- Tags novas começam desmarcadas.\n- A entrevista respeita os limites de perguntas e de rodadas e permite parar e gerar.\n- Regras duplicadas ou conflitantes aparecem sinalizadas.\n- Promover uma ideia copia `idea.paths` para o tópico novo, ou soma aos paths do tópico existente. Globs obsoletos geram aviso.\n- Cancelar, timeout e descarte de resposta obsoleta funcionam.\n- `swift test` passa e o schema é atualizado.",
   "createdAt" : "2026-10-09T03:25:51Z",
   "id" : "0D332B0B-98FC-4D41-982D-F522CC36E501",
   "paths" : [
     "schema/v1/idea.schema.json",
     "worker/public/v1/idea.schema.json"
   ],
+  "readiness" : {
+    "checkedAt" : "2026-10-09T18:48:47Z",
+    "fingerprint" : "1af0104b57dfe74b",
+    "viable" : true
+  },
   "rules" : [
     {
       "author" : "ai",
@@ -108,7 +113,7 @@
       "text" : "Na promoção, globs da ideia que não casam mais nenhum arquivo são avisados ao usuário em vez de copiados em silêncio."
     }
   ],
-  "status" : "exploring",
+  "status" : "done",
   "tags" : [
     "ideias",
     "regras",
@@ -118,5 +123,5 @@
     "core"
   ],
   "title" : "Botão de Descubra nas regras",
-  "updatedAt" : "2026-10-09T15:35:15Z"
+  "updatedAt" : "2026-10-09T18:49:40Z"
 }

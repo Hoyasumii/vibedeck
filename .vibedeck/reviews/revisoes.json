@@ -14,13 +14,13 @@
         "interface-do-app",
         "dinamicas-da-interface"
       ],
-      "status" : "open",
+      "status" : "done",
       "target" : {
         "component" : "ProjectWindow (sidebar, case .groups)",
         "file" : "Sources/VibeDeckApp/ProjectWindow.swift"
       },
       "title" : "Reduzir exibição dos itens do Painel Lateral",
-      "updatedAt" : "2026-10-09T15:57:47Z"
+      "updatedAt" : "2026-10-09T18:44:39Z"
     },
     {
       "author" : "human",

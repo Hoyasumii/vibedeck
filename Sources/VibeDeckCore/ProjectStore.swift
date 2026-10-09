@@ -30,6 +30,7 @@ public enum VibeDeckError: LocalizedError, Equatable {
     case cloudSessionFailed(String)
     case discoverFailed(String)
     case discoverInvalidAnswer
+    case docGenerationInvalidAnswer
     case discoverTimedOut
     case skillIconsUnavailable(String)
     case unknownStackIcons([String: [String]])
@@ -72,6 +73,7 @@ public enum VibeDeckError: LocalizedError, Equatable {
         case .cloudSessionFailed(let output): "O Claude Code não criou a sessão na nuvem:\n\(output)"
         case .discoverFailed(let output):
             "O Claude Code não conseguiu descobrir; nada foi alterado." + (output.isEmpty ? "" : "\n\(output)")
+        case .docGenerationInvalidAnswer: "A IA retornou uma proposta de documentos inválida. Nenhum documento foi criado. Tente gerar novamente."
         case .discoverInvalidAnswer: "O Claude Code respondeu num formato inesperado; nada foi alterado. Tente de novo."
         case .discoverTimedOut: "O Descubra demorou demais e foi interrompido; nada foi alterado. Tente de novo."
         case .skillIconsUnavailable(let s): "Skill Icons indisponível: \(s)"
@@ -225,10 +227,16 @@ public struct ProjectStore: Sendable {
     }
 
     /// Creates a new doc with a unique slug derived from `title`. Returns the slug.
-    public func createDoc(title: String, body: String = "") throws -> String {
+    public func createDoc(title: String, body: String = "", author: Author = .human) throws -> String {
         let slug = uniqueSlug(Slug.make(title), in: docsDir, ext: "md")
-        try writeDoc(slug, "# \(title)\n\n\(body)")
+        let frontmatter = author == .ai ? "---\nauthor: ai\n---\n" : ""
+        try writeDoc(slug, frontmatter + "# \(title)\n\n\(body)")
         return slug
+    }
+
+    /// Creates an accepted AI proposal; the Core owns its provenance.
+    public func createGeneratedDoc(title: String, body: String) throws -> String {
+        try createDoc(title: title, body: body, author: .ai)
     }
 
     /// Rewrites the doc's frontmatter `tags:` line (removed when `tags` is empty).
