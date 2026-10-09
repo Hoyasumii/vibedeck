@@ -73,20 +73,6 @@
         "ruleHash" : "cc40c001b8c6216a"
       },
       "text" : "README atualizado quando muda algo documentado"
-    },
-    {
-      "author" : "ai",
-      "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "Todos os commits do histórico terminam com `Co-Authored-By: Claude ... <noreply@anthropic.com>` e têm título curto no imperativo em inglês, com bullets quando necessário. Commitar só quando o usuário pedir.\nVerificar: `git log -1 --format=%B`.",
-      "id" : "4095F087-1E04-46C0-9AA4-A60C8C16A72B",
-      "severity" : "should",
-      "test" : {
-        "command" : ".vibedeck/tests/geral/4095f087.sh",
-        "generatedAt" : "2026-10-09T00:04:05Z",
-        "mode" : "script",
-        "ruleHash" : "696d5f04943833e3"
-      },
-      "text" : "Commits terminam com a linha Co-Authored-By"
     }
   ],
   "tags" : [

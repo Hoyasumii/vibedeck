@@ -1,0 +1,59 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-09T19:58:43.779Z",
+  "failures" : [
+
+  ],
+  "files" : [
+    ".vibedeck/commands/implementar.json",
+    ".vibedeck/rules/geral.json",
+    ".vibedeck/tests/geral/4095f087.sh"
+  ],
+  "id" : "A83412A6-A13D-442A-A2EA-C4255A50BE8F",
+  "passed" : true,
+  "pending" : [
+    "README atualizado quando muda algo documentado"
+  ],
+  "results" : [
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/9d6f362b.sh (exit 0)\n(sem saída)",
+      "ruleId" : "9D6F362B-9F0E-4661-97B3-6158B160D478",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/9f92a765.sh (exit 0)\n(sem saída)",
+      "ruleId" : "9F92A765-76E7-4EA0-A66A-78AE12EE4C8F",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/ac4ba963.sh (exit 0)\n(sem saída)",
+      "ruleId" : "AC4BA963-CDEE-419C-B057-9140643E115D",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/geral/0e5aec71.sh (exit 77)\n(sem saída)",
+      "ruleId" : "0E5AEC71-405E-4113-AB27-615313AB2B5F",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "na"
+    }
+  ],
+  "task" : "Remove a regra Co-Authored-By (geral.json), seu script de teste e a menção no prompt do comando implementar",
+  "topics" : [
+    "geral"
+  ],
+  "warnings" : [
+
+  ]
+}

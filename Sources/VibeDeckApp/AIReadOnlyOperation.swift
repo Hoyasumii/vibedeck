@@ -29,7 +29,7 @@ import VibeDeckCore
                     do {
                         reply = Data(try await runner.run(root: root, prompt: nextPrompt,
                             schema: JSONDecoder().decode(JSONValue.self, from: Data(schema.utf8)),
-                            timeout: .seconds(180), settings: settings).utf8)
+                            timeout: .seconds(180), settings: settings, workspaceWrites: false).utf8)
                     } catch {
                         usage.tokens = runner.tokens; usage.model = runner.model ?? settings.model
                         throw error

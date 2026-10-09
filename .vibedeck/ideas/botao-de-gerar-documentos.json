@@ -1,7 +1,7 @@
 {
   "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
   "author" : "human",
-  "body" : "Na parte dos documentos, deve ser possível gerar documentos. Esses documentos devem mostrar comportamentos do projeto, o que a IA achar útil: Como rodar uma aplicação; Dependências; Regras de Negócio, sei lá",
+  "body" : "## Problema\n\nNa seção **Docs** do app não há como gerar documentos do projeto automaticamente. O usuário precisa escrevê-los à mão, embora a IA consiga ler o repositório e documentar o que for útil: como rodar a aplicação, dependências, regras de negócio etc.\n\n## Proposta\n\nAdicionar na lista da seção Docs um botão **Gerar documentos**. Ele pede ao provedor de IA ativo (Claude Code ou Codex), só com ferramentas de leitura, que leia o repositório e proponha documentos sobre comportamentos do projeto (o que a IA achar útil: como rodar, dependências, regras de negócio).\n\nFluxo:\n1. O botão só é renderizado quando há provedor de IA suportado na máquina; sem provedor, não aparece.\n2. A geração roda somente leitura via `AIReadOnlyOperation`:\n   - Claude Code: `allowedTools` restrito a Read, Glob e Grep (não usar a lista `Read Edit Write Glob Grep Bash` de `ClaudeStream.swift`).\n   - Codex: `workspaceWrites=false` (`CodexReadOnly.run`, nunca `workspaceWrites: true`).\n3. Uma geração por projeto por vez. Durante ela o botão fica desabilitado; há botão de **cancelar** e **timeout**. Cancelar interrompe o processo sem criar documentos.\n4. A resposta da IA é JSON validado. Se o parse falhar, o app mostra erro claro em pt-BR e não cria nenhum documento.\n5. Nada é gravado direto. O app mostra uma **proposta** (título + conteúdo de cada documento) e o usuário aceita tudo ou por documento. Editar título/conteúdo, descartar um documento ou cancelar a proposta não altera `.vibedeck/docs`; só o aceite grava.\n6. Cada documento aceito é criado por operação do Core (`ProjectStore`) com `author=ai`, gravado via `AtomicFile.write` em `.vibedeck/docs` no formato de documento existente. Fica disponível no CLI e no MCP e aparece ao vivo na lista de Docs.\n7. Nunca sobrescreve nem apaga documento existente; se o slug já existe, usa `Slug.make` + `uniqueSlug`.\n8. Aceitar uma proposta é um único passo de undo (um ⌘Z desfaz todos os docs aceitos).\n9. A lógica de montar o prompt, validar o JSON e converter em propostas fica no Core (novo tipo em `Sources/VibeDeckCore`, no estilo de `ReviewDiscover`/`RuleDiscover`), sem SwiftUI; o App só chama essa API.\n10. Validação: documentos com título vazio ou conteúdo vazio após trim são descartados antes da proposta; máximo de 8 documentos por geração e tamanho limitado por conteúdo (excedente descartado).\n11. O prompt exige que o conteúdo cubra informação verificável do repositório (como rodar, dependências, regras de negócio) e que cada afirmação cite o arquivo de origem (arquivo:linha ou arquivo por seção).\n12. Textos visíveis (botão, progresso, erros) em pt-BR; README e `.vibedeck/guide.md` documentam a geração.\n\n## Escopo\n\n- `Sources/VibeDeckApp/SectionListView.swift`: botão na seção Docs, estados de progresso/cancelar.\n- `Sources/VibeDeckApp/ProjectModel.swift`: estado da geração por projeto, proposta, aceite com um único undo.\n- `Sources/VibeDeckApp/AIReadOnlyOperation.swift`, `RuleDiscover.swift`, `ReviewDiscover.swift` (App): reuso do padrão de chamada read-only.\n- `Sources/VibeDeckApp/DocView.swift`, `MarkdownPreview.swift`: pré-visualização/edição da proposta.\n- `Sources/VibeDeckCore`: novo tipo de geração de docs (prompt, validação, propostas), mais `ProjectStore.swift`, `RuleDiscover.swift`, `ReviewDiscover.swift`, `Stack.swift`, `AIPromptPolicy.swift`, `AgentsGuide.swift`.\n- `Sources/vibedeck/CLI.swift`, `MCPServer.swift`: manter paridade se houver operação nova no Core.\n- Testes: `Tests/VibeDeckCoreTests/ReviewDiscoverTests.swift`, `ProjectStoreTests.swift` e novo teste do gerador no Core; teste de app da proposta.\n- `README.md` e `.vibedeck/guide.md`.\n- Tags: ia, ui, swiftui, core, cli, mcp.\n\n## Critérios de aceite\n\n- Sem provedor, o botão não é renderizado; com provedor, aparece na seção Docs.\n- A chamada usa só Read/Glob/Grep (Claude) ou `workspaceWrites=false` (Codex).\n- Cancelar a proposta ou a geração não cria arquivo em `.vibedeck/docs`.\n- Aceitar grava docs com `author=ai`, legíveis pelo `ProjectStore`, CLI e MCP, e visíveis na lista ao vivo.\n- Gerar duas vezes com o mesmo título gera slugs distintos e o original fica intacto.\n- Resposta inválida: nenhum doc criado e erro em pt-BR.\n- Com geração em andamento, o botão fica desabilitado; cancelar interrompe sem criar docs.\n- Validador descarta docs vazios e limita a 8.\n- Um ⌘Z desfaz todos os docs de um aceite.\n- `swift test` passa; README e guia atualizados.",
   "createdAt" : "2026-10-09T17:35:09Z",
   "id" : "887A02E8-C412-4A53-851C-1D297D0ED0B3",
   "paths" : [
@@ -11,8 +11,24 @@
     "Sources/VibeDeckApp/SectionListView.swift",
     "Sources/VibeDeckApp/RuleDiscover.swift",
     "Sources/VibeDeckApp/AIReadOnlyOperation.swift",
-    "Sources/VibeDeckCore/RuleDiscover.swift"
+    "Sources/VibeDeckCore/RuleDiscover.swift",
+    "Sources/VibeDeckApp/ReviewDiscover.swift",
+    "Sources/VibeDeckCore/ReviewDiscover.swift",
+    "Sources/VibeDeckCore/Stack.swift",
+    "Sources/VibeDeckCore/AIPromptPolicy.swift",
+    "Sources/vibedeck/CLI.swift",
+    "Sources/vibedeck/MCPServer.swift",
+    "Tests/VibeDeckCoreTests/ReviewDiscoverTests.swift",
+    "Tests/VibeDeckCoreTests/ProjectStoreTests.swift",
+    "Sources/VibeDeckCore/AgentsGuide.swift",
+    "Sources/VibeDeckApp/MarkdownPreview.swift"
   ],
+  "promotedTopic" : "botao-de-gerar-documentos",
+  "readiness" : {
+    "checkedAt" : "2026-10-09T18:48:03Z",
+    "fingerprint" : "4991f2fde3e41465",
+    "viable" : true
+  },
   "rules" : [
     {
       "author" : "ai",
@@ -85,15 +101,73 @@
       "id" : "205F9706-54D5-4938-8D8F-F33FFCE8693C",
       "severity" : "should",
       "text" : "Aceitar uma proposta de documentos é um único passo de undo no app."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T18:46:21Z",
+      "details" : "Teste de app: gerar proposta, editar/descartar um documento e verificar que .vibedeck/docs não muda até o aceite.",
+      "id" : "26B70328-770E-4641-8228-F9674C3C24BE",
+      "severity" : "must",
+      "text" : "Mudar o conteúdo ou o título de uma proposta de documento antes de aceitar não deve alterar nenhum arquivo em disco; só o aceite grava."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T18:46:21Z",
+      "details" : "Verificar que o novo tipo de Core está em Sources/VibeDeckCore, é coberto por teste em Tests/VibeDeckCoreTests e o App só chama essa API.",
+      "id" : "5DC6AE92-7086-42E6-B8B7-930C63954281",
+      "severity" : "must",
+      "text" : "A lógica de montar o prompt, validar o JSON da IA e converter em propostas de documento fica no Core (como ReviewDiscover/RuleDiscover), sem depender de SwiftUI."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T18:46:21Z",
+      "details" : "Teste unitário do validador com resposta JSON contendo documentos vazios; a proposta não os inclui.",
+      "id" : "C5D852BD-F0D4-4FCC-8A92-A9ADFA42BBD9",
+      "severity" : "must",
+      "text" : "Documentos da proposta com título vazio ou conteúdo vazio após trim são descartados antes de mostrar a proposta."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T18:46:21Z",
+      "details" : "Teste do validador com mais de 8 documentos: a proposta tem no máximo 8.",
+      "id" : "9BDC1723-D1FA-4950-807A-F65530A41737",
+      "severity" : "should",
+      "text" : "Limitar o número de documentos por geração (máximo de 8) e o tamanho de cada conteúdo; o excedente é descartado antes da proposta."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T18:46:21Z",
+      "details" : "Verificar que a chamada de geração não passa workspaceWrites: true (CodexReadOnly.run) e não usa a lista 'Read Edit Write Glob Grep Bash' de ClaudeStream.swift:95.",
+      "id" : "81D69362-44FE-474D-A375-A5A77EADAAB2",
+      "severity" : "must",
+      "text" : "Se o provedor ativo for o Codex, a geração roda em modo somente leitura (workspaceWrites=false); se for o Claude Code, com allowedTools restrito a Read, Glob e Grep."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T18:46:21Z",
+      "details" : "Teste: aceitar proposta e verificar o arquivo no disco, a leitura pelo ProjectStore e a presença na lista.",
+      "id" : "488ADC70-B8B4-4BF2-BAE9-C796935FA6D6",
+      "severity" : "should",
+      "text" : "Documentos aceitos pela geração são gravados via AtomicFile.write em .vibedeck/docs com o JSON/formato de documento existente, e aparecem ao vivo na lista de Docs sem recarregar manualmente."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T18:46:21Z",
+      "details" : "Procurar a menção no README e conferir as strings novas em pt-BR.",
+      "id" : "8B870FEB-13EA-4F82-AA41-4C23080923F1",
+      "severity" : "should",
+      "text" : "O README e o guia (.vibedeck/guide.md) documentam a geração de documentos e o texto visível ao usuário (botão, progresso, erros) está em pt-BR."
     }
   ],
-  "status" : "new",
+  "status" : "done",
   "tags" : [
     "ia",
     "ui",
     "swiftui",
-    "core"
+    "core",
+    "cli",
+    "mcp"
   ],
   "title" : "Botão de Gerar Documentos",
-  "updatedAt" : "2026-10-09T17:43:03Z"
+  "updatedAt" : "2026-10-09T19:06:53Z"
 }

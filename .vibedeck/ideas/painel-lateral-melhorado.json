@@ -1,14 +1,22 @@
 {
   "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
   "author" : "human",
-  "body" : "A ideia do Painel lateral melhorado consiste em:\n\n- Omitir tópicos de revisões que não estão sendo trabalhados(tópicos sem issues abertas). Eles devem poder ser visto no painel de revisões, e não no painel lateral. \n\n![Captura de Tela 2026-10-09 às 13.06.47.png](../attachments/painel-lateral-melhorado-captura-de-tela-2026-10-09-as-13-06-47.png)\n\n- Omitir ideias já implementadas(elas podem ser vistas na tela de ideias):\n\n![Captura de Tela 2026-10-09 às 13.08.52.png](../attachments/painel-lateral-melhorado-captura-de-tela-2026-10-09-as-13-08-52.png)",
+  "body" : "## Problema\n\nO painel lateral (sidebar) do projeto fica poluído: lista tópicos de revisão que não estão sendo trabalhados (sem issues abertas) e ideias que já foram implementadas. Esses itens já podem ser vistos nas telas próprias de Revisões e de Ideias.\n\n## Proposta\n\nNa **sidebar** apenas:\n\n- Omitir grupos de revisão sem itens abertos (`openCount == 0`). Eles continuam visíveis na tela de Revisões.\n  ![Captura de Tela 2026-10-09 às 13.06.47.png](../attachments/painel-lateral-melhorado-captura-de-tela-2026-10-09-as-13-06-47.png)\n- Omitir ideias já implementadas (status `done`). Elas continuam visíveis na tela de Ideias.\n  ![Captura de Tela 2026-10-09 às 13.08.52.png](../attachments/painel-lateral-melhorado-captura-de-tela-2026-10-09-as-13-08-52.png)\n\nO filtro de omissão vale só para a sidebar. As telas de seção (`ProjectModel.rows(for:)`, `.groups` e `.ideas`) seguem usando a lista completa.\n\n## Escopo\n\n- `Sources/VibeDeckApp/ProjectWindow.swift`: `children(of:)`, nos casos `.groups` (hoje `ForEach(model.groups)`) e `.ideas` (hoje `ForEach(model.ideas)`). Aplicar o filtro de visibilidade aqui, junto com o filtro existente por texto e #tag.\n- `Sources/VibeDeckApp/ProjectModel.swift`: `rows(for:)` (~linha 961–978) e `count(_:)` devem continuar com a lista completa. Se for útil, expor propriedades derivadas para a sidebar (grupos com itens abertos, ideias não implementadas).\n- `Sources/VibeDeckCore/Rules.swift` e `Sources/VibeDeckCore/Models.swift`: só se precisar de apoio ao `openCount` ou ao `IdeaStatus`. Não é esperado mudar o formato de dados.\n- `Tests/VibeDeckAppTests/RuleExecutionModelTests.swift`: adicionar testes.\n- Tags: ui, swiftui, revisoes, ideias.\n\n## Critérios de aceite\n\n- Um grupo cujos itens estão todos done/wontfix não aparece na sidebar, mas aparece na tela de Revisões e pode ser aberto, inclusive em aba.\n- Um grupo volta à sidebar assim que algum item passa a ter status aberto (open ou in_progress), sem recarregar o projeto (undo ou edição externa do JSON).\n- Ideias com status done não aparecem na sidebar. Ideias em rascunho, novas, em exploração, aprovadas, promovidas e descartadas continuam aparecendo. Todas, inclusive as done, aparecem na tela de Ideias.\n- Se o item selecionado ou aberto em aba for omitido (último item marcado como done, ideia marcada como Implementada), a seleção ou a aba continua mostrando o conteúdo, sem tela vazia nem crash.\n- A busca por texto e por #tag na sidebar funciona apenas sobre os itens exibidos.\n- Há testes para: grupo sem itens abertos omitido, grupo reaberto reaparece, cada status não-done de ideia visível, done omitido. `swift test` passa.\n- Rodar `graphify update .` depois de alterar o código.",
   "createdAt" : "2026-10-09T15:59:00Z",
   "id" : "70094A4A-1578-40DB-88FB-A19346569612",
   "paths" : [
     "Sources/VibeDeckApp/ProjectWindow.swift",
     "Sources/VibeDeckApp/ProjectModel.swift",
-    "Sources/VibeDeckCore/Rules.swift"
+    "Sources/VibeDeckCore/Rules.swift",
+    "Sources/VibeDeckCore/Models.swift",
+    "Tests/VibeDeckAppTests/RuleExecutionModelTests.swift"
   ],
+  "promotedTopic" : "painel-lateral-melhorado",
+  "readiness" : {
+    "checkedAt" : "2026-10-09T18:09:23Z",
+    "fingerprint" : "6d84901dee55dc08",
+    "viable" : true
+  },
   "rules" : [
     {
       "author" : "ai",
@@ -57,9 +65,33 @@
       "id" : "279A3FF7-0F45-4FB1-B77A-F2DACA0AC289",
       "severity" : "should",
       "text" : "O filtro por texto e por #tag da sidebar continua funcionando sobre os grupos e ideias que ela exibe."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T18:08:07Z",
+      "details" : "Teste: grupo com todos os itens done fica fora da lista; reabrir um item (undo ou edição externa do JSON) o inclui sem recarregar o projeto.",
+      "id" : "1409D15B-204A-4682-814B-B7D00C0DED66",
+      "severity" : "should",
+      "text" : "Um grupo de revisão omitido da sidebar volta a aparecer nela assim que algum de seus itens passa a ter status aberto (open ou in_progress, conforme openCount)."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T18:08:07Z",
+      "details" : "Verificar que o filtro de omissão é aplicado somente em children(of:) da sidebar e que ProjectModel.swift:965 (lista da tela de Revisões) segue listando todos os grupos.",
+      "id" : "5E0C4B04-4D23-4AC8-B65E-8F0FE8F8AED3",
+      "severity" : "must",
+      "text" : "A sidebar de Revisões e de Ideias mostra o mesmo conjunto de itens após filtrar, e a tela de Revisões (.groups) e a de Ideias continuam usando a lista completa, sem o filtro de omissão."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T18:08:07Z",
+      "details" : "Teste: ideias com cada status não-done aparecem na lista da sidebar.",
+      "id" : "7332715D-BF28-4041-B881-397DD6FD8B33",
+      "severity" : "must",
+      "text" : "Ideias com status diferente de done (por exemplo rascunho, promovida) continuam aparecendo na sidebar."
     }
   ],
-  "status" : "new",
+  "status" : "done",
   "tags" : [
     "ui",
     "swiftui",
@@ -67,5 +99,5 @@
     "ideias"
   ],
   "title" : "Painel Lateral Melhorado",
-  "updatedAt" : "2026-10-09T17:36:55Z"
+  "updatedAt" : "2026-10-09T18:44:41Z"
 }

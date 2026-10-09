@@ -8,6 +8,7 @@ struct SectionListView: View {
     let onOpen: (SidebarItem) -> Void
     let onOpenInNewTab: (SidebarItem) -> Void
     let onAdd: () -> Void
+    @Environment(AISession.self) private var session
     @Environment(ProjectModel.self) private var model
     @Environment(\.undoManager) private var undo
     @State private var selection = Set<SidebarItem>()
@@ -15,6 +16,7 @@ struct SectionListView: View {
     @State private var tokens: [TagToken] = []
     @State private var editingTags: SectionRow?
     @State private var importedCount: Int?
+    @State private var showingDocGeneration = false
 
     struct TagToken: Identifiable, Hashable {
         var tag: String
@@ -85,6 +87,24 @@ struct SectionListView: View {
                     }
                 }
             }
+            if section == .docs, !AIProvider.installed.isEmpty {
+                ToolbarItemGroup {
+                    Button {
+                        model.docGenerator.start(store: model.store, provider: session.provider)
+                        showingDocGeneration = true
+                    } label: {
+                        Label("Gerar documentos", systemImage: "wand.and.stars")
+                    }
+                    .disabled(model.docGenerator.isActive)
+                    if model.docGenerator.isActive {
+                        if model.docGenerator.isRunning { ProgressView().controlSize(.small) }
+                        Button(model.docGenerator.isRunning ? "Cancelar geração" : "Revisar proposta") {
+                            if model.docGenerator.isRunning { model.docGenerator.cancel() }
+                            else { showingDocGeneration = true }
+                        }
+                    }
+                }
+            }
             if section == .topics {
                 ToolbarItemGroup {
                     if !AIProvider.installed.isEmpty { generateMenu.disabled(model.ruleExecution?.active == true) }
@@ -104,6 +124,9 @@ struct SectionListView: View {
             case .commands: Text(count == 0 ? "Nenhum comando novo encontrado." : "\(count) comando(s) importado(s).")
             default: Text(count == 0 ? "Nenhum agente novo encontrado." : "\(count) agente(s) importado(s).")
             }
+        }
+        .sheet(isPresented: $showingDocGeneration, onDismiss: { model.docGenerator.cancel() }) {
+            DocGenerateSheet(runner: model.docGenerator, model: model, undo: undo)
         }
         .sheet(item: $editingTags) { row in
             TagsEditor(title: row.title, tags: row.tags) { model.setTags($0, for: row.id, undo: undo) }

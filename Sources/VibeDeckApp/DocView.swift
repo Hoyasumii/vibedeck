@@ -7,7 +7,6 @@ struct DocView: View {
     @State private var text = ""
     @State private var savedText = ""
     @State private var loaded = false
-    @State private var saveTask: Task<Void, Never>?
     @State private var conflict: String?
     @State private var insertion: MarkdownInsertion?
     @AppStorage("docViewMode") private var mode: MarkdownViewMode = .edit
@@ -36,7 +35,7 @@ struct DocView: View {
                 }
             }
             .onAppear(perform: load)
-            .onChange(of: text) { _, _ in scheduleSave() }
+            .onChange(of: text) { _, _ in saveIfNeeded() }
             .onChange(of: model.externalDocChange[slug]) { _, _ in handleExternalChange() }
             .onDisappear(perform: flush)
             .onReceive(NotificationCenter.default.publisher(for: .vibedeckFlushPendingSaves)) { _ in flush() }
@@ -61,6 +60,7 @@ struct DocView: View {
         MarkdownEditor(
             text: $text,
             undoManager: model.undoManager(forDoc: slug),
+            baseURL: model.store.docsDir,
             importFiles: { model.importAttachments($0, owner: slug) },
             importImage: { model.importAttachment(data: $0, name: "colagem-\(Date.now.formatted(.iso8601)).png", owner: slug) },
             insertion: insertion
@@ -90,14 +90,9 @@ struct DocView: View {
         loaded = true
     }
 
-    private func scheduleSave() {
+    private func saveIfNeeded() {
         guard loaded, isDirty else { return }
-        saveTask?.cancel()
-        saveTask = Task {
-            try? await Task.sleep(for: .milliseconds(600))
-            guard !Task.isCancelled else { return }
-            save()
-        }
+        save()
     }
 
     private func save() {
@@ -107,7 +102,6 @@ struct DocView: View {
     }
 
     private func flush() {
-        saveTask?.cancel()
         if isDirty { save() }
     }
 

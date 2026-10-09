@@ -8,7 +8,7 @@ struct VibeDeckCLI: AsyncParsableCommand {
         commandName: "vibedeck",
         abstract: "Gerencia projetos VibeDeck (links, docs, revisões, regras e ideias) a partir do terminal.",
         version: "0.2.0",
-        subcommands: [AI.self, Init.self, Status.self, Stack.self, Patterns.self, Links.self, Docs.self, Review.self, Rules.self, Ideas.self, Agents.self, Commands.self, Skills.self, Workflows.self, Runs.self, Tag.self, Hook.self, Usage.self, Cloud.self, MCPCommand.self]
+        subcommands: [Graph.self, AI.self, Init.self, Status.self, Stack.self, Patterns.self, Links.self, Docs.self, Review.self, Rules.self, Ideas.self, Agents.self, Commands.self, Skills.self, Workflows.self, Runs.self, Tag.self, Hook.self, Usage.self, Cloud.self, MCPCommand.self]
     )
 }
 
@@ -33,6 +33,20 @@ func hashtags(_ tags: [String]) -> String {
 
 func printJSON<T: Encodable>(_ value: T) throws {
     print(String(decoding: try VDJSON.encoder.encode(value), as: UTF8.self))
+}
+
+struct Graph: ParsableCommand {
+    static let configuration = CommandConfiguration(abstract: "Exporta a visualização local do grafo, sem consumir IA.", subcommands: [Export.self])
+    struct Export: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Substitui graph.html pela visualização offline segura do VibeDeck.")
+        @OptionGroup var options: RootOptions
+        func run() throws {
+            let root = try options.store().root
+            let graph = try ProjectGraph.load(root: root)
+            try GraphHTML.write(graph, root: root, output: root.appending(path: "graphify-out/graph.html"))
+            print("Visualização offline exportada em graphify-out/graph.html")
+        }
+    }
 }
 
 // MARK: - init / status
@@ -427,7 +441,12 @@ struct Docs: ParsableCommand {
     struct New: ParsableCommand {
         @OptionGroup var options: RootOptions
         @Argument var title: String
-        func run() throws { print(try options.store().createDoc(title: title)) }
+        @Option var body: String = ""
+        @Flag var ai = false
+        func run() throws {
+            let store = try options.store()
+            print(try ai ? store.createGeneratedDoc(title: title, body: body) : store.createDoc(title: title, body: body))
+        }
     }
 
     struct Write: ParsableCommand {

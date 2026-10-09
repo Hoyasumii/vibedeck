@@ -10,7 +10,7 @@ struct MarkdownPreview: View {
     var body: some View {
         ScrollView {
             Markdown(text, baseURL: baseURL)
-                .markdownTheme(.gitHub)
+                .markdownTheme(.basic)
                 .markdownImageProvider(MarkdownImageProvider())
                 .markdownInlineImageProvider(MarkdownInlineImageProvider())
                 .textSelection(.enabled)
@@ -24,7 +24,7 @@ struct MarkdownPreview: View {
 /// Loads markdown images through `NSImage`, local or remote. MarkdownUI's default loaders only decode
 /// what CGImageSource does, so SVGs (e.g. the Skill Icons badge) and `file://` attachments never showed.
 @MainActor
-private enum MarkdownImageLoader {
+enum MarkdownImageLoader {
     struct LoadError: Error {}
 
     private static let cache = NSCache<NSURL, NSImage>()

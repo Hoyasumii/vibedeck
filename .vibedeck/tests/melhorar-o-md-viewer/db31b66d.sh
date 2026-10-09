@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "${VIBEDECK_ROOT:-.}"
+exec python3 -I .vibedeck/tests/melhorar-o-md-viewer/check.py DB31B66D

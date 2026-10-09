@@ -245,17 +245,19 @@ struct MCPHandler: Sendable {
                  "description": ("string", "Tarefa"),
                  "allow_dirty": ("boolean", ""),
              ], required: ["description"])),
+        Tool(name: "export_graph", description: "Exporta graph.html offline, sem IA.", inputSchema: schema([:])),
         Tool(name: "get_project", description: "vibedeck.json e resumo dos docs e grupos de revisão.", inputSchema: schema([:]),
              annotations: .init(readOnlyHint: true)),
         Tool(name: "list_docs", description: "Docs markdown (slug e título).", inputSchema: schema([:]),
              annotations: .init(readOnlyHint: true)),
         Tool(name: "read_doc", description: "Lê um doc.", inputSchema: schema(["slug": ("string", "")], required: ["slug"]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "write_doc", description: "Cria ou sobrescreve um doc; sem slug, cria pelo título.",
+        Tool(name: "write_doc", description: "generated: novo doc author=ai; senão cria/sobrescreve.",
              inputSchema: schema([
                  "slug": ("string", ""),
                  "title": ("string", ""),
-                 "content": ("string", "Markdown completo"),
+                 "content": ("string", ""),
+                 "generated": ("boolean", ""),
              ], required: ["content"])),
         Tool(name: "list_review_groups", description: "Grupos de revisão com itens abertos.", inputSchema: schema([:]),
              annotations: .init(readOnlyHint: true)),
@@ -717,6 +719,11 @@ struct MCPHandler: Sendable {
             if args["clear"]?.boolValue == true { try usage.clear(); return "Métricas locais apagadas." }
             return try json(usage.list())
 
+        case "export_graph":
+            let graph = try ProjectGraph.load(root: store.root)
+            try GraphHTML.write(graph, root: store.root, output: store.root.appending(path: "graphify-out/graph.html"))
+            return "Visualização offline exportada em graphify-out/graph.html"
+
         case "get_project":
             let groups = try store.listGroups().map { ["slug": $0.slug, "title": $0.group.title, "open": "\($0.group.openCount)", "total": "\($0.group.items.count)"] }
             return try json(ProjectSummary(root: store.root.path, project: store.loadProject(), docs: store.listDocs().map(\.slug), groups: groups))
@@ -729,6 +736,10 @@ struct MCPHandler: Sendable {
 
         case "write_doc":
             let content = try req("content")
+            if args["generated"]?.boolValue == true {
+                let slug = try store.createGeneratedDoc(title: req("title"), body: content)
+                return "Criado: \(slug)"
+            }
             if let slug = str("slug") {
                 try store.writeDoc(slug, content)
                 return "Salvo: \(slug)"

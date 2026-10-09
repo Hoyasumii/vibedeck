@@ -1,0 +1,89 @@
+[
+  {
+    "rule": "0DD08791",
+    "script": ".vibedeck/tests/melhorar-o-md-viewer/0dd08791.sh",
+    "exit": 0,
+    "seconds": 0.23,
+    "stdout": "0DD08791: OK",
+    "stderr": ""
+  },
+  {
+    "rule": "6B1849E4",
+    "script": ".vibedeck/tests/melhorar-o-md-viewer/6b1849e4.sh",
+    "exit": 0,
+    "seconds": 0.23,
+    "stdout": "6B1849E4: OK",
+    "stderr": ""
+  },
+  {
+    "rule": "F8FDC0F6",
+    "script": ".vibedeck/tests/melhorar-o-md-viewer/f8fdc0f6.sh",
+    "exit": 0,
+    "seconds": 7.78,
+    "stdout": "F8FDC0F6: OK",
+    "stderr": "2026-10-09 16:20:56.563 check[16917:1119311] Error received in message reply handler: Connection invalid\n2026-10-09 16:20:56.563 check[16917:1119320] Connection Invalid error for service com.apple.hiservices-xpcservice."
+  },
+  {
+    "rule": "501B105D",
+    "script": ".vibedeck/tests/melhorar-o-md-viewer/501b105d.sh",
+    "exit": 0,
+    "seconds": 8.27,
+    "stdout": "501B105D: OK",
+    "stderr": "2026-10-09 16:20:56.563 check[16916:1119316] Connection Invalid error for service com.apple.hiservices-xpcservice.\n2026-10-09 16:20:56.563 check[16916:1119309] Error received in message reply handler: Connection invalid"
+  },
+  {
+    "rule": "DB31B66D",
+    "script": ".vibedeck/tests/melhorar-o-md-viewer/db31b66d.sh",
+    "exit": 0,
+    "seconds": 0.15,
+    "stdout": "DB31B66D: OK",
+    "stderr": ""
+  },
+  {
+    "rule": "BF5BA615",
+    "script": ".vibedeck/tests/melhorar-o-md-viewer/bf5ba615.sh",
+    "exit": 0,
+    "seconds": 0.17,
+    "stdout": "BF5BA615: OK",
+    "stderr": ""
+  },
+  {
+    "rule": "ADA320A2",
+    "script": ".vibedeck/tests/melhorar-o-md-viewer/ada320a2.sh",
+    "exit": 1,
+    "seconds": 8.66,
+    "stdout": "Sources/VibeDeckApp/MarkdownEditor.swift:1: serviço de pasteboard indisponível: não é possível verificar colagem neste ambiente\nSources/VibeDeckApp/MarkdownEditor.swift:1: verificação retornou 1",
+    "stderr": "2026-10-09 16:21:05.465 check[17186:1120659] Connection Invalid error for service com.apple.hiservices-xpcservice.\n2026-10-09 16:21:05.465 check[17186:1120643] Error received in message reply handler: Connection invalid"
+  },
+  {
+    "rule": "D4086F37",
+    "script": ".vibedeck/tests/melhorar-o-md-viewer/d4086f37.sh",
+    "exit": 0,
+    "seconds": 8.53,
+    "stdout": "D4086F37: OK",
+    "stderr": "2026-10-09 16:21:05.624 check[17188:1120696] Connection Invalid error for service com.apple.hiservices-xpcservice.\n2026-10-09 16:21:05.624 check[17188:1120651] Error received in message reply handler: Connection invalid\n2026-10-09 16:21:05.639 check[17188:1120651] Unrecognized colorspace number -1\n2026-10-09 16:21:05.640 check[17188:1120651] Unknown number of components for colorspace model -1"
+  },
+  {
+    "rule": "27AC8B98",
+    "script": ".vibedeck/tests/melhorar-o-md-viewer/27ac8b98.sh",
+    "exit": 0,
+    "seconds": 8.97,
+    "stdout": "27AC8B98: OK",
+    "stderr": "2026-10-09 16:21:14.378 check[17453:1122122] Connection Invalid error for service com.apple.hiservices-xpcservice.\n2026-10-09 16:21:14.378 check[17453:1122097] Error received in message reply handler: Connection invalid"
+  },
+  {
+    "rule": "A1657562",
+    "script": ".vibedeck/tests/melhorar-o-md-viewer/a1657562.sh",
+    "exit": 0,
+    "seconds": 8.86,
+    "stdout": "A1657562: OK",
+    "stderr": "2026-10-09 16:21:14.378 check[17452:1122093] Error received in message reply handler: Connection invalid\n2026-10-09 16:21:14.378 check[17452:1122119] Connection Invalid error for service com.apple.hiservices-xpcservice."
+  },
+  {
+    "rule": "5C7F52C8",
+    "script": ".vibedeck/tests/melhorar-o-md-viewer/5c7f52c8.sh",
+    "exit": 1,
+    "stdout": "swift test falhou: 17 issues em VibeDeckAppTests; pasteboard indisponível, acesso negado a Application Support e testes de sidebar.",
+    "log": "/tmp/vibedeck-md-unit-tests.log"
+  }
+]
