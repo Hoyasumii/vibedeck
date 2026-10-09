@@ -1,0 +1,68 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-09T03:17:31.836Z",
+  "failures" : [
+
+  ],
+  "files" : [
+    ".vibedeck/rules/exibir-o-grafo-de-graphify-em-algum-lugar-do-app.json"
+  ],
+  "id" : "E876C608-713C-456F-B0EA-4EEBD1CDE56C",
+  "passed" : true,
+  "results" : [
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/9d6f362b.sh (exit 0)\n(sem saída)",
+      "ruleId" : "9D6F362B-9F0E-4661-97B3-6158B160D478",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/9f92a765.sh (exit 0)\n(sem saída)",
+      "ruleId" : "9F92A765-76E7-4EA0-A66A-78AE12EE4C8F",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/ac4ba963.sh (exit 0)\n(sem saída)",
+      "ruleId" : "AC4BA963-CDEE-419C-B057-9140643E115D",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/geral/0e5aec71.sh (exit 77)\n(sem saída)",
+      "ruleId" : "0E5AEC71-405E-4113-AB27-615313AB2B5F",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "note" : "Só foram adicionados paths e tags a um tópico de regras em .vibedeck; nada documentado no README mudou.",
+      "ruleId" : "306A20B6-E1FA-4BE4-96E8-2B854A3D0BC6",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/geral/4095f087.sh (exit 1)\núltimo commit (429bde9): última linha deve ser 'Co-Authored-By: Claude ... <noreply@anthropic.com>', veio: Merge branch 'main' of github.com:Hoyasumii/vibedeck",
+      "ruleId" : "4095F087-1E04-46C0-9AA4-A60C8C16A72B",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "fail"
+    }
+  ],
+  "task" : "Definir paths e tags do tópico de regras \"Exibir o grafo de graphify em algum lugar do app\"",
+  "topics" : [
+    "geral"
+  ],
+  "warnings" : [
+    "Commits terminam com a linha Co-Authored-By"
+  ]
+}

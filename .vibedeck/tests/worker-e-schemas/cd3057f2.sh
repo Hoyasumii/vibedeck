@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Índice do worker, SchemaURL (Models.swift), linha "Schemas:" do guia (AgentsGuide.swift / .vibedeck/AGENTS.md)
+# O índice do worker, SchemaURL (Models.swift), a linha "Schemas:" do guia de referência (AgentsGuide.swift / .vibedeck/guide.md; o AGENTS.md compacto não a repete)
 # e os arquivos de schema/v1 listam o mesmo conjunto de schemas.
 set -euo pipefail
 cd "${VIBEDECK_ROOT:-.}"
-if [ -n "${VIBEDECK_FILES:-}" ] && ! printf '%s\n' "$VIBEDECK_FILES" | grep -qE '^(worker|schema)/|^Sources/VibeDeckCore/(Models|AgentsGuide)\.swift$|^\.vibedeck/AGENTS\.md$'; then exit 77; fi
+if [ -n "${VIBEDECK_FILES:-}" ] && ! printf '%s\n' "$VIBEDECK_FILES" | grep -qE '^(worker|schema)/|^Sources/VibeDeckCore/(Models|AgentsGuide)\.swift$|^\.vibedeck/guide\.md$'; then exit 77; fi
 python3 -I - <<'PY'
 import re, sys, glob, os
 sets = {}
@@ -13,7 +13,7 @@ sets["worker/src/index.ts (índice)"] = set(re.findall(r'\$\{base\}/([\w-]+)\.sc
 models = open("Sources/VibeDeckCore/Models.swift").read()
 m = re.search(r'enum SchemaURL\s*\{(.*?)\n\}', models, re.S)
 sets["Sources/VibeDeckCore/Models.swift (SchemaURL)"] = set(re.findall(r'\\\(base\)/([\w-]+)\.schema\.json', m.group(1) if m else ""))
-for f in ["Sources/VibeDeckCore/AgentsGuide.swift", ".vibedeck/AGENTS.md"]:
+for f in ["Sources/VibeDeckCore/AgentsGuide.swift", ".vibedeck/guide.md"]:
     m = re.search(r'Schemas:\s*\S*/\{([^}]*)\}\.schema\.json', open(f).read())
     sets[f + ' (linha "Schemas:")'] = {x.strip() for x in m.group(1).split(",")} if m else set()
 sets["schema/v1/*.schema.json"] = {os.path.basename(p)[:-len(".schema.json")] for p in glob.glob("schema/v1/*.schema.json")}

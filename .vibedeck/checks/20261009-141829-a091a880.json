@@ -1,0 +1,74 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-09T14:18:29.158Z",
+  "failures" : [
+
+  ],
+  "files" : [
+    ".vibedeck/rules/exibir-o-grafo-de-graphify-em-algum-lugar-do-app.json",
+    ".vibedeck/tests/exibir-o-grafo-de-graphify-em-algum-lugar-do-app/076cd160.sh",
+    ".vibedeck/tests/exibir-o-grafo-de-graphify-em-algum-lugar-do-app/13b819f9.sh",
+    ".vibedeck/tests/exibir-o-grafo-de-graphify-em-algum-lugar-do-app/47d7e369.sh",
+    ".vibedeck/tests/exibir-o-grafo-de-graphify-em-algum-lugar-do-app/_lib.sh",
+    ".vibedeck/tests/exibir-o-grafo-de-graphify-em-algum-lugar-do-app/a6924aea.sh",
+    ".vibedeck/tests/exibir-o-grafo-de-graphify-em-algum-lugar-do-app/d4b23e74.sh",
+    ".vibedeck/tests/exibir-o-grafo-de-graphify-em-algum-lugar-do-app/dd9dc2d9.sh",
+    ".vibedeck/tests/exibir-o-grafo-de-graphify-em-algum-lugar-do-app/e05fee58.sh",
+    ".vibedeck/tests/exibir-o-grafo-de-graphify-em-algum-lugar-do-app/fc2c752b.sh"
+  ],
+  "id" : "A091A880-631B-4105-9B8B-5BD92687DEA4",
+  "passed" : true,
+  "pending" : [
+    "README atualizado quando muda algo documentado"
+  ],
+  "results" : [
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/9d6f362b.sh (exit 0)\n(sem saída)",
+      "ruleId" : "9D6F362B-9F0E-4661-97B3-6158B160D478",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/9f92a765.sh (exit 0)\n(sem saída)",
+      "ruleId" : "9F92A765-76E7-4EA0-A66A-78AE12EE4C8F",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/ac4ba963.sh (exit 0)\n(sem saída)",
+      "ruleId" : "AC4BA963-CDEE-419C-B057-9140643E115D",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/geral/0e5aec71.sh (exit 77)\n(sem saída)",
+      "ruleId" : "0E5AEC71-405E-4113-AB27-615313AB2B5F",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/geral/4095f087.sh (exit 1)\núltimo commit (429bde9): última linha deve ser 'Co-Authored-By: Claude ... <noreply@anthropic.com>', veio: Merge branch 'main' of github.com:Hoyasumii/vibedeck",
+      "ruleId" : "4095F087-1E04-46C0-9AA4-A60C8C16A72B",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "fail"
+    }
+  ],
+  "task" : "Scripts de teste das regras do tópico do grafo",
+  "topics" : [
+    "geral"
+  ],
+  "warnings" : [
+    "Commits terminam com a linha Co-Authored-By"
+  ]
+}

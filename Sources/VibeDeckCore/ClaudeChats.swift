@@ -108,7 +108,7 @@ public struct ClaudeChat: Codable, Equatable, Identifiable, Sendable {
     }
 
     /// What is written to Claude for a user message: the text, followed by each mentioned chat as JSON.
-    public static func wireText(_ text: String, mentioning chats: [ClaudeChat], attachments: [String] = [], provider: AIProvider = .claude) -> String {
+    public static func wireText(_ text: String, mentioning chats: [ClaudeChat], attachments: [String] = [], provider: AIProvider = .claude, contextStore: AIContextStore? = nil, includeFullChats: Bool = false) -> String {
         var out = text
         if !attachments.isEmpty {
             out += provider == .claude ? "\n\nArquivos anexados pelo usuário (leia com Read se precisar):" : "\n\nArquivos anexados pelo usuário (leia se precisar):"
@@ -119,7 +119,14 @@ public struct ClaudeChat: Codable, Equatable, Identifiable, Sendable {
         out += "As conversas mencionadas abaixo são só referência (outras conversas deste projeto, em JSON); não fazem parte desta conversa."
         for chat in chats {
             let title = chat.title.replacingOccurrences(of: "\"", with: "'")
-            out += "\n\n<conversa-mencionada titulo=\"\(title)\">\n\(chat.contextJSON())\n</conversa-mencionada>"
+            if !includeFullChats, chat.contextJSON().count > 2000, let contextStore,
+               let reference = try? contextStore.save(chat.contextJSON(), title: title) {
+                out += "\n\n" + reference.instruction
+                out += "\nLeia os trechos relevantes antes de usar esta conversa; decisões antigas também podem ser necessárias."
+            } else {
+                // A failed snapshot must never silently discard the user's reference.
+                out += "\n\n<conversa-mencionada titulo=\"\(title)\">\n\(chat.contextJSON())\n</conversa-mencionada>"
+            }
         }
         return out
     }

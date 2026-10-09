@@ -3,8 +3,17 @@ import VibeDeckCore
 
 @MainActor enum RuleVerificationAI {
     static func run(root: URL, provider: AIProvider, topic: RuleTopic, slug: String, rules: [Rule], scripts: [RuleResult]) async throws -> [RuleResult] {
-        let rulesJSON = String(decoding: try JSONEncoder().encode(rules), as: UTF8.self)
-        let scriptsJSON = String(decoding: try JSONEncoder().encode(scripts), as: UTF8.self)
+        struct RequestedRule: Encodable {
+            let ruleId: UUID
+            let text: String
+            let details: String?
+            let severity: RuleSeverity
+        }
+        let requested = rules.map { RequestedRule(ruleId: $0.id, text: $0.text, details: $0.details, severity: $0.severity) }
+        let rulesJSON = String(decoding: try JSONEncoder().encode(requested), as: UTF8.self)
+        let rawScripts = String(decoding: try JSONEncoder().encode(scripts), as: UTF8.self)
+        let scriptsJSON = rawScripts.count > 2000
+            ? try AIContextStore(root: root).save(rawScripts, title: "Resultados completos dos scripts").instruction : rawScripts
         let prompt = """
         Verifique as regras abaixo no repositório atual usando apenas leitura e busca. Não altere arquivos,
         não execute comandos, não gere scripts e não execute novamente os testes. Considere o projeto atual
@@ -17,23 +26,9 @@ import VibeDeckCore
         Resultados dos scripts já executados, apenas como contexto:
         \(scriptsJSON)
         """
-        let data: Data
-        if provider == .codex {
-            let schema = try JSONDecoder().decode(JSONValue.self, from: Data(RuleVerificationAnswer.schema.utf8))
-            data = Data(try await CodexReadOnly().run(root: root, prompt: prompt, schema: schema, timeout: .seconds(180)).utf8)
-        } else {
-            guard let executable = provider.executable else { throw VibeDeckError.discoverFailed("Claude não está instalado.") }
-            let output = try await ReviewDiscoverRunner.run(executable: executable, root: root, input: prompt, schema: RuleVerificationAnswer.schema)
-            let envelope = String(decoding: output, as: UTF8.self).split(whereSeparator: \.isNewline).reversed()
-                .compactMap { try? JSONDecoder().decode(JSONValue.self, from: Data($0.utf8)) }
-                .first { $0["type"]?.string == "result" }
-            guard let envelope, envelope["is_error"]?.bool != true, envelope["subtype"]?.string == "success" else {
-                throw VibeDeckError.discoverFailed(envelope?["result"]?.string ?? "A verificação por IA falhou.")
-            }
-            if let value = envelope["structured_output"], value != .null { data = try JSONEncoder().encode(value) }
-            else if let value = envelope["result"]?.string { data = Data(value.utf8) }
-            else { throw RuleExecutionError.invalidAnswer }
+        return try await AIReadOnlyOperation.run(root: root, provider: provider, operation: "Verificar regras",
+                                                prompt: prompt, schema: RuleVerificationAnswer.schema) { data in
+            try RuleVerificationAnswer.parse(data, rules: rules, topic: slug)
         }
-        return try RuleVerificationAnswer.parse(data, rules: rules, topic: slug)
     }
 }

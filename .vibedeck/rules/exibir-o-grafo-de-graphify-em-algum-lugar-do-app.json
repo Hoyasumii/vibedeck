@@ -1,0 +1,161 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "createdAt" : "2026-10-09T03:12:27Z",
+  "description" : "Regras vindas da ideia \"Exibir o grafo de graphify em algum lugar do app\".",
+  "id" : "17540073-39B8-4230-8C05-0AC02133B3E8",
+  "paths" : [
+    "Sources/VibeDeckApp/GraphView.swift",
+    "Sources/VibeDeckApp/ProjectWindow.swift",
+    "Sources/VibeDeckApp/TabBar.swift",
+    "Sources/VibeDeckCore/ProjectGraph.swift"
+  ],
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T02:21:34Z",
+      "details" : "Integrar abertura, fechamento e restauração ao contrato existente de abas; carregar somente o artefato do projeto ativo.",
+      "id" : "E05FEE58-311A-4937-9741-8574628C146E",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/exibir-o-grafo-de-graphify-em-algum-lugar-do-app/e05fee58.sh",
+        "generatedAt" : "2026-10-09T14:18:11Z",
+        "mode" : "script",
+        "ruleHash" : "8a7af8b57f13c148"
+      },
+      "text" : "A navegação do projeto oferece Grafo e abre a visualização HTML em uma aba."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T02:21:35Z",
+      "details" : "Disponibilizar localmente as dependências do HTML, sem exigir CDN. Geração/análise por IA pode exigir conexão.",
+      "id" : "A6924AEA-CB55-4D5E-8D4C-14AFDE3A3C1D",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/exibir-o-grafo-de-graphify-em-algum-lugar-do-app/a6924aea.sh",
+        "generatedAt" : "2026-10-09T14:18:11Z",
+        "mode" : "script",
+        "ruleHash" : "9d2cd72699a71de9"
+      },
+      "text" : "A visualização já gerada funciona offline."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T02:21:37Z",
+      "details" : "Abrir a aba ou detectar mudanças não inicia geração nem consumo de IA. Usar o provedor escolhido para a execução e informar sua indisponibilidade.",
+      "id" : "47D7E369-D27D-41C3-B865-E9C44C39298C",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/exibir-o-grafo-de-graphify-em-algum-lugar-do-app/47d7e369.sh",
+        "generatedAt" : "2026-10-09T14:18:11Z",
+        "mode" : "script",
+        "ruleHash" : "60e1783c08b86912"
+      },
+      "text" : "Gerar e Atualizar são ações explícitas e incluem código e análise semântica por IA."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T02:21:38Z",
+      "details" : "Apresentar início, andamento, falhas e conclusão; impedir disparos concorrentes pelo app.",
+      "id" : "13B819F9-39E6-4299-BBBD-CA2818356405",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/exibir-o-grafo-de-graphify-em-algum-lugar-do-app/13b819f9.sh",
+        "generatedAt" : "2026-10-09T14:18:11Z",
+        "mode" : "script",
+        "ruleHash" : "d12d38cbbeabf045"
+      },
+      "text" : "Cada projeto permite somente uma geração ou atualização por vez, com progresso e cancelamento."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T02:21:40Z",
+      "details" : "Atualizar dados e HTML de forma consistente; só apresentar sucesso quando a visualização estiver pronta. Cancelar não deve destruir o resultado anterior.",
+      "id" : "076CD160-EA6F-4299-BED8-2D34D48DC743",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/exibir-o-grafo-de-graphify-em-algum-lugar-do-app/076cd160.sh",
+        "generatedAt" : "2026-10-09T14:18:11Z",
+        "mode" : "script",
+        "ruleHash" : "72dbca566194b6da"
+      },
+      "text" : "Atualizações e falhas preservam a última visualização válida."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T02:21:41Z",
+      "details" : "Oferecer ação clara para cada estado e mostrar a última geração bem-sucedida; não inferir atualidade apenas pela existência ou data do arquivo.",
+      "id" : "FC2C752B-31B2-4CAD-A811-C588B9B02764",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/exibir-o-grafo-de-graphify-em-algum-lugar-do-app/fc2c752b.sh",
+        "generatedAt" : "2026-10-09T14:18:11Z",
+        "mode" : "script",
+        "ruleHash" : "0fa44fb93b0f4ec7"
+      },
+      "text" : "A tela distingue grafo ausente, vazio, carregando, em processamento, inválido e incompatível."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T02:21:43Z",
+      "details" : "Mostrar tipo, direção, confiança e origem disponíveis. Tratar origem removida ou inválida sem falhar.",
+      "id" : "D4B23E74-8CF0-4F17-AB17-12DD8298E1C0",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/exibir-o-grafo-de-graphify-em-algum-lugar-do-app/d4b23e74.sh",
+        "generatedAt" : "2026-10-09T14:18:11Z",
+        "mode" : "script",
+        "ruleHash" : "cd760fcbfedc22aa"
+      },
+      "text" : "Relações estruturais, inferidas e ambíguas permanecem distinguíveis quando o grafo fornecer essa informação."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T02:21:44Z",
+      "details" : "Restringir recursos, navegação externa e comunicação com o app ao necessário para visualizar o grafo; não permitir execução arbitrária de comandos.",
+      "id" : "DD9DC2D9-1693-4B04-86FD-F82E4328CF84",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/exibir-o-grafo-de-graphify-em-algum-lugar-do-app/dd9dc2d9.sh",
+        "generatedAt" : "2026-10-09T14:18:11Z",
+        "mode" : "script",
+        "ruleHash" : "52116242484b4acf"
+      },
+      "text" : "O HTML fica isolado do restante do app e dos arquivos do usuário."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T02:21:46Z",
+      "details" : "Validar com o grafo real do projeto, acima de 5 mil nós; limitar elementos visíveis e permitir expandir comunidades ou vizinhanças.",
+      "id" : "97891404-E6BC-4683-9D74-15E45C478E4F",
+      "severity" : "must",
+      "test" : {
+        "generatedAt" : "2026-10-09T14:18:11Z",
+        "mode" : "manual",
+        "reason" : "Exige validar com o grafo real (>5 mil nós) que a interface não trava e que a visão inicial é agrupada; depende de execução e julgamento visual do app.",
+        "ruleHash" : "e5fe33dbaad11284"
+      },
+      "text" : "O grafo grande não bloqueia a interface e começa por uma visão agrupada."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T02:21:47Z",
+      "details" : "Permitir busca e inspeção por teclado, sem depender exclusivamente de cores; abrir origem apenas quando houver referência válida.",
+      "id" : "A2C5E2E6-DCE8-4CC6-9A8A-FA4B978B6472",
+      "severity" : "must",
+      "test" : {
+        "generatedAt" : "2026-10-09T14:18:11Z",
+        "mode" : "manual",
+        "reason" : "Busca, zoom, inspeção por teclado e não depender só de cor são comportamentos interativos/de acessibilidade do HTML renderizado; exigem verificação manual.",
+        "ruleHash" : "8079b3490ea65e11"
+      },
+      "text" : "A exploração oferece busca, zoom, centralização, visão geral e inspeção de nós."
+    }
+  ],
+  "sourceIdea" : "13262B13-942D-4798-993E-EE1D26C99041",
+  "tags" : [
+    "grafo",
+    "graphify",
+    "ui"
+  ],
+  "title" : "Exibir o grafo de graphify em algum lugar do app"
+}

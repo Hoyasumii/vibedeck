@@ -15,9 +15,11 @@ struct PatternsView: View {
     private var items: [ProjectPattern] {
         let q = search.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { return model.project.patterns }
+        let tag = q.hasPrefix("#") ? String(q.dropFirst()) : q
         return model.project.patterns.filter {
-            $0.name.localizedCaseInsensitiveContains(q) || $0.id.localizedCaseInsensitiveContains(q)
-                || ($0.summary ?? "").localizedCaseInsensitiveContains(q) || ($0.note ?? "").localizedCaseInsensitiveContains(q)
+            $0.tags.contains { $0.localizedCaseInsensitiveContains(tag) } || !q.hasPrefix("#") && (
+                $0.name.localizedCaseInsensitiveContains(q) || $0.id.localizedCaseInsensitiveContains(q)
+                || ($0.summary ?? "").localizedCaseInsensitiveContains(q) || ($0.note ?? "").localizedCaseInsensitiveContains(q))
         }
     }
 
@@ -44,7 +46,7 @@ struct PatternsView: View {
             }
         }
         .navigationTitle("Padrões")
-        .searchable(text: $search, placement: .toolbar, prompt: "Filtrar padrões")
+        .searchable(text: $search, placement: .toolbar, prompt: "Filtrar padrões (texto ou #tag)")
         .toolbar {
             ToolbarItem {
                 Button { adding = true } label: { Label("Adicionar padrão", systemImage: "plus") }
@@ -80,6 +82,9 @@ struct PatternsView: View {
             }
             if let note = pattern.note {
                 Label(note, systemImage: "text.bubble").font(.caption).lineLimit(3)
+            }
+            if !pattern.tags.isEmpty {
+                Text(pattern.tags.map { "#" + $0 }.joined(separator: " ")).font(.caption2).foregroundStyle(.tertiary).lineLimit(1)
             }
             HStack(spacing: 10) {
                 if let topic {
@@ -175,7 +180,7 @@ private struct PatternPicker: View {
 
     private var catalog: some View {
         List {
-            ForEach(["practices", "architecture", "domain"], id: \.self) { category in
+            ForEach(["practices", "architecture", "domain", "design"], id: \.self) { category in
                 Section(PatternCategory.label(category)) {
                     ForEach(PatternCatalog.all.filter { $0.category == category }) { row($0) }
                 }
@@ -277,6 +282,9 @@ private struct PatternEditor: View {
                 .disabled(pattern.topic == nil)
             Text("A nota vai para a descrição do tópico de regras; o escopo define em quais arquivos as regras são cobradas.")
                 .font(.caption).foregroundStyle(.secondary)
+            TagsField(tags: model.project.patterns.first { $0.id == pattern.id }?.tags ?? pattern.tags) { tags in
+                model.changePatterns("Editar tags do padrão", undo: undo) { try $0.setPatternTags(pattern.id, tags) }
+            }
         }
         .formStyle(.grouped)
         .frame(width: 460)

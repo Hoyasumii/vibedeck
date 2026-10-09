@@ -12,6 +12,8 @@ struct IdeaView: View {
     @State private var loaded = false
     @State private var saveTask: Task<Void, Never>?
     @State private var insertion: MarkdownInsertion?
+    /// Globs of the idea that match no file, waiting for the user's choice before promoting.
+    @State private var stalePaths: [String] = []
     @AppStorage("ideaViewMode") private var mode: MarkdownViewMode = .edit
 
     private var idea: Idea { model.idea(slug) ?? Idea(title: slug) }
@@ -48,6 +50,7 @@ struct IdeaView: View {
         .navigationTitle(idea.title)
         .navigationSubtitle("\(idea.status.label) · \(idea.rules.count) regra(s)")
         .toolbar {
+            if !AIProvider.installed.isEmpty { ToolbarItem { discoverButton } }
             ToolbarItem { promoteButton }
             ToolbarItem { AttachButton(onPick: attach) }
             ToolbarItem { MarkdownModePicker(mode: $mode) }
@@ -174,18 +177,52 @@ struct IdeaView: View {
         }
     }
 
+    /// "Descubra": globs, tags and an interview that drafts rules into `idea.rules`; each accept is one undo step.
+    private var discoverButton: some View {
+        RuleDiscoverButton(
+            subject: .init(idea: idea),
+            current: { flush(); return .init(idea: idea) },
+            vocabulary: model.tagVocabulary,
+            topics: model.knownTopics(),
+            store: model.store,
+            applyScope: { scope, paths, tags in
+                model.mutateIdea(slug, "Descubra: globs e tags", undo: undo) { scope.apply(paths: paths, tags: tags, to: &$0.paths, tags: &$0.tags) }
+            },
+            applyRules: { drafts, chosen in
+                model.mutateIdea(slug, "Descubra: regras", undo: undo) { drafts.apply(chosen, to: &$0.rules) }
+            }
+        )
+        .id(slug)
+    }
+
     private var promoteButton: some View {
         Button {
             flush()
-            if let topic = model.promoteIdea(slug) { openTopic(topic) }
+            stalePaths = (try? model.store.unmatchedIdeaPaths(slug)) ?? []
+            if stalePaths.isEmpty, let topic = model.promoteIdea(slug) { openTopic(topic) }
         } label: {
             Label(idea.promotedTopic == nil ? "Promover para Regras" : "Sincronizar regras", systemImage: "arrow.up.forward.square")
         }
         .disabled(idea.rules.isEmpty)
         .help(idea.promotedTopic == nil
-              ? "Cria um tópico de regras ativo com as regras desta ideia"
-              : "Leva regras novas desta ideia para o tópico já criado")
+              ? "Cria um tópico de regras ativo com as regras (e os globs) desta ideia"
+              : "Leva regras e globs novos desta ideia para o tópico já criado")
+        .confirmationDialog("Globs que não casam nenhum arquivo", isPresented: Binding(get: { !stalePaths.isEmpty }, set: { if !$0 { stalePaths = [] } })) {
+            Button("Promover sem eles") {
+                let skipped = Set(stalePaths)
+                stalePaths = []
+                if let topic = model.promoteIdea(slug, skippingPaths: skipped) { openTopic(topic) }
+            }
+            Button("Promover com eles") {
+                stalePaths = []
+                if let topic = model.promoteIdea(slug) { openTopic(topic) }
+            }
+            Button("Cancelar", role: .cancel) { stalePaths = [] }
+        } message: {
+            Text("Estes globs da ideia não casam mais nenhum arquivo do projeto (renomeado ou apagado?):\n" + stalePaths.joined(separator: "\n"))
+        }
     }
+
 
     // MARK: Persistence (debounced, like DocView)
 

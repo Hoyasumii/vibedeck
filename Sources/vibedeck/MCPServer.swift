@@ -156,58 +156,60 @@ struct MCPHandler: Sendable {
         Projeto VibeDeck em \(root).
 
         REGRA OBRIGATÓRIA: nenhuma tarefa neste projeto está concluída sem passar pelas regras.
-        Antes de dizer que terminou qualquer implementação ou alteração:
-        1. chame rules_for com os arquivos que você alterou (e review_item, se a tarefa veio de um item de revisão);
-        2. verifique de verdade contra o código cada regra com check="manual" (as de check="script" são decididas
-           rodando o script delas — run_rule_tests mostra o resultado antes do check);
-        3. chame submit_rule_check respondendo pass/fail/na para TODAS as regras manuais, com nota de evidência
-           (o submit roda os scripts sozinho e ignora respostas para regras de script);
-        4. se passed=false, corrija e envie outro check. Só declare concluído quando passed=true
-           (avise o usuário sobre warnings de regras "should").
-
-        Leia os itens de revisão abertos antes de mexer numa área; ao concluir um item, marque status=done
-        (bloqueado sem check aprovado quando o item tem regras). Itens, regras, ideias, agentes, comandos, skills e workflows criados por você são author=ai.
-        Ideias (list_ideas) são planos futuros, não regras ativas; registre ideias novas com add_idea.
-        Antes de implementar, consulte list_stack: são as tecnologias de destaque do projeto; prefira-as e siga as notas delas.
-        Consulte também list_patterns: são os padrões de projeto (TDD, hexagonal, DDD…) que o código novo deve seguir;
-        as regras de cada padrão entram no rules_for.
-        Para executar um workflow, use workflow_run_start e siga o `prompt` devolvido: você orquestra, cada etapa roda
-        num subagente (que lê workflow_run_step), o veredito vai para workflow_run_record e as perguntas das etapas
-        chegam por workflow_run_questions para você fazer ao usuário.
-        Guia completo: .vibedeck/AGENTS.md.
+        Antes de dizer que terminou qualquer alteração:
+        1. chame rules_for com os arquivos que você alterou (e review_item, se houver);
+        2. chame submit_rule_check (results=[]): ele roda os scripts das regras sozinho; as manuais ficam pending;
+        3. se passed=false, corrija e envie outro check. Só conclua com passed=true, avisando os warnings
+           ("should") e quantas manuais ficaram sem verificar;
+        4. manuais só quando o usuário pedir: rules_for include_manual=true e submit_rule_check
+           verify_manual=true respondendo pass/fail/na para TODAS, com evidência.
+        Antes de implementar: itens de revisão abertos da área, list_stack e list_patterns. Registros criados por você são author=ai.
+        Ideias que surgirem: add_idea (não são regras ativas).
+        Referências aceitam slug, id (ou prefixo >= 4) ou título.
+        Guia: .vibedeck/AGENTS.md (leia antes). Detalhes: ai_guide.
         """
     }
 
     // MARK: Tool definitions
+    // Every tool schema is a fixed per-session token cost: keep descriptions to what the name doesn't say.
+    // Usage rules live in AGENTS.md/ai_guide; `scripts/mcp-contract.py` guards the contract and the budget.
 
     /// `type` "array" means an array of strings; `custom` adds hand-written property schemas.
+    /// An empty description is omitted (the parameter name says it all).
     private static func schema(
         _ props: [String: (String, String)], required: [String] = [], enums: [String: [String]] = [:], custom: [String: Value] = [:]
     ) -> Value {
         var properties: [String: Value] = custom
         for (name, (type, description)) in props {
-            var p: [String: Value] = ["type": .string(type), "description": .string(description)]
+            var p: [String: Value] = ["type": .string(type)]
+            if !description.isEmpty { p["description"] = .string(description) }
             if type == "array" { p["items"] = ["type": "string"] }
             if let values = enums[name] { p["enum"] = .array(values.map { .string($0) }) }
             properties[name] = .object(p)
         }
-        return .object(["type": "object", "properties": .object(properties), "required": .array(required.map { .string($0) })])
+        var object: [String: Value] = ["type": "object", "properties": .object(properties)]
+        if !required.isEmpty { object["required"] = .array(required.map { .string($0) }) }
+        return .object(object)
     }
 
     private static let statuses = ReviewStatus.allCases.map(\.rawValue)
     private static let priorities = ReviewPriority.allCases.map(\.rawValue)
     private static let severities = RuleSeverity.allCases.map(\.rawValue)
     private static let ideaStatuses = IdeaStatus.allCases.map(\.rawValue)
+    private static let stepKinds = ["agent", "command", "skill"]
+    private static let providerSettings = ("object", "{codex|claude:{model,effort}}")
+    private static let provider = ("string", "claude (padrão) ou codex")
+    private static let run = ("string", "<workflow>/<execução> ou id")
 
     private static let resultsSchema: Value = [
         "type": "array",
-        "description": "Uma resposta para CADA regra retornada por rules_for.",
+        "description": "Só com verify_manual=true: uma resposta por regra manual.",
         "items": [
             "type": "object",
             "properties": [
-                "ruleId": ["type": "string", "description": "Id da regra (completo ou prefixo >= 4 chars)"],
-                "verdict": ["type": "string", "enum": .array(RuleVerdict.allCases.map { .string($0.rawValue) }), "description": "pass | fail | na (não se aplica)"],
-                "note": ["type": "string", "description": "Evidência curta: o que você verificou"],
+                "ruleId": ["type": "string", "description": "Id ou prefixo >= 4"],
+                "verdict": ["type": "string", "enum": .array(RuleVerdict.allCases.map { .string($0.rawValue) })],
+                "note": ["type": "string", "description": "Evidência"],
             ],
             "required": ["ruleId", "verdict"],
         ],
@@ -215,437 +217,450 @@ struct MCPHandler: Sendable {
 
     private static let questionsSchema: Value = [
         "type": "array",
-        "description": "Perguntas para o usuário, de 2 a 4 opções cada (a recomendada primeiro).",
+        "description": "2 a 4 opções cada, recomendada primeiro.",
         "items": [
             "type": "object",
             "properties": [
-                "question": ["type": "string", "description": "Pergunta direta, em pt-BR"],
-                "context": ["type": "string", "description": "O que gerou a dúvida"],
+                "question": ["type": "string"],
+                "context": ["type": "string"],
                 "options": [
                     "type": "array",
                     "items": ["type": "object", "properties": ["label": ["type": "string"], "description": ["type": "string"]], "required": ["label"]],
                 ],
-                "multiple": ["type": "boolean", "description": "Múltipla escolha"],
+                "multiple": ["type": "boolean"],
             ],
             "required": ["question"],
         ],
     ]
 
     static let tools: [Tool] = [
-        Tool(name: "codex_usage", description: "Limites de uso atuais do Codex, consultados no App Server local.", inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "claude_usage", description: "Último uso dos limites do Claude Code (sessão de 5h e semana, em %, com horário de reset), registrado pela statusline (`vibedeck usage install`).",
+        Tool(name: "codex_usage", description: "Limites de uso atuais do Codex.", inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "claude_usage", description: "Último uso dos limites do Claude Code (5h e semana, %, reset), via statusline.",
              inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "cloud_check", description: "Compara a branch padrão local com a do GitHub (origin). Uma sessão do Claude Code na nuvem só vê o GitHub: se as branches forem diferentes (blocked=true), não dá para usar a nuvem até sincronizar.",
+        Tool(name: "cloud_check", description: "Compara a branch padrão local com a do origin; blocked=true impede sessões na nuvem.",
              inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "start_cloud_session", description: "Cria uma sessão do Claude Code na nuvem (claude.ai/code) com a tarefa dada, sobre o repositório no GitHub, e devolve o link. Recusa se a branch local for diferente da do GitHub, ou se houver alterações não commitadas sem allow_dirty. Só faça isso quando o usuário pedir.",
-             inputSchema: schema(["provider": ("string", "claude ou codex; padrão claude"),
-                 "environment": ("string", "ID do ambiente Codex Cloud"),
-                 "description": ("string", "O que a sessão deve fazer"),
-                 "allow_dirty": ("boolean", "Cria mesmo com alterações não commitadas, que a nuvem não vê (padrão: não)"),
+        Tool(name: "start_cloud_session", description: "Cria sessão na nuvem (repo do GitHub) e devolve o link; recusa branch divergente ou árvore suja sem allow_dirty. Só a pedido do usuário.",
+             inputSchema: schema(["provider": provider,
+                 "environment": ("string", "Ambiente do Codex Cloud"),
+                 "description": ("string", "Tarefa"),
+                 "allow_dirty": ("boolean", ""),
              ], required: ["description"])),
-        Tool(name: "get_project", description: "Retorna vibedeck.json (nome, links, stack, padrões, reviewKinds) e um resumo dos docs e grupos de revisão.", inputSchema: schema([:]),
+        Tool(name: "get_project", description: "vibedeck.json e resumo dos docs e grupos de revisão.", inputSchema: schema([:]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "list_docs", description: "Lista os documentos markdown do projeto (slug e título).", inputSchema: schema([:]),
+        Tool(name: "list_docs", description: "Docs markdown (slug e título).", inputSchema: schema([:]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "read_doc", description: "Lê um documento markdown pelo slug.", inputSchema: schema(["slug": ("string", "Slug do doc")], required: ["slug"]),
+        Tool(name: "read_doc", description: "Lê um doc.", inputSchema: schema(["slug": ("string", "")], required: ["slug"]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "write_doc", description: "Cria ou sobrescreve um documento markdown. Sem slug, cria um novo a partir do título.",
+        Tool(name: "write_doc", description: "Cria ou sobrescreve um doc; sem slug, cria pelo título.",
              inputSchema: schema([
-                 "slug": ("string", "Slug existente (omita para criar)"),
-                 "title": ("string", "Título para um doc novo"),
-                 "content": ("string", "Conteúdo markdown completo"),
+                 "slug": ("string", ""),
+                 "title": ("string", ""),
+                 "content": ("string", "Markdown completo"),
              ], required: ["content"])),
-        Tool(name: "list_review_groups", description: "Lista os grupos (temas) de revisão com contagem de itens abertos.", inputSchema: schema([:]),
+        Tool(name: "list_review_groups", description: "Grupos de revisão com itens abertos.", inputSchema: schema([:]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "list_review_items", description: "Lista itens de revisão, com filtros opcionais.",
+        Tool(name: "list_review_items", description: "Itens de revisão, com filtros.",
              inputSchema: schema([
-                 "group": ("string", "Slug, id ou título do grupo"),
-                 "status": ("string", "Status"),
-                 "kind": ("string", "Kind (ver reviewKinds)"),
+                 "group": ("string", ""),
+                 "status": ("string", ""),
+                 "kind": ("string", "Ver reviewKinds"),
              ], enums: ["status": statuses]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "add_review_item", description: "Adiciona um item de revisão a um grupo (o grupo é criado se não existir). Marcado como author=ai.",
+        Tool(name: "add_review_item", description: "Adiciona um item de revisão (cria o grupo se preciso). author=ai.",
              inputSchema: schema([
-                 "group": ("string", "Slug, id ou título do grupo/tema"),
-                 "kind": ("string", "Kind (ver reviewKinds do projeto)"),
-                 "title": ("string", "Título curto"),
-                 "details": ("string", "Detalhes"),
-                 "priority": ("string", "Prioridade"),
-                 "file": ("string", "Arquivo relacionado"),
-                 "route": ("string", "Rota/tela relacionada"),
-                 "component": ("string", "Componente relacionado"),
-                 "selector": ("string", "Seletor CSS/acessibilidade"),
-                 "rules": ("array", "Slugs de tópicos de regras que o item precisa cumprir"),
+                 "group": ("string", ""),
+                 "kind": ("string", "Ver reviewKinds"),
+                 "title": ("string", ""),
+                 "details": ("string", ""),
+                 "priority": ("string", ""),
+                 "file": ("string", ""),
+                 "route": ("string", ""),
+                 "component": ("string", ""),
+                 "selector": ("string", ""),
+                 "rules": ("array", "Tópicos de regras do item"),
              ], required: ["group", "kind", "title"], enums: ["priority": priorities])),
-        Tool(name: "update_review_item", description: "Atualiza um item de revisão pelo id (ou prefixo >= 4 chars). status=done exige um check aprovado (submit_rule_check com review_item) quando o item tem regras.",
+        Tool(name: "update_review_item", description: "Atualiza um item. status=done exige check aprovado com review_item quando o item tem regras.",
              inputSchema: schema([
-                 "id": ("string", "Id do item"),
-                 "status": ("string", "Novo status"),
-                 "priority": ("string", "Nova prioridade"),
-                 "title": ("string", "Novo título"),
-                 "details": ("string", "Novos detalhes"),
-                 "kind": ("string", "Novo kind"),
-                 "rules": ("array", "Substitui os tópicos de regras do item"),
+                 "id": ("string", ""),
+                 "status": ("string", ""),
+                 "priority": ("string", ""),
+                 "title": ("string", ""),
+                 "details": ("string", ""),
+                 "kind": ("string", ""),
+                 "rules": ("array", "Substitui os tópicos"),
              ], required: ["id"], enums: ["status": statuses, "priority": priorities])),
         Tool(name: "add_link", description: "Adiciona um link ao projeto.",
              inputSchema: schema([
-                 "url": ("string", "URL"),
-                 "title": ("string", "Título"),
-                 "tags": ("string", "Tags separadas por vírgula"),
+                 "url": ("string", ""),
+                 "title": ("string", ""),
+                 "tags": ("string", "Separadas por vírgula"),
              ], required: ["url"])),
 
         // Stack
-        Tool(name: "list_stack", description: "Lista a stack do projeto: as tecnologias de destaque (ids do Skill Icons), na ordem, com nota de uso e o badge. Consulte antes de implementar: prefira essas tecnologias e siga as notas.",
+        Tool(name: "list_stack", description: "Stack do projeto, com notas de uso. Consulte antes de implementar.",
              inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "search_stack_icons", description: "Procura tecnologias no catálogo do Skill Icons (por id, nome ou alias, como \"postgres\", \"Next.js\", \"k8s\"), para achar o id a usar em add_stack.",
+        Tool(name: "search_stack_icons", description: "Procura ids no catálogo do Skill Icons para add_stack.",
              inputSchema: schema([
-                 "query": ("string", "Texto a procurar (vazio = tudo)"),
-                 "category": ("string", "Só ícones desta categoria"),
-                 "limit": ("integer", "Máximo de resultados (padrão 50)"),
+                 "query": ("string", "Vazio = tudo"),
+                 "category": ("string", ""),
+                 "limit": ("integer", "Padrão 50"),
              ], enums: ["category": SkillIcons.categories]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "add_stack", description: "Adiciona tecnologias à stack (ids, nomes ou aliases do Skill Icons; nomes desconhecidos recusam tudo, com sugestões). Já existentes mantêm o lugar; a nota, se dada, substitui a delas. Atualiza o badge no README.md. Marcado como author=ai.",
+        Tool(name: "add_stack", description: "Adiciona tecnologias à stack (desconhecidas recusam tudo) e atualiza o badge do README.",
              inputSchema: schema([
-                 "icons": ("array", "Tecnologias, na ordem (ex.: [\"swift\", \"swiftui\"])"),
-                 "note": ("string", "Nota de uso para todas elas (ex.: \"Swift 6, strict concurrency\")"),
+                 "icons": ("array", "Ids, nomes ou aliases, na ordem"),
+                 "note": ("string", "Nota de uso para todas"),
              ], required: ["icons"])),
-        Tool(name: "remove_stack", description: "Retira tecnologias da stack (id, nome ou prefixo do id) e atualiza o badge no README.md.",
-             inputSchema: schema(["icons": ("array", "Tecnologias a retirar")], required: ["icons"])),
-        Tool(name: "update_stack", description: "Altera a nota de uso ou a posição de uma tecnologia da stack.",
+        Tool(name: "remove_stack", description: "Retira tecnologias da stack e atualiza o badge.",
+             inputSchema: schema(["icons": ("array", "")], required: ["icons"])),
+        Tool(name: "update_stack", description: "Altera nota ou posição de uma tecnologia.",
              inputSchema: schema([
-                 "icon": ("string", "Id, nome ou prefixo do id"),
-                 "note": ("string", "Nova nota (string vazia apaga)"),
-                 "position": ("integer", "Nova posição, a partir de 0"),
+                 "icon": ("string", ""),
+                 "note": ("string", "Vazia apaga"),
+                 "position": ("integer", "A partir de 0"),
              ], required: ["icon"])),
 
         // Patterns
-        Tool(name: "list_patterns", description: "Lista os padrões de projeto (TDD, hexagonal, DDD, CQRS…) que o código deve seguir, na ordem, com nota, escopo (paths) e as regras do tópico de cada um. Consulte antes de implementar: o código novo deve seguir esses padrões; as regras deles entram no rules_for.",
+        Tool(name: "list_patterns", description: "Padrões de projeto que o código novo segue, com nota, paths e regras.",
              inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "pattern_catalog", description: "Lista o catálogo embutido de padrões (id, nome, categoria, resumo, regras que traz), para achar o id a usar em add_pattern.",
-             inputSchema: schema(["query": ("string", "Texto a procurar (vazio = tudo)")]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "add_pattern", description: "Adiciona padrões de projeto. Com `patterns`: ids/nomes/aliases do catálogo (desconhecidos recusam tudo, com sugestões). Com `name` + `rules`: um padrão personalizado. Cada padrão novo cria um tópico de regras (aplicado pelo rules_for); já existentes mantêm o lugar e recebem a nota/paths dados. Marcado como author=ai.",
+        Tool(name: "pattern_catalog", description: "Catálogo embutido de padrões, para add_pattern.",
+             inputSchema: schema(["query": ("string", "Vazio = tudo")]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "add_pattern", description: "Adiciona padrões do catálogo (`patterns`) ou um personalizado (`name` + `rules`). Cada um vira um tópico de regras.",
              inputSchema: schema([
-                 "patterns": ("array", "Ids do catálogo (ex.: [\"tdd\", \"hexagonal\"])"),
-                 "name": ("string", "Nome de um padrão personalizado"),
-                 "summary": ("string", "Resumo do padrão personalizado"),
-                 "rules": ("array", "Regras (obrigatórias) do padrão personalizado, uma por item"),
-                 "note": ("string", "Como o projeto aplica o padrão (ex.: \"só no Core\")"),
-                 "paths": ("array", "Globs de escopo (vazio = projeto inteiro)"),
+                 "patterns": ("array", "Ids do catálogo"),
+                 "name": ("string", ""),
+                 "summary": ("string", ""),
+                 "rules": ("array", "Regras do personalizado"),
+                 "note": ("string", "Como o projeto aplica"),
+                 "paths": ("array", "Globs; vazio = projeto inteiro"),
              ])),
-        Tool(name: "remove_pattern", description: "Retira padrões do projeto (id, nome ou prefixo do id) e apaga o tópico de regras de cada um.",
-             inputSchema: schema(["patterns": ("array", "Padrões a retirar")], required: ["patterns"])),
-        Tool(name: "update_pattern", description: "Altera a nota, o escopo (paths) ou a posição de um padrão do projeto.",
+        Tool(name: "remove_pattern", description: "Retira padrões e apaga seus tópicos de regras.",
+             inputSchema: schema(["patterns": ("array", "")], required: ["patterns"])),
+        Tool(name: "update_pattern", description: "Altera nota, paths ou posição de um padrão.",
              inputSchema: schema([
-                 "pattern": ("string", "Id, nome ou prefixo do id"),
-                 "note": ("string", "Nova nota (string vazia apaga)"),
-                 "paths": ("array", "Novos globs de escopo ([] = projeto inteiro)"),
-                 "position": ("integer", "Nova posição, a partir de 0"),
+                 "pattern": ("string", ""),
+                 "note": ("string", "Vazia apaga"),
+                 "paths": ("array", "[] = projeto inteiro"),
+                 "position": ("integer", "A partir de 0"),
              ], required: ["pattern"])),
 
+        Tool(name: "ai_guide", description: "Índice ou uma seção do guia.",
+             inputSchema: schema(["section": ("integer", "Omita para o índice")]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "ai_catalog", description: "Índice paginado sem prompts; depois leia só o registro necessário (get_*).",
+             inputSchema: schema(["kind": ("string", "agents, commands, skills, workflows ou rules"), "offset": ("integer", ""), "limit": ("integer", "1 a 100, padrão 20")], required: ["kind"]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "ai_context", description: "Página de uma referência de contexto; nextOffset indica continuação.",
+             inputSchema: schema(["id": ("string", ""), "offset": ("integer", ""), "limit": ("integer", "1 a 16000, padrão 4000")], required: ["id"]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "ai_usage", description: "Consumo local por tarefa; campos ausentes não são zero. clear só a pedido do usuário.",
+             inputSchema: schema(["clear": ("boolean", "")])),
+
         // Rules
-        Tool(name: "rules_for", description: "OBRIGATÓRIO antes de concluir uma tarefa: retorna as regras aplicáveis (tópicos globais + os que casam os arquivos + os explícitos/do item), com ids para submit_rule_check.",
+        Tool(name: "rules_for", description: "OBRIGATÓRIO antes de concluir uma tarefa: regras aplicáveis aos arquivos (forma compacta). Manuais só como contagem, até include_manual=true.",
              inputSchema: schema([
-                 "files": ("array", "Arquivos alterados (relativos à raiz ou absolutos)"),
-                 "topics": ("array", "Tópicos extras a incluir (slug, id ou título)"),
-                 "review_item": ("string", "Id do item de revisão relacionado"),
+                 "files": ("array", "Arquivos alterados"),
+                 "topics": ("array", "Tópicos extras"),
+                 "review_item": ("string", ""),
+                 "include_manual": ("boolean", "Lista as manuais com detalhes"),
+                 "verbose": ("boolean", "Forma completa"),
              ]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "submit_rule_check", description: "Registra a verificação das regras aplicáveis. Responda TODAS as regras de rules_for com check=manual; as de check=script são decididas rodando o script (respostas para elas são ignoradas). Retorna passed=false se alguma regra 'must' falhou: corrija e envie de novo.",
+        Tool(name: "submit_rule_check", description: "Grava o check rodando os scripts das regras; manuais ficam pending. Com verify_manual=true, responda TODAS as manuais em results. passed=false: corrija e reenvie. Devolve resumo; check completo em disco.",
              inputSchema: schema([
                  "task": ("string", "Resumo do que foi feito"),
-                 "files": ("array", "Arquivos alterados"),
-                 "topics": ("array", "Tópicos extras (os mesmos passados a rules_for)"),
-                 "review_item": ("string", "Id do item de revisão relacionado"),
-             ], required: ["task", "results"], custom: ["results": resultsSchema])),
-        Tool(name: "run_rule_tests", description: "Roda os scripts das regras aplicáveis (exit 0 = cumpre, 77 = não se aplica, outro = viola) e devolve o resultado de cada um. Não grava check. Sem files/review_item, roda só os topics indicados.",
+                 "files": ("array", ""),
+                 "topics": ("array", "Os mesmos do rules_for"),
+                 "review_item": ("string", ""),
+                 "verify_manual": ("boolean", ""),
+                 "verbose": ("boolean", "Anexa o JSON completo"),
+             ], required: ["task"], custom: ["results": resultsSchema])),
+        Tool(name: "run_rule_tests", description: "Roda os scripts das regras (0 cumpre, 77 n/a, outro viola) sem gravar check. Sem files/review_item, só os topics.",
              inputSchema: schema([
-                 "files": ("array", "Arquivos alterados"),
-                 "topics": ("array", "Tópicos (slug, id ou título)"),
-                 "review_item": ("string", "Id do item de revisão relacionado"),
+                 "files": ("array", ""),
+                 "topics": ("array", ""),
+                 "review_item": ("string", ""),
              ]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "set_rule_test", description: "Define como uma regra é verificada: mode=script com o comando do script (rodado na raiz; recebe $VIBEDECK_FILES; exit 0/77/outro) ou mode=manual quando a regra não é testável objetivamente. Guarda o hash da regra: se ela mudar, o teste fica desatualizado.",
+        Tool(name: "set_rule_test", description: "Define a verificação de uma regra: script (roda na raiz, recebe $VIBEDECK_FILES, exit 0/77/outro) ou manual. Mudar a regra desatualiza o teste.",
              inputSchema: schema([
-                 "rule_id": ("string", "Id da regra (ou prefixo >= 4 chars)"),
-                 "mode": ("string", "script | manual"),
-                 "command": ("string", "Comando do script (obrigatório em mode=script), ex.: .vibedeck/tests/geral/ab12cd34.sh"),
-                 "reason": ("string", "O que o script verifica ou por que a regra é manual"),
+                 "rule_id": ("string", ""),
+                 "mode": ("string", ""),
+                 "command": ("string", "Obrigatório em script"),
+                 "reason": ("string", ""),
              ], required: ["rule_id", "mode"], enums: ["mode": RuleTestMode.allCases.map(\.rawValue)])),
-        Tool(name: "list_rule_topics", description: "Lista os tópicos de regras (escopo por paths e quantidade de regras).", inputSchema: schema([:]),
+        Tool(name: "list_rule_topics", description: "Tópicos de regras (paths e contagem).", inputSchema: schema([:]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "get_rule_topic", description: "Retorna um tópico de regras completo.", inputSchema: schema(["topic": ("string", "Slug, id ou título")], required: ["topic"]),
+        Tool(name: "get_rule_topic", description: "Tópico de regras completo.", inputSchema: schema(["topic": ("string", "")], required: ["topic"]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "add_rule_topic", description: "Cria um tópico de regras. Sem paths, vale para toda tarefa.",
+        Tool(name: "add_rule_topic", description: "Cria um tópico de regras; sem paths vale para toda tarefa.",
              inputSchema: schema([
-                 "title": ("string", "Título do tópico"),
-                 "description": ("string", "Quando o tópico se aplica"),
-                 "paths": ("array", "Globs de escopo (ex.: Sources/App/**, *.tsx)"),
-                 "tags": ("array", "Tags"),
+                 "title": ("string", ""),
+                 "description": ("string", "Quando se aplica"),
+                 "paths": ("array", "Globs"),
+                 "tags": ("array", ""),
              ], required: ["title"])),
-        Tool(name: "add_rule", description: "Adiciona uma regra (comportamento esperado) a um tópico; o tópico é criado se não existir. Marcada author=ai.",
+        Tool(name: "add_rule", description: "Adiciona uma regra a um tópico (cria o tópico se preciso). author=ai.",
              inputSchema: schema([
-                 "topic": ("string", "Slug, id ou título do tópico"),
-                 "text": ("string", "A regra, curta e verificável"),
-                 "details": ("string", "Detalhes/como verificar"),
-                 "severity": ("string", "must bloqueia; should só avisa"),
+                 "topic": ("string", ""),
+                 "text": ("string", "Curta e verificável"),
+                 "details": ("string", "Como verificar"),
+                 "severity": ("string", "must bloqueia; should avisa"),
              ], required: ["topic", "text"], enums: ["severity": severities])),
 
         // Ideas
-        Tool(name: "list_ideas", description: "Lista as ideias do projeto (brainstorm). Não são regras ativas.",
-             inputSchema: schema(["status": ("string", "Filtra por status")], enums: ["status": ideaStatuses]),
+        Tool(name: "list_ideas", description: "Ideias do projeto (não são regras ativas).",
+             inputSchema: schema(["status": ("string", "")], enums: ["status": ideaStatuses]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "get_idea", description: "Retorna uma ideia completa (texto e regras rascunho).", inputSchema: schema(["idea": ("string", "Slug, id ou título")], required: ["idea"]),
+        Tool(name: "get_idea", description: "Ideia completa, com regras rascunho.", inputSchema: schema(["idea": ("string", "")], required: ["idea"]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "add_idea", description: "Registra uma ideia futura. Marcada author=ai.",
+        Tool(name: "add_idea", description: "Registra uma ideia futura. author=ai.",
              inputSchema: schema([
-                 "title": ("string", "Título"),
-                 "body": ("string", "Descrição em markdown"),
-                 "tags": ("array", "Tags"),
+                 "title": ("string", ""),
+                 "body": ("string", ""),
+                 "tags": ("array", ""),
              ], required: ["title"])),
         Tool(name: "update_idea", description: "Atualiza uma ideia.",
              inputSchema: schema([
-                 "idea": ("string", "Slug, id ou título"),
-                 "title": ("string", "Novo título"),
-                 "body": ("string", "Novo texto markdown"),
-                 "status": ("string", "Novo status"),
-                 "tags": ("array", "Substitui as tags"),
+                 "idea": ("string", ""),
+                 "title": ("string", ""),
+                 "body": ("string", ""),
+                 "status": ("string", ""),
+                 "tags": ("array", ""),
              ], required: ["idea"], enums: ["status": ideaStatuses])),
-        Tool(name: "add_idea_rule", description: "Adiciona uma regra rascunho a uma ideia (só passa a valer após promote_idea).",
+        Tool(name: "add_idea_rule", description: "Adiciona uma regra rascunho a uma ideia (vale após promote_idea).",
              inputSchema: schema([
-                 "idea": ("string", "Slug, id ou título"),
-                 "text": ("string", "A regra"),
-                 "details": ("string", "Detalhes"),
-                 "severity": ("string", "must ou should"),
+                 "idea": ("string", ""),
+                 "text": ("string", ""),
+                 "details": ("string", ""),
+                 "severity": ("string", ""),
              ], required: ["idea", "text"], enums: ["severity": severities])),
         // Agents
-        Tool(name: "list_agents", description: "Lista os agentes do VibeDeck (nome, modelo e próximos passos). Não são os agentes do provedor de IA.",
+        Tool(name: "list_agents", description: "Agentes do VibeDeck (não os do provedor).",
              inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "get_agent", description: "Retorna um agente completo (prompt e próximos passos).", inputSchema: schema(["agent": ("string", "Slug, id ou título")], required: ["agent"]),
+        Tool(name: "get_agent", description: "Agente completo.", inputSchema: schema(["agent": ("string", "")], required: ["agent"]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "add_agent", description: "Cria um agente do VibeDeck. Marcado author=ai.",
-             inputSchema: schema(["provider_settings": ("object", "Configurações por provedor: {codex:{model,effort},claude:{model,effort}}"),
-                 "title": ("string", "Nome do agente"),
+        Tool(name: "add_agent", description: "Cria um agente do VibeDeck.",
+             inputSchema: schema(["provider_settings": providerSettings,
+                 "title": ("string", ""),
                  "summary": ("string", "Quando usar"),
-                 "model": ("string", "Modelo (ex.: sonnet, opus)"),
-                 "tools": ("array", "Ferramentas"),
-                 "prompt": ("string", "Prompt do agente (markdown)"),
-                 "tags": ("array", "Tags"),
+                 "model": ("string", ""),
+                 "tools": ("array", ""),
+                 "prompt": ("string", ""),
+                 "tags": ("array", ""),
              ], required: ["title"])),
-        Tool(name: "update_agent", description: "Atualiza um agente (use add_agent_next_step para o fluxo).",
-             inputSchema: schema(["provider_settings": ("object", "Configurações por provedor: {codex:{model,effort},claude:{model,effort}}"),
-                 "agent": ("string", "Slug, id ou título"),
-                 "title": ("string", "Novo nome"),
-                 "summary": ("string", "Nova descrição"),
-                 "model": ("string", "Novo modelo"),
-                 "tools": ("array", "Substitui as ferramentas"),
-                 "prompt": ("string", "Novo prompt"),
-                 "tags": ("array", "Substitui as tags"),
+        Tool(name: "update_agent", description: "Atualiza um agente (fluxo: add_agent_next_step).",
+             inputSchema: schema(["provider_settings": providerSettings,
+                 "agent": ("string", ""),
+                 "title": ("string", ""),
+                 "summary": ("string", ""),
+                 "model": ("string", ""),
+                 "tools": ("array", ""),
+                 "prompt": ("string", ""),
+                 "tags": ("array", ""),
              ], required: ["agent"])),
-        Tool(name: "add_agent_next_step", description: "Adiciona um próximo passo ao agente: outro agente, comando ou skill do VibeDeck que atua sobre o resultado. Forma um fluxo.",
+        Tool(name: "add_agent_next_step", description: "Encadeia ao agente um agente, comando ou skill que atua sobre o resultado.",
              inputSchema: schema([
-                 "agent": ("string", "Agente de origem (slug, id ou título)"),
-                 "target": ("string", "Agente, comando ou skill do VibeDeck (slug, id ou título)"),
-                 "kind": ("string", "agent (padrão), command ou skill"),
-                 "note": ("string", "Quando/como executar"),
-             ], required: ["agent", "target"], enums: ["kind": ["agent", "command", "skill"]])),
-        Tool(name: "agent_flow", description: "JSON do fluxo de um agente (prompt + próximos passos encadeados) para orquestrar a IA.",
-             inputSchema: schema(["agent": ("string", "Slug, id ou título")], required: ["agent"]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "import_agents", description: "Importa agentes do Claude Code (.claude/agents do projeto e do usuário) como agentes do VibeDeck. Marcados como author=ai.",
-             inputSchema: schema(["provider": ("string", "claude ou codex; padrão claude"), "overwrite": ("boolean", "Sobrescreve existentes (padrão: não)")])),
+                 "agent": ("string", ""),
+                 "target": ("string", ""),
+                 "kind": ("string", ""),
+                 "note": ("string", ""),
+             ], required: ["agent", "target"], enums: ["kind": stepKinds])),
+        Tool(name: "agent_flow", description: "JSON do fluxo do agente para orquestrar.",
+             inputSchema: schema(["agent": ("string", "")], required: ["agent"]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "import_agents", description: "Importa agentes do provedor (.claude/agents) como agentes do VibeDeck.",
+             inputSchema: schema(["provider": provider, "overwrite": ("boolean", "")])),
         // Commands
-        Tool(name: "list_commands", description: "Lista os comandos do VibeDeck (nome, argumentos, modelo e próximos passos). Não são os comandos do provedor de IA.",
+        Tool(name: "list_commands", description: "Comandos do VibeDeck (não os do provedor).",
              inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "get_command", description: "Retorna um comando completo (prompt e próximos passos).", inputSchema: schema(["command": ("string", "Slug, id ou título")], required: ["command"]),
+        Tool(name: "get_command", description: "Comando completo.", inputSchema: schema(["command": ("string", "")], required: ["command"]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "add_command", description: "Cria um comando do VibeDeck (prompt no formato de slash command, com $ARGUMENTS). Marcado author=ai.",
-             inputSchema: schema(["provider_settings": ("object", "Configurações por provedor: {codex:{model,effort},claude:{model,effort}}"),
-                 "title": ("string", "Nome do comando"),
-                 "summary": ("string", "O que o comando faz"),
-                 "argument_hint": ("string", "O que vai em $ARGUMENTS (ex.: <mensagem>)"),
-                 "model": ("string", "Modelo (ex.: sonnet, opus)"),
-                 "tools": ("array", "Ferramentas permitidas"),
-                 "prompt": ("string", "Prompt do comando (markdown)"),
-                 "tags": ("array", "Tags"),
+        Tool(name: "add_command", description: "Cria um comando do VibeDeck (prompt de slash command, com $ARGUMENTS).",
+             inputSchema: schema(["provider_settings": providerSettings,
+                 "title": ("string", ""),
+                 "summary": ("string", ""),
+                 "argument_hint": ("string", "O que vai em $ARGUMENTS"),
+                 "model": ("string", ""),
+                 "tools": ("array", ""),
+                 "prompt": ("string", ""),
+                 "tags": ("array", ""),
              ], required: ["title"])),
-        Tool(name: "update_command", description: "Atualiza um comando (use add_command_next_step para o fluxo).",
-             inputSchema: schema(["provider_settings": ("object", "Configurações por provedor: {codex:{model,effort},claude:{model,effort}}"),
-                 "command": ("string", "Slug, id ou título"),
-                 "title": ("string", "Novo nome"),
-                 "summary": ("string", "Nova descrição"),
-                 "argument_hint": ("string", "Novos argumentos"),
-                 "model": ("string", "Novo modelo"),
-                 "tools": ("array", "Substitui as ferramentas"),
-                 "prompt": ("string", "Novo prompt"),
-                 "tags": ("array", "Substitui as tags"),
+        Tool(name: "update_command", description: "Atualiza um comando (fluxo: add_command_next_step).",
+             inputSchema: schema(["provider_settings": providerSettings,
+                 "command": ("string", ""),
+                 "title": ("string", ""),
+                 "summary": ("string", ""),
+                 "argument_hint": ("string", ""),
+                 "model": ("string", ""),
+                 "tools": ("array", ""),
+                 "prompt": ("string", ""),
+                 "tags": ("array", ""),
              ], required: ["command"])),
-        Tool(name: "add_command_next_step", description: "Adiciona um próximo passo ao comando: um agente, outro comando ou uma skill do VibeDeck que atua sobre o resultado. Forma um fluxo.",
+        Tool(name: "add_command_next_step", description: "Encadeia ao comando um agente, comando ou skill que atua sobre o resultado.",
              inputSchema: schema([
-                 "command": ("string", "Comando de origem (slug, id ou título)"),
-                 "target": ("string", "Agente, comando ou skill do VibeDeck (slug, id ou título)"),
-                 "kind": ("string", "agent (padrão), command ou skill"),
-                 "note": ("string", "Quando/como executar"),
-             ], required: ["command", "target"], enums: ["kind": ["agent", "command", "skill"]])),
-        Tool(name: "command_flow", description: "JSON do fluxo de um comando (prompt + próximos passos encadeados) para orquestrar a IA.",
-             inputSchema: schema(["command": ("string", "Slug, id ou título")], required: ["command"]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "import_commands", description: "Importa comandos do Claude Code (.claude/commands do projeto e do usuário) como comandos do VibeDeck. Marcados como author=ai.",
-             inputSchema: schema(["provider": ("string", "claude ou codex; padrão claude"), "overwrite": ("boolean", "Sobrescreve existentes (padrão: não)")])),
+                 "command": ("string", ""),
+                 "target": ("string", ""),
+                 "kind": ("string", ""),
+                 "note": ("string", ""),
+             ], required: ["command", "target"], enums: ["kind": stepKinds])),
+        Tool(name: "command_flow", description: "JSON do fluxo do comando para orquestrar.",
+             inputSchema: schema(["command": ("string", "")], required: ["command"]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "import_commands", description: "Importa comandos do provedor (.claude/commands) como comandos do VibeDeck.",
+             inputSchema: schema(["provider": provider, "overwrite": ("boolean", "")])),
         // Skills
-        Tool(name: "list_skills", description: "Lista as skills do VibeDeck (nome, descrição, modelo e próximos passos). Não são as skills do provedor de IA.",
+        Tool(name: "list_skills", description: "Skills do VibeDeck (não as do provedor).",
              inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "get_skill", description: "Retorna uma skill completa (instruções e próximos passos).", inputSchema: schema(["skill": ("string", "Slug, id ou título")], required: ["skill"]),
+        Tool(name: "get_skill", description: "Skill completa.", inputSchema: schema(["skill": ("string", "")], required: ["skill"]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "add_skill", description: "Cria uma skill do VibeDeck (instruções no formato do SKILL.md; a descrição diz quando usá-la). Marcada author=ai.",
-             inputSchema: schema(["provider_settings": ("object", "Configurações por provedor: {codex:{model,effort},claude:{model,effort}}"),
-                 "title": ("string", "Nome da skill"),
-                 "summary": ("string", "Quando usar a skill (é o que a dispara)"),
-                 "model": ("string", "Modelo (ex.: sonnet, opus)"),
-                 "tools": ("array", "Ferramentas permitidas"),
-                 "prompt": ("string", "Instruções da skill (markdown)"),
-                 "tags": ("array", "Tags"),
+        Tool(name: "add_skill", description: "Cria uma skill do VibeDeck (formato SKILL.md; summary diz quando dispará-la).",
+             inputSchema: schema(["provider_settings": providerSettings,
+                 "title": ("string", ""),
+                 "summary": ("string", "Quando usar"),
+                 "model": ("string", ""),
+                 "tools": ("array", ""),
+                 "prompt": ("string", ""),
+                 "tags": ("array", ""),
              ], required: ["title"])),
-        Tool(name: "update_skill", description: "Atualiza uma skill (use add_skill_next_step para o fluxo).",
-             inputSchema: schema(["provider_settings": ("object", "Configurações por provedor: {codex:{model,effort},claude:{model,effort}}"),
-                 "skill": ("string", "Slug, id ou título"),
-                 "title": ("string", "Novo nome"),
-                 "summary": ("string", "Nova descrição"),
-                 "model": ("string", "Novo modelo"),
-                 "tools": ("array", "Substitui as ferramentas"),
-                 "prompt": ("string", "Novas instruções"),
-                 "tags": ("array", "Substitui as tags"),
+        Tool(name: "update_skill", description: "Atualiza uma skill (fluxo: add_skill_next_step).",
+             inputSchema: schema(["provider_settings": providerSettings,
+                 "skill": ("string", ""),
+                 "title": ("string", ""),
+                 "summary": ("string", ""),
+                 "model": ("string", ""),
+                 "tools": ("array", ""),
+                 "prompt": ("string", ""),
+                 "tags": ("array", ""),
              ], required: ["skill"])),
-        Tool(name: "add_skill_next_step", description: "Adiciona um próximo passo à skill: um agente, comando ou outra skill do VibeDeck que atua sobre o resultado. Forma um fluxo.",
+        Tool(name: "add_skill_next_step", description: "Encadeia à skill um agente, comando ou skill que atua sobre o resultado.",
              inputSchema: schema([
-                 "skill": ("string", "Skill de origem (slug, id ou título)"),
-                 "target": ("string", "Agente, comando ou skill do VibeDeck (slug, id ou título)"),
-                 "kind": ("string", "agent (padrão), command ou skill"),
-                 "note": ("string", "Quando/como executar"),
-             ], required: ["skill", "target"], enums: ["kind": ["agent", "command", "skill"]])),
-        Tool(name: "skill_flow", description: "JSON do fluxo de uma skill (instruções + próximos passos encadeados) para orquestrar a IA.",
-             inputSchema: schema(["skill": ("string", "Slug, id ou título")], required: ["skill"]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "import_skills", description: "Importa skills do Claude Code (.claude/skills/<nome>/SKILL.md do projeto e do usuário) como skills do VibeDeck. Marcadas como author=ai.",
-             inputSchema: schema(["provider": ("string", "claude ou codex; padrão claude"), "overwrite": ("boolean", "Sobrescreve existentes (padrão: não)")])),
+                 "skill": ("string", ""),
+                 "target": ("string", ""),
+                 "kind": ("string", ""),
+                 "note": ("string", ""),
+             ], required: ["skill", "target"], enums: ["kind": stepKinds])),
+        Tool(name: "skill_flow", description: "JSON do fluxo da skill para orquestrar.",
+             inputSchema: schema(["skill": ("string", "")], required: ["skill"]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "import_skills", description: "Importa skills do provedor (.claude/skills) como skills do VibeDeck.",
+             inputSchema: schema(["provider": provider, "overwrite": ("boolean", "")])),
         // Workflows
-        Tool(name: "list_workflows", description: "Lista os workflows do VibeDeck: fluxos nomeados de etapas (agentes, comandos e skills do VibeDeck) com transições condicionais.",
+        Tool(name: "list_workflows", description: "Workflows: etapas (agentes, comandos, skills) com transições condicionais.",
              inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "get_workflow", description: "Retorna um workflow completo (etapas e transições).", inputSchema: schema(["workflow": ("string", "Slug, id ou título")], required: ["workflow"]),
+        Tool(name: "get_workflow", description: "Workflow completo.", inputSchema: schema(["workflow": ("string", "")], required: ["workflow"]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "add_workflow", description: "Cria um workflow do VibeDeck (sem etapas; use add_workflow_step e add_workflow_transition). Marcado author=ai.",
+        Tool(name: "add_workflow", description: "Cria um workflow vazio (depois add_workflow_step/add_workflow_transition).",
              inputSchema: schema([
-                 "title": ("string", "Nome do workflow"),
-                 "summary": ("string", "O que o workflow faz"),
-                 "input": ("string", "O que pedir ao iniciar (ex.: <número do PR>)"),
-                 "max_steps": ("integer", "Limite de etapas executadas por execução (padrão: \(Workflow.defaultMaxSteps))"),
-                 "tags": ("array", "Tags"),
+                 "title": ("string", ""),
+                 "summary": ("string", ""),
+                 "input": ("string", "O que pedir ao iniciar"),
+                 "max_steps": ("integer", "Etapas por execução (padrão \(Workflow.defaultMaxSteps))"),
+                 "tags": ("array", ""),
              ], required: ["title"])),
-        Tool(name: "update_workflow", description: "Atualiza nome, descrição, entrada, limite ou tags de um workflow.",
+        Tool(name: "update_workflow", description: "Atualiza um workflow.",
              inputSchema: schema([
-                 "workflow": ("string", "Slug, id ou título"),
-                 "title": ("string", "Novo nome"),
-                 "summary": ("string", "Nova descrição"),
-                 "input": ("string", "Nova entrada"),
-                 "max_steps": ("integer", "Novo limite de etapas (0 volta ao padrão)"),
-                 "tags": ("array", "Substitui as tags"),
+                 "workflow": ("string", ""),
+                 "title": ("string", ""),
+                 "summary": ("string", ""),
+                 "input": ("string", ""),
+                 "max_steps": ("integer", "0 = padrão"),
+                 "tags": ("array", ""),
              ], required: ["workflow"])),
-        Tool(name: "add_workflow_step", description: "Adiciona uma etapa ao workflow: um agente, comando ou skill do VibeDeck (pode repetir). A primeira etapa é o início. Retorna o id da etapa.",
+        Tool(name: "add_workflow_step", description: "Adiciona uma etapa (a primeira é o início) e devolve o id.",
              inputSchema: schema([
-                 "workflow": ("string", "Slug, id ou título"),
-                 "target": ("string", "Agente, comando ou skill do VibeDeck (slug, id ou título)"),
-                 "kind": ("string", "agent (padrão), command ou skill"),
-                 "note": ("string", "Instrução extra da etapa ($ARGUMENTS para comandos)"),
-                 "max_visits": ("integer", "Máximo de vezes que a etapa roda por ciclo de uma execução"),
-             ], required: ["workflow", "target"], enums: ["kind": ["agent", "command", "skill"]])),
-        Tool(name: "set_workflow_step_max_visits", description: "Define quantas vezes uma etapa pode rodar por ciclo de uma execução (0 remove o limite). Estourou → a execução para.",
+                 "workflow": ("string", ""),
+                 "target": ("string", ""),
+                 "kind": ("string", ""),
+                 "note": ("string", "Instrução extra ($ARGUMENTS em comandos)"),
+                 "max_visits": ("integer", "Por ciclo"),
+             ], required: ["workflow", "target"], enums: ["kind": stepKinds])),
+        Tool(name: "set_workflow_step_max_visits", description: "Limite de execuções da etapa por ciclo; estourar para a execução.",
              inputSchema: schema([
-                 "workflow": ("string", "Slug, id ou título"),
-                 "step": ("string", "Id ou posição da etapa"),
-                 "max_visits": ("integer", "Máximo (0 = sem limite)"),
+                 "workflow": ("string", ""),
+                 "step": ("string", "Id ou posição"),
+                 "max_visits": ("integer", "0 = sem limite"),
              ], required: ["workflow", "step", "max_visits"])),
-        Tool(name: "remove_workflow_step", description: "Remove uma etapa do workflow e as transições que apontam para ela.",
+        Tool(name: "remove_workflow_step", description: "Remove uma etapa e as transições para ela.",
              inputSchema: schema([
-                 "workflow": ("string", "Slug, id ou título"),
-                 "step": ("string", "Id ou posição (1, 2, …) da etapa"),
+                 "workflow": ("string", ""),
+                 "step": ("string", "Id ou posição"),
              ], required: ["workflow", "step"])),
-        Tool(name: "move_workflow_step", description: "Move uma etapa para outra posição (1 = início).",
+        Tool(name: "move_workflow_step", description: "Move uma etapa (1 = início).",
              inputSchema: schema([
-                 "workflow": ("string", "Slug, id ou título"),
-                 "step": ("string", "Id ou posição da etapa"),
-                 "position": ("integer", "Nova posição (1, 2, …)"),
+                 "workflow": ("string", ""),
+                 "step": ("string", "Id ou posição"),
+                 "position": ("integer", ""),
              ], required: ["workflow", "step", "position"])),
-        Tool(name: "add_workflow_transition", description: "Adiciona uma transição: depois da etapa `from`, vá para `to` (pode voltar a etapas anteriores) quando o veredito da etapa (última linha do resultado) for `verdict`, ou quando `when` valer para o resultado. Sem nenhum dos dois é o \"senão\" (um por etapa, sempre por último). Vereditos primeiro, depois condições, depois o senão; nenhuma = fim.",
+        Tool(name: "add_workflow_transition", description: "Depois de `from`, vá para `to` quando o veredito for `verdict` ou `when` valer; sem ambos é o senão (um por etapa). Ordem: vereditos, condições, senão; nenhuma = fim.",
              inputSchema: schema([
-                 "workflow": ("string", "Slug, id ou título"),
-                 "from": ("string", "Etapa de origem (id ou posição)"),
-                 "to": ("string", "Etapa de destino (id ou posição)"),
-                 "verdict": ("string", "Veredito que leva a esta transição (ex.: APROVADO); maiúsculas e acentos não importam"),
-                 "when": ("string", "Condição em linguagem natural sobre o resultado da etapa"),
+                 "workflow": ("string", ""),
+                 "from": ("string", "Id ou posição"),
+                 "to": ("string", "Id ou posição"),
+                 "verdict": ("string", "Ex.: APROVADO; ignora caixa e acentos"),
+                 "when": ("string", "Condição em linguagem natural"),
              ], required: ["workflow", "from", "to"])),
-        Tool(name: "remove_workflow_transition", description: "Remove a transição na posição `index` (1, 2, …) de uma etapa.",
+        Tool(name: "remove_workflow_transition", description: "Remove a transição `index` (1, 2, …) de uma etapa.",
              inputSchema: schema([
-                 "workflow": ("string", "Slug, id ou título"),
-                 "from": ("string", "Etapa de origem (id ou posição)"),
-                 "index": ("integer", "Posição da transição na etapa"),
+                 "workflow": ("string", ""),
+                 "from": ("string", "Id ou posição"),
+                 "index": ("integer", ""),
              ], required: ["workflow", "from", "index"])),
-        Tool(name: "workflow_flow", description: "JSON do workflow (etapas resolvidas, transições e regras de execução) para orquestrar a IA. Para executar, siga as `rules` do JSON.",
+        Tool(name: "workflow_flow", description: "JSON do workflow para orquestrar; siga as `rules` dele.",
              inputSchema: schema([
-                 "workflow": ("string", "Slug, id ou título"),
-                 "input": ("string", "Entrada desta execução (sem ela, a IA pede a entrada ao usuário)"),
+                 "workflow": ("string", ""),
+                 "input": ("string", "Sem ela, pergunte ao usuário"),
              ], required: ["workflow"]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "workflow_run_start", description: "Inicia (ou retoma, com a mesma entrada) uma execução de workflow com estado em disco e devolve {ref, action, prompt}: `prompt` é o roteiro do orquestrador — siga-o (cada etapa num subagente, veredito decide a transição, perguntas ao usuário). `from` libera mais uma volta numa execução parada a partir de uma etapa.",
-             inputSchema: schema(["provider": ("string", "claude ou codex; padrão claude"),
-                 "workflow": ("string", "Slug, id ou título"),
-                 "input": ("string", "Entrada da execução (a execução recebe o nome dela)"),
-                 "from": ("string", "Etapa por onde começar"),
+        Tool(name: "workflow_run_start", description: "Inicia ou retoma uma execução e devolve {ref, action, prompt}: siga o `prompt` (etapas em subagentes). `from` libera mais uma volta numa execução parada.",
+             inputSchema: schema(["provider": provider,
+                 "workflow": ("string", ""),
+                 "input": ("string", "Nomeia a execução"),
+                 "from": ("string", "Etapa inicial"),
              ], required: ["workflow"])),
-        Tool(name: "workflow_run_next", description: "Próxima ação do orquestrador numa execução: run-step (lance um subagente para `step`), ask (faça as perguntas abertas), decide (avalie as condições), done ou stop.",
-             inputSchema: schema(["run": ("string", "<workflow>/<execução>, nome da execução ou id")], required: ["run"]),
+        Tool(name: "workflow_run_next", description: "Próxima ação: run-step, ask, decide, done ou stop.",
+             inputSchema: schema(["run": run], required: ["run"]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "workflow_run_step", description: "Prompt da etapa atual da execução, para o subagente que a executa (instruções resolvidas, pasta da execução, respostas do usuário e protocolo de saída).",
-             inputSchema: schema(["run": ("string", "<workflow>/<execução>, nome da execução ou id")], required: ["run"]),
+        Tool(name: "workflow_run_step", description: "Prompt da etapa atual, para o subagente que a executa.",
+             inputSchema: schema(["run": run], required: ["run"]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "workflow_run_record", description: "Registra o veredito (última linha) da etapa atual e devolve a próxima ação. Se vier `decide`, avalie os `candidates` e chame de novo com `to` (ou `none_holds`).",
+        Tool(name: "workflow_run_record", description: "Registra o veredito da etapa e devolve a próxima ação. Em `decide`, avalie os `candidates` e chame de novo com `to` ou `none_holds`.",
              inputSchema: schema([
-                 "run": ("string", "<workflow>/<execução>, nome da execução ou id"),
-                 "verdict": ("string", "Última linha do resultado da etapa"),
-                 "summary": ("string", "Resumo de 1 a 3 linhas do que a etapa fez"),
-                 "to": ("string", "Etapa escolhida ao avaliar as condições"),
-                 "none_holds": ("boolean", "Nenhuma condição vale: segue o senão ou termina"),
+                 "run": run,
+                 "verdict": ("string", "Última linha do resultado"),
+                 "summary": ("string", "1 a 3 linhas"),
+                 "to": ("string", ""),
+                 "none_holds": ("boolean", ""),
              ], required: ["run"])),
-        Tool(name: "workflow_run_ask", description: "Grava perguntas da etapa atual para o usuário (a etapa não fala com ele); a execução espera as respostas. Depois termine a etapa com a última linha PERGUNTA.",
-             inputSchema: schema(["run": ("string", "<workflow>/<execução>, nome da execução ou id")], required: ["run", "questions"], custom: ["questions": questionsSchema])),
-        Tool(name: "workflow_run_questions", description: "Perguntas de uma execução (só as abertas com open=true).",
+        Tool(name: "workflow_run_ask", description: "Grava perguntas da etapa para o usuário; termine a etapa com a última linha PERGUNTA.",
+             inputSchema: schema(["run": run], required: ["run", "questions"], custom: ["questions": questionsSchema])),
+        Tool(name: "workflow_run_questions", description: "Perguntas de uma execução.",
              inputSchema: schema([
-                 "run": ("string", "<workflow>/<execução>, nome da execução ou id"),
+                 "run": run,
                  "open": ("boolean", "Só as abertas"),
              ], required: ["run"]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "workflow_run_answer", description: "Grava a resposta do usuário a uma pergunta (opção escolhida, várias separadas por \"; \", ou texto livre) e devolve a próxima ação.",
+        Tool(name: "workflow_run_answer", description: "Grava a resposta do usuário (opções separadas por \"; \" ou texto) e devolve a próxima ação.",
              inputSchema: schema([
-                 "run": ("string", "<workflow>/<execução>, nome da execução ou id"),
-                 "number": ("integer", "Número da pergunta"),
-                 "answer": ("string", "Resposta"),
+                 "run": run,
+                 "number": ("integer", ""),
+                 "answer": ("string", ""),
              ], required: ["run", "number", "answer"])),
-        Tool(name: "workflow_run_list", description: "Execuções de workflows (mais recentes primeiro), com status e etapa atual.",
+        Tool(name: "workflow_run_list", description: "Execuções, mais recentes primeiro.",
              inputSchema: schema([
-                 "workflow": ("string", "Só deste workflow"),
-                 "status": ("string", "Filtra pelo status"),
+                 "workflow": ("string", ""),
+                 "status": ("string", ""),
              ], enums: ["status": WorkflowRunStatus.allCases.map(\.rawValue)]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "workflow_run_show", description: "Uma execução completa: status, etapa atual, histórico com vereditos e perguntas.",
-             inputSchema: schema(["run": ("string", "<workflow>/<execução>, nome da execução ou id")], required: ["run"]),
+        Tool(name: "workflow_run_show", description: "Execução completa: status, histórico e perguntas.",
+             inputSchema: schema(["run": run], required: ["run"]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "workflow_run_stop", description: "Para uma execução. Só faça isso quando o usuário pedir.",
+        Tool(name: "workflow_run_stop", description: "Para uma execução. Só a pedido do usuário.",
              inputSchema: schema([
-                 "run": ("string", "<workflow>/<execução>, nome da execução ou id"),
-                 "reason": ("string", "Motivo"),
+                 "run": run,
+                 "reason": ("string", ""),
              ], required: ["run"])),
-        Tool(name: "set_tags", description: "Substitui as tags de um doc, grupo de revisão, tópico de regras, ideia, agente, comando, skill ou workflow (lista vazia remove).",
+        Tool(name: "set_tags", description: "Substitui as tags de um registro (lista vazia remove).",
              inputSchema: schema([
-                 "kind": ("string", "Tipo do item"),
-                 "ref": ("string", "Slug, id ou título"),
-                 "tags": ("array", "Novas tags"),
-             ], required: ["kind", "ref", "tags"], enums: ["kind": ["doc", "review_group", "rule_topic", "idea", "agent", "command", "skill", "workflow"]])),
-        Tool(name: "promote_idea", description: "Transforma as regras de uma ideia em um tópico de regras ativo. Só faça isso quando o usuário pedir.",
-             inputSchema: schema(["idea": ("string", "Slug, id ou título")], required: ["idea"])),
-        Tool(name: "unpromote_idea", description: "Desfaz promote_idea: apaga o tópico de regras criado pela ideia e remove o vínculo (as regras rascunho ficam na ideia; Aprovada volta para Explorando). Só faça isso quando o usuário pedir.",
-             inputSchema: schema(["idea": ("string", "Slug, id ou título")], required: ["idea"])),
+                 "kind": ("string", ""),
+                 "ref": ("string", ""),
+                 "tags": ("array", ""),
+             ], required: ["kind", "ref", "tags"], enums: ["kind": ["doc", "review_group", "rule_topic", "idea", "agent", "command", "skill", "workflow", "stack", "pattern"]])),
+        Tool(name: "promote_idea", description: "Transforma as regras da ideia num tópico ativo. Só faça isso quando o usuário pedir.",
+             inputSchema: schema(["idea": ("string", "")], required: ["idea"])),
+        Tool(name: "unpromote_idea", description: "Desfaz promote_idea (apaga o tópico; regras voltam a rascunho). Só faça isso quando o usuário pedir.",
+             inputSchema: schema(["idea": ("string", "")], required: ["idea"])),
     ]
 
     // MARK: Tool calls
@@ -687,6 +702,21 @@ struct MCPHandler: Sendable {
         }
         switch name {
         case "codex_usage": return try json(await CodexQueries.limits(root: store.root))
+        case "ai_guide":
+            if let n = args["section"]?.intValue {
+                guard let section = AgentsGuide.section(n) else { throw MCPError.invalidParams("Seção inexistente.") }
+                return section
+            }
+            return AgentsGuide.index
+        case "ai_catalog":
+            return try json(store.aiCatalog(kind: req("kind"), offset: args["offset"]?.intValue ?? 0, limit: args["limit"]?.intValue ?? 20))
+        case "ai_context":
+            return try json(AIContextStore(root: store.root).page(id: req("id"), offset: args["offset"]?.intValue ?? 0, limit: args["limit"]?.intValue ?? 4000))
+        case "ai_usage":
+            let usage = AIUsageStore(root: store.root)
+            if args["clear"]?.boolValue == true { try usage.clear(); return "Métricas locais apagadas." }
+            return try json(usage.list())
+
         case "get_project":
             let groups = try store.listGroups().map { ["slug": $0.slug, "title": $0.group.title, "open": "\($0.group.openCount)", "total": "\($0.group.items.count)"] }
             return try json(ProjectSummary(root: store.root.path, project: store.loadProject(), docs: store.listDocs().map(\.slug), groups: groups))
@@ -838,33 +868,27 @@ struct MCPHandler: Sendable {
             if applicable.allSatisfy({ $0.topic.rules.isEmpty }) {
                 return "Nenhuma regra aplicável a esses arquivos. Mesmo assim, chame submit_rule_check com results=[] para registrar a tarefa."
             }
-            return try json(applicable.map { TopicChecklist(slug: $0.slug, topic: $0.topic) })
+            let includeManual = args["include_manual"]?.boolValue ?? false
+            if args["verbose"]?.boolValue == true {
+                return try json(applicable.map { TopicChecklist(slug: $0.slug, topic: $0.topic, includeManual: includeManual) })
+            }
+            return try TopicChecklist.compactJSON(TopicChecklist.compact(applicable, includeManual: includeManual))
 
         case "submit_rule_check":
-            guard let raw = args["results"] else { throw MCPError.invalidParams("Parâmetro obrigatório: results") }
-            let answers: [RuleAnswer]
-            do {
-                let data = try raw.stringValue.map { Data($0.utf8) } ?? JSONEncoder().encode(raw)
-                answers = try JSONDecoder().decode([RuleAnswer].self, from: data)
-            } catch {
-                throw MCPError.invalidParams("results deve ser uma lista de {ruleId, verdict: pass|fail|na, note}.")
+            var answers: [RuleAnswer] = []
+            if let raw = args["results"] {
+                do {
+                    let data = try raw.stringValue.map { Data($0.utf8) } ?? JSONEncoder().encode(raw)
+                    answers = try JSONDecoder().decode([RuleAnswer].self, from: data)
+                } catch {
+                    throw MCPError.invalidParams("results deve ser uma lista de {ruleId, verdict: pass|fail|na, note}.")
+                }
             }
             let check = try store.submitCheck(
                 task: req("task"), files: list("files") ?? [], topics: list("topics") ?? [],
-                reviewItem: str("review_item"), answers: answers, author: .ai
+                reviewItem: str("review_item"), answers: answers, verifyManual: args["verify_manual"]?.boolValue ?? false, author: .ai
             )
-            var summary = check.passed
-                ? "✅ Check aprovado (\(check.results.count) regra(s))."
-                : "❌ Check reprovado. Corrija e envie um novo check antes de concluir:\n" + check.failures.map { "- \($0)" }.joined(separator: "\n")
-            if !check.warnings.isEmpty {
-                summary += "\n⚠️ Recomendações não cumpridas (avise o usuário):\n" + check.warnings.map { "- \($0)" }.joined(separator: "\n")
-            }
-            let scripted = check.results.filter { $0.source == .script }
-            if !scripted.isEmpty {
-                summary += "\n⚙️ \(scripted.count) regra(s) decidida(s) por script."
-                for r in scripted where r.verdict == .fail { summary += "\n--- script reprovado:\n\(r.note ?? "")" }
-            }
-            return summary + "\n" + (try json(check))
+            return try check.agentSummary(verbose: args["verbose"]?.boolValue ?? false)
 
         case "run_rule_tests":
             let files = list("files") ?? []
@@ -903,6 +927,8 @@ struct MCPHandler: Sendable {
             case "command": try store.updateCommand(ref) { $0.tags = tags }
             case "skill": try store.updateSkill(ref) { $0.tags = tags }
             case "workflow": try store.updateWorkflow(ref) { $0.tags = tags }
+            case "stack": try store.setStackTags(ref, tags)
+            case "pattern": try store.setPatternTags(ref, tags)
             case let other: throw MCPError.invalidParams("Tipo inválido: \(other)")
             }
             return tags.isEmpty ? "Tags removidas." : "Tags: " + tags.joined(separator: ", ")
@@ -1219,8 +1245,10 @@ struct MCPHandler: Sendable {
             return try json(store.stopRun(req("run"), reason: str("reason")))
 
         case "promote_idea":
+            let stale = try store.unmatchedIdeaPaths(req("idea"))
             let topic = try store.promoteIdea(req("idea"))
             return "Ideia promovida para o tópico de regras: \(topic)"
+                + (stale.isEmpty ? "" : "\nAviso: globs da ideia que não casam nenhum arquivo foram copiados: \(stale.joined(separator: ", "))")
 
         case "unpromote_idea":
             let ref = try req("idea")
@@ -1388,38 +1416,6 @@ private struct ProjectSummary: Encodable {
 }
 
 /// A topic as a checklist: what agents need to answer in submit_rule_check.
-struct TopicChecklist: Encodable {
-    let slug: String
-    let title: String
-    let description: String?
-    let paths: [String]
-    let rules: [RuleRow]
-
-    struct RuleRow: Encodable {
-        let ruleId: String
-        let text: String
-        let details: String?
-        let severity: RuleSeverity
-        /// "script": decided by running `test` in submit_rule_check; "manual": the agent answers it.
-        let check: String
-        let test: String?
-        /// The rule changed since its test was written: answer it manually and regenerate the test.
-        let staleTest: Bool?
-    }
-
-    init(slug: String, topic: RuleTopic) {
-        self.slug = slug
-        title = topic.title
-        description = topic.description
-        paths = topic.paths
-        rules = topic.rules.map {
-            RuleRow(ruleId: $0.id.uuidString, text: $0.text, details: $0.details, severity: $0.severity,
-                    check: $0.testState == .script ? "script" : "manual", test: $0.scriptCommand,
-                    staleTest: $0.testState == .stale ? true : nil)
-        }
-    }
-}
-
 /// One script run, for `run_rule_tests` / `vibedeck rules test --json`.
 struct RuleTestRunRow: Encodable {
     let topic: String

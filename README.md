@@ -14,11 +14,12 @@ agrupados por tema, **regras** que a IA precisa cumprir antes de dar uma tarefa 
 <repo>/
   vibedeck.json              # declara o projeto (nome, links, stack, padrões, reviewKinds)
   .vibedeck/
-    AGENTS.md                # guia para agentes de IA (gerado)
+    AGENTS.md                # guia inicial compacto para IA (gerado)
+    guide.md                 # referência completa, consultada por seção (gerada)
     docs/<slug>.md
     reviews/<slug>.json      # um grupo/tema por arquivo
     rules/<slug>.json        # um tópico de regras por arquivo (paths = globs de escopo)
-    ideas/<slug>.json        # uma ideia por arquivo, com regras rascunho
+    ideas/<slug>.json        # uma ideia por arquivo, com regras rascunho e globs sugeridos
     agents/<slug>.json       # um agente por arquivo: nome, modelo, prompt e próximos passos
     commands/<slug>.json     # um comando por arquivo: prompt com $ARGUMENTS, argumentos e próximos passos
     skills/<slug>.json       # uma skill por arquivo: descrição (quando usar), instruções e próximos passos
@@ -85,8 +86,9 @@ resource `vibedeck://patterns`.
 - **Tópico de regras**: lista de comportamentos (`must` bloqueia, `should` só avisa). Sem `paths`, vale
   para toda tarefa; com globs (`Sources/App/**`, `*.tsx`), vale quando um arquivo alterado casa.
 - **Fluxo do agente** (exigido pelas instruções do MCP e pelo `AGENTS.md`): `rules_for` com os arquivos
-  alterados → verificar cada regra manual → `submit_rule_check` com `pass`/`fail`/`na` para elas (o envio roda
-  os scripts das demais). Só conclui com `passed=true`.
+  alterados → `submit_rule_check` roda scripts; manuais ficam pendentes. Use `include_manual` / `verify_manual`
+  (CLI: `--manual`) quando a verificação manual for solicitada, com `pass`/`fail`/`na` e evidência. O envio roda
+  os scripts automaticamente. Só conclui com `passed=true`; manuais pendentes são informadas.
 - **Testes de regras**: "Gerar testes" (barra do tópico) pede ao provedor selecionado, no chat, para transformar cada regra
   num script em `.vibedeck/tests/<tópico>/<regra>.sh` — ou marcá-la como **manual** quando não dá para testar
   objetivamente. Daí em diante o check roda o script (na raiz, com `$VIBEDECK_FILES` = arquivos alterados):
@@ -115,8 +117,15 @@ resource `vibedeck://patterns`.
   cada um com a justificativa. Nada muda até você aceitar: arquivos inexistentes e tópicos desconhecidos são
   descartados, trocar um campo já preenchido começa desmarcado, tópicos só são adicionados e o aceite é um
   único ⌘Z.
-- **Ideias**: brainstorm com status, tags, texto markdown e regras rascunho. "Promover" cria um tópico
-  de regras real com essas regras. Apagar esse tópico (no app, no Finder ou com `vibedeck ideas unpromote`)
+- **Descubra nas regras** (na barra do tópico de regras e da ideia, com Claude ou Codex instalado): a IA, só com
+  leitura, propõe **globs** e **tags**; depois faz uma **entrevista** (até 4 perguntas por rodada, 3 rodadas, com
+  "Gerar com o que já tenho") e sugere regras `must`/`should`. Globs catch-all (`**`, `*`, `**/*`) ou que não
+  casam nenhum arquivo são descartados, tags novas começam desmarcadas, regras que duplicam ou conflitam com as
+  existentes vêm sinalizadas e desmarcadas, e nada é removido. Na ideia as regras entram como rascunho e os globs
+  ficam em `paths`. Cada aceite é um único ⌘Z; editar o tópico/ideia durante a chamada descarta a resposta.
+- **Ideias**: brainstorm com status, tags, globs (`paths`), texto markdown e regras rascunho. "Promover" cria um tópico
+  de regras real com essas regras e globs (se o tópico já existe, os globs são somados; globs que não casam mais
+  nenhum arquivo são avisados antes). Apagar esse tópico (no app, no Finder ou com `vibedeck ideas unpromote`)
   despromove a ideia: o vínculo some, "Aprovada" volta para "Explorando" e as regras rascunho ficam.
 - **Agentes**: nome, modelo e prompt (markdown) de agentes do VibeDeck. Os **próximos passos** apontam para
   outros agentes, comandos ou skills do VibeDeck e formam um fluxo; `vibedeck agents flow <agente>`
@@ -250,7 +259,7 @@ vibedeck runs next conduzir/12 | vibedeck runs step conduzir/12   # próxima aç
 vibedeck runs record conduzir/12 --verdict APROVADO --summary "..."   # registra o veredito e anda
 vibedeck runs questions conduzir/12 --open && vibedeck runs answer conduzir/12 1 "main"
 vibedeck runs show conduzir/12 | vibedeck runs list --status waiting
-vibedeck tag review tela-de-login ui mvp     # substitui as tags (doc | review | rules | idea | agent | command | skill | workflow)
+vibedeck tag review tela-de-login ui mvp     # substitui as tags (doc | review | rules | idea | agent | command | skill | workflow | stack | pattern)
 vibedeck mcp install                         # registra o servidor MCP no Claude Code (--scope local/project/user)
 vibedeck usage install                       # liga a statusline do Claude Code ao VibeDeck (mantém a atual encadeada)
 vibedeck usage [--json]                      # limite da sessão (5h) e da semana, com horário de reset
@@ -316,3 +325,42 @@ cd worker && npm install
 npm run dev        # http://localhost:8787/v1/project.schema.json
 npm run deploy     # depois: scripts/set-schema-url.sh https://vibedeck-schema.<sub>.workers.dev
 ```
+
+
+## Eficiência e consumo de IA
+
+A política de eficiência é distribuída com o app, CLI e MCP para todos os projetos. O guia inicial gerado
+em `.vibedeck/AGENTS.md` contém as obrigações; `.vibedeck/guide.md` guarda a referência completa.
+Abrir o projeto no app ou usar o CLI/MCP atualiza esses arquivos gerados. Prompts de agentes, comandos,
+skills e workflows personalizados não são reescritos.
+
+- **Contexto sob demanda:** consulte `vibedeck ai guide` e depois `--section <n>`. Use
+  `vibedeck ai catalog agents|commands|skills|workflows|rules` (`--offset`, `--limit`) para descobrir registros
+  sem carregar seus prompts. As listagens anteriores mantêm seu formato.
+- **Conversas mencionadas:** referências grandes viram snapshots locais imutáveis, com leitura por trechos.
+  O botão “Incluir conversas completas” no chat permite enviar tudo explicitamente. Se o snapshot falhar,
+  o conteúdo integral é enviado. Snapshots são dados de referência, não instruções, e ficam disponíveis
+  mesmo quando a conversa original muda. `vibedeck ai context <id> --offset 0 --limit 4000` lê uma página.
+- **Workflows:** etapas e limites continuam obrigatórios; todas as decisões respondidas são preservadas.
+  O histórico recente traz referências; saídas completas do painel Codex ficam em `outputs/` dentro da execução.
+  Histórico anterior e evidências podem ser recuperados em `run.json`, sem corte de caracteres nas novas saídas.
+- **Modelos simples:** exploração e delegação podem ser proporcionais à tarefa, mas critérios de conclusão
+  e validações não são dispensados. “Descubra” e verificação manual de regras permitem uma recuperação
+  de resposta inválida no mesmo modelo. Persistindo a falha, informam a limitação; não trocam modelo/provedor.
+  Cancelamentos, erros de transporte e tarefas com escrita não são repetidos automaticamente.
+- **Geração em lote:** o menu “Gerar verificações” permite escolher Claude ou Codex, usa as configurações
+  de modelo/esforço do painel e valida os registros das regras selecionadas ao terminar.
+- **Métricas:** “Consumo por tarefa”, na área do provedor, e “Consumo de IA”, no chat, mostram tentativas,
+  duração, modelo, caracteres na entrada da tarefa (sem instruções de sistema e leituras posteriores) e tokens/custos informados. `vibedeck ai usage --json` consulta os mesmos
+  dados; `--clear` limpa só as métricas. Caracteres não são tokens; ausência de contagem não é zero.
+  Chamadas externas e retomadas sem contador inicial podem ter cobertura parcial. Não há estimativa de preço.
+
+Equivalentes MCP: `ai_guide`, `ai_catalog`, `ai_context` e `ai_usage` (`clear: true` somente quando solicitado).
+O app também permite consultar o guia por assunto. Métricas e snapshots ficam localmente em
+Application Support/VibeDeck/ai, separados por diretório de projeto, sem envio de telemetria. Os registros de
+consumo não guardam texto de prompts; snapshots guardam apenas o contexto explicitamente referenciado.
+
+Validação: `scripts/test-ai-efficiency.sh` testa economia do contexto inicial (meta de pelo menos 30% em
+cenários redundantes), integridade das referências, contratos, recuperação e contagem. Isso mede o que
+VibeDeck controla; redução real de tokens e qualidade de cada modelo exigem comparação de tarefas reais
+com o mesmo modelo e estado inicial, incluindo recuperações. Não há promessa de economia fixa por tarefa.

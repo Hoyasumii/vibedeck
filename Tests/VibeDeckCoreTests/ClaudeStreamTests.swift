@@ -189,6 +189,7 @@ import Testing
         #expect(!arguments.contains("--input-format"), "o prompt vai como argumento, sem stdin")
         #expect(arguments.contains("acceptEdits"))
         #expect(arguments.contains("Read Edit Write Glob Grep Bash"))
+        #expect(arguments.contains("--strict-mcp-config"), "sem MCPs: o catálogo de tools é custo fixo por execução")
         #expect(!arguments.contains("--model"))
         #expect(ClaudeLaunch.headlessArguments(prompt: "x", model: .sonnet).suffix(2) == ["--model", "sonnet"])
     }

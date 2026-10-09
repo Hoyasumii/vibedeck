@@ -56,15 +56,15 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "/, /v1 e /v1/ devolvem {name, schemas:{project, reviewGroup, ruleTopic, idea, ruleCheck}}. Schema novo entra nesse índice, em SchemaURL (Models.swift) e no AGENTS.md (linha \"Schemas:\").\nVerificar: os três lugares listam o mesmo conjunto.",
+      "details" : "/, /v1 e /v1/ devolvem {name, schemas:{...}} com todos os schemas de schema/v1. Schema novo entra nesse índice, em SchemaURL (Models.swift) e na linha \"Schemas:\" do guia de referência (AgentsGuide.swift → .vibedeck/guide.md; o AGENTS.md compacto não a repete, por economia de tokens).\nVerificar: índice do worker, SchemaURL, a linha \"Schemas:\" do guide.md e os arquivos de schema/v1 listam o mesmo conjunto.",
       "id" : "CD3057F2-1C45-4F09-A9C7-7EC146998DFA",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/worker-e-schemas/cd3057f2.sh",
-        "generatedAt" : "2026-10-09T01:24:02Z",
+        "generatedAt" : "2026-10-09T15:19:21Z",
         "mode" : "script",
-        "reason" : "Mesmo conjunto de schemas no índice do worker, em SchemaURL (Models.swift), na linha Schemas: do AgentsGuide.swift/.vibedeck/AGENTS.md e em schema/v1; chaves do índice iguais aos nomes do SchemaURL.",
-        "ruleHash" : "5717a25161e7c2ef"
+        "reason" : "Mesmo conjunto de schemas no índice do worker, em SchemaURL, na linha Schemas: do guide.md/AgentsGuide.swift e em schema/v1; chaves do índice iguais aos nomes do SchemaURL.",
+        "ruleHash" : "67c30d83f2bbaec1"
       },
       "text" : "O índice lista todos os schemas"
     },

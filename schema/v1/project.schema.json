@@ -71,6 +71,7 @@
         "summary": { "type": "string" },
         "note": { "type": "string", "description": "How the project applies the pattern; copied into the topic description." },
         "topic": { "type": "string", "description": "Slug of the rule topic (.vibedeck/rules/<slug>.json) that enforces the pattern." },
+        "tags": { "type": "array", "items": { "type": "string" } },
         "author": { "enum": ["human", "ai"] }
       },
       "additionalProperties": false
@@ -125,6 +126,12 @@
         "note": {
           "type": "string",
           "description": "How the project uses it; handed to the AI with the stack."
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         },
         "author": {
           "enum": [

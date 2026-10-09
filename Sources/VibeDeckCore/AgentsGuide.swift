@@ -1,31 +1,69 @@
 import Foundation
 
 public enum AgentsGuide {
-    public static let markdown = """
+    public static var sections: [String] {
+        referenceMarkdown.components(separatedBy: "\n## ").dropFirst().map { "## " + $0 }
+    }
+
+    public static func section(_ index: Int) -> String? {
+        guard sections.indices.contains(index) else { return nil }
+        return sections[index]
+    }
+
+    public static var index: String {
+        sections.enumerated().map { "\($0.offset): \($0.element.components(separatedBy: "\n")[0].dropFirst(3))" }.joined(separator: "\n")
+    }
+
+    public static var markdown: String {
+        let mandatory = referenceMarkdown.components(separatedBy: "\n## Stack")[0]
+        return mandatory + """
+
+
+        ## Trabalho eficiente com IA
+
+        \(AIPromptPolicy.instructions)
+
+        ## Antes de implementar
+
+        Consulte stack, padrões (`vibedeck stack|patterns --json`) e itens de revisão abertos da área.
+        Registros via CLI/MCP, com author=ai; preserve dados humanos, ids e schemas. Não edite este guia nem checks.
+        Ideias só viram regras quando o usuário pedir a promoção. Em workflows e importações, informe o provider
+        (codex no Codex) e respeite modelo, permissões, transições, decisões do usuário e limites.
+
+        ## Documentação sob demanda
+
+        Leia só a seção necessária: `vibedeck ai guide --section <n>`, MCP `ai_guide(section: n)` ou o título em
+        `.vibedeck/guide.md`. Registros: `vibedeck ai catalog <tipo>` / MCP `ai_catalog`; abra só o que for usar.
+
+        \(index)
+        """
+    }
+
+    public static let referenceMarkdown = """
     # VibeDeck — guia para agentes de IA
 
-    Este diretório é gerenciado pelo app **VibeDeck**. Ele guarda links, documentos,
-    pontos de revisão, **regras**, **ideias**, **agentes**, **comandos**, **skills** e **workflows** do projeto em arquivos locais que você (agente) pode ler e editar.
+    Este diretório é gerenciado pelo app **VibeDeck**: links, documentos, revisões, **regras**, **ideias**, **agentes**,
+    **comandos**, **skills** e **workflows** do projeto, em arquivos locais que você (agente) pode ler e editar.
 
     ## ⚠️ Regras — obrigatório antes de concluir qualquer tarefa
 
     Nenhuma tarefa está concluída sem passar pelas regras do projeto:
 
-    1. Chame `rules_for` (MCP) ou `vibedeck rules for <arquivos> --json` com os arquivos que você
-       alterou (e o id do item de revisão, se houver).
-    2. Verifique contra o seu trabalho de verdade (leia o código, rode o que precisar) cada regra retornada
-       com `check: "manual"`. As de `check: "script"` são decididas pelo script delas (veja "Testes de regras").
-    3. Envie o resultado com `submit_rule_check` (ou `vibedeck rules check`): `pass`, `fail` ou `na`
-       para **cada** regra manual, com uma nota curta de evidência. O envio roda os scripts sozinho.
-    4. Se `passed` for `false`, corrija e envie um novo check. Só diga que terminou quando passar.
-       Regras `should` que falham não bloqueiam, mas avise o usuário.
+    1. `rules_for` (MCP) ou `vibedeck rules for <arquivos> --json` com os arquivos alterados (e o item de revisão,
+       se houver): lista as regras de script (`check: "script"`) e só conta as manuais (`manualRules`).
+    2. `submit_rule_check` (ou `vibedeck rules check`) sem `results`: roda os scripts sozinho (veja "Testes de regras").
+       As manuais ficam em `pending` e **não** entram nesse fluxo.
+    3. Se `passed` for `false`, corrija e envie outro check; só diga que terminou quando passar. `should` que falham
+       não bloqueiam: avise o usuário e diga quantas manuais ficaram em `pending`.
+    4. Manuais **só quando o usuário pedir** (ou para fechar item de revisão com manual `must`): `rules_for` com
+       `include_manual=true` (CLI: `rules for --manual`), confira o código e envie `submit_rule_check` com
+       `verify_manual=true` (CLI: `rules check --manual`), `pass`, `fail` ou `na` e evidência para **cada** manual.
 
-    Itens de revisão ligados a regras (`rules`, ou `target.file` casando os `paths` de um tópico)
-    não podem ir para `done` sem um check aprovado para aquele item.
+    Item de revisão com regras (`rules`, ou `target.file` casando os `paths` de um tópico) só vai para `done` com
+    check aprovado para ele, incluindo as manuais `must` (passo 4); as manuais `should` não o seguram.
 
-    Com o hook `Stop` ligado (`vibedeck hook install`, ou `--agent codex`), o Claude Code ou o Codex não deixa você encerrar a resposta
-    enquanto um arquivo alterado na sessão tiver regras aplicáveis sem check aprovado depois da alteração:
-    o motivo do bloqueio lista os arquivos e tópicos que faltam.
+    Com o hook `Stop` (`vibedeck hook install`, ou `--agent codex`), o Claude Code ou o Codex não encerra a resposta
+    enquanto um arquivo alterado na sessão tiver regras sem check aprovado posterior; o bloqueio lista o que falta.
 
     ## Stack — consulte antes de implementar
 
@@ -95,7 +133,8 @@ public enum AgentsGuide {
       por linha; vazio = projeto todo), `$VIBEDECK_ROOT` e `$VIBEDECK_RULE_ID`. Exit `0` = cumpre, `77` = não se
       aplica, outro = viola (imprima o motivo). Limite de 120 s. `submit_rule_check` roda o script e usa o
       resultado — a sua resposta para essa regra é ignorada.
-    - `manual`: a regra não é testável objetivamente; você continua respondendo no check.
+    - `manual`: a regra não é testável objetivamente; ela só é verificada pela IA sob demanda (passo 4).
+      Prefira transformar regras manuais em script sempre que der: script não gasta token.
     - Se o texto/detalhes da regra mudarem, o `ruleHash` não bate e o teste fica **desatualizado**: a regra volta a
       ser manual (com aviso no check) até o teste ser regenerado.
     - Para gerar/atualizar: escreva `.vibedeck/tests/<tópico>/<id8>.sh` (executável), rode-o e registre com
@@ -105,8 +144,9 @@ public enum AgentsGuide {
     ## Ideias
 
     Ideias (`ideas/*.json`) são futuras e **não** são regras ativas: `status` new | exploring | approved |
-    discarded | done, `body` em markdown, `rules` rascunho. `promote_idea` transforma as regras da
-    ideia em um tópico de regras real (aí passam a valer). `unpromote_idea` desfaz isso (apaga o tópico,
+    discarded | done, `body` em markdown, `rules` rascunho e `paths` (globs sugeridos, opcional). `promote_idea`
+    transforma as regras da ideia em um tópico de regras real (aí passam a valer); os `paths` da ideia viram os
+    do tópico (ou são somados aos dele, sem remover nenhum). `unpromote_idea` desfaz isso (apaga o tópico,
     as regras rascunho ficam na ideia); apagar o tópico de outro jeito também despromove a ideia
     (`approved` volta para `exploring`). Registre ideias que surgirem com `add_idea`.
 
@@ -180,8 +220,9 @@ public enum AgentsGuide {
 
     ## Tags
 
-    Docs (frontmatter `tags: [a, b]`), grupos de revisão, tópicos de regras, ideias, agentes, comandos, skills e workflows aceitam `tags`.
-    Use `set_tags` (MCP) ou `vibedeck tag <doc|review|rules|idea|agent|command|skill|workflow> <ref> <tags...>`.
+    Docs (frontmatter `tags: [a, b]`), grupos de revisão, tópicos de regras, ideias, agentes, comandos, skills, workflows,
+    tecnologias da stack e padrões aceitam `tags`.
+    Use `set_tags` (MCP) ou `vibedeck tag <doc|review|rules|idea|agent|command|skill|workflow|stack|pattern> <ref> <tags...>`.
 
     ## Sessões na nuvem
 
@@ -213,8 +254,9 @@ public enum AgentsGuide {
     vibedeck review add "Tela de login" --kind hide "Esconder link de cadastro" --file src/Login.tsx --ai
     vibedeck review set <id> --status done       # id completo ou prefixo (>= 4 chars)
     vibedeck docs list | vibedeck docs cat <slug>
-    vibedeck rules for src/Login.tsx --json      # regras aplicáveis (com ids)
-    echo '[{"ruleId":"ab12","verdict":"pass","note":"..."}]' | vibedeck rules check --task "..." --file src/Login.tsx --item <id>
+    vibedeck rules for src/Login.tsx --json      # regras de script (manuais só contadas; --manual lista todas)
+    vibedeck rules check --task "..." --file src/Login.tsx --item <id>   # roda os scripts; manuais ficam pendentes
+    echo '[{"ruleId":"ab12","verdict":"pass","note":"..."}]' | vibedeck rules check --manual --task "..." --file src/Login.tsx --item <id>
     vibedeck rules test src/Login.tsx            # roda os scripts das regras aplicáveis (sem gravar check)
     vibedeck rules set-test ab12 --command .vibedeck/tests/geral/ab12cd34.sh   # ou --manual --reason "..." / --clear
     vibedeck ideas list | vibedeck ideas new "Modo offline"

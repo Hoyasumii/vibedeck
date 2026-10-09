@@ -79,6 +79,8 @@ struct WelcomeView: View {
                 }
             }
         }
+        // A folder that arrived through ⌘O / onOpenURL / the Dock but isn't a project yet: offer to initialize it.
+        .onAppear { if let root { open(root) } }
         .alert("Erro", isPresented: .constant(errorMessage != nil)) {
             Button("OK") { errorMessage = nil }
         } message: { Text(errorMessage ?? "") }

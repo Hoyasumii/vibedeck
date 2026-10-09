@@ -52,14 +52,14 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "As instructions do servidor (REGRA OBRIGATÓRIA: rules_for -> verificar -> submit_rule_check -> corrigir até passed=true) e as descrições de rules_for (\"OBRIGATÓRIO antes de concluir...\") e submit_rule_check (\"Responda TODAS as regras...\") não podem ser enfraquecidas nem removidas.\nVerificar: o texto continua no MCPServer.swift.",
+      "details" : "As instructions do servidor (REGRA OBRIGATÓRIA: rules_for -> submit_rule_check (scripts) -> corrigir até passed=true; manuais só com verify_manual=true) e as descrições de rules_for (\"OBRIGATÓRIO antes de concluir...\") e submit_rule_check (\"Com verify_manual=true, responda TODAS as manuais...\") não podem ser enfraquecidas nem removidas.\nVerificar: o texto continua no MCPServer.swift.",
       "id" : "A34C030C-D9E7-4C1A-A8E1-23E47D9B15AF",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/cli-e-mcp/a34c030c.sh",
-        "generatedAt" : "2026-10-09T01:21:00Z",
+        "generatedAt" : "2026-10-09T12:34:17Z",
         "mode" : "script",
-        "ruleHash" : "2db9eeec28fd7494"
+        "ruleHash" : "3b837ac36ebcb80e"
       },
       "text" : "O MCP mantém o fluxo obrigatório de regras"
     },

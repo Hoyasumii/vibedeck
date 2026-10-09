@@ -165,12 +165,13 @@ public struct ProjectStore: Sendable {
     public func writeAgentsGuide() throws {
         try ensureDirectories()
         try AtomicFile.write(Data(AgentsGuide.markdown.utf8), to: agentsURL)
+        try AtomicFile.write(Data(AgentsGuide.referenceMarkdown.utf8), to: dataDir.appending(path: "guide.md"))
     }
 
     /// Rewrites AGENTS.md only when this build's guide differs from what's on disk.
     public func refreshAgentsGuideIfNeeded() throws {
         let current = FileManager.default.contents(atPath: agentsURL.path)
-        if current != Data(AgentsGuide.markdown.utf8) { try writeAgentsGuide() }
+        if current != Data(AgentsGuide.markdown.utf8) || FileManager.default.contents(atPath: dataDir.appending(path: "guide.md").path) != Data(AgentsGuide.referenceMarkdown.utf8) { try writeAgentsGuide() }
     }
 
     // MARK: Project
@@ -1132,21 +1133,25 @@ public struct ProjectStore: Sendable {
     }
 
     /// Turns an idea's draft rules into a real (enforced) rule topic. Re-promoting syncs new rules
-    /// into the existing topic instead of creating another one. Returns the topic slug.
+    /// into the existing topic instead of creating another one. The idea's `paths` become the topic's, or are
+    /// added to them (none removed); `skippingPaths` leaves out globs the user chose not to copy.
+    /// Returns the topic slug.
     @discardableResult
-    public func promoteIdea(_ ref: String) throws -> String {
+    public func promoteIdea(_ ref: String, skippingPaths: Set<String> = []) throws -> String {
         let ideaSlug = try resolveIdeaSlug(ref)
         let idea = try loadIdea(ideaSlug)
+        let paths = idea.paths.filter { !skippingPaths.contains($0) }
         let topicSlug: String
         if let existing = idea.promotedTopic, let slug = try? resolveTopicSlug(existing) {
             try updateTopic(slug) { topic in
                 let known = Set(topic.rules.map(\.id))
                 topic.rules += idea.rules.filter { !known.contains($0.id) }
+                topic.paths += paths.filter { !topic.paths.contains($0) }
             }
             topicSlug = slug
         } else {
             topicSlug = try createTopic(
-                title: idea.title, description: "Regras vindas da ideia \"\(idea.title)\".", rules: idea.rules, sourceIdea: idea.id
+                title: idea.title, description: "Regras vindas da ideia \"\(idea.title)\".", paths: paths, rules: idea.rules, sourceIdea: idea.id
             ).slug
         }
         try updateIdea(ideaSlug) { idea in
@@ -1154,6 +1159,14 @@ public struct ProjectStore: Sendable {
             if !idea.status.isClosed { idea.status = .approved }
         }
         return topicSlug
+    }
+
+    /// Globs of the idea that no longer match any project file (renamed or deleted since they were suggested).
+    public func unmatchedIdeaPaths(_ ref: String) throws -> [String] {
+        let idea = try loadIdea(resolveIdeaSlug(ref))
+        guard !idea.paths.isEmpty else { return [] }
+        let files = ClaudeCompletion.projectFiles(root: root, limit: RuleDiscover.fileLimit).filter { !$0.hasSuffix("/") }
+        return idea.paths.filter { glob in !files.contains { Glob.matches(glob, path: $0) } }
     }
 
     /// Undoes `promoteIdea`: deletes the idea's topic (if it still exists) and releases the idea.
@@ -1254,12 +1267,13 @@ public struct ProjectStore: Sendable {
     }
 
     /// Records a verification. Rules with a current script are decided by running it (answers for them are
-    /// ignored); every other applicable rule must be answered by the agent. The check passes when no `must`
+    /// ignored). Every other applicable rule is verified only when answered; with `verifyManual` all of them must
+    /// be answered, otherwise the unanswered ones are recorded as `pending`. The check passes when no `must`
     /// rule failed (`should` failures and stale tests become warnings).
     @discardableResult
     public func submitCheck(
         task: String, files: [String], topics explicit: [String] = [], reviewItem: String? = nil,
-        answers: [RuleAnswer], author: Author = .ai, runner: RuleTestRunner = .live
+        answers: [RuleAnswer], verifyManual: Bool = false, author: Author = .ai, runner: RuleTestRunner = .live
     ) throws -> RuleCheck {
         let (files, topics, itemID) = try taskScope(files: files, topics: explicit, reviewItem: reviewItem)
         let candidates = topics.flatMap { t in t.topic.rules.map { (t.slug, $0) } }
@@ -1271,7 +1285,7 @@ public struct ProjectStore: Sendable {
             answered[rule.id] = RuleResult(topic: slug, ruleId: rule.id, verdict: answer.verdict, note: answer.note?.trimmed.nonEmpty)
         }
         let missing = candidates.filter { $0.1.testState.needsAgent && answered[$0.1.id] == nil }
-        guard missing.isEmpty else {
+        guard missing.isEmpty || !verifyManual else {
             throw VibeDeckError.incompleteCheck(missing.map { "[\($0.0)] \($0.1.id.uuidString.prefix(8)) \($0.1.text)" })
         }
         for run in runScripts(candidates, files: files, runner: runner) {
@@ -1313,12 +1327,14 @@ public struct ProjectStore: Sendable {
         let candidates = topics.flatMap { entry in entry.topic.rules.map { (entry.slug, $0) } }
         let failed = candidates.filter { answered[$0.1.id]?.verdict == .fail }
         let stale = candidates.filter { $0.1.testState == .stale }.map { "Teste desatualizado (a regra mudou): \($0.1.text)" }
+        let pending = candidates.filter { $0.1.testState.needsAgent && answered[$0.1.id] == nil }.map(\.1.text)
         let check = RuleCheck(
             task: task, files: files, topics: topics.map(\.slug), reviewItem: itemID,
             results: candidates.compactMap { answered[$0.1.id] },
             passed: !failed.contains { $0.1.severity == .must },
             warnings: failed.filter { $0.1.severity == .should }.map(\.1.text) + stale,
             failures: failed.filter { $0.1.severity == .must }.map(\.1.text),
+            pending: pending,
             author: author
         )
         try ensureDirectories()
@@ -1326,7 +1342,7 @@ public struct ProjectStore: Sendable {
         return check
     }
 
-    private static func checkFileName(_ check: RuleCheck) -> String {
+    static func checkFileName(_ check: RuleCheck) -> String {
         var style = Date.VerbatimFormatStyle(
             format: "\(year: .defaultDigits)\(month: .twoDigits)\(day: .twoDigits)-\(hour: .twoDigits(clock: .twentyFourHour, hourCycle: .zeroBased))\(minute: .twoDigits)\(second: .twoDigits)",
             timeZone: .gmt, calendar: Calendar(identifier: .gregorian)
@@ -1363,7 +1379,11 @@ public struct ProjectStore: Sendable {
             return check.failures.map { "Falhou no último check: \($0)" }
         }
         let answered = Set(check.results.map(\.ruleId))
-        return rules.filter { !answered.contains($0.1.id) }.map { "Regra nova desde o último check: [\($0.0)] \($0.1.text)" }
+        return rules.filter { !answered.contains($0.1.id) }.compactMap { slug, rule in
+            guard rule.testState.needsAgent else { return "Regra nova desde o último check: [\(slug)] \(rule.text)" }
+            // A scripts-only check leaves manual rules unverified: only the mandatory ones hold the item back.
+            return rule.severity == .must ? "Regra manual obrigatória sem verificação: [\(slug)] \(rule.text) (envie o check com as regras manuais respondidas)" : nil
+        }
     }
 
     /// Throws `rulesNotVerified` unless the item may be marked done.

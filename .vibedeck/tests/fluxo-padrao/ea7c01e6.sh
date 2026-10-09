@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# O fluxo rules_for → verificar → submit_rule_check (pass/fail/na) → passed=false? corrigir e reenviar
-# continua comunicado pelo AGENTS.md gerado, pelas instruções do MCP e pelo CLI.
+# O fluxo rules_for → submit_rule_check (roda os scripts) → passed=false? corrigir e reenviar, mais a verificação
+# manual sob demanda (verify_manual + pass/fail/na), continua comunicado pelo AGENTS.md gerado, pelas instruções do MCP e pelo CLI.
 set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
 applies '^Sources/vibedeck/|^Sources/VibeDeckCore/(AgentsGuide|ProjectStore)\.swift$'
@@ -8,10 +8,10 @@ build_cli
 new_project
 fail=0
 
-# steps <origem> <texto>: os quatro passos aparecem, na ordem.
+# steps <origem> <texto>: os passos aparecem, na ordem (a verificação manual vem depois do reenvio).
 steps() {
   local src=$1 text=$2 prev=0 n label pat
-  for pair in "rules_for|rules_for" "verificar|[Vv]erifique" "submit_rule_check|submit_rule_check" "pass/fail/na|pass.{1,6}fail.{1,6}na" "passed=false → reenviar|passed[^a-z]{0,4}(=|for)[^a-z]{0,4}false"; do
+  for pair in "rules_for|rules_for" "submit_rule_check|submit_rule_check" "passed=false → reenviar|passed[^a-z]{0,4}(=|for)[^a-z]{0,4}false" "verificar manuais|(verify_manual|--manual)" "pass/fail/na|pass.{1,6}fail.{1,6}na"; do
     label=${pair%%|*}; pat=${pair#*|}
     n=$(printf '%s\n' "$text" | grep -nE "$pat" | head -1 | cut -d: -f1 || true)
     if [ -z "$n" ]; then echo "$src: não descreve o passo '$label'"; fail=1; continue; fi

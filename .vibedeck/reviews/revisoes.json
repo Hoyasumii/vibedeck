@@ -1,0 +1,46 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/review-group.schema.json",
+  "createdAt" : "2026-10-09T03:19:00Z",
+  "id" : "73D22196-01D9-4BCC-A4E3-7A6F6E597574",
+  "items" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-09T03:20:42Z",
+      "id" : "28CA584A-EE28-42C2-ACAA-95750B20D030",
+      "kind" : "hide",
+      "priority" : "normal",
+      "rules" : [
+        "interface-do-app",
+        "dinamicas-da-interface"
+      ],
+      "status" : "open",
+      "target" : {
+        "component" : "ProjectWindow (sidebar, case .groups)",
+        "file" : "Sources/VibeDeckApp/ProjectWindow.swift"
+      },
+      "title" : "Ocultar na lista do painel da esquerda, os tópicos de revisões sem itens pendentes. Podem ser visíveis pela tabela da tela central de revisões. Mas no painel lateral, não",
+      "updatedAt" : "2026-10-09T03:22:05Z"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-09T03:21:22Z",
+      "id" : "9EF0D030-3B21-4A96-8A13-6A2163A54A4F",
+      "kind" : "fix",
+      "priority" : "normal",
+      "rules" : [
+        "interface-do-app",
+        "dinamicas-da-interface",
+        "core-e-formato-de-dados",
+        "conceitos-do-produto"
+      ],
+      "status" : "open",
+      "target" : {
+        "component" : "CommitTextField",
+        "file" : "Sources/VibeDeckApp/ReviewGroupView.swift"
+      },
+      "title" : "Os detalhes dos itens das revisões não está salvando os itens. Ou se está salvando, não está carregando",
+      "updatedAt" : "2026-10-09T03:22:34Z"
+    }
+  ],
+  "title" : "Revisões"
+}

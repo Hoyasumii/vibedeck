@@ -17,23 +17,22 @@ final class ReviewDiscoverRunner {
     var isRunning: Bool { state == .running }
 
     func start(item: ReviewItem, kind: String, topics: [(slug: String, topic: RuleTopic)], store: ProjectStore, provider: AIProvider = .claude) {
-        guard let executable = provider.executable else { state = .failed("\(provider.title) não está instalado."); return }
+        guard provider.isInstalled else { state = .failed("\(provider.title) não está instalado."); return }
         cancel()
         state = .running
         let prompt = ReviewDiscover.prompt(item: item, kind: kind, topics: ReviewDiscover.candidateTopics(topics, item: item))
         task = Task {
             do {
-                let answer: ReviewDiscover.Answer
-                if provider == .codex {
-                    let schema = try JSONDecoder().decode(JSONValue.self, from: Data(ReviewDiscover.schema.utf8))
-                    let output = try await CodexReadOnly().run(root: store.root, prompt: prompt.replacingOccurrences(of: "Use Read, Grep e Glob", with: "Use as ferramentas de leitura e busca"), schema: schema, timeout: ReviewDiscover.timeout)
-                    guard let decoded = try? JSONDecoder().decode(ReviewDiscover.Answer.self, from: Data(output.utf8)) else {
-                        throw VibeDeckError.discoverInvalidAnswer
-                    }
-                    answer = decoded
-                } else {
-                    let output = try await Self.run(executable: executable, root: store.root, input: prompt)
-                    answer = try ReviewDiscover.parse(output)
+                let answer = try await AIReadOnlyOperation.run(root: store.root, provider: provider,
+                    operation: "Descubra", prompt: prompt, schema: ReviewDiscover.schema) { data in
+                    let value = try JSONDecoder().decode(JSONValue.self, from: data)
+                    guard value["fields"]?.array != nil, value["rules"]?.array != nil else { throw VibeDeckError.discoverInvalidAnswer }
+                    let answer = try JSONDecoder().decode(ReviewDiscover.Answer.self, from: data)
+                    let proposal = ReviewDiscover.proposal(answer, item: item, topics: topics, store: store)
+                    guard proposal.discarded.isEmpty,
+                          answer.fields.allSatisfy({ !($0.reason ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }),
+                          answer.rules.allSatisfy({ !($0.reason ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) else { throw VibeDeckError.discoverInvalidAnswer }
+                    return answer
                 }
                 guard !Task.isCancelled else { return }
                 state = .ready(ReviewDiscover.proposal(answer, item: item, topics: topics, store: store))
@@ -66,12 +65,14 @@ final class ReviewDiscoverRunner {
     // MARK: Process
 
     /// stdout of the call. Terminates the process on cancellation and after `ReviewDiscover.timeout`.
-    nonisolated static func run(executable: URL, root: URL, input: String, schema: String? = nil) async throws -> Data {
+    nonisolated static func run(executable: URL, root: URL, input: String, schema: String? = nil, settings: AIProviderSettings = .init()) async throws -> Data {
         let path = ClaudeCode.childPATH()
         let process = Process()
         process.executableURL = executable
         process.currentDirectoryURL = root
         process.arguments = ReviewDiscover.arguments()
+        if let model = settings.model { process.arguments?.append(contentsOf: ["--model", model]) }
+        if let effort = settings.effort { process.arguments?.append(contentsOf: ["--effort", effort]) }
         if let schema, let index = process.arguments?.firstIndex(of: "--json-schema") {
             process.arguments?[index + 1] = schema
         }

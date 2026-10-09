@@ -4,6 +4,7 @@
   "body" : "## Objetivo\nExplorar a arquitetura do projeto pelo grafo do graphify: encontrar arquivos e conceitos, entender suas relações e consultar suas origens sem sair do VibeDeck.\n\n## Decisões alinhadas\n- Adicionar o item **Grafo** à navegação do projeto. Ele abre uma aba com a página HTML da visualização do graphify, integrada ao comportamento existente de abas.\n- Oferecer **visualização, geração e atualização** dentro do app.\n- Gerar e atualizar tanto a estrutura do código quanto as relações semânticas de documentos e conceitos usando IA.\n- Atualização por **botão manual**. Abrir a aba ou detectar mudanças não dispara processamento nem consumo de IA.\n- A consulta do grafo já gerado deve funcionar **offline**, com as dependências do HTML disponíveis localmente. A geração/análise semântica pode depender de conexão com o provedor de IA.\n\n## Experiência proposta\nSem grafo, apresentar o estado vazio com **Gerar grafo**. Com grafo disponível, carregar `graphify-out/graph.html` e oferecer **Atualizar**. Mostrar a última geração bem-sucedida, progresso, erros e cancelamento. Preservar o último resultado válido durante a atualização e em caso de falha.\nA navegação deve permitir busca, zoom, centralização e retorno à visão geral, além de detalhes e origem do nó quando disponíveis. Para grafos grandes, iniciar por comunidades e permitir explorar a vizinhança selecionada. Busca e inspeção devem ser acessíveis por teclado, sem depender apenas de cores.\n\n## Riscos e cuidados\n- Grafos grandes: este projeto já ultrapassa 5 mil nós; validar desempenho com seu grafo real e evitar desenhar todos os elementos de uma vez.\n- HTML offline: o artefato atual depende de biblioteca carregada por CDN; fornecer dependência local e verificar compatibilidade ao atualizar o graphify.\n- IA: custo e duração variáveis; execução explícita, progresso e cancelamento devem ser claros.\n- Resultados parciais: evitar divergência entre JSON e HTML e preservar a última visualização válida.\n- Relações inferidas não são dependências comprovadas: mostrar tipo, direção, confiança e origem quando existentes.\n- Conteúdo HTML do projeto deve ficar isolado, sem acesso arbitrário a arquivos ou execução de comandos.\n- A data do artefato não comprova que ele reflete o código atual; avisos de desatualização precisam se basear em mudanças detectadas.\n\n## Pontos técnicos a fechar na implementação\nDefinir a integração da geração semântica com a sessão/provedor de IA, a compatibilidade das versões de graphify, o empacotamento local das dependências HTML e limites mensuráveis de desempenho. Tratar instalação ausente, formato incompatível, arquivos de origem removidos e cancelamento sem perder o resultado anterior.\n\n## Estado\nRefinamento registrado; a tela Grafo ainda não foi implementada. As regras abaixo são rascunhos e não foram promovidas.",
   "createdAt" : "2026-10-08T07:24:59Z",
   "id" : "13262B13-942D-4798-993E-EE1D26C99041",
+  "promotedTopic" : "exibir-o-grafo-de-graphify-em-algum-lugar-do-app",
   "rules" : [
     {
       "author" : "ai",
@@ -86,7 +87,7 @@
       "text" : "A exploração oferece busca, zoom, centralização, visão geral e inspeção de nós."
     }
   ],
-  "status" : "exploring",
+  "status" : "done",
   "title" : "Exibir o grafo de graphify em algum lugar do app",
-  "updatedAt" : "2026-10-09T02:21:47Z"
+  "updatedAt" : "2026-10-09T03:15:01Z"
 }

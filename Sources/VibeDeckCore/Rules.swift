@@ -240,6 +240,8 @@ public struct Idea: Codable, Equatable, Identifiable, Sendable {
     public var body: String?
     public var status: IdeaStatus
     public var tags: [String]
+    /// Suggested globs (like `RuleTopic.paths`); promotion copies them into the topic.
+    public var paths: [String]
     public var rules: [Rule]
     /// Slug of the rule topic created when the idea was promoted.
     public var promotedTopic: String?
@@ -254,6 +256,7 @@ public struct Idea: Codable, Equatable, Identifiable, Sendable {
         self.body = body
         self.status = .new
         self.tags = tags
+        self.paths = []
         self.rules = []
         self.author = author
         self.createdAt = now
@@ -261,7 +264,7 @@ public struct Idea: Codable, Equatable, Identifiable, Sendable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case schema = "$schema", id, title, body, status, tags, rules, promotedTopic, author, createdAt, updatedAt
+        case schema = "$schema", id, title, body, status, tags, paths, rules, promotedTopic, author, createdAt, updatedAt
     }
 
     public init(from decoder: Decoder) throws {
@@ -272,6 +275,7 @@ public struct Idea: Codable, Equatable, Identifiable, Sendable {
         body = try c.decodeIfPresent(String.self, forKey: .body)
         status = try c.decodeIfPresent(IdeaStatus.self, forKey: .status) ?? .new
         tags = try c.decodeIfPresent([String].self, forKey: .tags) ?? []
+        paths = try c.decodeIfPresent([String].self, forKey: .paths) ?? []
         rules = try c.decodeIfPresent([Rule].self, forKey: .rules) ?? []
         promotedTopic = try c.decodeIfPresent(String.self, forKey: .promotedTopic)
         author = try c.decodeIfPresent(Author.self, forKey: .author) ?? .human
@@ -287,6 +291,7 @@ public struct Idea: Codable, Equatable, Identifiable, Sendable {
         try c.encodeIfPresent(body, forKey: .body)
         try c.encode(status, forKey: .status)
         if !tags.isEmpty { try c.encode(tags, forKey: .tags) }
+        if !paths.isEmpty { try c.encode(paths, forKey: .paths) }
         try c.encode(rules, forKey: .rules)
         try c.encodeIfPresent(promotedTopic, forKey: .promotedTopic)
         try c.encode(author, forKey: .author)
@@ -359,15 +364,17 @@ public struct RuleCheck: Codable, Equatable, Identifiable, Sendable {
     public var warnings: [String]
     /// Texts of `must` rules that failed.
     public var failures: [String]
+    /// Texts of manual rules this check left unverified (scripts-only check): `passed` doesn't cover them.
+    public var pending: [String]
     public var author: Author
     public var createdAt: Date
 
     enum CodingKeys: String, CodingKey {
-        case schema = "$schema", id, task, files, topics, reviewItem, results, passed, warnings, failures, author, createdAt
+        case schema = "$schema", id, task, files, topics, reviewItem, results, passed, warnings, failures, pending, author, createdAt
     }
 
     public init(task: String, files: [String], topics: [String], reviewItem: UUID?, results: [RuleResult],
-                passed: Bool, warnings: [String], failures: [String], author: Author, now: Date = .now) {
+                passed: Bool, warnings: [String], failures: [String], pending: [String] = [], author: Author, now: Date = .now) {
         self.schema = SchemaURL.ruleCheck
         self.id = UUID()
         self.task = task
@@ -378,6 +385,7 @@ public struct RuleCheck: Codable, Equatable, Identifiable, Sendable {
         self.passed = passed
         self.warnings = warnings
         self.failures = failures
+        self.pending = pending
         self.author = author
         self.createdAt = now
     }
@@ -394,6 +402,7 @@ public struct RuleCheck: Codable, Equatable, Identifiable, Sendable {
         passed = try c.decodeIfPresent(Bool.self, forKey: .passed) ?? false
         warnings = try c.decodeIfPresent([String].self, forKey: .warnings) ?? []
         failures = try c.decodeIfPresent([String].self, forKey: .failures) ?? []
+        pending = try c.decodeIfPresent([String].self, forKey: .pending) ?? []
         author = try c.decodeIfPresent(Author.self, forKey: .author) ?? .ai
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? .now
     }
@@ -412,6 +421,7 @@ public struct RuleCheck: Codable, Equatable, Identifiable, Sendable {
         try c.encode(passed, forKey: .passed)
         try c.encode(warnings, forKey: .warnings)
         try c.encode(failures, forKey: .failures)
+        if !pending.isEmpty { try c.encode(pending, forKey: .pending) }
         try c.encode(author, forKey: .author)
         try c.encode(createdAt.formatted(Date.ISO8601FormatStyle(includingFractionalSeconds: true)), forKey: .createdAt)
     }

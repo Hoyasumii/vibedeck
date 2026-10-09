@@ -66,7 +66,7 @@ private func newStore() throws -> ProjectStore {
         let (_, should) = try store.addRule(Rule(text: "Docs atualizadas", severity: .should), toTopic: "Qualidade")
 
         #expect(throws: VibeDeckError.self) {
-            try store.submitCheck(task: "x", files: [], answers: [RuleAnswer(ruleId: must.id.uuidString, verdict: .pass)])
+            try store.submitCheck(task: "x", files: [], answers: [RuleAnswer(ruleId: must.id.uuidString, verdict: .pass)], verifyManual: true)
         }
         #expect(throws: VibeDeckError.ruleNotFound("zzzz")) {
             try store.submitCheck(task: "x", files: [], answers: [RuleAnswer(ruleId: "zzzz", verdict: .pass)])
@@ -187,6 +187,8 @@ private func newStore() throws -> ProjectStore {
         let store = try newStore()
         try Data("old".utf8).write(to: store.agentsURL)
         try store.refreshAgentsGuideIfNeeded()
-        #expect(try String(contentsOf: store.agentsURL, encoding: .utf8).contains("submit_rule_check"))
+        let guide = try String(contentsOf: store.agentsURL, encoding: .utf8)
+        #expect(guide.contains("submit_rule_check"))
+        #expect(guide.contains("verify_manual=true"), "projetos existentes recebem o fluxo só-script ao abrir")
     }
 }

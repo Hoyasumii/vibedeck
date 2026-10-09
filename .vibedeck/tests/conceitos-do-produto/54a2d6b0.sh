@@ -12,8 +12,11 @@ grep -q 'failures: failed.filter { $0.1.severity == .must }' "$S" || bad "$S: mu
 # Item só vai para done com o último check aprovado.
 grep -A10 'func verificationProblems' "$S" | grep -q 'if !check.passed' || bad "$S: verificationProblems não bloqueia check reprovado"
 M=Sources/vibedeck/MCPServer.swift
-grep -A20 'case "submit_rule_check":' "$M" | grep -q 'Check reprovado' || bad "$M: submit_rule_check não diz que o check foi reprovado"
-grep -A20 'case "submit_rule_check":' "$M" | grep -q 'avise o usuário' || bad "$M: submit_rule_check não pede para avisar o usuário dos should"
+# The agent-facing summary lives in RuleCheck.agentSummary (Core); the MCP returns it.
+O=Sources/VibeDeckCore/RuleAgentOutput.swift
+grep -A20 'case "submit_rule_check":' "$M" | grep -q 'agentSummary' || bad "$M: submit_rule_check não devolve RuleCheck.agentSummary"
+grep -A12 'func agentSummary' "$O" | grep -q 'Check reprovado' || bad "$O: submit_rule_check não diz que o check foi reprovado"
+grep -A12 'func agentSummary' "$O" | grep -q 'avise o usuário' || bad "$O: submit_rule_check não pede para avisar o usuário dos should"
 C=Sources/vibedeck/CLI.swift
 grep -q 'for w in check.warnings' "$C" || bad "$C: rules check não mostra os avisos (should)"
 grep -q 'if !check.passed { throw ExitCode.failure }' "$C" || bad "$C: rules check não falha quando passed=false"

@@ -11,10 +11,10 @@ P=Package.swift
 head -1 "$P" | grep -Eq '^// swift-tools-version: *6\.2$' || bad "$P:1: swift-tools-version deve ser 6.2"
 grep -q 'platforms: \[\.macOS(\.v26)\]' "$P" || bad "$P: platforms deve ser [.macOS(.v26)]"
 
-products=$(grep -Eo '^\s*\.(executable|library)\(name: "[^"]+"' "$P" | sed -E 's/.*name: "([^"]+)"/\1/' | sort | tr '\n' ' ')
+products=$(grep -Eo '^\s*\.(executable|library)\(name: "[^"]+"' "$P" | sed -E 's/.*name: "([^"]+)"/\1/' | LC_ALL=C sort | tr '\n' ' ')
 [ "$products" = "VibeDeckApp VibeDeckCore vibedeck " ] || bad "$P: produtos devem ser VibeDeckApp, vibedeck, VibeDeckCore; achei: $products"
 
-deps=$(grep -n '^\s*\.package(url:' "$P" | sed -E 's/.*\/([^\/]+)\.git".*/\1/' | sort | tr '\n' ' ')
+deps=$(grep -n '^\s*\.package(url:' "$P" | sed -E 's/.*\/([^\/]+)\.git".*/\1/' | LC_ALL=C sort | tr '\n' ' ')
 [ "$deps" = "SwiftTerm swift-argument-parser swift-markdown-ui swift-sdk " ] || bad "$P: dependências permitidas: swift-argument-parser, swift-sdk, swift-markdown-ui, SwiftTerm; achei: $deps"
 grep -Eq 'SwiftTerm\.git", *\.upToNextMinor\(from: "1\.11\.[0-9]+"\)' "$P" || bad "$P: SwiftTerm deve estar fixado em .upToNextMinor(from: \"1.11.x\")"
 
