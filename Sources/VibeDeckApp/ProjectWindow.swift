@@ -182,6 +182,9 @@ struct ProjectWindow: View {
                     .badge(model.project.links.count)
                     .tag(SidebarItem.links)
                     .contextMenu { openInNewTabButton(.links) }
+                Label("Grafo", systemImage: "point.3.connected.trianglepath.dotted")
+                    .tag(SidebarItem.graph)
+                    .contextMenu { openInNewTabButton(.graph) }
                 if !AIProvider.installed.isEmpty {
                     Label("IA", systemImage: "sparkles")
                         .tag(SidebarItem.claude)
@@ -467,6 +470,8 @@ struct ProjectWindow: View {
             PatternsView { selection = $0 }
         case .links, .none:
             LinksView()
+        case .graph:
+            GraphView()
         case .claude:
             ClaudeChatPage()
         case .terminal(let id):
