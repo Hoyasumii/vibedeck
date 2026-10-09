@@ -79,9 +79,11 @@ struct IdeaView: View {
         case .read:
             preview
         case .split:
+            // No min widths on the panes: with the rules inspector open they raise the detail column's
+            // min width only in this mode, and AppKit's constraint pass aborts when that changes mid-layout.
             HSplitView {
-                editor.frame(minWidth: 280)
-                preview.frame(minWidth: 280)
+                editor
+                preview
             }
         }
     }

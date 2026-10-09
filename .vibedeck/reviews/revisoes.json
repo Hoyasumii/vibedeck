@@ -6,6 +6,7 @@
     {
       "author" : "human",
       "createdAt" : "2026-10-09T03:20:42Z",
+      "details" : "Ocultar na lista do painel da esquerda, os tópicos de revisões sem itens pendentes. Podem ser visíveis pela tabela da tela central de revisões. Mas no painel lateral, não",
       "id" : "28CA584A-EE28-42C2-ACAA-95750B20D030",
       "kind" : "hide",
       "priority" : "normal",
@@ -18,15 +19,16 @@
         "component" : "ProjectWindow (sidebar, case .groups)",
         "file" : "Sources/VibeDeckApp/ProjectWindow.swift"
       },
-      "title" : "Ocultar na lista do painel da esquerda, os tópicos de revisões sem itens pendentes. Podem ser visíveis pela tabela da tela central de revisões. Mas no painel lateral, não",
-      "updatedAt" : "2026-10-09T03:22:05Z"
+      "title" : "Reduzir exibição dos itens do Painel Lateral",
+      "updatedAt" : "2026-10-09T15:57:47Z"
     },
     {
       "author" : "human",
       "createdAt" : "2026-10-09T03:21:22Z",
+      "details" : "Aparentemente, isso era pq eu estava trocando de tela sem  salvar os detalhes, mas eu vou confirmar isso ainda",
       "id" : "9EF0D030-3B21-4A96-8A13-6A2163A54A4F",
-      "kind" : "fix",
-      "priority" : "normal",
+      "kind" : "note",
+      "priority" : "low",
       "rules" : [
         "interface-do-app",
         "dinamicas-da-interface",
@@ -39,7 +41,18 @@
         "file" : "Sources/VibeDeckApp/ReviewGroupView.swift"
       },
       "title" : "Os detalhes dos itens das revisões não está salvando os itens. Ou se está salvando, não está carregando",
-      "updatedAt" : "2026-10-09T03:22:34Z"
+      "updatedAt" : "2026-10-09T15:55:08Z"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-09T15:55:33Z",
+      "details" : "Gostaria que todos os itens dos tópicos das revisões mostrassem o grau de prioridade, pois fica mais fácil de selecionar depois\n\nAtualmente, só os itens com prioridade alta mostra",
+      "id" : "8A856584-36DF-4F56-878C-66A5CBA5792E",
+      "kind" : "fix",
+      "priority" : "high",
+      "status" : "open",
+      "title" : "Exibir grau de prioridade dos itens",
+      "updatedAt" : "2026-10-09T15:56:27Z"
     }
   ],
   "title" : "Revisões"

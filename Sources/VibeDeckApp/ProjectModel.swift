@@ -709,8 +709,13 @@ final class ProjectModel {
         create { try store.createIdea(title: title) } url: { store.ideaURL($0) } reload: { reloadIdeas() }
     }
 
+    /// Trashes the idea and, in a git repo, commits just that removal in the background.
     func deleteIdea(_ slug: String) {
+        let title = idea(slug)?.title ?? slug
         trash(store.ideaURL(slug)) { reloadIdeas() }
+        guard !FileManager.default.fileExists(atPath: store.ideaURL(slug).path) else { return }
+        let store = store
+        Task.detached { store.commitIdeaRemoval(slug, title: title) }
     }
 
     func mutateIdea(_ slug: String, _ actionName: String, undo: UndoManager?, _ change: @escaping (inout Idea) -> Void) {

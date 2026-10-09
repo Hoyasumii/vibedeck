@@ -4,6 +4,10 @@
   "body" : "A ideia é poder fazer com que a IA busque as tags e os globs de cada uma das regras. Além disso, deve ter um novo botão que vai pegar os dados informados (título, descrição, globs, tags), e a IA vai perguntar para o usuário coisas para gerar regras.\n\nIsso serve também para ideias.\n\n## Refinamento\n\n**Onde fica:** um único botão \"Descubra\" no editor do tópico de regras e no da ideia, com o mesmo componente.\n\n**Fluxo:** sob demanda, no mesmo botão. Primeiro a IA propõe `paths` (globs) e `tags`. Depois faz a entrevista para gerar regras.\n\n**Globs na ideia:** a ideia ganha um campo `paths` (globs sugeridos, opcional no schema `idea.schema.json`). O Descubra propõe globs também na ideia, e eles ficam guardados nela. Na promoção (`promoteIdea`), o tópico novo nasce com esses `paths`. Se a ideia já tem tópico, os globs da ideia são somados aos do tópico, sem remover nenhum.\n\n**Entrevista:** painel próprio com perguntas estruturadas. A IA devolve JSON com perguntas (e opções de resposta), o app mostra um formulário e roda rodadas curtas. Tem limite de perguntas por rodada e um \"gerar com o que já tenho\".\n\n**Contexto enviado:** título, descrição, globs, tags atuais, vocabulário de tags existente e os tópicos/regras existentes (para evitar duplicata e conflito). A IA lê o repositório só com Read/Grep/Glob.\n\n**Destino:** em ideias, as regras entram como rascunho (`idea.rules`). Em tópicos, aparecem como proposta e só viram regras ao aceitar. Nada é gravado direto.\n\n## Riscos\n- Globs inventados ou largos demais (`**/*`) fazem o tópico entrar em toda tarefa e gastam tokens.\n- Globs guardados na ideia podem envelhecer até a promoção (arquivo renomeado ou apagado).\n- Tags novas parecidas (\"ui\", \"interface\") poluem o vocabulário.\n- Regras duplicadas, conflitantes, vagas ou não testáveis.\n- Escrita acidental pelo `claude -p`, custo e latência por clique, e corrida com edição do usuário.\n- Entrevista em loop gastando tokens sem convergir.\n\n## Fora de escopo por ora\nExpor por MCP/CLI e marcar autoria por campo.",
   "createdAt" : "2026-10-09T03:25:51Z",
   "id" : "0D332B0B-98FC-4D41-982D-F522CC36E501",
+  "paths" : [
+    "schema/v1/idea.schema.json",
+    "worker/public/v1/idea.schema.json"
+  ],
   "rules" : [
     {
       "author" : "ai",
@@ -105,6 +109,14 @@
     }
   ],
   "status" : "exploring",
+  "tags" : [
+    "ideias",
+    "regras",
+    "ia",
+    "schema",
+    "swiftui",
+    "core"
+  ],
   "title" : "Botão de Descubra nas regras",
-  "updatedAt" : "2026-10-09T14:55:58Z"
+  "updatedAt" : "2026-10-09T15:35:15Z"
 }

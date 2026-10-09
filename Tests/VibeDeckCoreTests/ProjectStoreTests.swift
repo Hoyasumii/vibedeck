@@ -128,4 +128,25 @@ private func tempDir() throws -> URL {
         #expect(try store.listDocs().first?.tags == ["intro"])
         #expect(try store.readDoc(doc).hasSuffix("# Sobre\n\ntexto"))
     }
+    @Test func commitsIdeaRemovalAlone() throws {
+        let store = try ProjectStore.initialize(at: tempDir())
+        func git(_ args: String...) -> Git.Output { Git.run(args, in: store.root) }
+        #expect(git("init", "--quiet").ok)
+        for (key, value) in [("user.name", "T"), ("user.email", "t@t"), ("commit.gpgsign", "false")] {
+            #expect(git("config", key, value).ok)
+        }
+        let (slug, _) = try store.createIdea(title: "Velha ideia")
+        try Data("x".utf8).write(to: store.root.appending(path: "other.txt"))
+        #expect(git("add", "-A").ok)
+        #expect(git("commit", "--quiet", "-m", "init").ok)
+        try Data("y".utf8).write(to: store.root.appending(path: "other.txt"))
+        #expect(git("add", "other.txt").ok)
+
+        #expect(!store.commitIdeaRemoval("nunca-rastreada", title: "x"))
+        try store.deleteIdea(slug)
+        #expect(store.commitIdeaRemoval(slug, title: "Velha ideia"))
+        #expect(git("log", "-1", "--format=%s").stdout == "chore(ideas): remove \"Velha ideia\"\n")
+        #expect(git("show", "--name-status", "--format=", "HEAD").stdout == "D\t.vibedeck/ideas/\(slug).json\n")
+        #expect(git("diff", "--cached", "--name-only").stdout == "other.txt\n")
+    }
 }

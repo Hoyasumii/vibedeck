@@ -1,0 +1,19 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/review-group.schema.json",
+  "createdAt" : "2026-10-09T15:52:37Z",
+  "id" : "BA6EE1C9-2C27-4215-8A49-35A8681BAF92",
+  "items" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-09T15:53:10Z",
+      "details" : "Eu preciso verificar se a stack do vibedeck e os padrões são compattilhados para IA para trabalhar de modo consistente",
+      "id" : "5BD063E7-2673-49A6-806C-7940731B642B",
+      "kind" : "note",
+      "priority" : "high",
+      "status" : "open",
+      "title" : "Verificar Stack e Padrões",
+      "updatedAt" : "2026-10-09T15:54:54Z"
+    }
+  ],
+  "title" : "Conceitos"
+}
