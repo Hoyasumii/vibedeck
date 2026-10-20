@@ -247,7 +247,9 @@ public enum ShellRunner {
 }
 
 /// Shared state of `runScripts`; every access holds the condition's lock.
-final class ScriptSchedule: NSCondition, @unchecked Sendable {
+/// Wraps `NSCondition` instead of subclassing it: swift-corelibs-foundation (Linux) can't be subclassed.
+final class ScriptSchedule: @unchecked Sendable {
+    private let condition = NSCondition()
     var pending: [Int]
     var running = 0
     var busy = Set<String>()
@@ -257,8 +259,12 @@ final class ScriptSchedule: NSCondition, @unchecked Sendable {
     init(count: Int) {
         pending = Array(0..<count)
         results = Array(repeating: nil, count: count)
-        super.init()
     }
+
+    func lock() { condition.lock() }
+    func unlock() { condition.unlock() }
+    func wait() { condition.wait() }
+    func broadcast() { condition.broadcast() }
 }
 
 // MARK: - Generating

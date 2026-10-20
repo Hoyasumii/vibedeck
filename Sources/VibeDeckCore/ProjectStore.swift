@@ -1340,12 +1340,12 @@ public struct ProjectStore: Sendable {
         cancellation: ShellCancellation? = nil, stopOnMustFailure: Bool = false,
         onEvent: @escaping @Sendable (RuleScriptEvent) -> Void = { _ in }
     ) -> [RuleTestRun] {
+        let root = root
         let jobs = rules.compactMap { slug, rule in
             rule.scriptCommand.map { (slug: slug, rule: rule, command: $0, locks: Set(BuildToolLock.keys(command: $0, root: root))) }
         }
         guard !jobs.isEmpty else { return [] }
         let limit = Self.scriptConcurrency(concurrency)
-        let root = root
         let state = ScriptSchedule(count: jobs.count)
         let wake = cancellation?.onCancel { state.lock(); state.broadcast(); state.unlock() }
         defer { if let wake { cancellation?.remove(wake) } }
