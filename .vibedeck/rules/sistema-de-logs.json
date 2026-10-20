@@ -1,0 +1,229 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-12T03:36:08Z",
+  "description" : "Regras vindas da ideia \"Sistema de Logs\".",
+  "id" : "375D80ED-D712-493B-8854-5BB7EF68DFEF",
+  "paths" : [
+    "Sources/VibeDeckCore/Logging.swift",
+    "Sources/VibeDeckApp/DiagnosticsView.swift",
+    "Tests/VibeDeckCoreTests/LoggingTests.swift",
+    "Sources/VibeDeckApp/ProjectModel.swift",
+    "Sources/VibeDeckApp/VibeDeckApp.swift",
+    "Sources/vibedeck/CLI.swift",
+    "Sources/vibedeck/MCPServer.swift"
+  ],
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:07:42Z",
+      "details" : "Clicar num botão e conferir com `vibedeck logs --level info --since 5m --json` que surge uma entrada nova do componente app.",
+      "id" : "9EDE76DF-2D2A-46DD-B30D-DC6C49149A01",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/sistema-de-logs/9ede76df.sh",
+        "generatedAt" : "2026-10-14T14:13:45Z",
+        "mode" : "script",
+        "ruleHash" : "b83bfaddb49aeacf"
+      },
+      "text" : "Toda ação do usuário no app (clique em botão, item de menu, atalho de teclado, troca de aba/seleção na sidebar) grava uma entrada de log com level info e component app."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:07:42Z",
+      "details" : "Teste/inspeção: entradas de ação têm context.control não vazio e igual entre idiomas/rótulos.",
+      "id" : "1A0D7D95-EADC-4AB0-8EA8-7C3C15B68EF9",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/sistema-de-logs/1a0d7d95.sh",
+        "generatedAt" : "2026-10-14T14:13:45Z",
+        "mode" : "script",
+        "ruleHash" : "3b1094a61cbef475"
+      },
+      "text" : "A entrada de uma ação identifica o controle por um identificador estável em context[\"control\"] (ex.: \"docs.generate\"), não localizado, além do rótulo visível em context[\"label\"]."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:07:42Z",
+      "details" : "grep dos eventos novos em VDLog.* confere o padrão ^[a-z]+\\.[a-z_]+$.",
+      "id" : "DD69DD51-3E4C-4BF8-A2D4-9862E4318002",
+      "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/sistema-de-logs/dd69dd51.sh",
+        "generatedAt" : "2026-10-14T14:13:45Z",
+        "mode" : "script",
+        "ruleHash" : "d1dd759792324add"
+      },
+      "text" : "Eventos de ação usam o prefixo \"ui.\" e eventos de reação usam o prefixo da área que reagiu (store., ai., rules., cli., mcp.), no formato area.verbo_em_snake_case."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:07:42Z",
+      "details" : "Teste: disparar uma ação que grava um arquivo e filtrar logs pelo id; devem aparecer a ação e a reação.",
+      "id" : "1F7205C4-DC91-4C80-9358-736A1FA4F906",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/sistema-de-logs/1f7205c4.sh",
+        "generatedAt" : "2026-10-14T14:13:46Z",
+        "mode" : "script",
+        "ruleHash" : "04d525d049f08107"
+      },
+      "text" : "Cada ação recebe um id de correlação (context[\"action\"]) e toda reação causada por ela (gravação em disco, chamada de IA, check, erro) carrega o mesmo context[\"action\"]."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:07:42Z",
+      "details" : "Editar um item no app e ver entrada store.* com context.file relativo e context.undo.",
+      "id" : "31465510-F7CF-4383-8976-0DFEA1251389",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/sistema-de-logs/31465510.sh",
+        "generatedAt" : "2026-10-14T14:13:46Z",
+        "mode" : "script",
+        "ruleHash" : "5ace43b6805b0f6b"
+      },
+      "text" : "Toda gravação de dados do projeto feita pelo ProjectModel registra uma entrada info com o caminho relativo do arquivo e o nome da ação de undo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:07:42Z",
+      "details" : "Rodar um comando do CLI que altere um item com o app aberto e conferir a entrada de reação do app.",
+      "id" : "BE4A2B46-5296-45AF-A8D4-4196AE2C387C",
+      "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/sistema-de-logs/be4a2b46.sh",
+        "generatedAt" : "2026-10-14T14:13:46Z",
+        "mode" : "script",
+        "ruleHash" : "67f148812663cd9f"
+      },
+      "text" : "Mudanças externas aplicadas ao vivo pelo app (arquivo alterado fora do app) registram uma entrada info com o arquivo relativo e a origem external."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:07:42Z",
+      "details" : "`vibedeck logs --level info --component cli mcp` lista os comandos executados.",
+      "id" : "48331E51-6F24-4837-B910-CD6F5D6FF122",
+      "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/sistema-de-logs/48331e51.sh",
+        "generatedAt" : "2026-10-14T14:13:46Z",
+        "mode" : "script",
+        "ruleHash" : "9287e15a65e49e86"
+      },
+      "text" : "Operações do CLI e ferramentas do MCP concluídas com sucesso registram entrada info (não só debug), com nome do comando/ferramenta e duração em ms."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:07:42Z",
+      "details" : "Teste em LoggingTests: registrar edição de um doc e verificar que o texto do doc não aparece no arquivo .jsonl.",
+      "id" : "0EF292E8-4006-4535-A964-0AEEA9C49B5E",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/sistema-de-logs/0ef292e8.sh",
+        "generatedAt" : "2026-10-14T14:13:46Z",
+        "mode" : "script",
+        "ruleHash" : "8584b9c9c6a71271"
+      },
+      "text" : "Logs de ação e reação nunca guardam conteúdo de prompts, docs, ideias, regras, campos de texto ou argumentos de ferramenta; só nomes, slugs, ids, caminhos relativos, tamanhos e códigos."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:07:42Z",
+      "details" : "Digitar 20 caracteres e confirmar gera no máximo uma entrada de ação para o campo.",
+      "id" : "CCCD7127-5334-4EAD-BAE5-DAB65813D142",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/sistema-de-logs/cccd7127.sh",
+        "generatedAt" : "2026-10-14T14:13:46Z",
+        "mode" : "script",
+        "ruleHash" : "bbfba04f3a72bab2"
+      },
+      "text" : "Digitação em campos de texto não gera uma entrada por tecla: registra-se só a confirmação (Return ou perda de foco)."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:07:42Z",
+      "details" : "grep por `sync: true` em Sources/VibeDeckApp só nos caminhos de crash/encerramento.",
+      "id" : "59CB0494-3E12-46DB-B407-20453191DD23",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/sistema-de-logs/59cb0494.sh",
+        "generatedAt" : "2026-10-14T14:13:46Z",
+        "mode" : "script",
+        "ruleHash" : "da8f685692fc808b"
+      },
+      "text" : "Registrar ações nunca bloqueia a interface: o app usa VDLog.log assíncrono (sync=false) fora de handlers de crash e saída do processo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:07:42Z",
+      "details" : "Abrir Diagnóstico, escolher nível Info, selecionar uma ação e ver as reações ligadas a ela.",
+      "id" : "F5F9A4EC-99FD-44E3-993B-6A3863365AA1",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/sistema-de-logs/f5f9a4ec.sh",
+        "generatedAt" : "2026-10-14T14:13:46Z",
+        "mode" : "script",
+        "ruleHash" : "a698b3b11d569ac9"
+      },
+      "text" : "A janela Diagnóstico permite ver ações e reações: o filtro de nível oferece Info e há filtro ou busca pelo id de correlação de uma ação."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:07:42Z",
+      "details" : "Chamar o resource/ferramenta do MCP com level=info e receber entradas ui.*.",
+      "id" : "4E84A4A5-1A9A-4D07-9BF2-11AAF606EC6B",
+      "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/sistema-de-logs/4e84a4a5.sh",
+        "generatedAt" : "2026-10-14T14:13:46Z",
+        "mode" : "script",
+        "ruleHash" : "f7fb97d93cb9c0b9"
+      },
+      "text" : "O MCP expõe a leitura dos logs de ação com filtro de nível, período e componente, além dos resources atuais (que só trazem aviso ou pior)."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:07:42Z",
+      "details" : "Inspecionar LogStore.append e o diretório ~/Library/Application Support/VibeDeck/logs.",
+      "id" : "C1E42BBD-9081-4046-9AC6-3F74FB9B912B",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/sistema-de-logs/c1e42bbd.sh",
+        "generatedAt" : "2026-10-14T14:13:46Z",
+        "mode" : "script",
+        "ruleHash" : "138bf4f547511732"
+      },
+      "text" : "Os logs continuam fora do projeto, em Application Support, como JSON Lines por dia com O_APPEND, e não passam por AtomicFile.write."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:07:42Z",
+      "details" : "swift test --filter LoggingTests passa.",
+      "id" : "3C88AD3B-3D3C-4F6B-BCE0-F00E68186264",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/sistema-de-logs/3c88ad3b.sh",
+        "generatedAt" : "2026-10-14T14:13:46Z",
+        "mode" : "script",
+        "ruleHash" : "8fbee4c89c59b92a"
+      },
+      "text" : "O formato de entrada novo (id de correlação, control, label) vem com teste em LoggingTests cobrindo codificação, decodificação tolerante e o filtro por ação."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:07:42Z",
+      "id" : "B58B4B28-D641-4250-9016-8C1C7DBE05B6",
+      "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/sistema-de-logs/b58b4b28.sh",
+        "generatedAt" : "2026-10-14T14:13:46Z",
+        "mode" : "script",
+        "ruleHash" : "5860afa9e6f0967d"
+      },
+      "text" : "README e .vibedeck/guide.md documentam o registro de ações e reações e como lê-los pelo app, CLI e MCP, em pt-BR."
+    }
+  ],
+  "sourceIdea" : "7DBAB820-FD09-4822-BE07-FE3F4AD94B42",
+  "title" : "Sistema de Logs"
+}

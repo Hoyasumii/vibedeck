@@ -1,0 +1,273 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-20T02:43:47Z",
+  "description" : "Regras vindas da ideia \"Criar projetos remotos via SSH\".",
+  "id" : "A363DB26-CB80-4F69-9040-812EFB6F4F6B",
+  "paths" : [
+    "Sources/VibeDeckApp/WelcomeView.swift",
+    "Sources/VibeDeckApp/VibeDeckApp.swift",
+    "Sources/VibeDeckApp/ProjectWindow.swift"
+  ],
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T00:42:38Z",
+      "details" : "Verificar que a ação pode ser iniciada sem abrir uma pasta local.",
+      "id" : "ED5C5FA5-8DF7-4A3C-BB21-673F43609697",
+      "severity" : "must",
+      "text" : "A tela inicial oferece uma ação para conectar e abrir um projeto via SSH."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T00:42:38Z",
+      "details" : "Conectar a um servidor de teste usando uma porta diferente de 22 e o usuário informado.",
+      "id" : "15952E56-AC32-4A8F-86A1-693D4391D915",
+      "severity" : "must",
+      "text" : "A configuração SSH permite informar servidor, porta e usuário."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T00:42:38Z",
+      "details" : "Selecionar um alias da configuração SSH e verificar que seus parâmetros são usados na conexão.",
+      "id" : "4D6A689A-FD89-4E47-A18C-2983F32BA2A9",
+      "severity" : "must",
+      "text" : "O app permite selecionar um destino definido na configuração SSH local."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T00:42:38Z",
+      "details" : "Abrir um projeto em servidor que aceita autenticação por chave e não aceita senha.",
+      "id" : "7260FEDB-A518-44EF-BF38-CF9FF4BE29C0",
+      "severity" : "must",
+      "text" : "A conexão SSH suporta autenticação por chave."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T00:42:38Z",
+      "details" : "Abrir um projeto com uma conta de teste que exige senha.",
+      "id" : "DA0BC7A3-0498-4278-9918-1A265AC30B5F",
+      "severity" : "must",
+      "text" : "A conexão SSH suporta autenticação por senha."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T00:42:38Z",
+      "details" : "Verificar que desmarcar a opção não cria credencial persistente e que marcá-la permite reutilizar a senha após reiniciar o app.",
+      "id" : "1F73B1D5-09FB-4BDA-AD53-2F27A3FEEEFD",
+      "severity" : "must",
+      "text" : "A senha SSH só é persistida mediante opção explícita do usuário, usando o Chaves do macOS."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T00:42:38Z",
+      "details" : "Entrar em subpastas, voltar à pasta pai e selecionar um diretório remoto.",
+      "id" : "B24AE286-C68B-411D-A7AB-DA38CE060641",
+      "severity" : "must",
+      "text" : "Após conectar, o app permite navegar pelos diretórios do servidor para selecionar a pasta do projeto."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T00:42:38Z",
+      "details" : "Informar um caminho remoto existente e verificar que a pasta correspondente é selecionada.",
+      "id" : "EF6C6E55-D705-4CE4-A546-A9476CCE470F",
+      "severity" : "must",
+      "text" : "O seletor de projeto remoto aceita um caminho de diretório digitado pelo usuário."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T00:42:38Z",
+      "details" : "Abrir duas pastas do mesmo servidor com dados distintos e conferir que cada uma apresenta seus próprios dados.",
+      "id" : "131C047E-0CB4-42E9-B9B0-6941048E61A2",
+      "severity" : "must",
+      "text" : "Selecionar uma pasta remota com vibedeck.json abre o projeto existente dessa pasta."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T00:42:38Z",
+      "details" : "Cancelar e verificar ausência de arquivos novos; confirmar e verificar vibedeck.json e .vibedeck/ na pasta remota selecionada.",
+      "id" : "9AE36B34-26DF-48D2-9ED0-BE50CEDF9C89",
+      "severity" : "must",
+      "text" : "Selecionar uma pasta remota sem vibedeck.json oferece inicialização e só cria o projeto após confirmação explícita."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T00:42:38Z",
+      "details" : "Exercitar criação, alteração e exclusão autorizada dos conceitos editáveis e conferir os arquivos resultantes por uma conexão independente.",
+      "id" : "A1A13E0F-8F33-4A3C-816A-F932E0E38403",
+      "severity" : "must",
+      "text" : "As operações de edição dos dados do projeto aberto via SSH são sincronizadas com os arquivos da pasta remota selecionada."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T00:42:38Z",
+      "details" : "Abrir, editar e inicializar projetos em um servidor com SSH/SFTP e sem VibeDeck instalado.",
+      "id" : "ED782F45-E458-467A-B100-9D9D6CA51001",
+      "severity" : "must",
+      "text" : "O acesso aos arquivos do projeto remoto usa SSH/SFTP sem exigir executável VibeDeck instalado no servidor."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T00:42:38Z",
+      "details" : "Interromper a conexão durante uma sessão e confirmar novas edições sem reconectar.",
+      "id" : "E6158DCD-9EBA-40C1-A71D-C4892919BB50",
+      "severity" : "must",
+      "text" : "Após perder a conexão SSH, o app permite continuar editando os dados do projeto já carregados."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T00:42:38Z",
+      "details" : "Editar offline, encerrar o processo e reabrir o app; verificar que o conteúdo pendente foi recuperado.",
+      "id" : "FE660511-C444-415B-AD59-BD0418EBFFAC",
+      "severity" : "must",
+      "text" : "Cada edição confirmada ainda não sincronizada é persistida localmente para recuperação após reiniciar o app."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T00:42:38Z",
+      "details" : "Manter pendências em dois destinos com o mesmo caminho de pasta e verificar que reconectar um deles não envia dados ao outro.",
+      "id" : "C9A681C0-1E82-4F0A-8555-D3832E2156D9",
+      "severity" : "must",
+      "text" : "As edições pendentes são associadas ao servidor, porta, usuário e diretório remoto de origem."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T00:42:38Z",
+      "details" : "Editar offline um arquivo que permanece inalterado no servidor, reconectar e verificar o conteúdo remoto.",
+      "id" : "79220E85-6D88-4431-ABC4-D966E46D9294",
+      "severity" : "must",
+      "text" : "Ao restabelecer a conexão, o app sincroniza as edições pendentes que não apresentam conflito."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T00:42:38Z",
+      "details" : "Interromper uma transferência e verificar que a edição continua recuperável e é reenviada na próxima reconexão.",
+      "id" : "E0AD947E-38B7-43CF-94D2-1DAFE7B832CA",
+      "severity" : "must",
+      "text" : "Uma edição pendente só deixa de ser pendente após confirmação de sua gravação no servidor."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T00:42:38Z",
+      "details" : "Alterar o mesmo arquivo por outra conexão enquanto o app está offline e verificar que o envio automático é bloqueado para esse arquivo.",
+      "id" : "A6181C00-82F6-4C06-A7FF-9CDE63ED0C63",
+      "severity" : "must",
+      "text" : "Antes de enviar uma edição pendente, o app detecta se o arquivo remoto mudou em relação à versão usada como base da edição."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T00:42:38Z",
+      "details" : "Criar versões diferentes do mesmo arquivo e verificar que ambas podem ser inspecionadas antes da escolha.",
+      "id" : "80A692FB-21C2-40C5-8CAE-7B32F7A4BDEB",
+      "severity" : "must",
+      "text" : "Um conflito de edição apresenta a versão local e a versão remota para o usuário escolher qual preservar."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T00:42:38Z",
+      "details" : "Fechar a apresentação do conflito sem escolher e verificar que a versão remota e a pendência local permanecem preservadas.",
+      "id" : "B9E0F0E2-D41D-4F4F-B9B6-A01E0B0821F6",
+      "severity" : "must",
+      "text" : "Um arquivo em conflito permanece sem sobrescrita automática até o usuário escolher uma versão."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T00:42:38Z",
+      "details" : "Editar offline, apagar o arquivo no servidor, reconectar e conferir sua recriação no caminho original com o conteúdo local.",
+      "id" : "F6C6F8A2-309B-4204-A9FA-DB3C64998AE6",
+      "severity" : "must",
+      "text" : "Ao reconectar, um arquivo editado offline que foi apagado no servidor é recriado automaticamente com a versão local."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T00:42:38Z",
+      "details" : "Provocar cada estado e verificar que o app não apresenta alterações apenas locais como já sincronizadas.",
+      "id" : "32CD8C54-2CA5-40D1-81E5-B2E752B0E186",
+      "severity" : "must",
+      "text" : "A interface distingue projeto desconectado, sincronização em andamento, alterações pendentes, conflito e projeto sincronizado."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T00:42:38Z",
+      "details" : "Executar hostname e pwd no terminal e conferir o servidor e a pasta selecionados.",
+      "id" : "D12CD479-899E-419E-9188-E401ACC605FD",
+      "severity" : "must",
+      "text" : "O terminal de um projeto remoto executa a sessão no servidor via SSH, começando no diretório remoto do projeto."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T00:42:38Z",
+      "details" : "Executar uma regra que confira um arquivo existente apenas no servidor e devolva saída e código de término para o app.",
+      "id" : "E0C84DF2-47CE-40FD-9983-418DEB4ACF00",
+      "severity" : "must",
+      "text" : "Os scripts de regras de um projeto remoto executam no servidor via SSH com o diretório do projeto como diretório de trabalho."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T00:42:38Z",
+      "details" : "Usar um projeto com conteúdo exclusivo do servidor e verificar que o processo do provedor executa nesse servidor e acessa esse conteúdo.",
+      "id" : "48989EAC-4745-4E9C-8FD6-B224CEC507C9",
+      "severity" : "must",
+      "text" : "As ações de IA de um projeto remoto executam o provedor selecionado no servidor via SSH, no diretório remoto do projeto."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T00:42:38Z",
+      "details" : "Solicitar uma ação cujo executável existe apenas no Mac e verificar que o app informa a ausência remota sem iniciar o executável local.",
+      "id" : "097368FD-F2FF-44BC-8D61-FE141A01D459",
+      "severity" : "must",
+      "text" : "A ausência de uma ferramenta necessária no servidor produz erro identificado para a ação solicitada, sem executar essa ação localmente."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T02:51:59Z",
+      "id" : "24CEB689-E38C-4041-B93E-C37E760760D6",
+      "severity" : "must",
+      "text" : "A IA de projetos SSH usa o provedor selecionado instalado e autenticado no servidor; não exige o provedor instalado no Mac."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T02:52:01Z",
+      "id" : "056CDD83-1243-48E9-BD90-F9042F4742D1",
+      "severity" : "must",
+      "text" : "Se o provedor selecionado estiver ausente no servidor, o app informa e aguarda; não instala, troca de provedor ou executa localmente de forma automática."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T02:52:03Z",
+      "id" : "2F3321F0-04D8-4C72-8453-EDEC09799F2B",
+      "severity" : "must",
+      "text" : "Quando faltar autenticação do provedor remoto, o app informa e oferece abrir o terminal SSH para autenticar no servidor."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T02:52:04Z",
+      "id" : "65DF919D-D2ED-4379-9CAD-04A4F833B460",
+      "severity" : "must",
+      "text" : "Novas ações de IA e scripts de regras aguardam sincronização das pendências e resolução dos conflitos; o terminal permanece disponível."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T02:52:06Z",
+      "id" : "A83A6E65-25FE-498B-919B-1D1FE66555E8",
+      "severity" : "must",
+      "text" : "Após perder a conexão SSH, o app tenta reconectar automaticamente com intervalos crescentes e oferece Reconectar; pedidos de senha exigem interação do usuário."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T02:52:07Z",
+      "id" : "AF0519D5-C3A6-4ECE-A563-7914A1026792",
+      "severity" : "must",
+      "text" : "Um projeto SSH já carregado pode ser reaberto offline com seus dados e pendências recuperados, indicando claramente o estado desconectado."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T02:52:09Z",
+      "id" : "3B2802CA-0941-4D08-A02D-F5E78D7A46BD",
+      "severity" : "must",
+      "text" : "Na primeira conexão a servidor SSH desconhecido, o app apresenta a impressão digital e exige confirmação explícita; se uma chave conhecida mudar, bloqueia e orienta verificar a identidade."
+    }
+  ],
+  "sourceIdea" : "43B88F99-BF02-43B2-9B5F-094F1360175F",
+  "title" : "Criar projetos remotos via SSH"
+}

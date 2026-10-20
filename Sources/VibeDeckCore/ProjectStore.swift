@@ -22,6 +22,16 @@ public enum VibeDeckError: LocalizedError, Equatable {
     case invalidRuleTest(String)
     case rulesNotVerified([String])
     case invalidName
+    case invalidGroupPath(String)
+    case ambiguousReference(String, [String])
+    case groupConflict(String)
+    case groupConfirmationRequired(String)
+    case invalidKitSelection(String)
+    case missingKitDependencies([String])
+    case kitRestoreConflict(String)
+    case invalidClaudeURL
+    case claudeItemNotFound(String)
+    case ambiguousClaudeItem(String)
     case invalidStatusLine
     case invalidClaudeSettings(String)
     case cloudNotSynced(CloudSync)
@@ -37,7 +47,10 @@ public enum VibeDeckError: LocalizedError, Equatable {
     case stackItemNotFound(String)
     case unknownPatterns([String: [String]])
     case patternNotFound(String)
+    case ssh(String)
     case graph(String)
+    case invalidLogFilter(String)
+    case logUnavailable(String)
 
     public var errorDescription: String? {
         switch self {
@@ -64,7 +77,17 @@ public enum VibeDeckError: LocalizedError, Equatable {
         case .rulesNotVerified(let problems):
             "O item não pode ser concluído sem passar pelas regras:\n" + problems.map { "- \($0)" }.joined(separator: "\n")
                 + "\nUse rules_for / submit_rule_check (ou `vibedeck rules check`) com o id do item."
+        case .invalidClaudeURL: "Informe uma URL http ou https do claude.ai."
+        case .claudeItemNotFound(let s): "Item do Claude não encontrado: \(s)"
+        case .ambiguousClaudeItem(let s): "Referência do Claude ambígua: \(s)"
+        case .invalidGroupPath(let path): "Caminho de grupo inválido ou fora da pasta do conceito: \(path)"
+        case .ambiguousReference(let ref, let paths): "Referência ambígua: \(ref). Use um dos caminhos: " + paths.sorted().joined(separator: ", ")
+        case .groupConflict(let path): "O destino já existe: \(path). Nada foi sobrescrito."
+        case .groupConfirmationRequired(let path): "O grupo \(path) contém itens. Confirme explicitamente a exclusão."
         case .invalidName: "Nome inválido."
+        case .invalidKitSelection(let ref): "Seleção de kit inválida: \(ref). Consulte o catálogo e selecione pelo menos um item."
+        case .missingKitDependencies(let ids): "Selecione também as dependências: " + ids.joined(separator: ", ")
+        case .kitRestoreConflict(let file): "Não foi possível refazer a adição: \(file) já existe. Preserve ou mova esse arquivo antes de tentar novamente."
         case .invalidStatusLine: "Entrada da statusline do Claude Code não é um objeto JSON."
         case .invalidClaudeSettings(let p): "\(p) não é um objeto JSON válido; corrija antes de ligar a statusline."
         case .cloudNotSynced(let sync): sync.message
@@ -88,8 +111,11 @@ public enum VibeDeckError: LocalizedError, Equatable {
                 let suggestions = unknown[name] ?? []
                 return "- \(name)" + (suggestions.isEmpty ? "" : " (sugestões: \(suggestions.joined(separator: ", ")))")
             }.joined(separator: "\n") + "\nVeja `pattern_catalog` / `vibedeck patterns catalog`, ou crie um padrão personalizado."
+        case .ssh(let s): "SSH: \(s)"
         case .graph(let s): "Grafo: \(s)"
         case .patternNotFound(let s): "Padrão não encontrado no projeto: \(s)"
+        case .invalidLogFilter(let s): "Filtro de log inválido: \(s). Use, por exemplo, 30m, 24h ou 7d."
+        case .logUnavailable(let s): "Não foi possível gravar o log: \(s)"
         }
     }
 }
@@ -201,13 +227,11 @@ public struct ProjectStore: Sendable {
     public func listDocs() throws -> [DocInfo] {
         let fm = FileManager.default
         guard fm.fileExists(atPath: docsDir.path) else { return [] }
-        let urls = try fm.contentsOfDirectory(
-            at: docsDir, includingPropertiesForKeys: [.contentModificationDateKey], options: [.skipsHiddenFiles]
-        )
+        let urls = try recordFiles(in: docsDir, extension: "md")
         return urls
             .filter { $0.pathExtension.lowercased() == "md" }
             .map { url in
-                let slug = url.deletingPathExtension().lastPathComponent
+                let slug = relativeRecordPath(url, in: docsDir)
                 let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? .distantPast
                 let text = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
                 return DocInfo(slug: slug, title: Markdown.title(of: text) ?? slug, tags: Markdown.tags(of: text), modified: modified)
@@ -216,27 +240,33 @@ public struct ProjectStore: Sendable {
     }
 
     public func readDoc(_ slug: String) throws -> String {
-        let url = docURL(slug)
+        let url = try validatedRecordURL(resolveDocSlug(slug), in: docsDir, extension: "md")
         guard FileManager.default.fileExists(atPath: url.path) else { throw VibeDeckError.docNotFound(slug) }
         return try String(contentsOf: url, encoding: .utf8)
     }
 
     public func writeDoc(_ slug: String, _ text: String) throws {
         try ensureDirectories()
+        _ = try validatedRecordURL(slug, in: docsDir, extension: "md")
         try AtomicFile.write(Data(text.utf8), to: docURL(slug))
     }
 
     /// Creates a new doc with a unique slug derived from `title`. Returns the slug.
-    public func createDoc(title: String, body: String = "", author: Author = .human) throws -> String {
-        let slug = uniqueSlug(Slug.make(title), in: docsDir, ext: "md")
+    public func createDoc(title: String, body: String = "", author: Author = .human, reference: String? = nil) throws -> String {
+        let slug: String
+        if let reference {
+            let base = try normalizedGroupPath(reference)
+            slug = base.contains("/") ? uniqueSlug(base, in: docsDir, ext: "md") : uniqueSlug(Slug.make(base), in: docsDir, ext: "md")
+        } else { slug = uniqueSlug(Slug.make(title), in: docsDir, ext: "md") }
         let frontmatter = author == .ai ? "---\nauthor: ai\n---\n" : ""
         try writeDoc(slug, frontmatter + "# \(title)\n\n\(body)")
         return slug
     }
 
     /// Creates an accepted AI proposal; the Core owns its provenance.
-    public func createGeneratedDoc(title: String, body: String) throws -> String {
-        try createDoc(title: title, body: body, author: .ai)
+    public func createGeneratedDoc(title: String, body: String, reference: String? = nil) throws -> String {
+        if reference == nil { return try createDoc(title: title, body: body, author: .ai) }
+        return try createDoc(title: title, body: body, author: .ai, reference: reference)
     }
 
     /// Rewrites the doc's frontmatter `tags:` line (removed when `tags` is empty).
@@ -245,7 +275,7 @@ public struct ProjectStore: Sendable {
     }
 
     public func deleteDoc(_ slug: String) throws {
-        try FileManager.default.removeItem(at: docURL(slug))
+        try ProjectFiles.remove(validatedRecordURL(slug, in: docsDir, extension: "md"))
     }
 
     // MARK: Attachments
@@ -255,14 +285,14 @@ public struct ProjectStore: Sendable {
     public func importAttachment(from url: URL, owner: String) throws -> String {
         let dest = try attachmentDestination(name: url.lastPathComponent, owner: owner)
         try AtomicFile.write(Data(contentsOf: url), to: dest)
-        return Self.attachmentMarkdown(path: "../attachments/" + dest.lastPathComponent, name: url.lastPathComponent)
+        return Self.attachmentMarkdown(path: Self.attachmentPath(name: dest.lastPathComponent, owner: owner), name: url.lastPathComponent)
     }
 
     /// Saves `data` (e.g. a pasted image) as an attachment named after `name`. Returns the markdown link.
     public func importAttachment(data: Data, name: String, owner: String) throws -> String {
         let dest = try attachmentDestination(name: name, owner: owner)
         try AtomicFile.write(data, to: dest)
-        return Self.attachmentMarkdown(path: "../attachments/" + dest.lastPathComponent, name: name)
+        return Self.attachmentMarkdown(path: Self.attachmentPath(name: dest.lastPathComponent, owner: owner), name: name)
     }
 
     private func attachmentDestination(name: String, owner: String) throws -> URL {
@@ -286,8 +316,8 @@ public struct ProjectStore: Sendable {
 
     public func groupURL(_ slug: String) -> URL { reviewsDir.appending(path: "\(slug).json") }
 
-    public func listGroups() throws -> [(slug: String, group: ReviewGroup)] {
-        try listRecords(ReviewGroup.self, in: reviewsDir).map { ($0.slug, $0.value) }
+    public func listGroups() throws -> [(slug: String, group: ReviewGroup, directoryGroup: String)] {
+        try listRecords(ReviewGroup.self, in: reviewsDir).map { ($0.slug, $0.value, Self.groupPath(of: $0.slug)) }
     }
 
     /// Resolves a group by slug, id (or prefix), or case-insensitive title.
@@ -301,14 +331,15 @@ public struct ProjectStore: Sendable {
 
     public func saveGroup(_ group: ReviewGroup, slug: String) throws {
         try ensureDirectories()
-        try AtomicFile.write(VDJSON.encode(group), to: groupURL(slug))
+        try AtomicFile.write(VDJSON.encode(group), to: validatedRecordURL(slug, in: reviewsDir, extension: "json"))
     }
 
     /// Creates a group with a unique slug. Returns the slug.
     @discardableResult
-    public func createGroup(title: String, description: String? = nil, tags: [String] = []) throws -> (slug: String, group: ReviewGroup) {
+    public func createGroup(title: String, description: String? = nil, tags: [String] = [], reference: String? = nil) throws -> (slug: String, group: ReviewGroup) {
         guard let title = title.trimmed.nonEmpty else { throw VibeDeckError.invalidName }
-        let slug = uniqueSlug(Slug.make(title), in: reviewsDir, ext: "json")
+        let base = try normalizedGroupPath(reference ?? Slug.make(title))
+        let slug = base.contains("/") ? uniqueSlug(base, in: reviewsDir, ext: "json") : uniqueSlug(Slug.make(base), in: reviewsDir, ext: "json")
         let group = ReviewGroup(title: title, description: description, tags: tags)
         try saveGroup(group, slug: slug)
         return (slug, group)
@@ -324,14 +355,14 @@ public struct ProjectStore: Sendable {
     }
 
     public func deleteGroup(_ slug: String) throws {
-        try FileManager.default.removeItem(at: groupURL(slug))
+        try ProjectFiles.remove(validatedRecordURL(slug, in: reviewsDir, extension: "json"))
     }
 
     /// Adds an item to a group (created on the fly if `groupRef` doesn't resolve).
     @discardableResult
     public func addItem(_ item: ReviewItem, toGroup groupRef: String) throws -> (slug: String, item: ReviewItem) {
         let slug: String
-        if let existing = try? resolveGroupSlug(groupRef) { slug = existing } else { slug = try createGroup(title: groupRef).slug }
+        do { slug = try resolveGroupSlug(groupRef) } catch VibeDeckError.groupNotFound { slug = try createGroup(title: groupRef, reference: groupRef.contains("/") ? groupRef : nil).slug }
         var group = try loadGroup(slug)
         group.items.append(item)
         try saveGroup(group, slug: slug)
@@ -342,7 +373,7 @@ public struct ProjectStore: Sendable {
     public func findItem(_ ref: String) throws -> (slug: String, group: ReviewGroup, index: Int) {
         let needle = ref.lowercased()
         var matches: [(String, ReviewGroup, Int)] = []
-        for (slug, group) in try listGroups() {
+        for (slug, group, _) in try listGroups() {
             for (i, item) in group.items.enumerated() {
                 let id = item.id.uuidString.lowercased()
                 if id == needle { return (slug, group, i) }
@@ -351,6 +382,21 @@ public struct ProjectStore: Sendable {
         }
         guard !matches.isEmpty else { throw VibeDeckError.itemNotFound(ref) }
         guard matches.count == 1 else { throw VibeDeckError.ambiguousItem(ref) }
+        return matches[0]
+    }
+
+    /// Resolves a manifest collection reference with the same UUID/prefix rules as review items.
+    func findItem<T: Identifiable>(
+        _ ref: String, in candidates: [T], title: (T) -> String,
+        notFound: (String) -> VibeDeckError, ambiguous: (String) -> VibeDeckError
+    ) throws -> T where T.ID == UUID {
+        let needle = ref.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if let exact = candidates.first(where: { $0.id.uuidString.lowercased() == needle }) { return exact }
+        let titled = candidates.filter { title($0).lowercased() == needle }
+        let matches = titled.isEmpty && needle.count >= 4
+            ? candidates.filter { $0.id.uuidString.lowercased().hasPrefix(needle) } : titled
+        guard !matches.isEmpty else { throw notFound(ref) }
+        guard matches.count == 1 else { throw ambiguous(ref) }
         return matches[0]
     }
 
@@ -387,7 +433,7 @@ public struct ProjectStore: Sendable {
 
     public func saveTopic(_ topic: RuleTopic, slug: String) throws {
         try ensureDirectories()
-        try AtomicFile.write(VDJSON.encode(topic), to: topicURL(slug))
+        try AtomicFile.write(VDJSON.encode(topic), to: validatedRecordURL(slug, in: rulesDir, extension: "json"))
     }
 
     @discardableResult
@@ -413,7 +459,7 @@ public struct ProjectStore: Sendable {
 
     /// Deletes the topic, unpromotes any idea it came from and drops the pattern it enforced.
     public func deleteTopic(_ slug: String) throws {
-        try FileManager.default.removeItem(at: topicURL(slug))
+        try ProjectFiles.remove(validatedRecordURL(slug, in: rulesDir, extension: "json"))
         try releaseOrphanedIdeas()
         try releaseOrphanedPatterns()
     }
@@ -473,7 +519,7 @@ public struct ProjectStore: Sendable {
         guard let command = rule.test?.command?.trimmed.nonEmpty, !command.contains(" ") else { return }
         let url = URL(fileURLWithPath: command, relativeTo: root).standardizedFileURL
         guard url.path.hasPrefix(testsDir.standardizedFileURL.path) else { return }
-        try? FileManager.default.removeItem(at: url)
+        try? ProjectFiles.remove(url)
     }
 
     // MARK: Agents
@@ -520,7 +566,7 @@ public struct ProjectStore: Sendable {
     }
 
     public func deleteAgent(_ slug: String) throws {
-        try FileManager.default.removeItem(at: agentURL(slug))
+        try ProjectFiles.remove(agentURL(slug))
     }
 
     /// Appends a next step to an agent's flow. The target must be an existing VibeDeck agent or command (never the
@@ -636,7 +682,7 @@ public struct ProjectStore: Sendable {
     }
 
     public func deleteCommand(_ slug: String) throws {
-        try FileManager.default.removeItem(at: commandURL(slug))
+        try ProjectFiles.remove(commandURL(slug))
     }
 
     /// Appends a next step to a command's flow (same rules as `addNextStep(to:)` for agents).
@@ -694,8 +740,8 @@ public struct ProjectStore: Sendable {
 
     public func skillURL(_ slug: String) -> URL { skillsDir.appending(path: "\(slug).json") }
 
-    public func listSkills() throws -> [(slug: String, skill: Skill)] {
-        try listRecords(Skill.self, in: skillsDir).map { ($0.slug, $0.value) }
+    public func listSkills() throws -> [(slug: String, skill: Skill, group: String)] {
+        try listRecords(Skill.self, in: skillsDir).map { ($0.slug, $0.value, Self.groupPath(of: $0.slug)) }
     }
 
     public func resolveSkillSlug(_ ref: String) throws -> String {
@@ -708,16 +754,17 @@ public struct ProjectStore: Sendable {
 
     public func saveSkill(_ skill: Skill, slug: String) throws {
         try ensureDirectories()
-        try AtomicFile.write(VDJSON.encode(skill), to: skillURL(slug))
+        try AtomicFile.write(VDJSON.encode(skill), to: validatedRecordURL(slug, in: skillsDir, extension: "json"))
     }
 
     @discardableResult
     public func createSkill(
         title: String, summary: String? = nil, model: String? = nil, tools: [String] = [], prompt: String = "",
-        tags: [String] = [], author: Author = .human
+        tags: [String] = [], author: Author = .human, reference: String? = nil
     ) throws -> (slug: String, skill: Skill) {
         guard let title = title.trimmed.nonEmpty else { throw VibeDeckError.invalidName }
-        let slug = uniqueSlug(Slug.make(title), in: skillsDir, ext: "json")
+        let base = try normalizedGroupPath(reference ?? Slug.make(title))
+        let slug = base.contains("/") ? uniqueSlug(base, in: skillsDir, ext: "json") : uniqueSlug(Slug.make(base), in: skillsDir, ext: "json")
         let skill = Skill(title: title, summary: summary, model: model, tools: tools, prompt: prompt, tags: tags, author: author)
         try saveSkill(skill, slug: slug)
         return (slug, skill)
@@ -734,7 +781,7 @@ public struct ProjectStore: Sendable {
     }
 
     public func deleteSkill(_ slug: String) throws {
-        try FileManager.default.removeItem(at: skillURL(slug))
+        try ProjectFiles.remove(validatedRecordURL(slug, in: skillsDir, extension: "json"))
     }
 
     /// Appends a next step to a skill's flow (same rules as `addNextStep(to:)` for agents).
@@ -830,7 +877,7 @@ public struct ProjectStore: Sendable {
     }
 
     public func deleteWorkflow(_ slug: String) throws {
-        try FileManager.default.removeItem(at: workflowURL(slug))
+        try ProjectFiles.remove(workflowURL(slug))
     }
 
     /// Appends a step running an existing VibeDeck agent/command/skill (the same one may appear more than once).
@@ -1020,6 +1067,7 @@ public struct ProjectStore: Sendable {
         if let decide = try WorkflowRunEngine.record(&run, workflow: workflow, verdict: verdict, summary: summary, to: to, noneHolds: noneHolds, ref: ref) {
             return decide
         }
+        run.checkpoint = nil
         try saveRun(run, ref: ref)
         return nextRunAction(run, ref: ref, workflow: workflow)
     }
@@ -1053,7 +1101,7 @@ public struct ProjectStore: Sendable {
 
     public func deleteRun(_ ref: String) throws {
         let ref = try resolveRunRef(ref)
-        try FileManager.default.removeItem(at: runURL(ref).deletingLastPathComponent())
+        try ProjectFiles.remove(runURL(ref).deletingLastPathComponent())
     }
 
     /// The prompt of the run's current step, for the subagent that runs it.
@@ -1094,8 +1142,8 @@ public struct ProjectStore: Sendable {
 
     public func ideaURL(_ slug: String) -> URL { ideasDir.appending(path: "\(slug).json") }
 
-    public func listIdeas() throws -> [(slug: String, idea: Idea)] {
-        try listRecords(Idea.self, in: ideasDir).map { ($0.slug, $0.value) }
+    public func listIdeas() throws -> [(slug: String, idea: Idea, group: String)] {
+        try listRecords(Idea.self, in: ideasDir).map { ($0.slug, $0.value, Self.groupPath(of: $0.slug)) }
     }
 
     public func resolveIdeaSlug(_ ref: String) throws -> String {
@@ -1108,13 +1156,14 @@ public struct ProjectStore: Sendable {
 
     public func saveIdea(_ idea: Idea, slug: String) throws {
         try ensureDirectories()
-        try AtomicFile.write(VDJSON.encode(idea), to: ideaURL(slug))
+        try AtomicFile.write(VDJSON.encode(idea), to: validatedRecordURL(slug, in: ideasDir, extension: "json"))
     }
 
     @discardableResult
-    public func createIdea(title: String, body: String? = nil, tags: [String] = [], author: Author = .human) throws -> (slug: String, idea: Idea) {
+    public func createIdea(title: String, body: String? = nil, tags: [String] = [], author: Author = .human, reference: String? = nil) throws -> (slug: String, idea: Idea) {
         guard let title = title.trimmed.nonEmpty else { throw VibeDeckError.invalidName }
-        let slug = uniqueSlug(Slug.make(title), in: ideasDir, ext: "json")
+        let base = try normalizedGroupPath(reference ?? Slug.make(title))
+        let slug = base.contains("/") ? uniqueSlug(base, in: ideasDir, ext: "json") : uniqueSlug(Slug.make(base), in: ideasDir, ext: "json")
         let idea = Idea(title: title, body: body, tags: tags, author: author)
         try saveIdea(idea, slug: slug)
         return (slug, idea)
@@ -1131,7 +1180,7 @@ public struct ProjectStore: Sendable {
     }
 
     public func deleteIdea(_ slug: String) throws {
-        try FileManager.default.removeItem(at: ideaURL(slug))
+        try ProjectFiles.remove(validatedRecordURL(slug, in: ideasDir, extension: "json"))
     }
 
     /// Commits a removed idea on its own: `git commit -- <file>` records only that path, so anything else staged
@@ -1194,7 +1243,7 @@ public struct ProjectStore: Sendable {
         let ideaSlug = try resolveIdeaSlug(ref)
         guard let linked = try loadIdea(ideaSlug).promotedTopic else { return nil }
         let topicSlug = try? resolveTopicSlug(linked)
-        if let topicSlug { try FileManager.default.removeItem(at: topicURL(topicSlug)) }
+        if let topicSlug { try ProjectFiles.remove(topicURL(topicSlug)) }
         try updateIdea(ideaSlug) { Self.release(&$0) }
         return topicSlug
     }
@@ -1204,7 +1253,7 @@ public struct ProjectStore: Sendable {
     @discardableResult
     public func releaseOrphanedIdeas() throws -> [String] {
         var released: [String] = []
-        for (slug, idea) in try listIdeas() {
+        for (slug, idea, _) in try listIdeas() {
             guard let linked = idea.promotedTopic, (try? resolveTopicSlug(linked)) == nil else { continue }
             try updateIdea(slug) { Self.release(&$0) }
             released.append(slug)
@@ -1263,25 +1312,81 @@ public struct ProjectStore: Sendable {
     /// `topics` alone (no files) runs exactly those topics.
     public func runRuleTests(
         files: [String] = [], topics explicit: [String] = [], reviewItem: String? = nil, onlyTopics: Bool = false,
-        runner: RuleTestRunner = .live,
-        onEvent: @Sendable (RuleScriptEvent) -> Void = { _ in }
+        runner: RuleTestRunner = .live, concurrency: Int? = nil,
+        onEvent: @escaping @Sendable (RuleScriptEvent) -> Void = { _ in }
     ) throws -> [RuleTestRun] {
         let scope = try taskScope(files: files, topics: explicit, reviewItem: reviewItem)
         let named = Set(try explicit.map { try resolveTopicSlug($0) })
         let topics = onlyTopics ? scope.topics.filter { named.contains($0.slug) } : scope.topics
-        return runScripts(topics.flatMap { t in t.topic.rules.map { (t.slug, $0) } }, files: scope.files, runner: runner, onEvent: onEvent)
+        return runScripts(topics.flatMap { t in t.topic.rules.map { (t.slug, $0) } }, files: scope.files, runner: runner,
+                          concurrency: concurrency, onEvent: onEvent)
     }
 
-    /// One at a time: scripts often share build directories (`swift test`, `npm test`) and would fight over locks.
-    private func runScripts(_ rules: [(String, Rule)], files: [String], runner: RuleTestRunner, onEvent: @Sendable (RuleScriptEvent) -> Void = { _ in }) -> [RuleTestRun] {
-        rules.compactMap { slug, rule in
-            guard let command = rule.scriptCommand else { return nil }
-            onEvent(.started(topic: slug, rule: rule, at: .now))
-            let outcome = runner.run(command, .init(root: root, files: files, ruleId: rule.id))
-            let run = RuleTestRun(topic: slug, rule: rule, command: command, outcome: outcome)
-            onEvent(.finished(run, at: .now))
-            return run
+    /// Default number of scripts running at the same time.
+    public static var defaultScriptConcurrency: Int { ProcessInfo.processInfo.activeProcessorCount }
+
+    /// A requested limit clamped to `1...activeProcessorCount`; nil means the default.
+    public static func scriptConcurrency(_ requested: Int?) -> Int {
+        min(max(requested ?? defaultScriptConcurrency, 1), defaultScriptConcurrency)
+    }
+
+    /// Runs scripts in parallel, up to `concurrency` at a time (see `scriptConcurrency`). Scripts using the same
+    /// build tool (`BuildToolLock`) never overlap, since they share build directories and locks; waiting for a tool
+    /// doesn't take a slot. Results come back in declaration order. Events are delivered one at a time, each rule
+    /// emitting `.started` before its `.finished`. After `cancellation` (or a failed `must` rule, with
+    /// `stopOnMustFailure`) no new script starts; running ones are terminated only on cancellation.
+    private func runScripts(
+        _ rules: [(String, Rule)], files: [String], runner: RuleTestRunner, concurrency: Int? = nil,
+        cancellation: ShellCancellation? = nil, stopOnMustFailure: Bool = false,
+        onEvent: @escaping @Sendable (RuleScriptEvent) -> Void = { _ in }
+    ) -> [RuleTestRun] {
+        let jobs = rules.compactMap { slug, rule in
+            rule.scriptCommand.map { (slug: slug, rule: rule, command: $0, locks: Set(BuildToolLock.keys(command: $0, root: root))) }
         }
+        guard !jobs.isEmpty else { return [] }
+        let limit = Self.scriptConcurrency(concurrency)
+        let root = root
+        let state = ScriptSchedule(count: jobs.count)
+        let wake = cancellation?.onCancel { state.lock(); state.broadcast(); state.unlock() }
+        defer { if let wake { cancellation?.remove(wake) } }
+
+        do {
+            let group = DispatchGroup()
+            state.lock()
+            while !state.pending.isEmpty, !state.stopped, cancellation?.isCancelled != true {
+                guard state.running < limit, let next = state.pending.firstIndex(where: { jobs[$0].locks.isDisjoint(with: state.busy) }) else {
+                    state.wait(); continue
+                }
+                let index = state.pending.remove(at: next)
+                let job = jobs[index]
+                state.running += 1
+                state.busy.formUnion(job.locks)
+                onEvent(.started(topic: job.slug, rule: job.rule, at: .now))
+                group.enter()
+                // Synchronous callers may occupy Swift's cooperative pool while waiting. A dedicated
+                // worker must be able to make progress independently of that pool.
+                let logging = VDLog.captureContext()
+                Thread.detachNewThread {
+                    logging.perform {
+                        let outcome = runner.run(job.command, .init(root: root, files: files, ruleId: job.rule.id, cancellation: cancellation))
+                        let run = RuleTestRun(topic: job.slug, rule: job.rule, command: job.command, outcome: outcome)
+                        state.lock()
+                        // Slot and tool lock are released however the script ended.
+                        state.running -= 1
+                        state.busy.subtract(job.locks)
+                        state.results[index] = run
+                        if stopOnMustFailure, job.rule.severity == .must, outcome.verdict == .fail { state.stopped = true }
+                        onEvent(.finished(run, at: .now))
+                        state.broadcast()
+                        state.unlock()
+                    }
+                    group.leave()
+                }
+            }
+            state.unlock()
+            group.wait()
+        }
+        return state.results.compactMap { $0 }
     }
 
     /// Records a verification. Rules with a current script are decided by running it (answers for them are
@@ -1306,6 +1411,7 @@ public struct ProjectStore: Sendable {
         guard missing.isEmpty || !verifyManual else {
             throw VibeDeckError.incompleteCheck(missing.map { "[\($0.0)] \($0.1.id.uuidString.prefix(8)) \($0.1.text)" })
         }
+        // Every candidate script runs, even after a failed `must` rule, so the check answers every rule.
         for run in runScripts(candidates, files: files, runner: runner) {
             answered[run.rule.id] = RuleResult(
                 topic: run.topic, ruleId: run.rule.id, verdict: run.outcome.verdict,
@@ -1318,9 +1424,12 @@ public struct ProjectStore: Sendable {
     }
 
     /// Executes a fixed snapshot rather than reloading rules between phases.
+    /// The app passes its configured `concurrency`, a `cancellation` and stops at the first failed `must` rule.
     public func runRuleScripts(snapshot: [(slug: String, topic: RuleTopic)], runner: RuleTestRunner = .live,
-                               onEvent: @Sendable (RuleScriptEvent) -> Void = { _ in }) -> [RuleTestRun] {
-        runScripts(snapshot.flatMap { entry in entry.topic.rules.map { (entry.slug, $0) } }, files: [], runner: runner, onEvent: onEvent)
+                               concurrency: Int? = nil, cancellation: ShellCancellation? = nil, stopOnMustFailure: Bool = false,
+                               onEvent: @escaping @Sendable (RuleScriptEvent) -> Void = { _ in }) -> [RuleTestRun] {
+        runScripts(snapshot.flatMap { entry in entry.topic.rules.map { (entry.slug, $0) } }, files: [], runner: runner,
+                   concurrency: concurrency, cancellation: cancellation, stopOnMustFailure: stopOnMustFailure, onEvent: onEvent)
     }
 
     /// Saves a completed UI verification without executing its scripts again.
@@ -1416,11 +1525,15 @@ public struct ProjectStore: Sendable {
     private func listRecords<T: SlugRecord>(_ type: T.Type, in dir: URL) throws -> [(slug: String, value: T)] {
         let fm = FileManager.default
         guard fm.fileExists(atPath: dir.path) else { return [] }
-        return try fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles])
-            .filter { $0.pathExtension.lowercased() == "json" }
+        return try recordFiles(in: dir, extension: "json", recursive: ["rules", "ideas", "reviews", "skills"].contains(dir.lastPathComponent))
             .compactMap { url in
-                guard let value = try? VDJSON.decoder.decode(T.self, from: Data(contentsOf: url)) else { return nil }
-                return (url.deletingPathExtension().lastPathComponent, value)
+                do {
+                    return (relativeRecordPath(url, in: dir), try VDJSON.decoder.decode(T.self, from: Data(contentsOf: url)))
+                } catch {
+                    VDLog.warning("store.decode_skipped", "Arquivo ignorado por não decodificar: \(relativePath(url.path))",
+                                  project: root, context: ["type": String(describing: T.self), "error": String(describing: error)])
+                    return nil
+                }
             }
             .sorted { ($0.value.createdAt, $0.slug) < ($1.value.createdAt, $1.slug) }
     }
@@ -1429,23 +1542,35 @@ public struct ProjectStore: Sendable {
     private func resolveSlug<T: SlugRecord>(
         _ ref: String, _ type: T.Type, in dir: URL, notFound: (String) -> VibeDeckError
     ) throws -> String {
+        if ref.contains("/") {
+            let url = try validatedRecordURL(ref, in: dir, extension: "json")
+            if FileManager.default.fileExists(atPath: url.path) { return ref }
+            // A title may contain a slash too; a missing qualified path never falls back to a bare slug.
+            let titles = try listRecords(type, in: dir).filter { $0.value.title.caseInsensitiveCompare(ref) == .orderedSame }
+            if titles.count > 1 { throw VibeDeckError.ambiguousReference(ref, titles.map(\.slug)) }
+            if let title = titles.first { return title.slug }
+            throw notFound(ref)
+        }
         let records = try listRecords(type, in: dir)
         let needle = ref.lowercased()
-        if let match = records.first(where: {
-            $0.slug == ref
-                || $0.value.id.uuidString.lowercased() == needle
-                || $0.value.title.caseInsensitiveCompare(ref) == .orderedSame
-                || $0.slug == Slug.make(ref)
-        }) { return match.slug }
+        let slugMatches = records.filter { $0.slug == ref || $0.slug.split(separator: "/").last.map(String.init) == ref || $0.slug.split(separator: "/").last.map(String.init) == Slug.make(ref) }
+        if slugMatches.count > 1 { throw VibeDeckError.ambiguousReference(ref, slugMatches.map(\.slug)) }
+        if let match = slugMatches.first { return match.slug }
         let prefixed = needle.count >= 4 ? records.filter { $0.value.id.uuidString.lowercased().hasPrefix(needle) } : []
         if prefixed.count == 1 { return prefixed[0].slug }
-        // Undecodable file: return it so loading reports the real decoding error.
+        if prefixed.count > 1 { throw VibeDeckError.ambiguousReference(ref, prefixed.map(\.slug)) }
+        let matches = records.filter {
+            $0.value.id.uuidString.lowercased() == needle || $0.value.title.caseInsensitiveCompare(ref) == .orderedSame
+        }
+        if matches.count > 1 { throw VibeDeckError.ambiguousReference(ref, matches.map(\.slug)) }
+        if let match = matches.first { return match.slug }
+        _ = try validatedRecordURL(ref, in: dir, extension: "json")
         if FileManager.default.fileExists(atPath: dir.appending(path: "\(ref).json").path) { return ref }
         throw notFound(ref)
     }
 
     private func loadRecord<T: Decodable>(_ slug: String, in dir: URL, notFound: (String) -> VibeDeckError) throws -> T {
-        let url = dir.appending(path: "\(slug).json")
+        let url = try validatedRecordURL(slug, in: dir, extension: "json")
         guard FileManager.default.fileExists(atPath: url.path) else { throw notFound(slug) }
         return try VDJSON.decoder.decode(T.self, from: Data(contentsOf: url))
     }
@@ -1459,7 +1584,7 @@ public struct ProjectStore: Sendable {
         return matches[0]
     }
 
-    private func uniqueSlug(_ base: String, in dir: URL, ext: String) -> String {
+    func uniqueSlug(_ base: String, in dir: URL, ext: String) -> String {
         let fm = FileManager.default
         var slug = base
         var n = 2
@@ -1488,8 +1613,11 @@ extension Workflow: SlugRecord {}
 
 public enum AtomicFile {
     public static func write(_ data: Data, to url: URL) throws {
-        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try data.write(to: url, options: .atomic)
+        try RemoteWorkspace.filesLock.withLock {
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try data.write(to: url, options: .atomic)
+        }
+        VDLog.fileWritten(url, bytes: data.count)
     }
 }
 

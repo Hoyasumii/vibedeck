@@ -5,6 +5,8 @@ import VibeDeckCore
 /// (earlier ones included). The inspector shows the runs, the resulting map and what is broken; "Executar" starts a
 /// run on disk and makes the Claude chat its orchestrator (one subagent per step, verdicts pick the transitions).
 struct WorkflowView: View {
+    @Environment(\.logProject) private var providerRoot
+    @Environment(\.logProject) private var logProject
     let slug: String
     let open: (SidebarItem) -> Void
     @Environment(ProjectModel.self) private var model
@@ -38,26 +40,28 @@ struct WorkflowView: View {
         .navigationTitle(workflow.title)
         .navigationSubtitle("\(workflow.steps.count) etapa(s) · até \(workflow.maxSteps ?? Workflow.defaultMaxSteps) por execução")
         .toolbar {
-            if !AIProvider.installed.isEmpty {
+            ToolbarItem { KitCatalogButton() }
+            ToolbarItem { EditWithAIButton(kind: .workflow, slug: slug) }
+            if !AIProvider.installed(in: providerRoot).isEmpty {
                 ToolbarItem {
-                    Button { running = true } label: { Label("Executar", systemImage: "play") }
+                    LoggedButton { running = true } label: { Label("Executar", systemImage: "play") }.loggedControl(control: "workflow_view.button_1", label: "Executar")
                         .disabled(workflow.steps.isEmpty)
                         .help("Executa o workflow no provedor selecionado: o chat orquestra, cada etapa roda num subagente e o veredito decide a transição")
                 }
             }
             ToolbarItem(placement: .principal) {
-                Picker("Modo", selection: $mode) {
+                Picker("Modo", selection: $mode.logging(control: "workflow_view.selection_19", label: "Modo", project: logProject)) {
                     ForEach(Mode.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.segmented)
                 .help("Editar as etapas ou ver o fluxo: para onde cada etapa vai, a depender do resultado")
             }
             ToolbarItem {
-                Button { copyJSON() } label: { Label("Copiar JSON", systemImage: "curlybraces") }
+                LoggedButton { copyJSON() } label: { Label("Copiar JSON", systemImage: "curlybraces") }.loggedControl(control: "workflow_view.button_2", label: "Copiar JSON")
                     .help("Copia o JSON do workflow (etapas, transições e regras de execução) para orquestrar a IA")
             }
             ToolbarItem {
-                Button { showMap.toggle() } label: { Label("Mapa", systemImage: "arrow.triangle.branch") }
+                LoggedButton { showMap.toggle() } label: { Label("Mapa", systemImage: "arrow.triangle.branch") }.loggedControl(control: "workflow_view.button_3", label: "Mapa")
                     .keyboardShortcut("i", modifiers: [.command, .option])
                     .help("Mostrar/ocultar o mapa do workflow (⌥⌘I)")
             }
@@ -96,14 +100,14 @@ struct WorkflowView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 10) {
-            CommitTextField("Workflow", value: workflow.title) { title in
+            CommitTextField(control: "workflowview.field_1", "Workflow", value: workflow.title) { title in
                 guard !title.isEmpty else { return }
                 mutate("Renomear workflow") { $0.title = title }
             }
             .font(.title2.weight(.semibold))
             .textFieldStyle(.plain)
 
-            CommitTextField("O que o workflow faz", value: workflow.summary ?? "") { value in
+            CommitTextField(control: "workflowview.field_2", "O que o workflow faz", value: workflow.summary ?? "") { value in
                 mutate("Alterar descrição") { $0.summary = value.isEmpty ? nil : value }
             }
             .textFieldStyle(.plain)
@@ -111,13 +115,13 @@ struct WorkflowView: View {
 
             // A single HStack (not ViewThatFits): see IdeaView.
             HStack(spacing: 12) {
-                CommitTextField("Entrada (ex.: <número do PR>)", value: workflow.input ?? "") { value in
+                CommitTextField(control: "workflowview.field_3", "Entrada (ex.: <número do PR>)", value: workflow.input ?? "") { value in
                     mutate("Alterar entrada") { $0.input = value.isEmpty ? nil : value }
                 }
                 .textFieldStyle(.roundedBorder)
                 .frame(width: 220)
                 .help("O que pedir ao executar o workflow")
-                CommitTextField("Limite (\(Workflow.defaultMaxSteps))", value: workflow.maxSteps.map(String.init) ?? "") { value in
+                CommitTextField(control: "workflowview.field_4", "Limite (\(Workflow.defaultMaxSteps))", value: workflow.maxSteps.map(String.init) ?? "") { value in
                     let limit = Int(value).flatMap { $0 > 0 ? $0 : nil }
                     mutate("Alterar limite de etapas") { $0.maxSteps = limit }
                 }
@@ -139,17 +143,17 @@ struct WorkflowView: View {
         return Menu {
             if !agents.isEmpty {
                 Section("Agentes") {
-                    ForEach(agents) { e in Button(e.value.title) { addStep(.agent, e.slug) } }
+                    ForEach(agents) { e in LoggedButton(e.value.title) { addStep(.agent, e.slug) }.loggedControl(control: "workflow_view.button_4", label: "Ativar controle") }
                 }
             }
             if !commands.isEmpty {
                 Section("Comandos") {
-                    ForEach(commands) { e in Button(e.value.title) { addStep(.command, e.slug) } }
+                    ForEach(commands) { e in LoggedButton(e.value.title) { addStep(.command, e.slug) }.loggedControl(control: "workflow_view.button_5", label: "Ativar controle") }
                 }
             }
             if !skills.isEmpty {
                 Section("Skills") {
-                    ForEach(skills) { e in Button(e.value.title) { addStep(.skill, e.slug) } }
+                    ForEach(skills) { e in LoggedButton(e.value.title) { addStep(.skill, e.slug) }.loggedControl(control: "workflow_view.button_6", label: "Ativar controle") }
                 }
             }
         } label: {
@@ -261,6 +265,8 @@ private extension NextStepKind {
 
 /// One step: what runs, its extra instruction and its transitions ("se … → etapa", "senão → etapa").
 private struct WorkflowStepCard: View {
+    @Environment(\.logProject) private var providerRoot
+    @Environment(\.logProject) private var logProject
     let index: Int
     let step: WorkflowStep
     let steps: [WorkflowStep]
@@ -294,19 +300,19 @@ private struct WorkflowStepCard: View {
                 Spacer()
                 Text(step.id).font(.caption.monospaced()).foregroundStyle(.secondary)
                 if let open {
-                    Button(action: open) { Image(systemName: "arrow.right.circle") }
+                    LoggedButton(action: open) { Image(systemName: "arrow.right.circle") }.loggedControl(control: "workflow_view.button_7", label: "Ativar controle")
                         .buttonStyle(.borderless)
                         .help("Abrir")
                 }
                 Menu {
-                    Button("Mover para cima") { change("Mover etapa") { w, i in w.steps.swapAt(i, i - 1) } }
+                    LoggedButton("Mover para cima") { change("Mover etapa") { w, i in w.steps.swapAt(i, i - 1) } }.loggedControl(control: "workflow_view.button_8", label: "Mover para cima")
                         .disabled(index == 0)
-                    Button("Mover para baixo") { change("Mover etapa") { w, i in w.steps.swapAt(i, i + 1) } }
+                    LoggedButton("Mover para baixo") { change("Mover etapa") { w, i in w.steps.swapAt(i, i + 1) } }.loggedControl(control: "workflow_view.button_9", label: "Mover para baixo")
                         .disabled(index == steps.count - 1)
-                    Button("Tornar início") { change("Tornar início") { w, i in w.steps.insert(w.steps.remove(at: i), at: 0) } }
+                    LoggedButton("Tornar início") { change("Tornar início") { w, i in w.steps.insert(w.steps.remove(at: i), at: 0) } }.loggedControl(control: "workflow_view.button_10", label: "Tornar início")
                         .disabled(index == 0)
                     Divider()
-                    Button("Remover etapa", role: .destructive) { change("Remover etapa") { w, i in w.removeStep(at: i) } }
+                    LoggedButton("Remover etapa", role: .destructive) { change("Remover etapa") { w, i in w.removeStep(at: i) } }.loggedControl(control: "workflow_view.button_11", label: "Remover etapa")
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
@@ -315,12 +321,12 @@ private struct WorkflowStepCard: View {
             }
 
             HStack(spacing: 8) {
-                CommitTextField(step.kind == .command ? "Argumentos ($ARGUMENTS) ou instrução extra" : "Instrução extra da etapa (opcional)",
+                CommitTextField(control: "workflowview.field_5", step.kind == .command ? "Argumentos ($ARGUMENTS) ou instrução extra" : "Instrução extra da etapa (opcional)",
                                 value: step.note ?? "") { value in
                     change("Alterar instrução") { w, i in w.steps[i].note = value.isEmpty ? nil : value }
                 }
                 .textFieldStyle(.roundedBorder)
-                CommitTextField("Máx. vezes", value: step.maxVisits.map(String.init) ?? "") { value in
+                CommitTextField(control: "workflowview.field_6", "Máx. vezes", value: step.maxVisits.map(String.init) ?? "") { value in
                     let limit = Int(value).flatMap { $0 > 0 ? $0 : nil }
                     change("Alterar máximo de vezes") { w, i in w.steps[i].maxVisits = limit }
                 }
@@ -357,7 +363,7 @@ private struct WorkflowStepCard: View {
         HStack(spacing: 8) {
             if let verdict = t.verdict {
                 Text("=").foregroundStyle(.secondary).help("Veredito: a última linha do resultado da etapa")
-                CommitTextField("veredito", value: verdict) { value in
+                CommitTextField(control: "workflowview.field_7", "veredito", value: verdict) { value in
                     guard !value.isEmpty else { return }
                     change("Alterar veredito") { w, i in w.steps[i].transitions[j].verdict = value }
                 }
@@ -365,7 +371,7 @@ private struct WorkflowStepCard: View {
                 .font(.body.monospaced())
             } else if let when = t.when {
                 Text("se").foregroundStyle(.secondary)
-                CommitTextField("condição", value: when) { value in
+                CommitTextField(control: "workflowview.field_8", "condição", value: when) { value in
                     if value.isEmpty, hasFallback {
                         model.errorMessage = "A etapa já tem uma transição sem condição (senão)."
                         return
@@ -389,7 +395,7 @@ private struct WorkflowStepCard: View {
             Image(systemName: "arrow.right").foregroundStyle(.secondary)
             Picker("Destino", selection: Binding(get: { t.to }, set: { to in
                 change("Alterar destino") { w, i in w.steps[i].transitions[j].to = to }
-            })) {
+            }).logging(control: "workflow_view.selection_20", label: "Destino", project: logProject)) {
                 if !steps.contains(where: { $0.id == t.to }) { Text("\(t.to) (não existe)").tag(t.to) }
                 ForEach(Array(steps.enumerated()), id: \.element.id) { n, s in
                     Text("\(n + 1). \(title(s) ?? s.ref)").tag(s.id)
@@ -397,9 +403,9 @@ private struct WorkflowStepCard: View {
             }
             .labelsHidden()
             .fixedSize()
-            Button { change("Remover transição") { w, i in w.steps[i].transitions.remove(at: j) } } label: {
+            LoggedButton { change("Remover transição") { w, i in w.steps[i].transitions.remove(at: j) } } label: {
                 Image(systemName: "minus.circle")
-            }
+            }.loggedControl(control: "workflow_view.button_12", label: "Ativar controle")
             .buttonStyle(.borderless)
             .help("Remover transição")
         }
@@ -412,7 +418,7 @@ private struct WorkflowStepCard: View {
             ? (hasFallback ? "Novo veredito (ex.: APROVADO)" : "Novo veredito (vazio = senão)")
             : (hasFallback ? "Nova condição (ex.: encontrou problemas)" : "Nova condição (vazio = senão)")
         return HStack(spacing: 8) {
-            Picker("Tipo", selection: $byVerdict) {
+            Picker("Tipo", selection: $byVerdict.logging(control: "workflow_view.selection_21", label: "Tipo", project: logProject)) {
                 Text("=").tag(true)
                 Text("se").tag(false)
             }
@@ -420,11 +426,11 @@ private struct WorkflowStepCard: View {
             .pickerStyle(.segmented)
             .fixedSize()
             .help("= veredito (última linha do resultado da etapa) · se = condição em linguagem natural")
-            TextField(placeholder, text: $condition)
+            LoggedTextField(placeholder, text: $condition, onCommit: addTransition).loggedField(control: "workflowview.text_1", label: "Confirmar campo")
                 .textFieldStyle(.roundedBorder)
-                .onSubmit(addTransition)
+
             Image(systemName: "arrow.right").foregroundStyle(.secondary)
-            Picker("Destino", selection: $target) {
+            Picker("Destino", selection: $target.logging(control: "workflow_view.selection_22", label: "Destino", project: logProject)) {
                 Text("Etapa…").tag("")
                 ForEach(Array(steps.enumerated()), id: \.element.id) { n, s in
                     Text("\(n + 1). \(title(s) ?? s.ref)").tag(s.id)
@@ -432,7 +438,7 @@ private struct WorkflowStepCard: View {
             }
             .labelsHidden()
             .fixedSize()
-            Button(action: addTransition) { Image(systemName: "plus.circle") }
+            LoggedButton(action: addTransition) { Image(systemName: "plus.circle") }.loggedControl(control: "workflow_view.button_13", label: "Ativar controle")
                 .buttonStyle(.borderless)
                 .disabled(target.isEmpty || blocked)
                 .help(blocked ? "A etapa já tem um senão" : "Adicionar transição (pode voltar a etapas anteriores)")
@@ -461,6 +467,8 @@ private struct WorkflowStepCard: View {
 
 /// One run in the inspector: status, where it is, open questions and the path taken (verdicts).
 private struct WorkflowRunRow: View {
+    @Environment(\.logProject) private var providerRoot
+    @Environment(\.logProject) private var logProject
     let ref: String
     let run: WorkflowRun
     let label: (String) -> String
@@ -484,21 +492,19 @@ private struct WorkflowRunRow: View {
                     Label(q.question, systemImage: "questionmark.bubble").font(.caption).foregroundStyle(.orange)
                 }
                 HStack {
-                    if !AIProvider.installed.isEmpty, run.status != .done {
-                        Button(run.isFinished ? "Retomar" : "Continuar") {
-                            if run.isFinished {
-                                if claude.provider != run.provider { claude.selectProvider(run.provider) }
-                                claude.executeWorkflow(run.workflow, input: run.input, store: model.store)
-                            } else {
-                                resume()
-                            }
-                        }
+                    if !AIProvider.installed(in: providerRoot).isEmpty, run.status != .done {
+                        LoggedButton(run.isFinished ? "Retomar" : "Continuar") {
+                            do {
+                                let resumed = try model.store.resumeRun(ref)
+                                claude.resumeWorkflow(ref, run: resumed, store: model.store)
+                            } catch { model.errorMessage = error.localizedDescription }
+                        }.loggedControl(control: "workflow_view.button_14", label: "Ativar controle")
                         .help("O chat volta a orquestrar esta execução de onde ela parou")
                     }
                     if !run.isFinished {
-                        Button("Parar") { model.stopRun(ref) }
+                        LoggedButton("Parar") { model.stopRun(ref) }.loggedControl(control: "workflow_view.button_15", label: "Parar")
                     }
-                    Button("Apagar", role: .destructive) { model.deleteRun(ref) }
+                    LoggedButton("Apagar", role: .destructive) { model.deleteRun(ref) }.loggedControl(control: "workflow_view.button_16", label: "Apagar")
                         .help("Move a execução e os arquivos das etapas para a Lixeira")
                 }
                 .buttonStyle(.borderless)
@@ -553,6 +559,8 @@ extension WorkflowRunStatus {
 
 /// Asks for the run's input, then starts (or resumes) the run and makes the Claude chat its orchestrator.
 private struct WorkflowRunSheet: View {
+    @Environment(\.logProject) private var providerRoot
+    @Environment(\.logProject) private var logProject
     let title: String
     let inputHint: String?
     let warnings: [String]
@@ -573,7 +581,7 @@ private struct WorkflowRunSheet: View {
             Text("Executar \"\(title)\"").font(.headline)
             Text("O chat orquestra: cada etapa roda num subagente com contexto limpo, o veredito decide a próxima e as perguntas das etapas chegam até você aqui.")
                 .font(.callout).foregroundStyle(.secondary)
-            TextField(inputHint ?? "Entrada (opcional)", text: $input, axis: .vertical)
+            LoggedTextField(inputHint ?? "Entrada (opcional)", text: $input, axis: .vertical).loggedField(control: "workflowview.text_2", label: "Confirmar campo")
                 .lineLimit(1...5)
                 .textFieldStyle(.roundedBorder)
             if let existing {
@@ -594,8 +602,8 @@ private struct WorkflowRunSheet: View {
             }
             HStack {
                 Spacer()
-                Button("Cancelar", role: .cancel) { dismiss() }.buttonStyle(.glass)
-                Button(existing == nil ? "Executar" : "Retomar", action: run)
+                LoggedButton("Cancelar", role: .cancel) { dismiss() }.loggedControl(control: "workflow_view.button_17", label: "Cancelar").buttonStyle(.glass)
+                LoggedButton(existing == nil ? "Executar" : "Retomar", action: run).loggedControl(control: "workflow_view.button_18", label: "Ativar controle")
                     .buttonStyle(.glassProminent)
                     .keyboardShortcut(.defaultAction)
             }

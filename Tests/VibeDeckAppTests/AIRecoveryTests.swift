@@ -4,11 +4,11 @@ import VibeDeckCore
 @testable import VibeDeckApp
 
 @Suite @MainActor struct AIRecoveryTests {
-    @Test func invalidAnswerGetsOneRecoveryWithoutChangingSettings() async throws {
+    @Test(arguments: AIProvider.allCases) func invalidAnswerGetsOneRecoveryWithoutChangingSettings(provider: AIProvider) async throws {
         let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         defer { try? AIUsageStore(root: root).clear() }
         var prompts: [String] = [], settings: [AIProviderSettings] = []
-        let result: Int = try await AIReadOnlyOperation.run(root: root, provider: .codex, operation: "Teste",
+        let result: Int = try await AIReadOnlyOperation.run(root: root, provider: provider, operation: "Teste",
             prompt: "Preserve todos os requisitos", schema: "{}", request: { prompt, value in
                 prompts.append(prompt); settings.append(value)
                 return Data((prompts.count == 1 ? "invalid" : "42").utf8)
@@ -21,12 +21,12 @@ import VibeDeckCore
         #expect(Set(records.map(\.status)) == ["completed", "invalid-answer"])
     }
 
-    @Test func persistentFailureStopsAndTransportErrorsDoNotRetry() async throws {
+    @Test(arguments: AIProvider.allCases) func persistentFailureStopsAndTransportErrorsDoNotRetry(provider: AIProvider) async throws {
         let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         defer { try? AIUsageStore(root: root).clear() }
         var count = 0
         do {
-            let _: Int = try await AIReadOnlyOperation.run(root: root, provider: .codex, operation: "Teste",
+            let _: Int = try await AIReadOnlyOperation.run(root: root, provider: provider, operation: "Teste",
                 prompt: "tarefa", schema: "{}", request: { _, _ in count += 1; return Data("invalid".utf8) },
                 parse: { try JSONDecoder().decode(Int.self, from: $0) })
             Issue.record("Resposta inválida foi aceita")
@@ -34,7 +34,7 @@ import VibeDeckCore
         #expect(count == 2)
         count = 0
         do {
-            let _: Int = try await AIReadOnlyOperation.run(root: root, provider: .codex, operation: "Teste",
+            let _: Int = try await AIReadOnlyOperation.run(root: root, provider: provider, operation: "Teste",
                 prompt: "tarefa", schema: "{}", request: { _, _ in count += 1; throw CancellationError() },
                 parse: { try JSONDecoder().decode(Int.self, from: $0) })
             Issue.record("Cancelamento ignorado")

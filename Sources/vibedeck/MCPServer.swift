@@ -27,6 +27,7 @@ func runClaude(_ arguments: [String], in directory: URL) throws -> Int32 {
     do {
         try process.run()
     } catch {
+        VDLog.error(error, event: "cli.claude_launch_failed", project: directory)
         FileHandle.standardError.write(Data("Não foi possível executar `claude`: \(error.localizedDescription)\n".utf8))
         throw ExitCode.failure
     }
@@ -121,8 +122,10 @@ struct MCPServe: AsyncParsableCommand {
     @OptionGroup var options: RootOptions
 
     func run() async throws {
+        VDLog.configure(component: .mcp, version: VibeDeckCLI.configuration.version)
         let store = try options.store()
         try? store.refreshAgentsGuideIfNeeded()
+        LogStore.default.prune()
         let server = Server(
             name: "vibedeck",
             version: VibeDeckCLI.configuration.version,
@@ -131,18 +134,33 @@ struct MCPServe: AsyncParsableCommand {
         )
         let handler = MCPHandler(store: store)
 
-        await server.withMethodHandler(ListTools.self) { _ in .init(tools: MCPHandler.tools) }
+        await server.withMethodHandler(ListTools.self) { _ in
+            // Clientes MCP (ex.: Claude Code) rejeitam `description: null`; descrição ausente vira string vazia.
+            .init(tools: MCPHandler.tools.map {
+                Tool(name: $0.name, title: $0.title, description: $0.description ?? "", inputSchema: $0.inputSchema,
+                     annotations: $0.annotations, outputSchema: $0.outputSchema, icons: $0.icons, _meta: $0._meta)
+            })
+        }
         await server.withMethodHandler(CallTool.self) { params in
+            let started = Date.now
+            // Only the tool name and timing are logged, never the arguments.
+            func elapsed() -> String { String(Int(Date.now.timeIntervalSince(started) * 1000)) }
             do {
-                return .init(content: [.text(text: try await handler.call(params.name, params.arguments ?? [:]), annotations: nil, _meta: nil)], isError: false)
+                let text = try await handler.call(params.name, params.arguments ?? [:])
+                VDLog.info("mcp.tool_called", "Ferramenta executada", context: ["tool": params.name, "ms": elapsed()])
+                return .init(content: [.text(text: text, annotations: nil, _meta: nil)], isError: false)
             } catch {
+                // Bad parameters and missing records are the agent's mistake; anything else is a failure.
+                let expected = error is VibeDeckError || error is MCPError
+                VDLog.log(expected ? .warning : .error, "mcp.tool_failed", "Falha na ferramenta",
+                          context: ["tool": params.name, "ms": elapsed(), "errorType": String(describing: type(of: error))])
                 return .init(content: [.text(text: error.localizedDescription, annotations: nil, _meta: nil)], isError: true)
             }
         }
         await server.withMethodHandler(ListResources.self) { _ in .init(resources: try handler.resources(), nextCursor: nil) }
         await server.withMethodHandler(ReadResource.self) { params in .init(contents: [try handler.read(params.uri)]) }
 
-        try await server.start(transport: StdioTransport())
+        try await server.start(transport: SerializedStdioTransport())
         await server.waitUntilCompleted()
     }
 }
@@ -182,12 +200,14 @@ struct MCPHandler: Sendable {
         var properties: [String: Value] = custom
         for (name, (type, description)) in props {
             var p: [String: Value] = ["type": .string(type)]
-            if !description.isEmpty { p["description"] = .string(description) }
+            let explainsContract = description.count >= 40 || description.range(of: #"padrão|prefixo|[|<>{}=0-9≥≤]|Só|só|Sem|sem|pergunte|confirm|não|nunca|stdin|JSON|codex|claude|provider|globs|>=|vazi"#, options: .regularExpression) != nil
+            if !description.isEmpty, explainsContract { p["description"] = .string(description) }
             if type == "array" { p["items"] = ["type": "string"] }
             if let values = enums[name] { p["enum"] = .array(values.map { .string($0) }) }
             properties[name] = .object(p)
         }
-        var object: [String: Value] = ["type": "object", "properties": .object(properties)]
+        var object: [String: Value] = ["type": "object"]
+        if !properties.isEmpty { object["properties"] = .object(properties) }
         if !required.isEmpty { object["required"] = .array(required.map { .string($0) }) }
         return .object(object)
     }
@@ -198,8 +218,8 @@ struct MCPHandler: Sendable {
     private static let ideaStatuses = IdeaStatus.allCases.map(\.rawValue)
     private static let stepKinds = ["agent", "command", "skill"]
     private static let providerSettings = ("object", "{codex|claude:{model,effort}}")
-    private static let provider = ("string", "claude (padrão) ou codex")
-    private static let run = ("string", "<workflow>/<execução> ou id")
+    private static let provider = ("string", "claude (padrão)|codex")
+    private static let run = ("string", "workflow/execução|id")
 
     private static let resultsSchema: Value = [
         "type": "array",
@@ -234,41 +254,55 @@ struct MCPHandler: Sendable {
     ]
 
     static let tools: [Tool] = [
-        Tool(name: "codex_usage", description: "Limites de uso atuais do Codex.", inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "claude_usage", description: "Último uso dos limites do Claude Code (5h e semana, %, reset), via statusline.",
+        Tool(name: "add_kit", description: "Adiciona ids de kits/itens selecionados, com dependências. author=ai.",
+             inputSchema: schema(["items": ("array", "")], required: ["items"])),
+        Tool(name: "read_logs", description: "Logs sem conteúdo; filtros por nível/período/componente/ação.",
+             inputSchema: schema(["level": ("string", "Nível mínimo (padrão info)"), "since": ("string", "24h, 5m, 7d"),
+                                  "components": ("array", "app, cli, mcp, core, rules, ai, hook"),
+                                  "action": ("string", "Id de correlação"), "limit": ("integer", "Máximo de entradas")]),
+             annotations: .init(readOnlyHint: true)),
+        Tool(name: "codex_usage", description: nil, inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "claude_usage", description: "Limites Claude pela statusline.",
              inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "cloud_check", description: "Compara a branch padrão local com a do origin; blocked=true impede sessões na nuvem.",
+        Tool(name: "cloud_check", description: "Compara branch padrão local/origin; blocked=true impede nuvem.",
              inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "start_cloud_session", description: "Cria sessão na nuvem (repo do GitHub) e devolve o link; recusa branch divergente ou árvore suja sem allow_dirty. Só a pedido do usuário.",
+        Tool(name: "start_cloud_session", description: "Nuvem no GitHub: retorna link; recusa divergência ou árvore suja sem allow_dirty. Só a pedido do usuário.",
              inputSchema: schema(["provider": provider,
                  "environment": ("string", "Ambiente do Codex Cloud"),
                  "description": ("string", "Tarefa"),
                  "allow_dirty": ("boolean", ""),
              ], required: ["description"])),
         Tool(name: "export_graph", description: "Exporta graph.html offline, sem IA.", inputSchema: schema([:])),
-        Tool(name: "get_project", description: "vibedeck.json e resumo dos docs e grupos de revisão.", inputSchema: schema([:]),
+        Tool(name: "get_project", description: nil, inputSchema: schema([:]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "list_docs", description: "Docs markdown (slug e título).", inputSchema: schema([:]),
+        Tool(name: "item_groups", description: "Diretórios de itens. delete exige confirmed=true se não vazio, inclusive autoria humana; só a pedido do usuário.", inputSchema: schema([
+            "concept": ("string", ""), "action": ("string", ""), "path": ("string", "Grupo."),
+            "from": ("string", "Origem."), "to": ("string", "Destino; vazio = raiz para move_item."),
+            "reference": ("string", "Item para move_item."), "confirmed": ("boolean", "Confirma apagar conteúdo."),
+        ], required: ["concept", "action"], enums: ["concept": ItemConcept.allCases.map(\.rawValue), "action": ["list", "create", "move", "rename", "move_item", "delete"]])),
+        Tool(name: "move_rule_to_group", description: nil, inputSchema: schema(["rule": ("string", "ID da regra."), "group": ("string", "Grupo, vazio para raiz.")], required: ["rule", "group"]), annotations: nil),
+        Tool(name: "rename_rule_group", description: nil, inputSchema: schema(["topic": ("string", "Tópico."), "from": ("string", "Origem."), "to": ("string", "Destino.")], required: ["topic", "from", "to"]), annotations: nil),
+        Tool(name: "list_docs", description: nil, inputSchema: schema([:]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "read_doc", description: "Lê um doc.", inputSchema: schema(["slug": ("string", "")], required: ["slug"]),
+        Tool(name: "read_doc", description: nil, inputSchema: schema(["slug": ("string", "")], required: ["slug"]),
              annotations: .init(readOnlyHint: true)),
         Tool(name: "write_doc", description: "generated: novo doc author=ai; senão cria/sobrescreve.",
-             inputSchema: schema([
+             inputSchema: schema(["reference": ("string", "Caminho completo grupo/slug."), 
                  "slug": ("string", ""),
                  "title": ("string", ""),
                  "content": ("string", ""),
                  "generated": ("boolean", ""),
              ], required: ["content"])),
-        Tool(name: "list_review_groups", description: "Grupos de revisão com itens abertos.", inputSchema: schema([:]),
+        Tool(name: "list_review_groups", description: "Grupos com itens abertos.", inputSchema: schema([:]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "list_review_items", description: "Itens de revisão, com filtros.",
+        Tool(name: "list_review_items", description: nil,
              inputSchema: schema([
                  "group": ("string", ""),
                  "status": ("string", ""),
                  "kind": ("string", "Ver reviewKinds"),
              ], enums: ["status": statuses]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "add_review_item", description: "Adiciona um item de revisão (cria o grupo se preciso). author=ai.",
+        Tool(name: "add_review_item", description: "author=ai; grupo automático.",
              inputSchema: schema([
                  "group": ("string", ""),
                  "kind": ("string", "Ver reviewKinds"),
@@ -281,7 +315,7 @@ struct MCPHandler: Sendable {
                  "selector": ("string", ""),
                  "rules": ("array", "Tópicos de regras do item"),
              ], required: ["group", "kind", "title"], enums: ["priority": priorities])),
-        Tool(name: "update_review_item", description: "Atualiza um item. status=done exige check aprovado com review_item quando o item tem regras.",
+        Tool(name: "update_review_item", description: "Atualiza item; com regras, done exige check aprovado para review_item.",
              inputSchema: schema([
                  "id": ("string", ""),
                  "status": ("string", ""),
@@ -291,31 +325,42 @@ struct MCPHandler: Sendable {
                  "kind": ("string", ""),
                  "rules": ("array", "Substitui os tópicos"),
              ], required: ["id"], enums: ["status": statuses, "priority": priorities])),
-        Tool(name: "add_link", description: "Adiciona um link ao projeto.",
+        Tool(name: "add_link", description: nil,
              inputSchema: schema([
                  "url": ("string", ""),
                  "title": ("string", ""),
                  "tags": ("string", "Separadas por vírgula"),
              ], required: ["url"])),
 
+        Tool(name: "list_claude_items", description: "Coleção curada local.",
+             inputSchema: schema(["kind": ("string", "")], enums: ["kind": ["artifact", "doc"]]),
+             annotations: .init(readOnlyHint: true)),
+        Tool(name: "add_claude_item", description: "Só claude.ai, a pedido do usuário; ele escolhe o tipo.",
+             inputSchema: schema([
+                 "url": ("string", ""),
+                 "kind": ("string", ""),
+                 "title": ("string", ""),
+                 "tags": ("array", ""),
+             ], required: ["url", "kind"], enums: ["kind": ["artifact", "doc"]])),
+
         // Stack
-        Tool(name: "list_stack", description: "Stack do projeto, com notas de uso. Consulte antes de implementar.",
+        Tool(name: "list_stack", description: nil,
              inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "search_stack_icons", description: "Procura ids no catálogo do Skill Icons para add_stack.",
+        Tool(name: "search_stack_icons", description: "IDs para add_stack.",
              inputSchema: schema([
                  "query": ("string", "Vazio = tudo"),
                  "category": ("string", ""),
                  "limit": ("integer", "Padrão 50"),
              ], enums: ["category": SkillIcons.categories]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "add_stack", description: "Adiciona tecnologias à stack (desconhecidas recusam tudo) e atualiza o badge do README.",
+        Tool(name: "add_stack", description: "Atualiza badge; desconhecidas recusam tudo.",
              inputSchema: schema([
                  "icons": ("array", "Ids, nomes ou aliases, na ordem"),
                  "note": ("string", "Nota de uso para todas"),
              ], required: ["icons"])),
-        Tool(name: "remove_stack", description: "Retira tecnologias da stack e atualiza o badge.",
+        Tool(name: "remove_stack", description: "Atualiza badge.",
              inputSchema: schema(["icons": ("array", "")], required: ["icons"])),
-        Tool(name: "update_stack", description: "Altera nota ou posição de uma tecnologia.",
+        Tool(name: "update_stack", description: nil,
              inputSchema: schema([
                  "icon": ("string", ""),
                  "note": ("string", "Vazia apaga"),
@@ -323,11 +368,11 @@ struct MCPHandler: Sendable {
              ], required: ["icon"])),
 
         // Patterns
-        Tool(name: "list_patterns", description: "Padrões de projeto que o código novo segue, com nota, paths e regras.",
+        Tool(name: "list_patterns", description: nil,
              inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "pattern_catalog", description: "Catálogo embutido de padrões, para add_pattern.",
+        Tool(name: "pattern_catalog", description: "Catálogo para add_pattern.",
              inputSchema: schema(["query": ("string", "Vazio = tudo")]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "add_pattern", description: "Adiciona padrões do catálogo (`patterns`) ou um personalizado (`name` + `rules`). Cada um vira um tópico de regras.",
+        Tool(name: "add_pattern", description: "Padrões: catálogo (patterns) ou personalizado (name+rules); cada um cria tópico.",
              inputSchema: schema([
                  "patterns": ("array", "Ids do catálogo"),
                  "name": ("string", ""),
@@ -338,7 +383,7 @@ struct MCPHandler: Sendable {
              ])),
         Tool(name: "remove_pattern", description: "Retira padrões e apaga seus tópicos de regras.",
              inputSchema: schema(["patterns": ("array", "")], required: ["patterns"])),
-        Tool(name: "update_pattern", description: "Altera nota, paths ou posição de um padrão.",
+        Tool(name: "update_pattern", description: nil,
              inputSchema: schema([
                  "pattern": ("string", ""),
                  "note": ("string", "Vazia apaga"),
@@ -346,17 +391,29 @@ struct MCPHandler: Sendable {
                  "position": ("integer", "A partir de 0"),
              ], required: ["pattern"])),
 
-        Tool(name: "ai_guide", description: "Índice ou uma seção do guia.",
+        Tool(name: "ai_guide", description: nil,
              inputSchema: schema(["section": ("integer", "Omita para o índice")]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "ai_catalog", description: "Índice paginado sem prompts; depois leia só o registro necessário (get_*).",
-             inputSchema: schema(["kind": ("string", "agents, commands, skills, workflows ou rules"), "offset": ("integer", ""), "limit": ("integer", "1 a 100, padrão 20")], required: ["kind"]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "ai_context", description: "Página de uma referência de contexto; nextOffset indica continuação.",
+        Tool(name: "ai_catalog", description: "Índice sem prompts; inclui kits.",
+             inputSchema: schema(["kind": ("string", "agents, commands, skills, workflows, rules, kits"), "offset": ("integer", ""), "limit": ("integer", "1 a 100, padrão 20")], required: ["kind"]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "ai_context", description: "Página; nextOffset continua.",
              inputSchema: schema(["id": ("string", ""), "offset": ("integer", ""), "limit": ("integer", "1 a 16000, padrão 4000")], required: ["id"]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "ai_usage", description: "Consumo local por tarefa; campos ausentes não são zero. clear só a pedido do usuário.",
+        Tool(name: "reorganize_prompt", description: "Prompt/schema/hash.",
+             inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "reorganize_analyze", description: "Somente leitura.",
+             inputSchema: schema(["provider": ("string", "claude ou codex"), "model": ("string", ""), "effort": ("string", "")], required: ["provider"]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "reorganize_validate", description: "Valida sem gravar.",
+             inputSchema: schema(["answer": ("string", "JSON"), "fingerprint": ("string", "Do reorganize_prompt")], required: ["answer", "fingerprint"]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "reorganize_apply", description: "Só com aceite; conflicts exige escolha explícita.",
+             inputSchema: schema(["proposal": ("string", "JSON validado"), "acceptance": ("string", "JSON: selected e conflicts")], required: ["proposal", "acceptance"])),
+        Tool(name: "item_ai_prompt", description: "Prompt+schema para criar/editar agent, command, skill ou workflow com IA (não grava).",
+             inputSchema: schema(["kind": ("string", "agent|command|skill|workflow"), "request": ("string", ""), "item": ("string", "Editar; omita para criar")], required: ["kind", "request"]), annotations: .init(readOnlyHint: true)),
+        Tool(name: "item_ai_apply", description: "Valida o JSON do schema e cria (author=ai) ou, com item, substitui.",
+             inputSchema: schema(["kind": ("string", "agent|command|skill|workflow"), "proposal": ("string", "JSON"), "item": ("string", "Substituir; omita para criar")], required: ["kind", "proposal"])),
+        Tool(name: "ai_usage", description: "Consumo por tarefa; ausentes não são zero. clear só a pedido do usuário.",
              inputSchema: schema(["clear": ("boolean", "")])),
 
         // Rules
-        Tool(name: "rules_for", description: "OBRIGATÓRIO antes de concluir uma tarefa: regras aplicáveis aos arquivos (forma compacta). Manuais só como contagem, até include_manual=true.",
+        Tool(name: "rules_for", description: "OBRIGATÓRIO antes de concluir uma tarefa. Manuais contadas sem include_manual.",
              inputSchema: schema([
                  "files": ("array", "Arquivos alterados"),
                  "topics": ("array", "Tópicos extras"),
@@ -365,7 +422,7 @@ struct MCPHandler: Sendable {
                  "verbose": ("boolean", "Forma completa"),
              ]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "submit_rule_check", description: "Grava o check rodando os scripts das regras; manuais ficam pending. Com verify_manual=true, responda TODAS as manuais em results. passed=false: corrija e reenvie. Devolve resumo; check completo em disco.",
+        Tool(name: "submit_rule_check", description: "Scripts; manuais pending. Com verify_manual=true, responda TODAS as manuais em results. passed=false: corrija e reenvie. Resumo; completo em disco.",
              inputSchema: schema([
                  "task": ("string", "Resumo do que foi feito"),
                  "files": ("array", ""),
@@ -374,32 +431,32 @@ struct MCPHandler: Sendable {
                  "verify_manual": ("boolean", ""),
                  "verbose": ("boolean", "Anexa o JSON completo"),
              ], required: ["task"], custom: ["results": resultsSchema])),
-        Tool(name: "run_rule_tests", description: "Roda os scripts das regras (0 cumpre, 77 n/a, outro viola) sem gravar check. Sem files/review_item, só os topics.",
+        Tool(name: "run_rule_tests", description: "Scripts sem check (0 cumpre, 77 n/a, outro viola); sem files/review_item, só topics.",
              inputSchema: schema([
                  "files": ("array", ""),
                  "topics": ("array", ""),
                  "review_item": ("string", ""),
              ]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "set_rule_test", description: "Define a verificação de uma regra: script (roda na raiz, recebe $VIBEDECK_FILES, exit 0/77/outro) ou manual. Mudar a regra desatualiza o teste.",
+        Tool(name: "set_rule_test", description: "Define script (raiz, $VIBEDECK_FILES, exit 0/77/outro) ou manual; editar regra desatualiza teste.",
              inputSchema: schema([
                  "rule_id": ("string", ""),
                  "mode": ("string", ""),
                  "command": ("string", "Obrigatório em script"),
                  "reason": ("string", ""),
              ], required: ["rule_id", "mode"], enums: ["mode": RuleTestMode.allCases.map(\.rawValue)])),
-        Tool(name: "list_rule_topics", description: "Tópicos de regras (paths e contagem).", inputSchema: schema([:]),
+        Tool(name: "list_rule_topics", description: nil, inputSchema: schema([:]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "get_rule_topic", description: "Tópico de regras completo.", inputSchema: schema(["topic": ("string", "")], required: ["topic"]),
+        Tool(name: "get_rule_topic", description: nil, inputSchema: schema(["topic": ("string", "")], required: ["topic"]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "add_rule_topic", description: "Cria um tópico de regras; sem paths vale para toda tarefa.",
+        Tool(name: "add_rule_topic", description: "Sem paths: global.",
              inputSchema: schema([
                  "title": ("string", ""),
                  "description": ("string", "Quando se aplica"),
                  "paths": ("array", "Globs"),
                  "tags": ("array", ""),
              ], required: ["title"])),
-        Tool(name: "add_rule", description: "Adiciona uma regra a um tópico (cria o tópico se preciso). author=ai.",
+        Tool(name: "add_rule", description: "author=ai; tópico automático.",
              inputSchema: schema([
                  "topic": ("string", ""),
                  "text": ("string", "Curta e verificável"),
@@ -408,18 +465,18 @@ struct MCPHandler: Sendable {
              ], required: ["topic", "text"], enums: ["severity": severities])),
 
         // Ideas
-        Tool(name: "list_ideas", description: "Ideias do projeto (não são regras ativas).",
+        Tool(name: "list_ideas", description: "Ideias, sem força de regra.",
              inputSchema: schema(["status": ("string", "")], enums: ["status": ideaStatuses]),
              annotations: .init(readOnlyHint: true)),
         Tool(name: "get_idea", description: "Ideia completa, com regras rascunho.", inputSchema: schema(["idea": ("string", "")], required: ["idea"]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "add_idea", description: "Registra uma ideia futura. author=ai.",
-             inputSchema: schema([
+        Tool(name: "add_idea", description: "author=ai; sem regras ativas.",
+             inputSchema: schema(["reference": ("string", "Caminho completo grupo/slug."), 
                  "title": ("string", ""),
                  "body": ("string", ""),
                  "tags": ("array", ""),
              ], required: ["title"])),
-        Tool(name: "update_idea", description: "Atualiza uma ideia.",
+        Tool(name: "update_idea", description: nil,
              inputSchema: schema([
                  "idea": ("string", ""),
                  "title": ("string", ""),
@@ -435,11 +492,11 @@ struct MCPHandler: Sendable {
                  "severity": ("string", ""),
              ], required: ["idea", "text"], enums: ["severity": severities])),
         // Agents
-        Tool(name: "list_agents", description: "Agentes do VibeDeck (não os do provedor).",
+        Tool(name: "list_agents", description: nil,
              inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "get_agent", description: "Agente completo.", inputSchema: schema(["agent": ("string", "")], required: ["agent"]),
+        Tool(name: "get_agent", description: nil, inputSchema: schema(["agent": ("string", "")], required: ["agent"]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "add_agent", description: "Cria um agente do VibeDeck.",
+        Tool(name: "add_agent", description: nil,
              inputSchema: schema(["provider_settings": providerSettings,
                  "title": ("string", ""),
                  "summary": ("string", "Quando usar"),
@@ -448,7 +505,7 @@ struct MCPHandler: Sendable {
                  "prompt": ("string", ""),
                  "tags": ("array", ""),
              ], required: ["title"])),
-        Tool(name: "update_agent", description: "Atualiza um agente (fluxo: add_agent_next_step).",
+        Tool(name: "update_agent", description: "Fluxo: add_agent_next_step.",
              inputSchema: schema(["provider_settings": providerSettings,
                  "agent": ("string", ""),
                  "title": ("string", ""),
@@ -458,33 +515,33 @@ struct MCPHandler: Sendable {
                  "prompt": ("string", ""),
                  "tags": ("array", ""),
              ], required: ["agent"])),
-        Tool(name: "add_agent_next_step", description: "Encadeia ao agente um agente, comando ou skill que atua sobre o resultado.",
+        Tool(name: "add_agent_next_step", description: "Encadeia agente/comando/skill sobre o resultado do agente.",
              inputSchema: schema([
                  "agent": ("string", ""),
                  "target": ("string", ""),
                  "kind": ("string", ""),
                  "note": ("string", ""),
              ], required: ["agent", "target"], enums: ["kind": stepKinds])),
-        Tool(name: "agent_flow", description: "JSON do fluxo do agente para orquestrar.",
+        Tool(name: "agent_flow", description: nil,
              inputSchema: schema(["agent": ("string", "")], required: ["agent"]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "import_agents", description: "Importa agentes do provedor (.claude/agents) como agentes do VibeDeck.",
+        Tool(name: "import_agents", description: nil,
              inputSchema: schema(["provider": provider, "overwrite": ("boolean", "")])),
         // Commands
-        Tool(name: "list_commands", description: "Comandos do VibeDeck (não os do provedor).",
+        Tool(name: "list_commands", description: nil,
              inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "get_command", description: "Comando completo.", inputSchema: schema(["command": ("string", "")], required: ["command"]),
+        Tool(name: "get_command", description: nil, inputSchema: schema(["command": ("string", "")], required: ["command"]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "add_command", description: "Cria um comando do VibeDeck (prompt de slash command, com $ARGUMENTS).",
+        Tool(name: "add_command", description: "Aceita $ARGUMENTS.",
              inputSchema: schema(["provider_settings": providerSettings,
                  "title": ("string", ""),
                  "summary": ("string", ""),
-                 "argument_hint": ("string", "O que vai em $ARGUMENTS"),
+                 "argument_hint": ("string", "Conteúdo de $ARGUMENTS"),
                  "model": ("string", ""),
                  "tools": ("array", ""),
                  "prompt": ("string", ""),
                  "tags": ("array", ""),
              ], required: ["title"])),
-        Tool(name: "update_command", description: "Atualiza um comando (fluxo: add_command_next_step).",
+        Tool(name: "update_command", description: "Fluxo: add_command_next_step.",
              inputSchema: schema(["provider_settings": providerSettings,
                  "command": ("string", ""),
                  "title": ("string", ""),
@@ -495,24 +552,24 @@ struct MCPHandler: Sendable {
                  "prompt": ("string", ""),
                  "tags": ("array", ""),
              ], required: ["command"])),
-        Tool(name: "add_command_next_step", description: "Encadeia ao comando um agente, comando ou skill que atua sobre o resultado.",
+        Tool(name: "add_command_next_step", description: "Encadeia agente/comando/skill sobre o resultado do comando.",
              inputSchema: schema([
                  "command": ("string", ""),
                  "target": ("string", ""),
                  "kind": ("string", ""),
                  "note": ("string", ""),
              ], required: ["command", "target"], enums: ["kind": stepKinds])),
-        Tool(name: "command_flow", description: "JSON do fluxo do comando para orquestrar.",
+        Tool(name: "command_flow", description: nil,
              inputSchema: schema(["command": ("string", "")], required: ["command"]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "import_commands", description: "Importa comandos do provedor (.claude/commands) como comandos do VibeDeck.",
+        Tool(name: "import_commands", description: nil,
              inputSchema: schema(["provider": provider, "overwrite": ("boolean", "")])),
         // Skills
-        Tool(name: "list_skills", description: "Skills do VibeDeck (não as do provedor).",
+        Tool(name: "list_skills", description: nil,
              inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "get_skill", description: "Skill completa.", inputSchema: schema(["skill": ("string", "")], required: ["skill"]),
+        Tool(name: "get_skill", description: nil, inputSchema: schema(["skill": ("string", "")], required: ["skill"]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "add_skill", description: "Cria uma skill do VibeDeck (formato SKILL.md; summary diz quando dispará-la).",
-             inputSchema: schema(["provider_settings": providerSettings,
+        Tool(name: "add_skill", description: "Cria skill (SKILL.md); summary define quando disparar.",
+             inputSchema: schema(["reference": ("string", "Caminho completo grupo/slug."), "provider_settings": providerSettings,
                  "title": ("string", ""),
                  "summary": ("string", "Quando usar"),
                  "model": ("string", ""),
@@ -520,7 +577,7 @@ struct MCPHandler: Sendable {
                  "prompt": ("string", ""),
                  "tags": ("array", ""),
              ], required: ["title"])),
-        Tool(name: "update_skill", description: "Atualiza uma skill (fluxo: add_skill_next_step).",
+        Tool(name: "update_skill", description: "Fluxo: add_skill_next_step.",
              inputSchema: schema(["provider_settings": providerSettings,
                  "skill": ("string", ""),
                  "title": ("string", ""),
@@ -530,23 +587,23 @@ struct MCPHandler: Sendable {
                  "prompt": ("string", ""),
                  "tags": ("array", ""),
              ], required: ["skill"])),
-        Tool(name: "add_skill_next_step", description: "Encadeia à skill um agente, comando ou skill que atua sobre o resultado.",
+        Tool(name: "add_skill_next_step", description: "Encadeia agente/comando/skill sobre o resultado da skill.",
              inputSchema: schema([
                  "skill": ("string", ""),
                  "target": ("string", ""),
                  "kind": ("string", ""),
                  "note": ("string", ""),
              ], required: ["skill", "target"], enums: ["kind": stepKinds])),
-        Tool(name: "skill_flow", description: "JSON do fluxo da skill para orquestrar.",
+        Tool(name: "skill_flow", description: nil,
              inputSchema: schema(["skill": ("string", "")], required: ["skill"]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "import_skills", description: "Importa skills do provedor (.claude/skills) como skills do VibeDeck.",
+        Tool(name: "import_skills", description: nil,
              inputSchema: schema(["provider": provider, "overwrite": ("boolean", "")])),
         // Workflows
-        Tool(name: "list_workflows", description: "Workflows: etapas (agentes, comandos, skills) com transições condicionais.",
+        Tool(name: "list_workflows", description: nil,
              inputSchema: schema([:]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "get_workflow", description: "Workflow completo.", inputSchema: schema(["workflow": ("string", "")], required: ["workflow"]),
+        Tool(name: "get_workflow", description: nil, inputSchema: schema(["workflow": ("string", "")], required: ["workflow"]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "add_workflow", description: "Cria um workflow vazio (depois add_workflow_step/add_workflow_transition).",
+        Tool(name: "add_workflow", description: "Workflow vazio; complete com add_workflow_step/add_workflow_transition.",
              inputSchema: schema([
                  "title": ("string", ""),
                  "summary": ("string", ""),
@@ -554,7 +611,7 @@ struct MCPHandler: Sendable {
                  "max_steps": ("integer", "Etapas por execução (padrão \(Workflow.defaultMaxSteps))"),
                  "tags": ("array", ""),
              ], required: ["title"])),
-        Tool(name: "update_workflow", description: "Atualiza um workflow.",
+        Tool(name: "update_workflow", description: nil,
              inputSchema: schema([
                  "workflow": ("string", ""),
                  "title": ("string", ""),
@@ -588,13 +645,13 @@ struct MCPHandler: Sendable {
                  "step": ("string", "Id ou posição"),
                  "position": ("integer", ""),
              ], required: ["workflow", "step", "position"])),
-        Tool(name: "add_workflow_transition", description: "Depois de `from`, vá para `to` quando o veredito for `verdict` ou `when` valer; sem ambos é o senão (um por etapa). Ordem: vereditos, condições, senão; nenhuma = fim.",
+        Tool(name: "add_workflow_transition", description: "Prioridade: verdict, when, senão (sem ambos, único por etapa); nenhuma transição = fim.",
              inputSchema: schema([
                  "workflow": ("string", ""),
                  "from": ("string", "Id ou posição"),
                  "to": ("string", "Id ou posição"),
                  "verdict": ("string", "Ex.: APROVADO; ignora caixa e acentos"),
-                 "when": ("string", "Condição em linguagem natural"),
+                 "when": ("string", "Condição textual"),
              ], required: ["workflow", "from", "to"])),
         Tool(name: "remove_workflow_transition", description: "Remove a transição `index` (1, 2, …) de uma etapa.",
              inputSchema: schema([
@@ -607,7 +664,7 @@ struct MCPHandler: Sendable {
                  "workflow": ("string", ""),
                  "input": ("string", "Sem ela, pergunte ao usuário"),
              ], required: ["workflow"]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "workflow_run_start", description: "Inicia ou retoma uma execução e devolve {ref, action, prompt}: siga o `prompt` (etapas em subagentes). `from` libera mais uma volta numa execução parada.",
+        Tool(name: "workflow_run_start", description: "Retorna {ref,action,prompt}; siga prompt em subagentes. from permite outra volta em execução parada.",
              inputSchema: schema(["provider": provider,
                  "workflow": ("string", ""),
                  "input": ("string", "Nomeia a execução"),
@@ -619,7 +676,7 @@ struct MCPHandler: Sendable {
         Tool(name: "workflow_run_step", description: "Prompt da etapa atual, para o subagente que a executa.",
              inputSchema: schema(["run": run], required: ["run"]),
              annotations: .init(readOnlyHint: true)),
-        Tool(name: "workflow_run_record", description: "Registra o veredito da etapa e devolve a próxima ação. Em `decide`, avalie os `candidates` e chame de novo com `to` ou `none_holds`.",
+        Tool(name: "workflow_run_record", description: "Próxima ação após veredito. Em decide, avalie candidates e reenvie to ou none_holds.",
              inputSchema: schema([
                  "run": run,
                  "verdict": ("string", "Última linha do resultado"),
@@ -627,9 +684,9 @@ struct MCPHandler: Sendable {
                  "to": ("string", ""),
                  "none_holds": ("boolean", ""),
              ], required: ["run"])),
-        Tool(name: "workflow_run_ask", description: "Grava perguntas da etapa para o usuário; termine a etapa com a última linha PERGUNTA.",
+        Tool(name: "workflow_run_ask", description: "Grava perguntas ao usuário; termine a etapa com PERGUNTA na última linha.",
              inputSchema: schema(["run": run], required: ["run", "questions"], custom: ["questions": questionsSchema])),
-        Tool(name: "workflow_run_questions", description: "Perguntas de uma execução.",
+        Tool(name: "workflow_run_questions", description: nil,
              inputSchema: schema([
                  "run": run,
                  "open": ("boolean", "Só as abertas"),
@@ -640,12 +697,12 @@ struct MCPHandler: Sendable {
                  "number": ("integer", ""),
                  "answer": ("string", ""),
              ], required: ["run", "number", "answer"])),
-        Tool(name: "workflow_run_list", description: "Execuções, mais recentes primeiro.",
+        Tool(name: "workflow_run_list", description: nil,
              inputSchema: schema([
                  "workflow": ("string", ""),
                  "status": ("string", ""),
              ], enums: ["status": WorkflowRunStatus.allCases.map(\.rawValue)]), annotations: .init(readOnlyHint: true)),
-        Tool(name: "workflow_run_show", description: "Execução completa: status, histórico e perguntas.",
+        Tool(name: "workflow_run_show", description: nil,
              inputSchema: schema(["run": run], required: ["run"]),
              annotations: .init(readOnlyHint: true)),
         Tool(name: "workflow_run_stop", description: "Para uma execução. Só a pedido do usuário.",
@@ -659,9 +716,9 @@ struct MCPHandler: Sendable {
                  "ref": ("string", ""),
                  "tags": ("array", ""),
              ], required: ["kind", "ref", "tags"], enums: ["kind": ["doc", "review_group", "rule_topic", "idea", "agent", "command", "skill", "workflow", "stack", "pattern"]])),
-        Tool(name: "promote_idea", description: "Transforma as regras da ideia num tópico ativo. Só faça isso quando o usuário pedir.",
+        Tool(name: "promote_idea", description: "Ativa regras da ideia num tópico. Só faça isso quando o usuário pedir.",
              inputSchema: schema(["idea": ("string", "")], required: ["idea"])),
-        Tool(name: "unpromote_idea", description: "Desfaz promote_idea (apaga o tópico; regras voltam a rascunho). Só faça isso quando o usuário pedir.",
+        Tool(name: "unpromote_idea", description: "Desfaz promoção: apaga tópico, regras voltam a rascunho. Só faça isso quando o usuário pedir.",
              inputSchema: schema(["idea": ("string", "")], required: ["idea"])),
     ]
 
@@ -703,6 +760,14 @@ struct MCPHandler: Sendable {
             return parsed
         }
         switch name {
+        case "add_kit": return try json(store.addKitItems(list("items") ?? [], author: .ai))
+        case "read_logs":
+            let filter = LogFilter(since: try LogFilter.parseSince(str("since") ?? "24h"),
+                                   minLevel: try LogFilter.parseLevel(str("level") ?? "info"),
+                                   components: try LogFilter.parseComponents(list("components") ?? []),
+                                   project: store.root.standardizedFileURL.path, action: str("action"),
+                                   limit: min(max(int("limit") ?? 200, 1), 2000))
+            return try json(LogStore.default.entries(filter))
         case "codex_usage": return try json(await CodexQueries.limits(root: store.root))
         case "ai_guide":
             if let n = args["section"]?.intValue {
@@ -711,9 +776,35 @@ struct MCPHandler: Sendable {
             }
             return AgentsGuide.index
         case "ai_catalog":
+            if try req("kind") == "kits" {
+                let offset = max(0, args["offset"]?.intValue ?? 0)
+                let limit = min(100, max(1, args["limit"]?.intValue ?? 20))
+                return try json(Array(KitCatalog.kits.dropFirst(offset).prefix(limit)))
+            }
             return try json(store.aiCatalog(kind: req("kind"), offset: args["offset"]?.intValue ?? 0, limit: args["limit"]?.intValue ?? 20))
         case "ai_context":
             return try json(AIContextStore(root: store.root).page(id: req("id"), offset: args["offset"]?.intValue ?? 0, limit: args["limit"]?.intValue ?? 4000))
+        case "reorganize_prompt":
+            return try json(["prompt": ReorganizeDiscover.prompt(store: store), "schema": ReorganizeDiscover.schema,
+                             "fingerprint": store.reorganizeFingerprint()])
+        case "reorganize_analyze":
+            _ = try req("provider")
+            return try json(await ReorganizeDiscover.analyze(store: store, provider: selectedProvider(),
+                settings: .init(model: str("model"), effort: str("effort"))))
+        case "reorganize_validate":
+            return try json(ReorganizeDiscover.parse(Data(try req("answer").utf8), store: store, fingerprint: req("fingerprint")))
+        case "reorganize_apply":
+            let proposal = try ReorganizeDiscover.decodeProposal( Data(try req("proposal").utf8))
+            let acceptance = try ReorganizeDiscover.decodeAcceptance( Data(try req("acceptance").utf8))
+            return try json(store.applyReorganization(proposal, acceptance: acceptance))
+        case "item_ai_prompt":
+            guard let kind = ItemDiscover.Kind(rawValue: try req("kind")) else { throw MCPError.invalidParams("Tipo inválido: use agent, command, skill ou workflow.") }
+            let out = try store.itemAIPrompt(kind, request: req("request"), item: str("item"))
+            return try json(["prompt": out.prompt, "schema": out.schema])
+        case "item_ai_apply":
+            guard let kind = ItemDiscover.Kind(rawValue: try req("kind")) else { throw MCPError.invalidParams("Tipo inválido: use agent, command, skill ou workflow.") }
+            let slug = try store.itemAIApply(kind, json: Data(try req("proposal").utf8), item: str("item"))
+            return "Gravado: \(slug)"
         case "ai_usage":
             let usage = AIUsageStore(root: store.root)
             if args["clear"]?.boolValue == true { try usage.clear(); return "Métricas locais apagadas." }
@@ -728,8 +819,20 @@ struct MCPHandler: Sendable {
             let groups = try store.listGroups().map { ["slug": $0.slug, "title": $0.group.title, "open": "\($0.group.openCount)", "total": "\($0.group.items.count)"] }
             return try json(ProjectSummary(root: store.root.path, project: store.loadProject(), docs: store.listDocs().map(\.slug), groups: groups))
 
+        case "item_groups":
+            guard let concept = ItemConcept(rawValue: try req("concept")) else { throw MCPError.invalidParams("Conceito inválido.") }
+            switch try req("action") {
+            case "list": return try json(store.listItemDirectories(concept))
+            case "create": return try store.createItemDirectory(concept, path: req("path"))
+            case "move", "rename": try store.moveItemDirectory(concept, from: req("from"), to: req("to")); return "Grupo movido."
+            case "move_item": return try store.moveGroupedItem(concept, reference: req("reference"), to: req("to"))
+            case "delete": try store.deleteItemDirectory(concept, path: req("path"), confirmed: args["confirmed"]?.boolValue == true); return "Grupo apagado."
+            default: throw MCPError.invalidParams("Operação de grupo inválida.")
+            }
+        case "move_rule_to_group": return try json(store.moveRuleToGroup(req("rule"), group: req("group")))
+        case "rename_rule_group": try store.renameRuleGroup(topic: req("topic"), from: req("from"), to: req("to")); return "Grupo de regras movido."
         case "list_docs":
-            return try json(store.listDocs().map { DocRow(slug: $0.slug, title: $0.title, tags: $0.tags) })
+            return try json(store.listDocs().map { DocRow(group: ProjectStore.groupPath(of: $0.slug), slug: $0.slug, title: $0.title, tags: $0.tags) })
 
         case "read_doc":
             return try store.readDoc(req("slug"))
@@ -737,20 +840,20 @@ struct MCPHandler: Sendable {
         case "write_doc":
             let content = try req("content")
             if args["generated"]?.boolValue == true {
-                let slug = try store.createGeneratedDoc(title: req("title"), body: content)
+                let slug = try store.createGeneratedDoc(title: req("title"), body: content, reference: str("reference"))
                 return "Criado: \(slug)"
             }
             if let slug = str("slug") {
                 try store.writeDoc(slug, content)
                 return "Salvo: \(slug)"
             }
-            let slug = try store.createDoc(title: req("title"))
+            let slug = try store.createDoc(title: req("title"), reference: str("reference"))
             try store.writeDoc(slug, content)
             return "Criado: \(slug)"
 
         case "list_review_groups":
             return try json(store.listGroups().map {
-                GroupRow(slug: $0.slug, title: $0.group.title, description: $0.group.description, tags: $0.group.tags, open: $0.group.openCount, total: $0.group.items.count)
+                GroupRow(group: ProjectStore.groupPath(of: $0.slug), slug: $0.slug, title: $0.group.title, description: $0.group.description, tags: $0.group.tags, open: $0.group.openCount, total: $0.group.items.count)
             })
 
         case "list_review_items":
@@ -807,6 +910,18 @@ struct MCPHandler: Sendable {
             let link = Link(title: str("title") ?? url, url: url, tags: tags)
             try store.updateProject { $0.links.append(link) }
             return try json(link)
+
+        case "list_claude_items":
+            let kind: ClaudeItemKind?
+            if let value = str("kind") {
+                guard let parsed = ClaudeItemKind(rawValue: value) else { throw MCPError.invalidParams("Tipo inválido: use artifact ou doc.") }
+                kind = parsed
+            } else { kind = nil }
+            return try json(store.loadProject().claude.filter { kind == nil || $0.kind == kind })
+
+        case "add_claude_item":
+            guard let kind = ClaudeItemKind(rawValue: try req("kind")) else { throw MCPError.invalidParams("Tipo inválido: use artifact ou doc.") }
+            return try json(store.addClaudeItem(url: req("url"), kind: kind, title: str("title"), tags: list("tags") ?? []))
 
         case "list_stack":
             let stack = try store.loadProject().stack
@@ -952,7 +1067,7 @@ struct MCPHandler: Sendable {
         case "list_ideas":
             let status = str("status").flatMap(IdeaStatus.init(rawValue:))
             return try json(store.listIdeas().filter { status == nil || $0.idea.status == status }.map {
-                IdeaRow(slug: $0.slug, title: $0.idea.title, status: $0.idea.status, tags: $0.idea.tags, rules: $0.idea.rules.count, promotedTopic: $0.idea.promotedTopic)
+                IdeaRow(group: ProjectStore.groupPath(of: $0.slug), slug: $0.slug, title: $0.idea.title, status: $0.idea.status, tags: $0.idea.tags, rules: $0.idea.rules.count, promotedTopic: $0.idea.promotedTopic)
             })
 
         case "get_idea":
@@ -960,7 +1075,7 @@ struct MCPHandler: Sendable {
             return try json(SlugAnd(slug: slug, value: store.loadIdea(slug)))
 
         case "add_idea":
-            let (slug, idea) = try store.createIdea(title: req("title"), body: str("body"), tags: list("tags") ?? [], author: .ai)
+            let (slug, idea) = try store.createIdea(title: req("title"), body: str("body"), tags: list("tags") ?? [], author: .ai, reference: str("reference"))
             return try json(SlugAnd(slug: slug, value: idea))
 
         case "update_idea":
@@ -1097,7 +1212,7 @@ struct MCPHandler: Sendable {
 
         case "list_skills":
             return try json(store.listSkills().map {
-                SkillRow(slug: $0.slug, title: $0.skill.title, summary: $0.skill.summary, model: $0.skill.model, tags: $0.skill.tags, nextSteps: $0.skill.nextSteps)
+                SkillRow(group: ProjectStore.groupPath(of: $0.slug), slug: $0.slug, title: $0.skill.title, summary: $0.skill.summary, model: $0.skill.model, tags: $0.skill.tags, nextSteps: $0.skill.nextSteps)
             })
 
         case "get_skill":
@@ -1107,7 +1222,7 @@ struct MCPHandler: Sendable {
         case "add_skill":
             let (slug, skill) = try store.createSkill(
                 title: req("title"), summary: str("summary"), model: str("model"), tools: list("tools") ?? [],
-                prompt: str("prompt") ?? "", tags: list("tags") ?? [], author: .ai)
+                prompt: str("prompt") ?? "", tags: list("tags") ?? [], author: .ai, reference: str("reference"))
             if let settings = try providerSettings() {
                 _ = try store.updateSkill(slug) { $0.providerSettings = settings }
                 return try json(SlugAnd(slug: slug, value: store.loadSkill(slug)))
@@ -1278,6 +1393,9 @@ struct MCPHandler: Sendable {
         var list = [Resource(name: "vibedeck.json", uri: "vibedeck://project", description: "Manifesto do projeto", mimeType: "application/json")]
         list.append(Resource(name: "Stack", uri: "vibedeck://stack", description: "Tecnologias de destaque do projeto", mimeType: "application/json"))
         list.append(Resource(name: "Padrões", uri: "vibedeck://patterns", description: "Padrões de projeto que o código deve seguir", mimeType: "application/json"))
+        // Resources instead of a tool: they cost nothing in the per-session tool catalog budget.
+        list.append(Resource(name: "Logs", uri: "vibedeck://logs", description: "Erros e falhas do VibeDeck neste projeto (24h, aviso ou pior)", mimeType: "application/json"))
+        list.append(Resource(name: "Crashes", uri: "vibedeck://logs/crashes", description: "Crashes do app nos últimos 14 dias", mimeType: "application/json"))
         list += try store.listDocs().map { Resource(name: $0.title, uri: "vibedeck://docs/\($0.slug)", mimeType: "text/markdown") }
         list += try store.listGroups().map {
             Resource(name: "Revisão: \($0.group.title)", uri: "vibedeck://reviews/\($0.slug)", description: "\($0.group.openCount) aberto(s)", mimeType: "application/json")
@@ -1309,6 +1427,14 @@ struct MCPHandler: Sendable {
         }
         if uri == "vibedeck://patterns" {
             return .text(try json(PatternListing(store: store)), uri: uri, mimeType: "application/json")
+        }
+        if uri == "vibedeck://logs" {
+            let filter = LogFilter(since: try LogFilter.parseSince("24h"), minLevel: .warning, project: store.root.standardizedFileURL.path, limit: 50)
+            return .text(String(decoding: try VDJSON.compactEncoder.encode(LogStore.default.entries(filter)), as: UTF8.self), uri: uri, mimeType: "application/json")
+        }
+        if uri == "vibedeck://logs/crashes" {
+            let filter = LogFilter(since: try LogFilter.parseSince("14d"), minLevel: .crash, limit: 50)
+            return .text(String(decoding: try VDJSON.compactEncoder.encode(LogStore.default.entries(filter)), as: UTF8.self), uri: uri, mimeType: "application/json")
         }
         if uri == "vibedeck://stack" {
             return .text(try json(store.loadProject().stack), uri: uri, mimeType: "application/json")
@@ -1451,12 +1577,14 @@ struct RuleTestRunRow: Encodable {
 }
 
 private struct DocRow: Encodable {
+    let group: String
     let slug: String
     let title: String
     let tags: [String]
 }
 
 private struct GroupRow: Encodable {
+    let group: String
     let slug: String
     let title: String
     let description: String?
@@ -1475,6 +1603,7 @@ private struct TopicRow: Encodable {
 }
 
 private struct IdeaRow: Encodable {
+    let group: String
     let slug: String
     let title: String
     let status: IdeaStatus
@@ -1507,6 +1636,7 @@ private struct CommandRow: Encodable {
 }
 
 private struct SkillRow: Encodable {
+    let group: String
     let slug: String
     let title: String
     let summary: String?

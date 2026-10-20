@@ -1,0 +1,101 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "human",
+  "body" : "## Problema\nPara agilizar o desenvolvimento, o usuário precisa levar o prompt de implementação de uma ideia para outra ferramenta (terminal, outro chat, outro agente). Hoje o prompt só é enviado pelo botão \"Implementar\" para a sessão de IA do próprio app, sem como copiá-lo.\n\n## Proposta\nAdicionar em `IdeaView` um botão **\"Copiar prompt\"** que copia para a área de transferência o mesmo prompt enviado por \"Implementar\", ou seja, o texto de `IdeaImplementation.prompt(slug:idea:topic:)`.\n\n- O prompt usa `idea.promotedTopic` quando a ideia já foi promovida. Caso contrário, usa o prompt com as regras rascunho. O botão nunca promove a ideia e não chama `promoteIdea`.\n- Antes de montar o prompt, o handler chama `flush()` para que título e regras atuais entrem no texto, como faz `readyToPromote`.\n- O botão grava com `NSPasteboard.general` (`clearContents` + `setString(.string)`) e não altera nenhum arquivo do projeto (sem `model.*` nem `AtomicFile` no handler).\n- O botão não depende de IA, então fica disponível mesmo sem provedor suportado. Não pode ficar atrás da checagem de provedor.\n- O texto do prompt não é duplicado na View. Ela chama `IdeaImplementation.prompt`, e não há string de prompt literal nova.\n- O botão tem rótulo e `.help` em pt-BR (ex.: \"Copiar prompt\") e dá feedback visível de que copiou (ex.: troca de ícone/rótulo para \"Copiado\" por instantes).\n- O botão usa `LoggedButton` com `.loggedControl(control:label:)` de identificador estável. O log não guarda o conteúdo do prompt.\n\n## Escopo\n- `Sources/VibeDeckApp/IdeaView.swift`: novo botão perto de \"Implementar\" (o envio está em torno da linha 277) e do handler que usa `flush()`.\n- `Sources/VibeDeckCore/Rules.swift`: `IdeaImplementation.prompt` (linha ~373). Só muda se for preciso ajustar o texto.\n- `Tests/VibeDeckCoreTests/RulesTests.swift`: se o texto do prompt mudar, adicionar testes com `topic` não nil e nil, checando slug, título e menção ao tópico ou às regras rascunho.\n- `README.md` e `.vibedeck/guide.md`: mencionar o botão na seção de Ideias, em pt-BR.\n\n## Critérios de aceite\n- Com a ideia aberta, \"Copiar prompt\" coloca na área de transferência o mesmo texto que \"Implementar\" envia.\n- Ideia promovida: o prompt referencia o tópico promovido. Ideia não promovida: usa as regras rascunho, e a ideia continua não promovida.\n- Editar o título ou as regras e clicar logo em seguida copia o texto atualizado.\n- Nenhum arquivo do projeto é alterado ao copiar.\n- O botão aparece e funciona sem Claude Code nem Codex instalados.\n- Rótulo, `.help` e feedback \"Copiado\" estão em pt-BR.\n- A ação é registrada via `LoggedButton` com `loggedControl` estável, sem o texto do prompt no log.\n- `IdeaView.swift` não tem prompt literal novo.\n- `swift test` passa, com testes novos se o prompt mudou.\n- README e guide.md documentam o botão.",
+  "createdAt" : "2026-10-13T17:13:32Z",
+  "id" : "2232A516-9D24-4A40-B409-6B56580BA8B0",
+  "paths" : [
+    "Sources/VibeDeckApp/IdeaView.swift",
+    "Sources/VibeDeckCore/Rules.swift",
+    "Tests/VibeDeckCoreTests/RulesTests.swift"
+  ],
+  "promotedTopic" : "para-agilizar-o-desenvolvimento-seria-bom-se-no-app-tivesse-",
+  "readiness" : {
+    "checkedAt" : "2026-10-13T17:25:41Z",
+    "fingerprint" : "52666a5d390b5b3d",
+    "viable" : true
+  },
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:24:43Z",
+      "details" : "Verificar que IdeaView.swift chama IdeaImplementation.prompt para copiar e que não há string de prompt literal nova na View.",
+      "id" : "B6C80920-CE75-4773-86C2-0C25EE2109DA",
+      "severity" : "must",
+      "text" : "O botão de copiar o prompt da ideia fica em IdeaView e copia o texto de IdeaImplementation.prompt(slug:idea:topic:), o mesmo enviado por \"Implementar\", sem duplicar o texto na View."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:24:43Z",
+      "details" : "Verificar uso de clearContents + setString(.string) e ausência de chamada de escrita (model.* / AtomicFile) no handler do botão.",
+      "id" : "F0FDC1D4-3D2E-454B-8E8A-9A163730C3B1",
+      "severity" : "must",
+      "text" : "Copiar o prompt grava o texto na área de transferência (NSPasteboard.general) como string, substituindo o conteúdo anterior, e não altera nenhum arquivo do projeto."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:24:43Z",
+      "details" : "Verificar que o botão passa idea.promotedTopic (pode ser nil) e não chama promoteIdea.",
+      "id" : "4141EF0B-B881-487C-A99B-7C96BDC5F61C",
+      "severity" : "must",
+      "text" : "O prompt copiado usa o tópico promovido (idea.promotedTopic) quando a ideia já foi promovida e, caso contrário, o prompt com as regras rascunho; o botão nunca promove a ideia."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:24:43Z",
+      "details" : "Verificar que o botão não está atrás da checagem de provedor suportado.",
+      "id" : "8679D9CB-E8D4-476B-A6B4-95B0C5AEAFF9",
+      "severity" : "must",
+      "text" : "O botão de copiar fica disponível mesmo sem provedor de IA na máquina, pois não usa IA."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:24:43Z",
+      "details" : "Verificar rótulo (ex.: \"Copiar prompt\"), .help e confirmação visual (ex.: troca de ícone/rótulo para \"Copiado\").",
+      "id" : "F8A2D37C-FDD8-42B9-804C-FDF609EAE1E9",
+      "severity" : "should",
+      "text" : "O botão de copiar o prompt usa rótulo e .help em pt-BR e dá feedback visível de que copiou."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:24:43Z",
+      "details" : "Verificar LoggedButton + .loggedControl(control:label:) e que o contexto do log não inclui o texto copiado.",
+      "id" : "91D9E3EC-6D75-46CE-9DF6-09229C62C2C5",
+      "severity" : "must",
+      "text" : "O botão de copiar o prompt usa LoggedButton com loggedControl de identificador estável e o log não guarda o conteúdo do prompt."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:24:43Z",
+      "details" : "Verificar que o handler chama flush() antes de montar o prompt, como readyToPromote.",
+      "id" : "268129FF-4826-4A85-ABE5-951D04EC57B0",
+      "severity" : "should",
+      "text" : "Antes de copiar, o botão confirma pendências de edição (flush()) para que o prompt reflita título e regras atuais da ideia."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:24:43Z",
+      "details" : "Verificar em Tests/VibeDeckCoreTests/RulesTests.swift casos com topic não nil e nil, checando slug, título e menção ao tópico ou às regras rascunho.",
+      "id" : "197CD570-7A87-4D8D-9A05-2C328273F8AE",
+      "severity" : "should",
+      "text" : "Mudar o texto do prompt de IdeaImplementation.prompt exige teste em RulesTests cobrindo o prompt com e sem tópico promovido."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:24:43Z",
+      "details" : "Verificar menção na seção de Ideias do README.md e do guide.md.",
+      "id" : "B0890361-321E-4D39-9A49-94F0155879A2",
+      "severity" : "should",
+      "text" : "README e .vibedeck/guide.md mencionam o botão de copiar o prompt da ideia, em pt-BR."
+    }
+  ],
+  "status" : "done",
+  "tags" : [
+    "ideias",
+    "interface",
+    "swiftui",
+    "ia"
+  ],
+  "title" : "Para agilizar o desenvolvimento, seria bom se no app tivesse um botão para copiar o prompt da ideia",
+  "updatedAt" : "2026-10-13T18:13:08Z"
+}

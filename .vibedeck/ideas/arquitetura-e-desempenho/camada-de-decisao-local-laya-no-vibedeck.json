@@ -1,0 +1,157 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "ai",
+  "body" : "## Problema\n\nO VibeDeck usa LLM (Claude Code/Codex) para sugerir tipo, área, prioridade, tags e duplicatas ao triar ideias e itens de revisão (ex.: `ReviewDiscover`, `RuleDiscover`). É lento e caro para decisões simples de classificação.\n\nA Laya é um modelo de decisão local open-weight (Apache 2.0, Convai):\n- ~421M de parâmetros (ModernBERT-large); há variante multilíngue de ~322M.\n- Não gera texto: recebe um estado e perguntas tipadas e devolve uma escolha com probabilidade em uma passada (~30 ms).\n- É o equivalente aberto/local do Jev (TypeSafe, fechado/API), pensado como \"System 1\": rotear/classificar e escalar para LLM ou humano quando a confiança é baixa.\n- SDK Python (`pip install laya`), checkpoint via Hugging Face.\n- Os benchmarks são da própria vendor e não foram verificados de forma independente.\n\nFontes: madewithlaya.com/guides/what-is-laya, themenonlab.blog/blog/laya-local-system-1-decision-model, arxiv.org/pdf/2609.28940, mcpmarket.com/server/jev-2.\n\n## Proposta\n\nExperimento pequeno e isolado, **desligado por padrão**, na triagem de ideias e de itens de revisão. Ele fica atrás de uma interface Swift trocável (ex.: `DecisionEngine`) no Core. A Laya roda como sidecar local Python.\n\nMedir o acerto contra a classificação atual antes de expandir para workflows.\n\nOnde poderia encaixar depois da avaliação:\n- Transições de workflow: escolher o próximo passo sem chamar LLM.\n- `rules_for`: pré-filtrar quais regras se aplicam a uma mudança, só reordenando ou destacando.\n- Baixa confiança: cair para o LLM ou para o usuário.\n\nOnde NÃO usar:\n- Gate de conclusão (`submit_rule_check`), que continua determinístico.\n- Qualquer decisão que exija explicação, porque a Laya devolve probabilidade e não raciocínio.\n\nRiscos:\n- Dependência de Python e do modelo num projeto Swift: exige sidecar/serviço local, o que pesa para um app desktop.\n- Projeto novo, com precisão não validada nos nossos dados. A saída restrita elimina respostas inválidas, não erradas.\n\n## Escopo\n\nArquivos e telas afetados:\n- `Sources/VibeDeckCore/ReviewDiscover.swift`\n- `Sources/VibeDeckCore/RuleDiscover.swift`\n- `Sources/VibeDeckCore/Patterns.swift`\n- `Sources/VibeDeckApp/AIReadOnlyOperation.swift`\n- `Sources/VibeDeckApp/IdeaView.swift`\n- `Sources/vibedeck/MCPServer.swift`\n- `Tests/VibeDeckCoreTests/*Discover*Tests.swift`\n- Também: uma operação nova de triagem no Core, com comando no CLI (`--json`) e ferramenta no MCP.\n- Documentação: README e `.vibedeck/guide.md`, com textos visíveis em pt-BR.\n\nTags: ia, core, workflows, ideias, revisoes, regras, mcp, eficiencia.\n\n## Critérios de aceite\n\nEstes critérios vêm das regras da ideia, que só valem depois de promovidas.\n\n- [must] A Laya fica atrás de um protocolo Swift trocável no Core (ex.: `DecisionEngine`), sem SwiftUI nem chamada direta ao sidecar fora da implementação. Existe ao menos uma implementação alternativa (heurística ou fake de teste).\n- [must] A Laya nunca decide a conclusão de um check. `submit_rule_check`, `ensureVerified` e a exigência de resposta para toda regra aplicável não a chamam. Teste: o resultado do check é idêntico com a Laya ligada ou desligada.\n- [must] O pré-filtro de `rules_for` nunca remove um tópico aplicável. Só pode reordenar ou destacar. Teste: a lista de tópicos aplicáveis é igual com e sem a Laya.\n- [must] Toda decisão devolve a probabilidade da opção escolhida. Abaixo de um limiar configurável, o resultado cai para o LLM ou para o usuário e nada é gravado automaticamente. Teste de unidade com confiança abaixo e acima do limiar.\n- [must] As sugestões (tipo, área, prioridade, tags, duplicatas) aparecem como proposta e só são gravadas após o aceite do usuário. Cada aceite é um único passo de undo (⌘Z).\n- [must] A Laya nunca apaga nem sobrescreve campos preenchidos por humano. Sugestões só preenchem campos vazios ou adicionam tags, e o que for criado com ela tem `author=ai`.\n- [must] O experimento fica desligado por padrão e só é ativado por opção explícita. Sem o modelo ou o sidecar, app, CLI e MCP funcionam como hoje e a funcionalidade não aparece.\n- [must] O sidecar não faz chamadas de rede em tempo de execução nem envia conteúdo do projeto para fora da máquina. O download do checkpoint é uma ação explícita do usuário.\n- [must] A chamada ao sidecar tem timeout e cancelamento. Falha ou timeout cai para o comportamento atual sem alterar nenhum item, com mensagem em pt-BR.\n- [must] A resposta do sidecar é validada contra as opções permitidas. Tags, slugs e arquivos inexistentes no projeto são descartados antes da proposta.\n- [must] Antes de expandir para workflows, existe um teste ou script de avaliação que mede a taxa de acerto contra a classificação atual em itens reais do projeto. O resultado fica registrado (README ou ideia) com o número de amostras e a acurácia.\n- [should] O escopo inicial se limita à triagem de ideias e de revisão. Workflows e `rules_for` só a usam depois da avaliação.\n- [must] A montagem do estado e das perguntas tipadas e a interpretação da escolha ficam no Core. Os testes usam um sidecar fake, e `swift test` passa sem Python nem o modelo.\n- [should] A operação nova de triagem fica disponível no CLI (`--json`) e no MCP. README e `.vibedeck/guide.md` documentam a opção, a instalação do sidecar e os limites.\n\nAlém disso, valem as regras gerais do projeto:\n- Toda escrita passa por `AtomicFile.write`.\n- Erros usam `VibeDeckError`, em pt-BR.\n- Comportamento novo no Core vem com teste.\n- Operação nova no Core aparece no CLI e no MCP.\n- Funcionalidades de IA exigem provedor suportado.",
+  "createdAt" : "2026-10-09T21:06:32Z",
+  "id" : "BB4DE108-784A-448C-945A-CFAD15BFE298",
+  "paths" : [
+    "Sources/VibeDeckCore/ReviewDiscover.swift",
+    "Sources/VibeDeckCore/RuleDiscover.swift",
+    "Sources/VibeDeckApp/AIReadOnlyOperation.swift",
+    "Sources/VibeDeckApp/IdeaView.swift",
+    "Sources/vibedeck/MCPServer.swift",
+    "Sources/VibeDeckCore/Patterns.swift",
+    "Tests/VibeDeckCoreTests/*Discover*Tests.swift"
+  ],
+  "readiness" : {
+    "checkedAt" : "2026-10-09T21:08:57Z",
+    "fingerprint" : "9d8ed581332d357f",
+    "missing" : [
+      "Contrato do sidecar não definido: transporte (processo filho com stdin/stdout JSON, socket local ou HTTP local), formato de requisição e resposta, ciclo de vida (subir e parar) e onde ele é instalado.",
+      "Estado e perguntas tipadas não especificados: o que compõe o estado de uma ideia ou item de revisão, e quais perguntas e conjuntos de opções fecham tipo, área, prioridade e tags. Não está dito se 'duplicatas' é detecção por similaridade ou uma pergunta tipada.",
+      "Checkpoint não definido: qual (inglês de ~421M ou multilíngue de ~322M, importante para textos em pt-BR), de qual repositório do Hugging Face, para qual pasta o download vai e como o app mostra e inicia esse download.",
+      "Não está claro qual é a 'classificação atual' usada como referência na avaliação de acerto. Ideias e revisões hoje não têm rótulos de tipo/área/prioridade equivalentes, e o Discover atual é feito por LLM. Faltam o conjunto de itens reais, a métrica e o local do resultado.",
+      "Valor padrão do limiar de confiança e onde ele é configurado. Também falta definir onde fica a opção que liga o experimento (preferências do app, arquivo do projeto ou flag do CLI) e como o CLI e o MCP saberiam que está ligado.",
+      "Fallback em baixa confiança ambíguo: 'LLM ou usuário' não diz quando usar cada um nem como a UI apresenta isso.",
+      "Faltam detalhes de UI na ideia: onde fica o botão de triagem na `IdeaView` e na tela de Revisões, e o que é mostrado como probabilidade. Também falta dizer como a proposta se relaciona com o Descubra existente."
+    ],
+    "viable" : false
+  },
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T21:08:26Z",
+      "details" : "Verificar que o Core só depende do protocolo e que existe ao menos uma implementação alternativa (a atual/heurística ou um fake de teste).",
+      "id" : "65D87FA4-5A09-4BAF-AEEC-76A483C29E3F",
+      "severity" : "must",
+      "text" : "A Laya fica atrás de um protocolo Swift trocável no Core (ex.: DecisionEngine), sem import de SwiftUI nem chamada direta ao sidecar fora da implementação."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T21:08:26Z",
+      "details" : "Grep por referências à camada de decisão nos caminhos de check/ensureVerified; teste que o resultado do check é idêntico com a Laya ligada ou desligada.",
+      "id" : "1F99EE8C-3437-4E50-8633-FCFDC96604E6",
+      "severity" : "must",
+      "text" : "A Laya nunca decide a conclusão de um check: submit_rule_check, ensureVerified e a exigência de resposta para toda regra aplicável não chamam a Laya."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T21:08:26Z",
+      "details" : "Teste: para um conjunto de arquivos, a lista de tópicos aplicáveis com a Laya é igual à calculada sem ela.",
+      "id" : "8188D328-A490-4AD3-86B3-25D3BC9CAA3B",
+      "severity" : "must",
+      "text" : "O pré-filtro de rules_for com Laya nunca remove um tópico aplicável (global, que casa com os arquivos ou explícito); só pode reordenar ou destacar."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T21:08:26Z",
+      "details" : "Teste de unidade com confiança abaixo e acima do limiar, verificando que abaixo dele nada é gravado automaticamente.",
+      "id" : "BA620F09-0817-4A13-883C-DC727CA86DAA",
+      "severity" : "must",
+      "text" : "Toda decisão da Laya devolve a probabilidade da opção escolhida, e abaixo de um limiar configurável de confiança o resultado cai para o LLM ou para o usuário em vez de ser aplicado."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T21:08:26Z",
+      "details" : "Verificar no app que nada muda em disco antes do aceite e que ⌘Z desfaz o aceite inteiro.",
+      "id" : "F6C3596B-F06C-455A-B12A-574529A61619",
+      "severity" : "must",
+      "text" : "As sugestões da Laya na triagem de ideias e revisões (tipo, área, prioridade, tags, duplicatas) são mostradas como proposta e só são gravadas após o usuário aceitar; cada aceite é um único passo de undo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T21:08:26Z",
+      "details" : "Teste: item com campos preenchidos mantém os valores após aplicar uma sugestão; verificar author nos registros criados.",
+      "id" : "C1CD6CEE-30CC-4402-89E2-DA033094E9A9",
+      "severity" : "must",
+      "text" : "A Laya nunca apaga nem sobrescreve campos já preenchidos por humano; sugestões só preenchem campos vazios ou adicionam tags, e o que for criado com ela tem author=ai."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T21:08:26Z",
+      "details" : "Rodar swift test e abrir o app sem Python/modelo: nenhuma tela, erro ou chamada relacionada à Laya.",
+      "id" : "B8E41DC4-EBDB-45C4-B658-E09C5C86282D",
+      "severity" : "must",
+      "text" : "O experimento fica desligado por padrão e só é ativado por opção explícita do usuário; sem o modelo ou o sidecar instalados, o app, o CLI e o MCP funcionam como hoje e a funcionalidade não aparece."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T21:08:26Z",
+      "details" : "Revisar o código do sidecar: sem clientes HTTP além do download iniciado pelo usuário.",
+      "id" : "F69F3807-18D9-43DE-B8EE-6EE7BBE3938A",
+      "severity" : "must",
+      "text" : "O sidecar local da Laya não faz chamadas de rede em tempo de execução nem envia conteúdo do projeto para fora da máquina; o download do checkpoint é uma ação explícita do usuário."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T21:08:26Z",
+      "details" : "Teste com sidecar fake que trava ou falha: nenhum arquivo em .vibedeck é modificado e há mensagem em pt-BR.",
+      "id" : "E1B9C870-5EA9-4A93-A7D5-E59F9C7701CF",
+      "severity" : "must",
+      "text" : "A chamada ao sidecar tem timeout e botão ou caminho de cancelamento, e uma falha ou timeout cai para o comportamento atual sem alterar nenhum item."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T21:08:26Z",
+      "details" : "Teste com saída contendo slug de tópico inexistente e valor fora do conjunto: eles não aparecem na proposta.",
+      "id" : "165F42CD-01F6-435E-A3FE-8C271A24C67D",
+      "severity" : "must",
+      "text" : "A resposta do sidecar é validada contra as opções permitidas: tags, slugs e arquivos sugeridos que não existem no projeto são descartados antes da proposta."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T21:08:26Z",
+      "details" : "Verificar o script/teste de avaliação e o resultado documentado (README ou ideia) com o número de amostras e a acurácia.",
+      "id" : "CE74246B-789A-47E1-922C-74CDF6347606",
+      "severity" : "must",
+      "text" : "Antes de qualquer expansão para workflows, existe um teste ou script de avaliação que mede a taxa de acerto da Laya contra a classificação atual em itens reais do projeto e registra o resultado."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T21:08:26Z",
+      "details" : "Verificar que os usos no código se restringem aos arquivos de triagem enquanto a avaliação não existir.",
+      "id" : "BCCE7578-F549-45AD-B36E-7C63D4A062AD",
+      "severity" : "should",
+      "text" : "O escopo inicial da Laya se limita à triagem de ideias e de itens de revisão; transições de workflow e rules_for só passam a usá-la depois da avaliação de acerto."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T21:08:26Z",
+      "details" : "Rodar swift test numa máquina sem Python/laya: deve passar.",
+      "id" : "047379D7-6087-455C-8404-FD87DB3CC383",
+      "severity" : "must",
+      "text" : "A lógica de montar o estado e as perguntas tipadas e de interpretar a escolha fica no Core com testes de unidade que usam um sidecar fake, sem exigir Python nem o modelo para rodar swift test."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T21:08:26Z",
+      "details" : "Verificar o comando no CLI, a ferramenta no MCP e a seção no README e em .vibedeck/guide.md; textos visíveis em pt-BR.",
+      "id" : "A0933C40-1476-433E-BDC9-34836E55142A",
+      "severity" : "should",
+      "text" : "Uma operação nova de triagem com a Laya no Core também fica disponível no CLI (com --json) e no MCP, e o README e o guia documentam a opção, a instalação do sidecar e os limites."
+    }
+  ],
+  "status" : "new",
+  "tags" : [
+    "ia",
+    "core",
+    "workflows",
+    "ideias",
+    "revisoes",
+    "regras",
+    "mcp",
+    "eficiencia"
+  ],
+  "title" : "Camada de decisão local (Laya) no VibeDeck",
+  "updatedAt" : "2026-10-09T21:08:57Z"
+}

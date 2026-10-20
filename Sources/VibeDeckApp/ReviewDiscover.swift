@@ -17,7 +17,7 @@ final class ReviewDiscoverRunner {
     var isRunning: Bool { state == .running }
 
     func start(item: ReviewItem, kind: String, topics: [(slug: String, topic: RuleTopic)], store: ProjectStore, provider: AIProvider = .claude) {
-        guard provider.isInstalled else { state = .failed("\(provider.title) não está instalado."); return }
+        guard RemoteExecution.available(provider, root: store.root) else { state = .failed("\(provider.title) não está instalado."); return }
         cancel()
         state = .running
         let prompt = ReviewDiscover.prompt(item: item, kind: kind, topics: ReviewDiscover.candidateTopics(topics, item: item))
@@ -87,7 +87,7 @@ final class ReviewDiscoverRunner {
         try? stdin.fileHandleForWriting.write(contentsOf: Data(input.utf8))
         try? stdin.fileHandleForWriting.close()
 
-        let timedOut = Task.detached {
+        let timedOut = VDLog.detached {
             try? await Task.sleep(for: ReviewDiscover.timeout)
             guard !Task.isCancelled, process.isRunning else { return false }
             process.terminate()
@@ -95,9 +95,9 @@ final class ReviewDiscoverRunner {
         }
         defer { timedOut.cancel() }
         let output = await withTaskCancellationHandler {
-            await Task.detached {
+            await VDLog.detached {
                 // Drain stderr concurrently so a chatty hook can't fill the pipe and block the process.
-                let errors = Task.detached { stderr.fileHandleForReading.readDataToEndOfFile() }
+                let errors = VDLog.detached { stderr.fileHandleForReading.readDataToEndOfFile() }
                 let data = stdout.fileHandleForReading.readDataToEndOfFile()
                 _ = await errors.value
                 process.waitUntilExit()
@@ -115,6 +115,7 @@ final class ReviewDiscoverRunner {
 
 /// The proposal: each suggestion with its reason and a checkbox. Replacing a filled field starts unchecked.
 struct ReviewDiscoverSheet: View {
+    @Environment(\.logProject) private var logProject
     let proposal: ReviewDiscoverProposal
     let apply: (Set<ReviewDiscover.Field>, Set<String>) -> Void
     @Environment(\.dismiss) private var dismiss
@@ -130,7 +131,7 @@ struct ReviewDiscoverSheet: View {
                 if !proposal.fields.isEmpty {
                     Section("Onde") {
                         ForEach(proposal.fields) { change in
-                            Toggle(isOn: member(change.field, in: $fields)) {
+                            Toggle(isOn: member(change.field, in: $fields).logging(control: "review_discover.selection_3", label: "Alternar", project: logProject)) {
                                 Text("\(change.field.label): \(change.suggested)")
                                 if let current = change.current {
                                     Text("Substitui: \(current)").font(.caption).foregroundStyle(.orange)
@@ -143,7 +144,7 @@ struct ReviewDiscoverSheet: View {
                 if !proposal.topics.isEmpty {
                     Section {
                         ForEach(proposal.topics) { topic in
-                            Toggle(isOn: member(topic.slug, in: $topics)) {
+                            Toggle(isOn: member(topic.slug, in: $topics).logging(control: "review_discover.selection_4", label: "Alternar", project: logProject)) {
                                 Text(topic.title)
                                 if let reason = topic.reason { Text(reason).font(.caption) }
                             }
@@ -163,12 +164,12 @@ struct ReviewDiscoverSheet: View {
             .formStyle(.grouped)
             HStack {
                 Spacer()
-                Button("Cancelar", role: .cancel) { dismiss() }
+                LoggedButton("Cancelar", role: .cancel) { dismiss() }.loggedControl(control: "review_discover.button_1", label: "Cancelar")
                     .keyboardShortcut(.cancelAction)
-                Button("Aplicar selecionados") {
+                LoggedButton("Aplicar selecionados") {
                     apply(fields, topics)
                     dismiss()
-                }
+                }.loggedControl(control: "review_discover.button_2", label: "Aplicar selecionados")
                 .keyboardShortcut(.defaultAction)
                 .disabled(fields.isEmpty && topics.isEmpty)
             }

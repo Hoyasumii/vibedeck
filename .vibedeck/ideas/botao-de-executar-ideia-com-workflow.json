@@ -1,0 +1,164 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "human",
+  "body" : "## Problema\n\nAo pedir à IA que implemente uma ideia já aprovada, o usuário precisa escolher entre usar um workflow e executar da forma padrão. Essa escolha deve existir no botão **Implementar** e nos pedidos feitos no chat do VibeDeck.\n\n## Proposta\n\nImplemente a escolha de modo para ideias com `status == approved`, `readiness.viable == true` e `readiness.fingerprint == contentFingerprint`.\n\nQuando o pedido não indicar o modo, aguarde a decisão do usuário antes de iniciar alterações, promover a ideia ou iniciar uma execução. Se houver workflows no projeto, ofereça **Workflow**, **Execução padrão** e **Cancelar**. Ao escolher Workflow, permita selecionar um workflow existente ou adicionar um do catálogo antes de selecioná-lo. Se não houver workflows, ofereça somente **Execução padrão** e **Cancelar**, sem acesso ao catálogo nesse diálogo.\n\nNo chat, respeite pedidos explícitos de execução padrão ou de uso de um workflow existente, sem repetir a pergunta de modo. A nova pergunta se aplica somente ao app; chamadas diretas por CLI e MCP continuam sem essa exigência.\n\nA execução padrão deve usar `IdeaImplementation.prompt`. A execução por workflow deve receber uma identificação recuperável da ideia, permitindo consultar sua descrição e regras. O vínculo entre ideia, workflow e execução deve permanecer estável mesmo quando o título ou a descrição mudar.\n\nSe já existir uma execução do workflow escolhido para a mesma ideia, pergunte **Retomar** ou **Reiniciar**, inclusive quando o workflow tiver sido indicado explicitamente no chat. Retomar preserva o histórico e continua do estado persistido, sem repetir etapas concluídas; Reiniciar começa pela etapa inicial do workflow selecionado.\n\n## Escopo\n\n- `Sources/VibeDeckApp/IdeaView.swift`: botão Implementar, confirmação das edições pendentes e integração com a escolha de modo antes dos efeitos de implementação.\n- `Sources/VibeDeckApp/RuleDiscover.swift`: integração com o controle de implementação e avaliação da ideia.\n- `Sources/VibeDeckApp/ClaudeSession.swift`: pedidos no chat, escolhas explícitas e início ou continuação da implementação.\n- `Sources/VibeDeckApp/WorkflowView.swift`: seleção do workflow e decisão entre retomar e reiniciar. Atualmente, o seletor reconhece execuções pela entrada.\n- `Sources/VibeDeckApp/ProjectModel.swift`: acesso ao conteúdo atual da ideia e operações persistidas envolvidas no fluxo.\n- `Sources/VibeDeckCore/Rules.swift`: elegibilidade, avaliação atual e reutilização de `IdeaImplementation.prompt`.\n- `Sources/VibeDeckCore/WorkflowRuns.swift`: estado persistido das execuções envolvidas.\n- `Tests/VibeDeckCoreTests/RuleDiscoverTests.swift` e `Tests/VibeDeckCoreTests/WorkflowRunsTests.swift`: cobertura das condições de elegibilidade e dos comportamentos de execução.\n\nPreserve as regras aplicáveis do projeto: textos em pt-BR, controles com logs estáveis sem conteúdo de prompts, mutações persistidas com undo no app e escritas pelas operações existentes do Core. Atualize a documentação afetada conforme as regras do projeto. Estas regras da ideia permanecem rascunho até sua promoção.\n\n## Critérios de aceite\n\n1. A nova escolha só se aplica a ideias `approved` com avaliação viável atual. Verifique também avaliação ausente, inviável, fingerprint divergente e status diferente de `approved`.\n2. Com workflows disponíveis, clicar em Implementar apresenta Workflow, Execução padrão e Cancelar antes de iniciar a implementação.\n3. Um pedido no chat para implementar uma ideia elegível sem modo explícito aguarda a escolha antes de executar alterações ou iniciar um workflow.\n4. Pedidos explícitos de execução padrão seguem esse modo sem abrir o seletor; pedidos que nomeiam um workflow existente selecionam esse workflow sem repetir a pergunta de modo.\n5. A seleção de workflow permite escolher um existente e acessar o catálogo para adicionar outro quando o projeto já possui workflows. Nenhum item do catálogo é adicionado sem seleção explícita.\n6. Sem workflows no projeto, o diálogo oferece apenas Execução padrão e Cancelar, sem seleção de workflow nem acesso ao catálogo.\n7. Cancelar encerra o pedido sem enviar o prompt de implementação, criar ou retomar execução, nem promover a ideia por causa desse pedido.\n8. Execução padrão envia ao chat o resultado de `IdeaImplementation.prompt`, sem criar execução de workflow.\n9. A entrada do workflow identifica a ideia de forma recuperável, permitindo ler sua descrição e regras.\n10. A mesma ideia e o mesmo workflow continuam associados à execução anterior após alterações de título ou descrição, quando a ideia estiver novamente elegível.\n11. Havendo execução anterior para a mesma ideia e workflow, o app pergunta Retomar ou Reiniciar antes de continuar, inclusive para workflow explicitamente solicitado no chat.\n12. Retomar preserva o histórico e continua do estado persistido sem reiniciar etapas concluídas. Reiniciar começa pela etapa inicial do workflow selecionado.\n13. Ao confirmar o modo, revalide a elegibilidade com o conteúdo atual. Se uma alteração externa invalidar a avaliação enquanto o diálogo estiver aberto, a implementação não inicia com a avaliação anterior.\n14. CLI e MCP continuam funcionando sem exigir a nova escolha de modo.\n15. Os comportamentos novos do Core têm testes, `swift test` passa e a implementação só é considerada concluída após o check obrigatório aprovado. Permanece registrada a pendência anterior do check de `.vibedeck/guide.md`, adiada pelo usuário por indisponibilidade de ferramentas; ela não representa aprovação.",
+  "createdAt" : "2026-10-20T02:54:09Z",
+  "id" : "32D7FF3C-E017-4C95-B4B9-82B357E76F4E",
+  "paths" : [
+    "Sources/VibeDeckApp/IdeaView.swift",
+    "Sources/VibeDeckApp/RuleDiscover.swift",
+    "Sources/VibeDeckApp/ClaudeSession.swift",
+    "Sources/VibeDeckApp/WorkflowView.swift",
+    "Sources/VibeDeckCore/Rules.swift",
+    "Sources/VibeDeckApp/ProjectModel.swift",
+    "Sources/VibeDeckCore/WorkflowRuns.swift",
+    "Tests/VibeDeckCoreTests/RuleDiscoverTests.swift",
+    "Tests/VibeDeckCoreTests/WorkflowRunsTests.swift"
+  ],
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T13:44:55Z",
+      "details" : "Verificar os casos approved com avaliação viável atual, avaliação ausente, inviável ou com fingerprint diferente do contentFingerprint, além de status diferente de approved.",
+      "id" : "3939AE62-29B3-4CE0-A52A-D07D78036C5E",
+      "severity" : "must",
+      "text" : "A escolha do modo de implementação só se aplica a ideias com status approved, readiness.viable=true e readiness.fingerprint igual ao contentFingerprint."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T13:44:55Z",
+      "details" : "Com uma ideia elegível e pelo menos um workflow no projeto, clicar em Implementar deve apresentar Workflow, Execução padrão e Cancelar antes de iniciar a implementação.",
+      "id" : "975D245B-E108-4EFB-8531-0D025E5AEF52",
+      "severity" : "must",
+      "text" : "O botão Implementar de uma ideia elegível deve solicitar a escolha entre workflow e execução padrão antes de iniciar a implementação."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T13:44:55Z",
+      "details" : "No chat do app, pedir a implementação de uma ideia elegível sem indicar o modo deve apresentar a escolha antes de executar alterações ou iniciar um workflow.",
+      "id" : "7C96A9C8-340D-4E7B-B77D-C0A66851A2F9",
+      "severity" : "must",
+      "text" : "Um pedido no chat do app para implementar uma ideia elegível, sem modo explícito, deve aguardar a escolha entre workflow e execução padrão."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T13:44:55Z",
+      "details" : "Verificar que chamadas diretas pelo CLI e pelo MCP continuam funcionando sem solicitar a nova escolha de modo.",
+      "id" : "F6D23E52-5042-4EF3-9D22-BE6054F64CF4",
+      "severity" : "must",
+      "text" : "A nova pergunta de modo de implementação deve ficar restrita ao app, sem ser exigida de IAs externas pelo CLI ou MCP."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T13:44:55Z",
+      "details" : "Enviar no chat um pedido explícito de execução padrão e verificar que o seletor de modo não aparece.",
+      "id" : "2EC0AE3E-D46B-4F39-9B48-8276DC6344EB",
+      "severity" : "must",
+      "text" : "Um pedido explícito de implementação pela execução padrão deve seguir esse modo sem repetir a pergunta de modo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T13:44:55Z",
+      "details" : "Enviar um pedido que nomeie um workflow existente e verificar que ele é selecionado sem abrir a pergunta entre workflow e execução padrão.",
+      "id" : "B931C93F-2EBE-4A59-9856-009CCCECC025",
+      "severity" : "must",
+      "text" : "Um pedido explícito de implementação com um workflow existente deve selecionar esse workflow sem repetir a pergunta de modo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T13:44:55Z",
+      "details" : "Com workflows no projeto, escolher Workflow e verificar que o usuário pode selecionar qual deles executar.",
+      "id" : "F2157EB6-6145-4ABA-87A5-FCCE8C8CDBFE",
+      "severity" : "must",
+      "text" : "A opção Workflow deve permitir selecionar um workflow existente no projeto."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T13:44:55Z",
+      "details" : "Com pelo menos um workflow no projeto, abrir a seleção e verificar o acesso ao catálogo para adicionar um workflow antes de selecioná-lo para implementação.",
+      "id" : "7E0054D4-F8A3-4144-8C58-B53E1C4B5F2B",
+      "severity" : "must",
+      "text" : "Quando houver workflows no projeto, o seletor de workflow da implementação deve oferecer acesso à adição de workflows do catálogo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T13:44:55Z",
+      "details" : "Com a lista de workflows vazia, verificar que a escolha oferece somente Execução padrão e Cancelar, sem seleção de workflow nem acesso ao catálogo nesse diálogo.",
+      "id" : "AEFCDB67-BC3D-46F0-A764-7E81EC82C8B4",
+      "severity" : "must",
+      "text" : "Se o projeto não tiver workflows, a escolha de implementação deve oferecer apenas execução padrão e cancelar."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T13:44:55Z",
+      "details" : "Cancelar o seletor e verificar que não houve envio do prompt de implementação, criação ou retomada de execução, nem promoção da ideia causada por esse pedido.",
+      "id" : "D008570A-BD7C-477E-85FE-2730F2307C2B",
+      "severity" : "must",
+      "text" : "Cancelar a escolha de implementação deve encerrar o pedido sem iniciar a implementação nem promover a ideia."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T13:44:55Z",
+      "details" : "Escolher Execução padrão e verificar que o chat recebe o prompt produzido por IdeaImplementation.prompt, sem criar uma execução de workflow.",
+      "id" : "A3EFE728-C709-4B69-B5D3-7CE3FBE5414D",
+      "severity" : "must",
+      "text" : "A execução padrão deve usar o fluxo de implementação por IdeaImplementation.prompt."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T13:44:55Z",
+      "details" : "Escolher um workflow e verificar que sua execução recebe uma referência recuperável da ideia, permitindo ler a descrição e as regras correspondentes.",
+      "id" : "7B7C27C6-AA8A-4A70-AB5C-1AE771D9AE05",
+      "severity" : "must",
+      "text" : "A execução por workflow deve receber a identificação da ideia que será implementada como parte de sua entrada."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T13:44:55Z",
+      "details" : "Iniciar o mesmo workflow para a mesma ideia após editar seu título ou descrição e verificar que a execução anterior ainda é reconhecida como pertencente àquela ideia.",
+      "id" : "AA2E3BF6-2963-44E6-A6E4-169EB3829341",
+      "severity" : "must",
+      "text" : "A identificação de uma execução para a mesma ideia e workflow deve permanecer estável quando o título ou a descrição da ideia mudar."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T13:44:55Z",
+      "details" : "Criar uma execução para a ideia e o workflow selecionado e solicitar nova implementação; verificar a pergunta Retomar ou Reiniciar, inclusive quando o workflow foi indicado explicitamente no chat.",
+      "id" : "624C3483-D3C4-4DDA-BF50-760262C15A86",
+      "severity" : "must",
+      "text" : "Quando já existir uma execução do workflow escolhido para a mesma ideia, o app deve perguntar se o usuário deseja retomar ou reiniciar antes de continuar."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T13:44:55Z",
+      "details" : "Pausar uma execução com progresso registrado, escolher Retomar e verificar que o histórico permanece e a execução continua do estado persistido.",
+      "id" : "04EEB887-C1AC-4D76-A08A-3FC1E017BBEC",
+      "severity" : "must",
+      "text" : "Escolher Retomar deve continuar a execução existente a partir do estado persistido, sem reiniciar etapas já concluídas."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T13:44:55Z",
+      "details" : "Usar uma execução parcialmente concluída, escolher Reiniciar e verificar que a próxima etapa passa a ser a etapa inicial do workflow.",
+      "id" : "7D9E4052-9E5D-41E6-AFD3-6B03D1FA810E",
+      "severity" : "must",
+      "text" : "Escolher Reiniciar deve começar a execução pela etapa inicial do workflow selecionado."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T13:44:55Z",
+      "details" : "Abrir a escolha com uma ideia elegível, alterar externamente seu conteúdo para invalidar a avaliação e confirmar; verificar que a implementação não inicia com a avaliação anterior.",
+      "id" : "C7F89480-6587-425D-BD4D-D595EBD56133",
+      "severity" : "must",
+      "text" : "Ao confirmar o modo de implementação, o app deve revalidar a elegibilidade da ideia usando seu conteúdo atual."
+    }
+  ],
+  "status" : "new",
+  "tags" : [
+    "ideias",
+    "workflows",
+    "interface"
+  ],
+  "title" : "Novo Comportamento de quando o usuário pedir para IA implementar uma ideia já aprovada, o programa deverá perguntar ao usuário se ele deseja implementar a ideia com um workflow, ou se deseja executar da forma padrão?",
+  "updatedAt" : "2026-10-20T13:46:06Z"
+}

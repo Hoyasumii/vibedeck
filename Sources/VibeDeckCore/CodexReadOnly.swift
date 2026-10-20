@@ -12,17 +12,30 @@ import Foundation
     public private(set) var model: String?
     public init() {}
     public func run(root: URL, prompt: String, schema: JSONValue, timeout: Duration = .seconds(90), settings: AIProviderSettings = .init(), workspaceWrites: Bool = false) async throws -> String {
+        let prompt = try await RemoteExecution.prepareContext(prompt, root: root)
         output = ""; tokens = .init()
         defer { stop() }
         return try await withTaskCancellationHandler {
             try await rpc.start(root: root)
             let config = try await rpc.request("config/read", params: ["includeLayers": .bool(false)])
             let overrides = Self.overrides(config: config, workspaceWrites: workspaceWrites)
-            var params: [String: JSONValue] = ["cwd": .string(root.path), "ephemeral": .bool(true), "approvalPolicy": .string("never"), "sandbox": .string(workspaceWrites ? "workspace-write" : "read-only"), "config": .object(overrides), "developerInstructions": .string(AIPromptPolicy.instructions)]
+            var params: [String: JSONValue] = ["cwd": .string(RemoteExecution.path(for: root)), "ephemeral": .bool(true), "approvalPolicy": .string("never"), "sandbox": .string(workspaceWrites ? "workspace-write" : "read-only"), "config": .object(overrides), "developerInstructions": .string(AIPromptPolicy.instructions)]
             if !workspaceWrites { params["dynamicTools"] = CodexReadTools.specs }
             if let model = settings.model { params["model"] = .string(model) }
+            params["allowProviderModelFallback"] = .bool(false)
             let response = try await rpc.request("thread/start", params: params)
             model = response["model"]?.string ?? settings.model
+            if settings.model != nil || settings.effort != nil {
+                var models: [CodexModel] = [], cursor: String?
+                repeat {
+                    var params: [String: JSONValue] = ["limit": .number(100)]
+                    if let cursor { params["cursor"] = .string(cursor) }
+                    let page = try await rpc.request("model/list", params: params)
+                    models += CodexModel.list(page); cursor = page["nextCursor"]?.string
+                } while cursor != nil
+                _ = try AISettingsResolver.resolve(provider: .codex, resource: .init(model: model, effort: settings.effort),
+                    availableModels: models.map(\.id), supportedEfforts: models.first(where: { $0.id == model })?.efforts)
+            }
             guard let id = response["thread"]?["id"]?.string else { throw CodexRPCError.invalidResponse }
             thread = id
             rpc.onRequest = { [weak self] id, method, request in
@@ -32,7 +45,7 @@ import Foundation
                     let arguments = request["arguments"] ?? .object([:])
                     let expectedThread = self.thread
                     Task { [weak self] in
-                        let result = await Task.detached {
+                        let result = await VDLog.detached {
                             CodexReadTools.response(root: root, tool: tool, arguments: arguments)
                         }.value
                         guard let self, self.thread == expectedThread else { return }
@@ -43,11 +56,13 @@ import Foundation
                 else { self.rpc.reject(id: id, message: "Esta operação só permite exploração sem interação ou escrita.") }
             }
             rpc.onDisconnect = { [weak self] error in self?.finish(.failure(CodexRPCError.server(error))) }
+            var stream = CodexEventStream()
             rpc.onNotification = { [weak self] method, params in
                 guard let self, params["threadId"]?.string == self.thread else { return }
                 if method == "thread/tokenUsage/updated" { self.tokens = .codex(params["tokenUsage"]?["total"]) }
-                if method == "item/agentMessage/delta" { self.output += params["delta"]?.string ?? "" }
-                if method == "item/completed", params["item"]?["type"]?.string == "agentMessage", self.output.isEmpty { self.output = params["item"]?["text"]?.string ?? "" }
+                if case .textDelta(let delta) = stream.event(method, params) { self.output += delta }
+                if method == "item/completed", params["item"]?["type"]?.string == "agentMessage",
+                   params["item"]?["phase"]?.string == "final_answer" { self.output = params["item"]?["text"]?.string ?? self.output }
                 if method == "turn/completed" {
                     let turn = params["turn"]
                     if turn?["status"]?.string == "completed" { self.finish(.success(self.output)) }

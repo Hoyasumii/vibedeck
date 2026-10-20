@@ -2,9 +2,12 @@ import SwiftUI
 import VibeDeckCore
 
 struct ReviewGroupView: View {
+    @Environment(\.logProject) private var providerRoot
+    @Environment(\.logProject) private var logProject
     let slug: String
     @Environment(ProjectModel.self) private var model
     @Environment(\.undoManager) private var undo
+    @Environment(AISession.self) private var session
     @State private var selection: ReviewItem.ID?
     @State private var kindFilter: String?
     @State private var statusFilter: StatusFilter = .open
@@ -59,12 +62,18 @@ struct ReviewGroupView: View {
             }
             .inspectorColumnWidth(min: 260, ideal: 300, max: 420)
         }
-        .onChange(of: selection) { _, new in if new != nil { showInspector = true } }
+        .onChange(of: selection) { _, new in
+            if new != nil { showInspector = true }
+            model.resolver.selectionChanged(to: new)
+        }
+        .sheet(isPresented: Binding(get: { model.resolver.isActive }, set: { if !$0 { model.resolver.dismiss() } })) {
+            ReviewResolveSheet(runner: model.resolver)
+        }
         .navigationTitle(group.title)
         .navigationSubtitle("\(group.openCount) aberto(s) · \(group.items.count) no total")
         .toolbar {
             ToolbarItem {
-                Button { showInspector.toggle() } label: { Label("Inspetor", systemImage: "sidebar.right") }
+                LoggedButton { showInspector.toggle() } label: { Label("Inspetor", systemImage: "sidebar.right") }.loggedControl(control: "review_group_view.button_1", label: "Inspetor")
                     .keyboardShortcut("i", modifiers: [.command, .option])
             }
         }
@@ -81,7 +90,10 @@ struct ReviewGroupView: View {
         // A single HStack (not ViewThatFits): see IdeaView.header.
         HStack(alignment: .top, spacing: 16) {
             titleBlock
-            statusPicker
+            VStack(alignment: .trailing, spacing: 8) {
+                statusPicker
+                if canResolve { resolveGroupButton }
+            }
         }
         .padding(.horizontal, 20)
         .padding(.top, 16)
@@ -89,13 +101,13 @@ struct ReviewGroupView: View {
 
     private var titleBlock: some View {
         VStack(alignment: .leading, spacing: 2) {
-            CommitTextField("Tema", value: group.title) { title in
+            CommitTextField(control: "reviewgroupview.field_1", "Tema", value: group.title) { title in
                 guard !title.isEmpty else { return }
                 model.mutateGroup(slug, "Renomear grupo", undo: undo) { $0.title = title }
             }
             .font(.title2.weight(.semibold))
             .textFieldStyle(.plain)
-            CommitTextField("Adicionar descrição…", value: group.description ?? "") { text in
+            CommitTextField(control: "reviewgroupview.field_2", "Adicionar descrição…", value: group.description ?? "") { text in
                 model.mutateGroup(slug, "Editar descrição", undo: undo) { $0.description = text.isEmpty ? nil : text }
             }
             .textFieldStyle(.plain)
@@ -106,8 +118,27 @@ struct ReviewGroupView: View {
         .frame(minWidth: 220, maxWidth: .infinity, alignment: .leading)
     }
 
+    /// Same check as Descubra and Gerar documentos: at least one supported provider installed.
+    private var canResolve: Bool { !AIProvider.installed(in: providerRoot).isEmpty }
+
+    private var resolveGroupButton: some View {
+        let count = ReviewResolve.eligible(group.items).count
+        return LoggedButton { resolve(group.items) } label: {
+            Label("Resolver grupo", systemImage: "wand.and.stars")
+        }.loggedControl(control: "review_group_view.button_resolve_group", label: "Resolver grupo")
+        .buttonStyle(.glass)
+        .controlSize(.small)
+        .disabled(count == 0 || model.resolver.isActive)
+        .help("Pede à IA, um item por vez, para resolver os itens abertos e em andamento (pergunta, plano, aceite, execução e check)")
+    }
+
+    private func resolve(_ items: [ReviewItem], single: ReviewItem.ID? = nil) {
+        model.resolver.start(group: slug, title: group.title, items: items, single: single,
+                             model: model, provider: session.provider, undo: undo)
+    }
+
     private var statusPicker: some View {
-        Picker("Status", selection: $statusFilter) {
+        Picker("Status", selection: $statusFilter.logging(control: "review_group_view.selection_14", label: "Status", project: logProject)) {
             ForEach(StatusFilter.allCases, id: \.self) { Text($0.rawValue).tag($0) }
         }
         .pickerStyle(.segmented)
@@ -144,11 +175,11 @@ struct ReviewGroupView: View {
             }
             .frame(maxHeight: .infinity)
         } else {
-            List(selection: $selection) {
+            List(selection: $selection.logging(control: "review_group_view.selection_15", label: "Seleção", project: logProject)) {
                 ForEach(items) { item in
-                    ReviewItemRow(item: item, kind: model.project.kind(item.kind)) { status in
+                    ReviewItemRow(item: item, kind: model.project.kind(item.kind), canResolve: canResolve, setStatus: { status in
                         model.mutateItem(slug, item.id, "Alterar status", undo: undo) { $0.status = status }
-                    }
+                    }, resolve: { resolve([item], single: item.id) })
                     .tag(item.id)
                     .contextMenu { contextMenu(for: item) }
                 }
@@ -164,31 +195,35 @@ struct ReviewGroupView: View {
     private func contextMenu(for item: ReviewItem) -> some View {
         Menu("Status") {
             ForEach(ReviewStatus.allCases, id: \.self) { status in
-                Button(status.label) { model.mutateItem(slug, item.id, "Alterar status", undo: undo) { $0.status = status } }
+                LoggedButton(status.label) { model.mutateItem(slug, item.id, "Alterar status", undo: undo) { $0.status = status } }.loggedControl(control: "review_group_view.button_2", label: "Ativar controle")
             }
         }
         Menu("Tipo") {
             ForEach(model.project.reviewKinds) { kind in
-                Button(kind.label) { model.mutateItem(slug, item.id, "Alterar tipo", undo: undo) { $0.kind = kind.id } }
+                LoggedButton(kind.label) { model.mutateItem(slug, item.id, "Alterar tipo", undo: undo) { $0.kind = kind.id } }.loggedControl(control: "review_group_view.button_3", label: "Ativar controle")
             }
         }
         Menu("Mover para grupo") {
             ForEach(model.groups.filter { $0.slug != slug }) { entry in
-                Button(entry.group.title) { moveItem(item, to: entry.slug) }
+                LoggedButton(entry.group.title) { moveItem(item, to: entry.slug) }.loggedControl(control: "review_group_view.button_4", label: "Ativar controle")
             }
         }
-        Button("Copiar id") {
+        LoggedButton("Copiar id") {
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(item.id.uuidString, forType: .string)
+        }.loggedControl(control: "review_group_view.button_5", label: "Copiar id")
+        if canResolve, !item.status.isClosed {
+            LoggedButton("Resolver…") { resolve([item], single: item.id) }.loggedControl(control: "review_group_view.button_resolve_menu", label: "Resolver")
+                .disabled(model.resolver.isActive)
         }
         Divider()
-        Button("Remover", role: .destructive) { delete(item.id) }
+        LoggedButton("Remover", role: .destructive) { delete(item.id) }.loggedControl(control: "review_group_view.button_6", label: "Remover")
     }
 
     private var quickAdd: some View {
         HStack(spacing: 10) {
             Menu {
-                Picker("Tipo", selection: $newKind) {
+                Picker("Tipo", selection: $newKind.logging(control: "review_group_view.selection_16", label: "Tipo", project: logProject)) {
                     ForEach(model.project.reviewKinds) { kind in
                         Label(kind.label, systemImage: kind.symbol ?? "tag").tag(kind.id)
                     }
@@ -201,12 +236,12 @@ struct ReviewGroupView: View {
             .buttonStyle(.glass)
             .fixedSize()
 
-            TextField("Novo ponto de revisão…", text: $newTitle)
+            LoggedTextField("Novo ponto de revisão…", text: $newTitle, onCommit: addItem).loggedField(control: "reviewgroupview.text_1", label: "Novo ponto de revisão…")
                 .textFieldStyle(.plain)
                 .focused($quickAddFocused)
-                .onSubmit(addItem)
 
-            Button(action: addItem) { Image(systemName: "plus") }
+
+            LoggedButton(action: addItem) { Image(systemName: "plus") }.loggedControl(control: "review_group_view.button_7", label: "Ativar controle")
                 .buttonStyle(.glassProminent)
                 .disabled(newTitle.trimmingCharacters(in: .whitespaces).isEmpty)
         }
@@ -216,7 +251,7 @@ struct ReviewGroupView: View {
         .padding(.horizontal, 20)
         .padding(.bottom, 14)
         .background {
-            Button("") { quickAddFocused = true }.keyboardShortcut("n", modifiers: [.command, .shift]).hidden()
+            LoggedButton("") { quickAddFocused = true }.loggedControl(control: "review_group_view.button_8", label: "").keyboardShortcut("n", modifiers: [.command, .shift]).hidden()
         }
     }
 
@@ -260,19 +295,23 @@ struct ReviewGroupView: View {
 // MARK: - Row
 
 struct ReviewItemRow: View {
+    @Environment(\.logProject) private var providerRoot
+    @Environment(\.logProject) private var logProject
     let item: ReviewItem
     let kind: ReviewKind
+    var canResolve = false
     let setStatus: (ReviewStatus) -> Void
+    var resolve: () -> Void = {}
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            Button {
+            LoggedButton {
                 setStatus(item.status.isClosed ? .open : .done)
             } label: {
                 Image(systemName: item.status == .done ? "checkmark.circle.fill" : item.status == .wontfix ? "xmark.circle" : "circle")
                     .foregroundStyle(item.status == .done ? AnyShapeStyle(.green) : AnyShapeStyle(.secondary))
                     .font(.title3)
-            }
+            }.loggedControl(control: "review_group_view.button_9", label: "Ativar controle")
             .buttonStyle(.plain)
             .help(item.status.isClosed ? "Reabrir" : "Marcar como feito")
 
@@ -313,6 +352,12 @@ struct ReviewItemRow: View {
                     Text(details).font(.callout).foregroundStyle(.secondary).lineLimit(2)
                 }
             }
+            if canResolve, !item.status.isClosed {
+                LoggedButton(action: resolve) { Label("Resolver", systemImage: "wand.and.stars").font(.caption) }
+                    .loggedControl(control: "review_group_view.button_resolve_item", label: "Resolver")
+                    .buttonStyle(.borderless)
+                    .help("Pede à IA para resolver este item: perguntas, plano, aceite, execução e check")
+            }
         }
         .padding(.vertical, 6)
     }
@@ -339,19 +384,21 @@ enum KindPalette {
 }
 
 struct FilterChip: View {
+    @Environment(\.logProject) private var providerRoot
+    @Environment(\.logProject) private var logProject
     let label: String
     let symbol: String
     let isOn: Bool
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        LoggedButton(action: action) {
             Label(label, systemImage: symbol)
                 .font(.callout)
                 .lineLimit(1)
                 .fixedSize()
                 .padding(.horizontal, 10).padding(.vertical, 5)
-        }
+        }.loggedControl(control: "review_group_view.button_10", label: "Ativar controle")
         .buttonStyle(.plain)
         .glassEffect(isOn ? .regular.tint(.accentColor.opacity(0.45)).interactive() : .regular.interactive(), in: .capsule)
     }
@@ -360,6 +407,8 @@ struct FilterChip: View {
 // MARK: - Inspector
 
 struct ReviewItemInspector: View {
+    @Environment(\.logProject) private var providerRoot
+    @Environment(\.logProject) private var logProject
     let item: ReviewItem
     let kinds: [ReviewKind]
     let topics: [ProjectModel.Entry<RuleTopic>]
@@ -374,22 +423,22 @@ struct ReviewItemInspector: View {
     var body: some View {
         Form {
             Section("Item") {
-                CommitTextField("Título", value: item.title) { v in
+                CommitTextField(control: "reviewgroupview.field_3", "Título", value: item.title) { v in
                     guard !v.isEmpty else { return }
                     mutate("Editar título") { $0.title = v }
                 }
-                CommitTextField("Detalhes", value: item.details ?? "", axis: .vertical) { v in
+                CommitTextField(control: "reviewgroupview.field_4", "Detalhes", value: item.details ?? "", axis: .vertical) { v in
                     mutate("Editar detalhes") { $0.details = v.isEmpty ? nil : v }
                 }
                 .lineLimit(3...10)
-                Picker("Tipo", selection: binding(\.kind, "Alterar tipo")) {
+                Picker("Tipo", selection: binding(\.kind, "Alterar tipo").logging(control: "review_group_view.selection_17", label: "Tipo", project: logProject)) {
                     ForEach(kinds) { Label($0.label, systemImage: $0.symbol ?? "tag").tag($0.id) }
                     if !kinds.contains(where: { $0.id == item.kind }) { Text(item.kind).tag(item.kind) }
                 }
-                Picker("Status", selection: binding(\.status, "Alterar status")) {
+                Picker("Status", selection: binding(\.status, "Alterar status").logging(control: "review_group_view.selection_18", label: "Status", project: logProject)) {
                     ForEach(ReviewStatus.allCases, id: \.self) { Text($0.label).tag($0) }
                 }
-                Picker("Prioridade", selection: binding(\.priority, "Alterar prioridade")) {
+                Picker("Prioridade", selection: binding(\.priority, "Alterar prioridade").logging(control: "review_group_view.selection_19", label: "Prioridade", project: logProject)) {
                     ForEach(ReviewPriority.allCases, id: \.self) { Text($0.label).tag($0) }
                 }
             }
@@ -403,7 +452,7 @@ struct ReviewItemInspector: View {
                 HStack {
                     Text("Onde")
                     Spacer()
-                    if !AIProvider.installed.isEmpty { discoverButton }
+                    if !AIProvider.installed(in: providerRoot).isEmpty { discoverButton }
                 }
             }
             rulesSection
@@ -435,12 +484,12 @@ struct ReviewItemInspector: View {
     }
 
     private var discoverButton: some View {
-        Button {
+        LoggedButton {
             let kind = kinds.first { $0.id == item.kind }?.label ?? item.kind
             discover.start(item: item, kind: kind, topics: topics.map { ($0.slug, $0.value) }, store: store, provider: session.provider)
         } label: {
             Label("Descubra", systemImage: "sparkles")
-        }
+        }.loggedControl(control: "review_group_view.button_11", label: "Descubra")
         .buttonStyle(.borderless)
         .controlSize(.small)
         .disabled(discover.isRunning)
@@ -455,13 +504,13 @@ struct ReviewItemInspector: View {
                 ProgressView().controlSize(.small)
                 Text("Procurando no código…").foregroundStyle(.secondary)
                 Spacer()
-                Button("Cancelar") { discover.cancel() }
+                LoggedButton("Cancelar") { discover.cancel() }.loggedControl(control: "review_group_view.button_12", label: "Cancelar")
             }
         case .failed(let message):
             HStack(alignment: .top) {
                 Label(message, systemImage: "exclamationmark.triangle").font(.callout).foregroundStyle(.orange)
                 Spacer()
-                Button("OK") { discover.dismiss() }.buttonStyle(.borderless)
+                LoggedButton("OK") { discover.dismiss() }.loggedControl(control: "review_group_view.button_13", label: "OK").buttonStyle(.borderless)
             }
         case .idle, .ready:
             EmptyView()
@@ -481,7 +530,7 @@ struct ReviewItemInspector: View {
                     mutate(on ? "Ligar regras" : "Desligar regras") { item in
                         if on { item.rules.append(topic.slug) } else { item.rules.removeAll { $0 == topic.slug } }
                     }
-                })) {
+                }).logging(control: "review_group_view.selection_20", label: "Alternar", project: logProject)) {
                     Text(topic.value.title)
                     if automatic {
                         Text(topic.value.isGlobal ? "Vale para toda tarefa" : "Casa com o arquivo do item").font(.caption)
@@ -512,7 +561,7 @@ struct ReviewItemInspector: View {
     }
 
     private func targetField(_ label: String, _ keyPath: WritableKeyPath<ReviewTarget, String?>) -> some View {
-        CommitTextField(label, value: item.target?[keyPath: keyPath] ?? "") { v in
+        CommitTextField(control: "reviewgroupview.field_5", label, value: item.target?[keyPath: keyPath] ?? "") { v in
             mutate("Editar alvo") { item in
                 var target = item.target ?? ReviewTarget()
                 target[keyPath: keyPath] = v.isEmpty ? nil : v
@@ -525,14 +574,19 @@ struct ReviewItemInspector: View {
 /// Text field that edits a local draft and commits on Return or when focus leaves,
 /// so each edit becomes one undo step instead of one per keystroke.
 struct CommitTextField: View {
+    @Environment(\.logProject) private var providerRoot
+    @Environment(\.logProject) private var logProject
+    let control: String
     let title: String
     let value: String
     var axis: Axis = .horizontal
     let commit: (String) -> Void
     @State private var draft = ""
+    @State private var confirmedDraft: String?
     @FocusState private var focused: Bool
 
-    init(_ title: String, value: String, axis: Axis = .horizontal, commit: @escaping (String) -> Void) {
+    init(control: String, _ title: String, value: String, axis: Axis = .horizontal, commit: @escaping (String) -> Void) {
+        self.control = control
         self.title = title
         self.value = value
         self.axis = axis
@@ -545,11 +599,14 @@ struct CommitTextField: View {
             .onAppear { draft = value }
             .onChange(of: value) { _, new in if !focused { draft = new } }
             .onSubmit(submit)
+            .onChange(of: draft) { _, _ in confirmedDraft = nil }
             .onChange(of: focused) { _, isFocused in if !isFocused { submit() } }
     }
 
     private func submit() {
         let trimmed = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed != value { commit(trimmed) }
+        guard trimmed != value, trimmed != confirmedDraft else { return }
+        confirmedDraft = trimmed
+        VDLog.withAction(control: control, label: title, project: logProject) { commit(trimmed) }
     }
 }

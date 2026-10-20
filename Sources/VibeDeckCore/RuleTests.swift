@@ -42,6 +42,8 @@ public struct RuleTestRunner: Sendable {
         public var root: URL
         public var files: [String]
         public var ruleId: UUID
+        /// Fired when the execution is cancelled: a running script must stop and return.
+        public var cancellation: ShellCancellation? = nil
     }
 
     public init(run: @escaping @Sendable (_ command: String, _ context: Context) -> RuleTestOutcome) {
@@ -50,26 +52,121 @@ public struct RuleTestRunner: Sendable {
 
     public static let live = RuleTestRunner { command, context in
         let result = ShellRunner.run(command, in: context.root, environment: [
-            "VIBEDECK_ROOT": context.root.path,
+            "VIBEDECK_ROOT": RemoteExecution.path(for: context.root),
             "VIBEDECK_FILES": context.files.joined(separator: "\n"),
             "VIBEDECK_RULE_ID": context.ruleId.uuidString,
-        ], timeout: 120, outputLimit: 4_000)
+        ], timeout: 120, outputLimit: 4_000, cancellation: context.cancellation)
         return RuleTestOutcome(exitCode: result.status, output: result.output)
+    }
+}
+
+/// Cancels shell runs from outside: running processes are terminated and later runs never start.
+public final class ShellCancellation: @unchecked Sendable {
+    private let lock = NSLock()
+    private var cancelled = false
+    private var handlers: [UUID: @Sendable () -> Void] = [:]
+
+    public init() {}
+
+    public var isCancelled: Bool { lock.withLock { cancelled } }
+
+    public func cancel() {
+        let pending: [@Sendable () -> Void] = lock.withLock {
+            guard !cancelled else { return [] }
+            cancelled = true
+            defer { handlers = [:] }
+            return Array(handlers.values)
+        }
+        pending.forEach { $0() }
+    }
+
+    /// Runs `handler` on cancellation (right away if already cancelled). Returns a token for `remove`.
+    @discardableResult
+    public func onCancel(_ handler: @escaping @Sendable () -> Void) -> UUID {
+        let id = UUID()
+        let now: Bool = lock.withLock {
+            if cancelled { return true }
+            handlers[id] = handler
+            return false
+        }
+        if now { handler() }
+        return id
+    }
+
+    public func remove(_ id: UUID) { lock.withLock { _ = handlers.removeValue(forKey: id) } }
+}
+
+/// Build tools whose scripts share build directories or lock files (`.build`, `node_modules`, `target`…):
+/// two scripts with the same key never run at the same time. One table for every ecosystem.
+public enum BuildToolLock {
+    /// (serialization key, pattern of an invocation of the tool).
+    static let table: [(key: String, pattern: String)] = [
+        ("swift", #"\bswift\s+(build|test|run|package)\b|\bxcodebuild\b|\bswiftc\b|\bswift["']\s*,\s*["'](build|test|run|package)\b"#),
+        ("node", #"\b(npm|npx|yarn|pnpm)\s+\S"#),
+        ("cargo", #"\bcargo\s+\S"#),
+        ("go", #"\bgo\s+(build|test|run|vet|install|generate|mod)\b"#),
+        ("gradle", #"(\bgradle|/gradlew)\b"#),
+        ("maven", #"(\bmvn|/mvnw)\b"#),
+        ("dotnet", #"\bdotnet\s+\S"#),
+        ("composer", #"\bcomposer\s+\S|vendor/bin/"#),
+        ("make", #"\bmake\b(\s|$)"#),
+    ]
+
+    /// Keys of the build tools invoked by `text`. Comment lines are ignored.
+    public static func keys(in text: String) -> [String] {
+        let code = text.split(separator: "\n", omittingEmptySubsequences: false)
+            .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("#") }
+            .joined(separator: "\n")
+        return table.filter { code.range(of: $0.pattern, options: .regularExpression) != nil }.map(\.key)
+    }
+
+    /// Reads referenced shell and Python files too: rule wrappers and sourced helpers can invoke a build indirectly.
+    /// Only local readable paths are followed; shell expressions are never evaluated.
+    public static func keys(command: String, root: URL) -> [String] {
+        var text = command
+        let base = root.resolvingSymlinksInPath().standardizedFileURL
+        var visited = Set<URL>()
+        func readReferences(_ source: String, directory: URL) {
+            let code = source.split(separator: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("#") }.joined(separator: "\n")
+            for match in code.matches(of: /[A-Za-z0-9_.\/-]+\.(sh|py)\b/) {
+                let path = String(match.0)
+                let direct = path.hasPrefix("/") ? URL(fileURLWithPath: path) : base.appending(path: path)
+                let candidates = [direct, directory.appending(path: path),
+                                  directory.appending(path: URL(fileURLWithPath: path).lastPathComponent)]
+                for candidate in candidates {
+                    let url = candidate.resolvingSymlinksInPath().standardizedFileURL
+                    guard url.path.hasPrefix(base.path + "/"),
+                          let content = try? String(contentsOf: url, encoding: .utf8) else { continue }
+                    if visited.insert(url).inserted {
+                        text += "\n" + content
+                        readReferences(content, directory: url.deletingLastPathComponent())
+                    }
+                    break
+                }
+            }
+        }
+        readReferences(command, directory: base)
+        return keys(in: text)
     }
 }
 
 /// `command` in the user's login shell, stdout+stderr merged, killed after `timeout` seconds.
 public enum ShellRunner {
     public static let timedOutStatus: Int32 = 124
+    public static let cancelledStatus: Int32 = 130
     private static let timeoutQueue = DispatchQueue(label: "vibedeck.shell-runner-timeout")
 
     public static func run(
-        _ command: String, in root: URL, environment: [String: String] = [:], timeout: TimeInterval = 120, outputLimit: Int = 20_000
+        _ command: String, in root: URL, environment: [String: String] = [:], timeout: TimeInterval = 120, outputLimit: Int = 20_000,
+        cancellation: ShellCancellation? = nil
     ) -> (output: String, status: Int32) {
+        if cancellation?.isCancelled == true { return ("Cancelado.", cancelledStatus) }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: ProcessInfo.processInfo.environment["SHELL"] ?? ClaudeCode.defaultShell)
         process.arguments = ["-lc", command]
         process.currentDirectoryURL = root
+        var environment = environment
+        if let action = VDLog.actionID { environment["VIBEDECK_ACTION"] = action }
         if !environment.isEmpty {
             process.environment = ProcessInfo.processInfo.environment.merging(environment) { $1 }
         }
@@ -81,20 +178,64 @@ public enum ShellRunner {
         let timer = DispatchWorkItem {
             guard process.isRunning else { return }
             timedOut.set()
-            process.terminate()
+            terminateTree(process)
         }
-        do { try process.run() } catch { return ("Não foi possível executar: \(error.localizedDescription)", 127) }
+        // Only the program name is logged: the rest of the command may carry user content.
+        let candidate = command.split(separator: " ").first.map { String($0.split(separator: "/").last ?? $0) } ?? ""
+        let program = candidate.range(of: "^[a-zA-Z0-9_.+-]+$", options: .regularExpression) != nil ? candidate : "shell"
+        do { try RemoteExecution.configure(process, root: root, command: command, environment: environment); try process.run() } catch {
+            VDLog.error(error, event: "shell.launch_failed", project: root, context: ["program": program])
+            return ("Não foi possível executar: \(error.localizedDescription)", 127)
+        }
+        // The timeout counts from this script's own start, never from time spent waiting in a queue.
+        let started = Date.now
         timeoutQueue.asyncAfter(deadline: .now() + timeout, execute: timer)
+        let cancelled = Flag()
+        let token = cancellation?.onCancel {
+            guard process.isRunning else { return }
+            cancelled.set()
+            terminateTree(process)
+        }
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
         timer.cancel()
+        if let token { cancellation?.remove(token) }
         var text = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
         // Keep the end: that's where test runners print the failure summary.
         if text.count > outputLimit { text = "… (saída cortada)\n" + String(text.suffix(outputLimit)) }
+        if cancelled.isSet {
+            VDLog.info("rules.script_cancelled", "Script cancelado", project: root, component: .rules, context: ["program": program])
+            return ((text.isEmpty ? "" : text + "\n") + "Cancelado.", cancelledStatus)
+        }
         if timedOut.isSet {
+            VDLog.warning("shell.timeout", "Comando interrompido após \(Int(timeout)) s", project: root,
+                          context: ["program": program, "ms": String(Int(Date.now.timeIntervalSince(started) * 1000))])
             return ((text.isEmpty ? "" : text + "\n") + "Tempo esgotado (\(Int(timeout)) s).", timedOutStatus)
         }
+        VDLog.info("rules.script_finished", "Script encerrado", project: root, component: .rules,
+                   context: ["program": program, "exit": String(process.terminationStatus), "ms": String(Int(Date.now.timeIntervalSince(started) * 1000))])
         return (text.isEmpty ? "(sem saída)" : text, process.terminationStatus)
+    }
+
+    /// Terminates the shell and the processes it started: a child left alive (`sleep` after `echo`) would keep
+    /// the output pipe open and the run would only return when it ended.
+    private static func terminateTree(_ process: Process) {
+        func children(_ pid: Int32) -> [Int32] {
+            let pgrep = Process()
+            pgrep.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
+            pgrep.arguments = ["-P", String(pid)]
+            let out = Pipe()
+            pgrep.standardOutput = out
+            pgrep.standardError = FileHandle.nullDevice
+            guard (try? pgrep.run()) != nil else { return [] }
+            let data = out.fileHandleForReading.readDataToEndOfFile()
+            pgrep.waitUntilExit()
+            return String(decoding: data, as: UTF8.self).split(separator: "\n").compactMap { Int32($0) }
+        }
+        func descendants(_ pid: Int32) -> [Int32] { children(pid).flatMap { [$0] + descendants($0) } }
+        let tree = descendants(process.processIdentifier)
+        process.terminate()
+        for pid in tree { kill(pid, SIGTERM) }
     }
 
     private final class Flag: @unchecked Sendable {
@@ -102,6 +243,21 @@ public enum ShellRunner {
         private var value = false
         func set() { lock.withLock { value = true } }
         var isSet: Bool { lock.withLock { value } }
+    }
+}
+
+/// Shared state of `runScripts`; every access holds the condition's lock.
+final class ScriptSchedule: NSCondition, @unchecked Sendable {
+    var pending: [Int]
+    var running = 0
+    var busy = Set<String>()
+    var stopped = false
+    var results: [RuleTestRun?]
+
+    init(count: Int) {
+        pending = Array(0..<count)
+        results = Array(repeating: nil, count: count)
+        super.init()
     }
 }
 

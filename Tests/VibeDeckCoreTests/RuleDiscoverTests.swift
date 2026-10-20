@@ -16,7 +16,7 @@ private func newStore() throws -> ProjectStore {
 
     @Test func readOnlyToolsAndStrictSchemas() throws {
         #expect(RuleDiscover.tools == ["Read", "Grep", "Glob"])
-        for schema in [RuleDiscover.scopeSchema, RuleDiscover.interviewSchema, RuleDiscover.descriptionSchema] {
+        for schema in [RuleDiscover.scopeSchema, RuleDiscover.interviewSchema, RuleDiscover.detailsSchema, RuleDiscover.verdictSchema] {
             let value = try JSONDecoder().decode(JSONValue.self, from: Data(schema.utf8))
             #expect(value["type"]?.string == "object")
         }
@@ -106,11 +106,10 @@ private func newStore() throws -> ProjectStore {
 
     @Test func promptsCarryContextAndRoundLimit() {
         let topics = [RuleDiscover.KnownTopic(slug: "core", title: "Core", rules: ["Toda escrita passa por AtomicFile"])]
-        let scope = RuleDiscover.scopePrompt(subject, vocabulary: ["ui", "core"], topics: topics)
+        let scope = RuleDiscover.scopePrompt(subject, topics: topics)
         #expect(scope.contains("Título: Interface"))
         #expect(scope.contains("Descrição: Telas do app"))
         #expect(scope.contains("Globs atuais: Sources/App/Old/**"))
-        #expect(scope.contains("ui, core"))
         #expect(scope.contains("Toda escrita passa por AtomicFile"))
 
         let history = [RuleDiscover.Exchange(question: "Vale no iPad?", answer: "")]
@@ -132,6 +131,18 @@ private func newStore() throws -> ProjectStore {
         #expect(handWritten.paths.isEmpty)
     }
 
+    @Test func reloadFromDiskIsNotAnEdit() throws {
+        var topic = RuleTopic(title: "X")
+        topic.rules = [Rule(text: "Nunca X", now: Date(timeIntervalSince1970: 1_000.5))]
+        let reloaded = try VDJSON.decoder.decode(RuleTopic.self, from: VDJSON.encode(topic))
+        let before = RuleDiscover.Subject(topic: topic), after = RuleDiscover.Subject(topic: reloaded)
+        #expect(before != after)
+        #expect(before.hasSameContent(as: after))
+        var edited = reloaded
+        edited.rules[0].text = "Nunca Y"
+        #expect(!before.hasSameContent(as: RuleDiscover.Subject(topic: edited)))
+    }
+
     @Test func promotionCopiesAndMergesIdeaPaths() throws {
         let store = try newStore()
         try AtomicFile.write(Data("x".utf8), to: store.root.appending(path: "Sources/App/View.swift"))
@@ -148,31 +159,132 @@ private func newStore() throws -> ProjectStore {
         #expect(try store.loadTopic(topic).paths == ["Sources/App/**", "Tests/**", "Sources/Gone/**", "Package.swift"])
     }
 
-    @Test func descriptionPromptAndProposal() throws {
+    @Test func contextEntersEveryPromptOnlyWhenGiven() {
+        #expect(!RuleDiscover.scopePrompt(subject, topics: []).contains("Contexto do usuário"))
+        var withContext = subject
+        withContext.context = "Quero modo offline só no iPhone"
+        #expect(RuleDiscover.scopePrompt(withContext, topics: []).contains("Quero modo offline só no iPhone"))
+        #expect(RuleDiscover.interviewPrompt(withContext, topics: [], history: [], finish: false).contains("Quero modo offline só no iPhone"))
+        #expect(RuleDiscover.detailsPrompt(withContext, vocabulary: [], topics: [], history: []).contains("Quero modo offline só no iPhone"))
+    }
+
+    @Test func scopeAsksOnlyForGlobs() throws {
+        #expect(!RuleDiscover.scopeSchema.contains("tags"))
+        #expect(!RuleDiscover.scopePrompt(subject, topics: []).contains("- tags:"))
+        let answer = try JSONDecoder().decode(RuleDiscover.ScopeAnswer.self, from: Data(#"{"paths":[{"glob":"a/**","reason":"a:1"}]}"#.utf8))
+        #expect(answer.tags.isEmpty)
+    }
+
+    @Test func detailsPromptAndProposal() throws {
         let history = [RuleDiscover.Exchange(question: "Vale no iPad?", answer: "Não")]
         var idea = Idea(title: "Modo offline", body: "Cache local")
         idea.rules = [Rule(text: "Sincroniza ao voltar a rede", details: "ver SyncService")]
+        idea.tags = ["ui"]
         let ideaSubject = RuleDiscover.Subject(idea: idea)
-        let prompt = RuleDiscover.descriptionPrompt(ideaSubject, topics: [], history: history)
+        let prompt = RuleDiscover.detailsPrompt(ideaSubject, vocabulary: ["ui", "sync"], topics: [], history: history)
         #expect(prompt.contains("R: Não"))
         #expect(prompt.contains("[must] Sincroniza ao voltar a rede — ver SyncService"))
         #expect(prompt.contains("Critérios de aceite"))
-        #expect(prompt.contains("viable: true só se"))
-        #expect(RuleDiscover.descriptionPrompt(subject, topics: [], history: []).contains("quando este tópico se aplica"))
+        #expect(prompt.contains("ui, sync"))
+        #expect(!prompt.contains("viable"))
+        #expect(RuleDiscover.detailsPrompt(subject, vocabulary: [], topics: [], history: []).contains("quando este tópico se aplica"))
 
-        let data = Data(#"{"description":"  ## Problema\nCache  ","reason":"organizei","viable":true,"missing":[" ", "x"]}"#.utf8)
-        let answer = try JSONDecoder().decode(RuleDiscover.DescriptionAnswer.self, from: data)
-        let proposal = RuleDiscover.description(answer, subject: ideaSubject)
+        let data = Data(#"{"description":"  ## Problema\nCache  ","reason":"organizei","tags":[{"tag":"UI","reason":"já tem"},{"tag":"Sync","reason":"x"},{"tag":"offline","reason":"y"}]}"#.utf8)
+        let answer = try JSONDecoder().decode(RuleDiscover.DetailsAnswer.self, from: data)
+        let proposal = RuleDiscover.details(answer, subject: ideaSubject, vocabulary: ["ui", "sync"])
         #expect(proposal.current == "Cache local")
         #expect(proposal.suggested == "## Problema\nCache")
-        #expect(proposal.viable)
-        #expect(proposal.missing == ["x"])
-        #expect(RuleDiscover.description(.init(description: "Cache local", viable: true), subject: ideaSubject).suggested == nil)
-        #expect(!RuleDiscover.description(.init(description: "x", viable: true), subject: subject).viable)
+        #expect(proposal.tags.map(\.tag) == ["sync", "offline"])
+        #expect(proposal.defaultTags == ["sync"])
+        #expect(RuleDiscover.details(.init(description: "Cache local"), subject: ideaSubject, vocabulary: []).isEmpty)
 
-        var body = idea.body
-        proposal.apply(to: &body)
-        #expect(body == "## Problema\nCache")
+        var body: String? = idea.body
+        var tags = idea.tags
+        proposal.apply(acceptDescription: false, tags: ["offline"], description: &body, tags: &tags)
+        #expect(body == "Cache local" && tags == ["ui", "offline"])
+        proposal.apply(acceptDescription: true, tags: [], description: &body, tags: &tags)
+        #expect(body == "## Problema\nCache" && tags == ["ui", "offline"])
+    }
+
+    @Test func verdictJudgesViabilityWithoutRewriting() throws {
+        var idea = Idea(title: "X", body: "b")
+        idea.rules = [Rule(text: "R")]
+        let prompt = RuleDiscover.verdictPrompt(RuleDiscover.Subject(idea: idea), topics: [])
+        #expect(prompt.contains("viable: true só se"))
+        #expect(!prompt.contains("description:"))
+        let answer = try JSONDecoder().decode(RuleDiscover.VerdictAnswer.self, from: Data(#"{"viable":true,"missing":[" ","x"]}"#.utf8))
+        #expect(RuleDiscover.verdict(answer, subject: RuleDiscover.Subject(idea: idea)).missing == ["x"])
+        #expect(RuleDiscover.verdict(answer, subject: RuleDiscover.Subject(idea: Idea(title: "Sem regras"))).viable == false)
+    }
+
+    @Test func savedViableVerdictApprovesEligibleIdeas() {
+        let now = Date(timeIntervalSince1970: 1234)
+        for status in [IdeaStatus.new, .exploring, .approved] {
+            var idea = Idea(title: "Avaliação")
+            idea.status = status
+            idea.rules = [Rule(text: "R")]
+            let before = idea
+            let verdict = RuleDiscoverVerdict(viable: true)
+            _ = verdict.readiness(for: idea, now: now)
+            #expect(idea == before) // Computing a verdict does not save it.
+            verdict.apply(to: &idea, now: now)
+            #expect(idea.status == .approved)
+            #expect(idea.readiness == verdict.readiness(for: before, now: now))
+            #expect(idea.promotedTopic == nil)
+            #expect(idea.rules == before.rules)
+        }
+    }
+
+    @Test func savedNonviableVerdictPreservesEveryStatus() {
+        for status in IdeaStatus.allCases {
+            var idea = Idea(title: "Avaliação")
+            idea.status = status
+            idea.rules = [Rule(text: "R")]
+            idea.readiness = RuleDiscoverVerdict(viable: true).readiness(for: idea)
+            RuleDiscoverVerdict(viable: false, missing: ["Qual tela?"]).apply(to: &idea)
+            #expect(idea.status == status)
+            #expect(idea.readiness?.viable == false)
+            #expect(idea.readiness?.missing == ["Qual tela?"])
+        }
+    }
+
+    @Test func savedVerdictWithoutRulesDoesNotApprove() {
+        for status in IdeaStatus.allCases {
+            var idea = Idea(title: "Sem regras")
+            idea.status = status
+            RuleDiscoverVerdict(viable: true).apply(to: &idea)
+            #expect(idea.status == status)
+            #expect(idea.readiness?.viable == false)
+        }
+    }
+
+    @Test func savedViableVerdictPreservesClosedAndPromotedIdeas() {
+        for status in IdeaStatus.allCases {
+            for topic in [nil, "existente"] as [String?] {
+                guard status.isClosed || topic != nil else { continue }
+                var idea = Idea(title: "Preservada")
+                idea.status = status
+                idea.promotedTopic = topic
+                idea.rules = [Rule(text: "R")]
+                RuleDiscoverVerdict(viable: true).apply(to: &idea)
+                #expect(idea.status == status)
+                #expect(idea.promotedTopic == topic)
+                #expect(idea.readiness?.viable == true)
+            }
+        }
+    }
+
+    @Test func savedEvaluationDoesNotCreateOrActivateTopics() throws {
+        let store = try newStore()
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let (slug, _) = try store.createIdea(title: "Avaliação")
+        try store.updateIdea(slug) { $0.rules = [Rule(text: "R")]; $0.paths = ["Sources/**"] }
+        let topicsBefore = try store.listTopics().map(\.slug)
+        let saved = try store.updateIdea(slug) { RuleDiscoverVerdict(viable: true).apply(to: &$0) }.idea
+        #expect(saved.status == .approved)
+        #expect(saved.promotedTopic == nil)
+        #expect(try store.loadIdea(slug).readiness?.viable == true)
+        #expect(try store.listTopics().map(\.slug) == topicsBefore)
     }
 
     @Test func readinessRoundTripsAndGoesStale() throws {
@@ -183,8 +295,7 @@ private func newStore() throws -> ProjectStore {
         idea.rules = [Rule(text: "R")]
         #expect(idea.implementBlocker?.contains("não verificada") == true)
 
-        let viable = RuleDiscoverDescription(viable: true)
-        idea.readiness = viable.readiness(for: idea, acceptedDescription: false)
+        idea.readiness = RuleDiscoverVerdict(viable: true).readiness(for: idea)
         #expect(idea.implementBlocker == nil)
         let decoded = try VDJSON.decoder.decode(Idea.self, from: VDJSON.encode(idea))
         #expect(decoded.readiness?.fingerprint == idea.contentFingerprint)
@@ -201,15 +312,17 @@ private func newStore() throws -> ProjectStore {
         idea.rules[0].details = "d"
         #expect(idea.implementBlocker?.contains("mudou") == true)
 
-        idea.readiness = RuleDiscoverDescription(viable: false, missing: ["Qual tela?"]).readiness(for: idea, acceptedDescription: true)
+        idea.readiness = RuleDiscoverVerdict(viable: false, missing: ["Qual tela?"]).readiness(for: idea)
         #expect(idea.implementBlocker?.contains("Qual tela?") == true)
-
-        let rejected = RuleDiscoverDescription(suggested: "nova", viable: true).readiness(for: idea, acceptedDescription: false)
-        #expect(!rejected.viable)
-        idea.readiness = RuleDiscoverDescription(suggested: "nova", viable: true).readiness(for: idea, acceptedDescription: true)
-        #expect(idea.implementBlocker == nil)
         idea.status = .done
         #expect(idea.implementBlocker != nil)
+    }
+
+    @Test func implementationPromptWithoutTopicKeepsDraftRulesAndChecks() {
+        let prompt = IdeaImplementation.prompt(slug: "rascunho", idea: Idea(title: "Rascunho"), topic: nil)
+        #expect(prompt.contains("Siga as regras rascunho da ideia."))
+        #expect(!prompt.contains("get_rule_topic"))
+        #expect(prompt.contains("rules_for") && prompt.contains("submit_rule_check"))
     }
 
     @Test func implementationPromptPointsToIdeaTopicAndChecks() {

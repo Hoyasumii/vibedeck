@@ -5,6 +5,10 @@ public enum AIProvider: String, Codable, CaseIterable, Sendable {
     public var title: String { self == .claude ? "Claude" : "Codex" }
     public var executable: URL? { self == .claude ? ClaudeCode.executable : CodexCode.executable }
     public var isInstalled: Bool { executable != nil }
+    public static func installed(in root: URL?) -> [AIProvider] {
+        guard let root else { return installed }
+        return RemoteExecution.providers(root: root)
+    }
     public static var installed: [AIProvider] { allCases.filter(\.isInstalled) }
 }
 

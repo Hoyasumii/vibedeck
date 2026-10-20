@@ -207,6 +207,32 @@ public enum PatternCatalog {
                 PatternRule("Sem duplicação nem código morto",
                             "Verificar: reaproveite o que já existe em vez de copiar; remova código comentado e não usado."),
             ]),
+        PatternTemplate(
+            id: "bdd", name: "Desenvolvimento orientado a comportamento", category: "practices",
+            summary: "Comportamentos esperados são descritos em cenários com contexto, ação e resultado observável.",
+            aliases: ["behavior-driven development", "behaviour-driven development", "desenvolvimento guiado por comportamento", "BDD"],
+            rules: [
+                PatternRule("Cenários descrevem comportamentos observáveis",
+                            "Verificar: inspecione os cenários e confirme que seus resultados descrevem efeitos percebidos pelo usuário ou sistema consumidor, sem depender de detalhes internos."),
+                PatternRule("Cada cenário explicita contexto, ação e resultado esperado",
+                            "Verificar: confirme que cada cenário identifica suas condições iniciais, a ação executada e o resultado que deve ser observado."),
+                PatternRule("Cenários de comportamento têm testes automatizados",
+                            "Verificar: execute os testes correspondentes aos cenários e confira que suas asserções verificam os resultados esperados.", severity: .should),
+            ]),
+        PatternTemplate(
+            id: "design-by-contract", name: "Design por contrato", category: "practices",
+            summary: "Operações declaram precondições e pós-condições; objetos preservam invariantes durante suas mudanças.",
+            aliases: ["design by contract", "programação por contrato", "contratos de software", "DbC"],
+            rules: [
+                PatternRule("Operações explicitam suas precondições",
+                            "Verificar: inspecione o contrato de cada operação e identifique as condições exigidas para suas entradas e estado inicial."),
+                PatternRule("Operações explicitam suas pós-condições",
+                            "Verificar: inspecione o contrato de cada operação e identifique as garantias de saída e estado final para entradas válidas."),
+                PatternRule("Alterações preservam as invariantes do objeto",
+                            "Verificar: confira os caminhos de alteração de estado e verifique que nenhum estado público resultante viola as invariantes declaradas."),
+                PatternRule("Contratos têm testes de entradas válidas e violações",
+                            "Verificar: execute testes das precondições, pós-condições e invariantes, incluindo entradas que violam o contrato.", severity: .should),
+            ]),
         // Arquitetura
         PatternTemplate(
             id: "hexagonal", name: "Arquitetura hexagonal", category: "architecture",
@@ -265,6 +291,34 @@ public enum PatternCatalog {
                 PatternRule("Views não acessam dados direto",
                             "Verificar: views recebem o que exibem; não consultam banco nem serviços."),
             ]),
+        PatternTemplate(
+            id: "modular-monolith", name: "Monólito modular", category: "architecture",
+            summary: "Uma aplicação implantada como unidade única organiza suas responsabilidades em módulos com fronteiras explícitas.",
+            aliases: ["modular monolith", "monolito modular", "arquitetura de monólito modular"],
+            rules: [
+                PatternRule("Módulos são implantados como uma unidade",
+                            "Verificar: confira o processo de implantação e confirme que os módulos compõem uma única aplicação implantável."),
+                PatternRule("Comunicação entre módulos usa interfaces públicas",
+                            "Verificar: inspecione as dependências entre módulos e confirme que cada acesso usa uma interface declarada pública pelo módulo de destino."),
+                PatternRule("Detalhes internos de cada módulo permanecem encapsulados",
+                            "Verificar: confira que código externo ao módulo não acessa seus tipos, dados ou operações internos."),
+                PatternRule("Fronteiras dos módulos têm testes automatizados",
+                            "Verificar: execute testes que detectem dependências entre módulos fora das interfaces públicas.", severity: .should),
+            ]),
+        PatternTemplate(
+            id: "event-driven", name: "Arquitetura orientada a eventos", category: "architecture",
+            summary: "Componentes comunicam fatos ocorridos por eventos, separando produtores das reações dos consumidores.",
+            aliases: ["event-driven architecture", "event driven", "arquitetura dirigida por eventos", "EDA"],
+            rules: [
+                PatternRule("Eventos representam fatos ocorridos",
+                            "Verificar: inspecione os eventos publicados e confirme que descrevem uma ocorrência já realizada, em vez de uma solicitação de ação."),
+                PatternRule("Produtores publicam eventos sem conhecer consumidores concretos",
+                            "Verificar: inspecione os produtores e confirme que a publicação não referencia implementações concretas dos consumidores."),
+                PatternRule("Consumidores dependem do contrato do evento",
+                            "Verificar: inspecione os consumidores e confirme que interpretam os dados definidos no contrato do evento sem acessar detalhes internos do produtor."),
+                PatternRule("Consumidores têm testes de reação aos eventos",
+                            "Verificar: execute testes que entreguem eventos aos consumidores e confiram os efeitos esperados.", severity: .should),
+            ]),
         // Domínio
         PatternTemplate(
             id: "ddd", name: "DDD", category: "domain",
@@ -312,6 +366,34 @@ public enum PatternCatalog {
                             "Verificar: código de domínio/aplicação não faz SQL, chamadas de ORM ou de arquivo direto."),
                 PatternRule("A interface do repositório é do domínio; a implementação é da infraestrutura",
                             "Verificar: o protocolo fica junto do domínio e fala em entidades; a implementação concreta fica fora e pode ser trocada em testes."),
+            ]),
+        PatternTemplate(
+            id: "value-object", name: "Objeto de valor", category: "domain",
+            summary: "Um conceito de domínio é definido por seus atributos, sem identidade própria, com valores imutáveis e invariantes protegidas.",
+            aliases: ["value object", "objeto de valor", "VO"],
+            rules: [
+                PatternRule("Igualdade de objetos de valor depende de seus atributos",
+                            "Verificar: inspecione a comparação de igualdade e confirme que valores com os mesmos atributos são iguais independentemente da instância."),
+                PatternRule("Objetos de valor são imutáveis",
+                            "Verificar: confira que não há operação pública que altere os atributos de uma instância após sua criação."),
+                PatternRule("A construção rejeita valores que violam invariantes",
+                            "Verificar: inspecione os caminhos de criação e confirme que entradas inválidas são rejeitadas antes de disponibilizar a instância."),
+                PatternRule("Objetos de valor têm testes de igualdade e invariantes",
+                            "Verificar: execute testes de igualdade entre instâncias e de rejeição de atributos inválidos.", severity: .should),
+            ]),
+        PatternTemplate(
+            id: "domain-service", name: "Serviço de domínio", category: "domain",
+            summary: "Uma operação de negócio que não pertence a uma única entidade ou objeto de valor é expressa como serviço de domínio.",
+            aliases: ["domain service", "servico de dominio", "serviço do domínio"],
+            rules: [
+                PatternRule("Operações do serviço expressam regras que não pertencem a uma única entidade ou objeto de valor",
+                            "Verificar: inspecione as operações e identifique a regra de negócio e os conceitos de domínio que precisam participar de sua execução."),
+                PatternRule("Serviços de domínio não mantêm estado de negócio entre chamadas",
+                            "Verificar: inspecione os atributos e confirme que os dados de uma execução não são retidos como estado de negócio para a próxima."),
+                PatternRule("Dependências de infraestrutura entram por abstrações",
+                            "Verificar: inspecione as dependências e confirme que persistência e integrações são acessadas por contratos, sem implementação concreta embutida no serviço."),
+                PatternRule("Serviços de domínio têm testes das regras de negócio",
+                            "Verificar: execute testes das operações com valores de domínio e dublês das dependências externas.", severity: .should),
             ]),
         // Padrões de design (GoF)
         PatternTemplate(
@@ -413,6 +495,34 @@ public enum PatternCatalog {
                             "Verificar: o acesso ao singleton acontece na composição (raiz da app) e chega aos demais por injeção de dependência."),
                 PatternRule("O estado compartilhado é seguro para concorrência",
                             "Verificar: acesso protegido (actor, lock ou imutabilidade)."),
+            ]),
+        PatternTemplate(
+            id: "composite", name: "Composição", category: "design",
+            summary: "Folhas e composições formam uma árvore e oferecem uma interface comum para operações sobre seus elementos.",
+            aliases: ["composite pattern", "composite", "composição", "composto"],
+            rules: [
+                PatternRule("Folhas e composições compartilham a interface consumida pelo cliente",
+                            "Verificar: inspecione os clientes e confirme que podem operar sobre uma folha ou uma composição pela mesma interface."),
+                PatternRule("Composições delegam as operações aos seus filhos",
+                            "Verificar: inspecione as operações da composição e confirme que propagam a execução aos filhos participantes."),
+                PatternRule("A estrutura de composição impede ciclos",
+                            "Verificar: inspecione a inclusão de filhos e confirme que um elemento não pode conter a si próprio ou um ancestral."),
+                PatternRule("Composições têm testes com árvores de vários níveis",
+                            "Verificar: execute testes com folhas e composições aninhadas, conferindo a propagação das operações.", severity: .should),
+            ]),
+        PatternTemplate(
+            id: "proxy", name: "Representante", category: "design",
+            summary: "Um objeto intermedeia o acesso a outro pela mesma interface, preservando seu contrato observável.",
+            aliases: ["proxy pattern", "proxy", "representante", "substituto"],
+            rules: [
+                PatternRule("O representante expõe a interface do objeto representado",
+                            "Verificar: inspecione as interfaces e confirme que o cliente usa o representante pelo contrato do objeto representado."),
+                PatternRule("O representante intermedeia o acesso ao objeto representado",
+                            "Verificar: inspecione as operações e confirme que passam pelo representante antes de acessar o objeto representado."),
+                PatternRule("O representante preserva o contrato observável da interface",
+                            "Verificar: compare entradas aceitas, saídas e erros do representante com as garantias declaradas pela interface compartilhada."),
+                PatternRule("Representantes têm testes de intermediação e contrato",
+                            "Verificar: execute testes que confiram a delegação e as garantias da interface compartilhada.", severity: .should),
             ]),
     ]
 }

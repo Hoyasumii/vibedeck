@@ -4,6 +4,7 @@ import VibeDeckCore
 
 /// Claude Code conversation, shown as a page (and tab) of the detail column.
 struct ClaudeChatPage: View {
+    @Environment(\.logProject) private var logProject
     @Environment(AISession.self) private var claude
     @State private var pickingMention = false
     @State private var pickingFiles = false
@@ -49,22 +50,22 @@ struct ClaudeChatPage: View {
         .background(.background)
         .toolbar {
             ToolbarItemGroup {
-                Button { showingUsage = true } label: { Label("Consumo de IA", systemImage: "chart.bar") }
+                LoggedButton { showingUsage = true } label: { Label("Consumo de IA", systemImage: "chart.bar") }.loggedControl(control: "claude_chat_page.button_1", label: "Consumo de IA")
                 if !mentions.isEmpty {
-                    Toggle("Incluir conversas completas", isOn: Binding(get: { claude.includeFullMentions }, set: { claude.includeFullMentions = $0 }))
+                    Toggle("Incluir conversas completas", isOn: Binding(get: { claude.includeFullMentions }, set: { claude.includeFullMentions = $0 }).logging(control: "claude_chat_page.selection_24", label: "Incluir conversas completas", project: logProject))
                         .help("Desligado: a IA recebe referências e lê trechos conforme necessário")
                 }
                 if claude.isWorking {
-                    Button { claude.interrupt() } label: { Label("Parar", systemImage: "stop.fill") }
+                    LoggedButton { claude.interrupt() } label: { Label("Parar", systemImage: "stop.fill") }.loggedControl(control: "claude_chat_page.button_2", label: "Parar")
                         .help("Interromper a resposta")
                 }
                 if claude.current != nil {
-                    Button { claude.leaveChat() } label: { Label("Conversas", systemImage: "bubble.left.and.text.bubble.right") }
+                    LoggedButton { claude.leaveChat() } label: { Label("Conversas", systemImage: "bubble.left.and.text.bubble.right") }.loggedControl(control: "claude_chat_page.button_3", label: "Conversas")
                         .help("Ver todas as conversas")
                 }
-                Button { launchingCloud = true } label: { Label("Sessão na nuvem", systemImage: "cloud") }
+                LoggedButton { launchingCloud = true } label: { Label("Sessão na nuvem", systemImage: "cloud") }.loggedControl(control: "claude_chat_page.button_4", label: "Sessão na nuvem")
                     .help("Criar uma sessão na nuvem com o provedor selecionado")
-                Button { claude.newChat() } label: { Label("Nova conversa", systemImage: "square.and.pencil") }
+                LoggedButton { claude.newChat() } label: { Label("Nova conversa", systemImage: "square.and.pencil") }.loggedControl(control: "claude_chat_page.button_5", label: "Nova conversa")
                     .help("Começar uma nova conversa")
             }
         }
@@ -162,11 +163,11 @@ struct ClaudeChatPage: View {
                 SuggestionList(suggestions: suggestions, selection: $selection, onPick: accept)
             }
             HStack(alignment: .bottom, spacing: 8) {
-                TextField(isShellMode ? "Comando de terminal (roda no projeto)" : "Pergunte ou peça algo à IA (/ comandos, @ arquivos e conversas, ! terminal)", text: Bindable(claude).draft, axis: .vertical)
+                LoggedTextField(isShellMode ? "Comando de terminal (roda no projeto)" : "Pergunte ou peça algo à IA (/ comandos, @ arquivos e conversas, ! terminal)", text: Bindable(claude).draft, axis: .vertical, onCommit: send).loggedField(control: "claudechatpage.text_1", label: "Confirmar campo")
                     .textFieldStyle(.plain)
                     .lineLimit(1...8)
                     .focused($inputFocused)
-                    .onSubmit(send)
+
                     .padding(.horizontal, 10)
                     .padding(.vertical, 7)
                     .glassEffect(isShellMode ? .regular.tint(.orange.opacity(0.35)) : .regular, in: .rect(cornerRadius: 12))
@@ -183,21 +184,21 @@ struct ClaudeChatPage: View {
                             inputFocused = true
                         }
                     }
-                Button { pickingFiles = true } label: { Image(systemName: "paperclip") }
+                LoggedButton { pickingFiles = true } label: { Image(systemName: "paperclip") }.loggedControl(control: "claude_chat_page.button_6", label: "Ativar controle")
                     .buttonStyle(.glass)
                     .buttonBorderShape(.circle)
                     .help("Anexar arquivos: a IA recebe o caminho deles (nada é copiado). Também dá para arrastar.")
                     .fileImporter(isPresented: $pickingFiles, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
                         if case .success(let urls) = result { addAttachments(urls) }
                     }
-                Button { pickingMention = true } label: { Image(systemName: "at") }
+                LoggedButton { pickingMention = true } label: { Image(systemName: "at") }.loggedControl(control: "claude_chat_page.button_7", label: "Ativar controle")
                     .buttonStyle(.glass)
                     .buttonBorderShape(.circle)
                     .help("Mencionar outra conversa (vai inteira, em JSON, como referência)")
-                Button(action: send) {
+                LoggedButton(action: send) {
                     Image(systemName: "arrow.up")
                         .fontWeight(.semibold)
-                }
+                }.loggedControl(control: "claude_chat_page.button_8", label: "Ativar controle")
                 .buttonStyle(.glassProminent)
                 .buttonBorderShape(.circle)
                 .disabled(!canSend)
@@ -245,7 +246,7 @@ struct ClaudeChatPage: View {
     private var pickers: some View {
         modePicker
         if claude.provider == .codex {
-            Toggle("Auto", isOn: Bindable(claude).codexAutoReview)
+            Toggle("Auto", isOn: Bindable(claude).codexAutoReview.logging(control: "claude_chat_page.selection_25", label: "Auto", project: logProject))
                 .toggleStyle(.switch)
                 .controlSize(.mini)
                 .fixedSize()
@@ -253,14 +254,14 @@ struct ClaudeChatPage: View {
                 .accessibilityLabel("Aprovação automática do Codex")
                 .help("O Codex revisa automaticamente os pedidos de permissão, mantendo as restrições de acesso. A escolha é salva para as próximas conversas. Altere entre respostas.")
             Menu {
-                Picker("Modelo", selection: Bindable(claude).codexModel) {
+                Picker("Modelo", selection: Bindable(claude).codexModel.logging(control: "claude_chat_page.selection_26", label: "Modelo", project: logProject)) {
                     Text("Automático").tag("")
                     ForEach(claude.codexModels) { Text($0.title).tag($0.id) }
                 }
             } label: { Label(claude.codexModel.isEmpty ? "Automático" : claude.codexModel, systemImage: "cpu") }
             .menuStyle(.button).buttonStyle(.plain).lineLimit(1)
             Menu {
-                Picker("Esforço", selection: Bindable(claude).codexEffort) {
+                Picker("Esforço", selection: Bindable(claude).codexEffort.logging(control: "claude_chat_page.selection_27", label: "Esforço", project: logProject)) {
                     Text("Automático").tag("")
                     ForEach(claude.availableCodexEfforts, id: \.self) { Text($0).tag($0) }
                 }
@@ -274,14 +275,14 @@ struct ClaudeChatPage: View {
 
     private var modePicker: some View {
         Menu {
-            Picker("Modo", selection: Binding(get: { claude.permissionMode }, set: { claude.setPermissionMode($0) })) {
-                ForEach(ClaudePermissionMode.allCases.filter { claude.provider == .claude || $0 != .auto }, id: \.self) { mode in
-                    Label(mode.label, systemImage: mode.symbol).tag(mode)
+            Picker("Modo", selection: Binding(get: { claude.permissionMode }, set: { claude.setPermissionMode($0) }).logging(control: "claude_chat_page.selection_28", label: "Modo", project: logProject)) {
+                ForEach(claude.provider.capabilities.permissionModes, id: \.self) { mode in
+                    Label(claude.provider.capabilities.title(for: mode), systemImage: mode.symbol).tag(mode)
                 }
             }
             .pickerStyle(.inline)
         } label: {
-            Label(claude.permissionMode.label, systemImage: claude.permissionMode.symbol)
+            Label(claude.provider.capabilities.title(for: claude.permissionMode), systemImage: claude.permissionMode.symbol)
                 .foregroundStyle(claude.permissionMode == .default ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
         }
         .menuStyle(.button)
@@ -292,7 +293,7 @@ struct ClaudeChatPage: View {
 
     private var modelPicker: some View {
         Menu {
-            Picker("Modelo", selection: Binding(get: { claude.chosenModel }, set: { claude.setModel($0) })) {
+            Picker("Modelo", selection: Binding(get: { claude.chosenModel }, set: { claude.setModel($0) }).logging(control: "claude_chat_page.selection_29", label: "Modelo", project: logProject)) {
                 ForEach(ClaudeModel.allCases, id: \.self) { Text($0.label).tag($0) }
             }
             .pickerStyle(.inline)
@@ -307,7 +308,7 @@ struct ClaudeChatPage: View {
 
     private var effortPicker: some View {
         Menu {
-            Picker("Effort", selection: Binding(get: { claude.effort }, set: { claude.setEffort($0) })) {
+            Picker("Effort", selection: Binding(get: { claude.effort }, set: { claude.setEffort($0) }).logging(control: "claude_chat_page.selection_30", label: "Effort", project: logProject)) {
                 ForEach(ClaudeEffort.allCases, id: \.self) { Text($0.label).tag($0) }
             }
             .pickerStyle(.inline)
@@ -529,6 +530,7 @@ extension Theme {
 // MARK: - Entries
 
 private struct EntryView: View {
+    @Environment(\.logProject) private var logProject
     @Environment(AISession.self) private var claude
     let entry: AISession.Entry
 
@@ -575,6 +577,7 @@ private struct EntryView: View {
 }
 
 private struct ToolRow: View {
+    @Environment(\.logProject) private var logProject
     let name: String
     let summary: String
     let result: String?
@@ -583,7 +586,7 @@ private struct ToolRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Button { expanded.toggle() } label: {
+            LoggedButton { expanded.toggle() } label: {
                 HStack(spacing: 6) {
                     Image(systemName: icon)
                         .foregroundStyle(isError ? .red : .secondary)
@@ -603,7 +606,7 @@ private struct ToolRow: View {
                 }
                 .font(.caption)
                 .contentShape(Rectangle())
-            }
+            }.loggedControl(control: "claude_chat_page.button_9", label: "Ativar controle")
             .buttonStyle(.plain)
             .disabled(result == nil)
             .help(summary)
@@ -631,6 +634,7 @@ private struct ToolRow: View {
 // MARK: - Pending requests
 
 private struct PermissionCard: View {
+    @Environment(\.logProject) private var logProject
     @Environment(AISession.self) private var claude
     let request: ClaudePermissionRequest
 
@@ -643,20 +647,28 @@ private struct PermissionCard: View {
             }
             detail
             HStack {
-                Button("Negar", role: .cancel) { claude.decide(request, .deny) }
+                if claude.canDecide(request, .deny) {
+                LoggedButton("Negar", role: .cancel) { claude.decide(request, .deny) }.loggedControl(control: "claude_chat_page.button_10", label: "Negar")
                     .keyboardShortcut(.escape, modifiers: [])
+                }
                 Spacer()
+                if claude.canAllowSession(request) || claude.canRemember(request) {
                 Menu("Sempre") {
-                    Button("Nesta sessão") { claude.decide(request, .allowSession) }
+                    if claude.canAllowSession(request) {
+                    LoggedButton("Nesta sessão") { claude.decide(request, .allowSession) }.loggedControl(control: "claude_chat_page.button_11", label: "Nesta sessão")
                         .help(rules(.session))
-                    if claude.canRemember(request) { Button("Em todas as sessões") { claude.decide(request, .allowAlways) }
+                    }
+                    if claude.canRemember(request) { LoggedButton("Em todas as sessões") { claude.decide(request, .allowAlways) }.loggedControl(control: "claude_chat_page.button_12", label: "Em todas as sessões")
                         .help(claude.provider == .claude ? "Grava em .claude/settings.local.json: " + rules(.localSettings) : "Salva a regra de comando proposta pelo Codex") }
                 }
                 .fixedSize()
                 .help("Libera sem perguntar de novo: " + rules(.session))
-                Button("Permitir") { claude.decide(request, .allowOnce) }
+                }
+                if claude.canDecide(request, .allowOnce) {
+                LoggedButton("Permitir") { claude.decide(request, .allowOnce) }.loggedControl(control: "claude_chat_page.button_13", label: "Permitir")
                     .buttonStyle(.glassProminent)
                     .keyboardShortcut(.defaultAction)
+                }
             }
         }
         .padding(12)
@@ -713,6 +725,7 @@ private struct PermissionCard: View {
 }
 
 private struct PlanCard: View {
+    @Environment(\.logProject) private var logProject
     @Environment(AISession.self) private var claude
     let request: ClaudePermissionRequest
     @State private var askingChanges = false
@@ -735,31 +748,36 @@ private struct PlanCard: View {
             .background(.quaternary.opacity(0.5), in: .rect(cornerRadius: 8))
 
             if askingChanges {
-                TextField("O que mudar no plano?", text: $feedback, axis: .vertical)
+                LoggedTextField("O que mudar no plano?", text: $feedback, axis: .vertical).loggedField(control: "claudechatpage.text_2", label: "O que mudar no plano?")
                     .textFieldStyle(.roundedBorder)
                     .lineLimit(2...6)
                     .focused($feedbackFocused)
                     .onAppear { feedbackFocused = true }
                 HStack {
-                    Button("Voltar", role: .cancel) { askingChanges = false }
+                    LoggedButton("Voltar", role: .cancel) { askingChanges = false }.loggedControl(control: "claude_chat_page.button_14", label: "Voltar")
                     Spacer()
-                    Button("Enviar mudanças") { claude.requestPlanChanges(request, feedback: feedback) }
+                    LoggedButton("Enviar mudanças") { claude.requestPlanChanges(request, feedback: feedback) }.loggedControl(control: "claude_chat_page.button_15", label: "Enviar mudanças")
                         .buttonStyle(.glassProminent)
                         .keyboardShortcut(.defaultAction)
                         .disabled(feedback.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             } else {
                 HStack {
-                    Button("Pedir mudanças") { askingChanges = true }
+                    LoggedButton("Pedir mudanças") { askingChanges = true }.loggedControl(control: "claude_chat_page.button_16", label: "Pedir mudanças")
                     Spacer()
-                    Button("Aprovar") { claude.approvePlan(request, then: nil) }
-                        .help("Executa o plano, pedindo permissão para cada edição e comando")
-                    Button("Aprovar e aceitar edições") { claude.approvePlan(request, then: .acceptEdits) }
+                    LoggedButton("Aprovar") { claude.approvePlan(request, then: nil) }.loggedControl(control: "claude_chat_page.button_17", label: "Aprovar")
+                        .help(claude.provider == .claude ? "Executa o plano, pedindo permissão para cada edição e comando" : "Executa o plano com escrita no projeto; comandos seguem as aprovações do Codex")
+                    if claude.provider == .claude {
+                    LoggedButton("Aprovar e aceitar edições") { claude.approvePlan(request, then: .acceptEdits) }.loggedControl(control: "claude_chat_page.button_18", label: "Aprovar e aceitar edições")
                         .help("Executa o plano sem pedir permissão para cada edição de arquivo (comandos ainda pedem)")
-                    Button("Aprovar em modo auto") { claude.approvePlan(request, then: .auto) }
+                    LoggedButton("Aprovar em modo auto") { claude.approvePlan(request, then: .auto) }.loggedControl(control: "claude_chat_page.button_19", label: "Aprovar em modo auto")
                         .buttonStyle(.glassProminent)
                         .keyboardShortcut(.defaultAction)
                         .help("Executa o plano em modo auto: edições e comandos rodam sem perguntar, só ações arriscadas pedem confirmação")
+                    }
+                    if claude.provider == .codex {
+                        LoggedButton("Rejeitar", role: .cancel) { claude.decline(request) }.loggedControl(control: "claude_chat_page.reject_plan", label: "Rejeitar")
+                    }
                 }
             }
         }
@@ -769,6 +787,7 @@ private struct PlanCard: View {
 }
 
 private struct QuestionCard: View {
+    @Environment(\.logProject) private var logProject
     @Environment(AISession.self) private var claude
     let request: ClaudePermissionRequest
     /// Chosen labels per question text.
@@ -780,7 +799,7 @@ private struct QuestionCard: View {
         VStack(alignment: .leading, spacing: 12) {
             Label("\(claude.provider.title) tem uma pergunta", systemImage: "questionmark.bubble.fill")
                 .font(.callout.weight(.semibold))
-            ForEach(request.questions, id: \.question) { question in
+            ForEach(request.questions, id: \.id) { question in
                 VStack(alignment: .leading, spacing: 6) {
                     if let header = question.header {
                         Text(header.uppercased()).font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
@@ -789,21 +808,21 @@ private struct QuestionCard: View {
                     ForEach(question.options, id: \.label) { option in
                         optionButton(option, in: question)
                     }
-                    TextField("Outro…", text: Binding(
-                        get: { other[question.question, default: ""] },
+                    LoggedTextField("Outro…", text: Binding(
+                        get: { other[question.id, default: ""] },
                         set: { value in
-                            other[question.question] = value
-                            if !question.multiSelect, !value.isEmpty { chosen[question.question] = [] }
+                            other[question.id] = value
+                            if !question.multiSelect, !value.isEmpty { chosen[question.id] = [] }
                         }
-                    ))
+                    )).loggedField(control: "claudechatpage.text_3", label: "Outro…")
                     .textFieldStyle(.roundedBorder)
                     .font(.callout)
                 }
             }
             HStack {
-                Button("Não responder", role: .cancel) { claude.decline(request) }
+                LoggedButton("Não responder", role: .cancel) { claude.decline(request) }.loggedControl(control: "claude_chat_page.button_20", label: "Não responder")
                 Spacer()
-                Button("Responder") { claude.answer(request, answers) }
+                LoggedButton("Responder") { claude.answer(request, answers) }.loggedControl(control: "claude_chat_page.button_21", label: "Responder")
                     .buttonStyle(.glassProminent)
                     .keyboardShortcut(.defaultAction)
                     .disabled(answers.count < request.questions.count)
@@ -814,16 +833,16 @@ private struct QuestionCard: View {
     }
 
     private func optionButton(_ option: ClaudeQuestion.Option, in question: ClaudeQuestion) -> some View {
-        let selected = chosen[question.question, default: []].contains(option.label)
-        return Button {
-            var set = chosen[question.question, default: []]
+        let selected = chosen[question.id, default: []].contains(option.label)
+        return LoggedButton {
+            var set = chosen[question.id, default: []]
             if question.multiSelect {
                 if selected { set.remove(option.label) } else { set.insert(option.label) }
             } else {
                 set = [option.label]
-                other[question.question] = ""
+                other[question.id] = ""
             }
-            chosen[question.question] = set
+            chosen[question.id] = set
         } label: {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Image(systemName: question.multiSelect
@@ -841,7 +860,7 @@ private struct QuestionCard: View {
             .padding(8)
             .background(selected ? AnyShapeStyle(.tint.opacity(0.12)) : AnyShapeStyle(.clear), in: .rect(cornerRadius: 8))
             .contentShape(Rectangle())
-        }
+        }.loggedControl(control: "claude_chat_page.button_22", label: "Ativar controle")
         .buttonStyle(.plain)
     }
 
@@ -849,10 +868,10 @@ private struct QuestionCard: View {
     private var answers: [String: [String]] {
         var result: [String: [String]] = [:]
         for question in request.questions {
-            let picked = question.options.map(\.label).filter { chosen[question.question, default: []].contains($0) }
-            let free = other[question.question, default: ""].trimmingCharacters(in: .whitespacesAndNewlines)
+            let picked = question.options.map(\.label).filter { chosen[question.id, default: []].contains($0) }
+            let free = other[question.id, default: ""].trimmingCharacters(in: .whitespacesAndNewlines)
             let all = picked + (free.isEmpty ? [] : [free])
-            if !all.isEmpty { result[question.question] = all }
+            if !all.isEmpty { result[question.id] = all }
         }
         return result
     }
@@ -861,6 +880,7 @@ private struct QuestionCard: View {
 
 /// Autocomplete list shown above the composer, in the style of the Claude Code terminal.
 private struct SuggestionList: View {
+    @Environment(\.logProject) private var logProject
     let suggestions: [ClaudeSuggestion]
     @Binding var selection: Int
     let onPick: (ClaudeSuggestion) -> Void
@@ -868,7 +888,7 @@ private struct SuggestionList: View {
     var body: some View {
         VStack(spacing: 0) {
             ForEach(Array(suggestions.enumerated()), id: \.element.id) { index, item in
-                Button { onPick(item) } label: {
+                LoggedButton { onPick(item) } label: {
                     HStack(spacing: 8) {
                         Image(systemName: symbol(item.kind))
                             .frame(width: 14)
@@ -888,7 +908,7 @@ private struct SuggestionList: View {
                     .padding(.vertical, 4)
                     .background(index == selection ? Color.accentColor.opacity(0.25) : .clear, in: .rect(cornerRadius: 6))
                     .contentShape(Rectangle())
-                }
+                }.loggedControl(control: "claude_chat_page.button_23", label: "Ativar controle")
                 .buttonStyle(.plain)
             }
         }

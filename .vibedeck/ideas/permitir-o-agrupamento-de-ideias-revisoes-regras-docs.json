@@ -1,0 +1,242 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "human",
+  "body" : "# Agrupar ideias, revisões, regras, docs e skills em grupos (diretórios aninhados)\n\n## Problema\nHoje ideias, revisões, regras, docs e skills ficam em listas planas. Em projetos grandes (inclusive monorepos, no caso das skills) falta uma forma de organizar esses itens em tópicos e subtópicos e de movê-los entre eles. As Revisões já têm algo parecido (grupo por tema), mas os demais conceitos não.\n\nObjetivo do usuário: tornar isso implementável. Por isso as decisões abaixo fecham os pontos ambíguos, sem criar requisitos novos.\n\n## Proposta\nPermitir **grupos** (tópicos e subtópicos) como **diretórios reais**, no estilo das páginas do Next, para os cinco conceitos de uma só vez.\n\n### Modelo e layout\n- Layout: `.vibedeck/ideas/<tópico>/<subtópico>/<slug>.json`, e o equivalente em `reviews`, `docs` e `skills`. Profundidade ilimitada; nenhum arquivo de índice guarda a hierarquia.\n- Criar um item com referência `a/b/slug` grava exatamente `<pasta do conceito>/a/b/<slug>.<ext>`, cria os diretórios intermediários, e listar devolve o item com grupo `a/b`.\n- Identidade: o slug é único só dentro do grupo (`uniqueSlug` desambigua só no grupo de destino; `a/x` e `b/x` coexistem sem sufixo `-2`). A referência passa a ser o caminho completo `grupo/slug`. A resolução por slug, UUID, prefixo ou título continua valendo.\n- Um slug simples ambíguo entre grupos devolve `VibeDeckError` em pt-BR listando os caminhos candidatos, sem escolher um. Uma referência com o caminho completo resolve.\n- Compatibilidade: pastas planas existentes continuam válidas e aparecem na raiz (grupo vazio), sem migração e sem modificar arquivos.\n- A leitura ignora arquivos fora do formato do conceito (`.DS_Store`, ocultos). Diretórios vazios aparecem como grupos sem itens, sem erro.\n\n### Por conceito\n- **Regras**: o que se agrupa são as regras dentro de um mesmo tópico de regras. Aplicabilidade do tópico e checks continuam por regra, sem mudança de semântica. O check exige resposta para toda regra aplicável, independente do grupo. Mover uma regra entre grupos do mesmo tópico mantém o id e o histórico de checks.\n- **Revisões**: os diretórios só organizam os arquivos de revisão. Cada arquivo continua sendo um tema. `reviews/a/tema.json` dá os mesmos itens e o mesmo `openCount` do layout plano, e o caminho do diretório não altera o tema.\n- **Ideias**: `promotedTopic` usa o caminho completo da ideia e não quebra ao mover a ideia de grupo. Apagar o tópico despromove a ideia.\n- **Docs e ideias agrupadas**: imagens e links relativos a anexos (`../attachments/f.png`) continuam resolvendo em qualquer profundidade. Anexos novos geram o link relativo correto para a profundidade.\n- **Skills**: o agrupamento só vale onde o diretório lido pelo Claude/Codex o suporta. As skills do VibeDeck são JSON em `.vibedeck/skills/`, e o Claude Code lê `.claude/skills/<nome>/SKILL.md` (um nível). Antes de implementar, confirmar o layout de descoberta de cada provedor (por exemplo, se subdiretórios aninhados são lidos) e registrar a conclusão em `Skills.swift`. O Core só cria ou move skill para layouts que os dois provedores leem. Para qualquer outro, recusa com `VibeDeckError` em pt-BR em vez de gravar uma skill que o provedor não descobre. Se a conclusão for que o aninhamento não é lido, o grupo de skill fica restrito ao que o provedor suporta (por exemplo, só raiz) e a recusa cobre o resto.\n\n### Operações de grupo (Core)\n- Criar, renomear, mover e apagar grupos (subtópicos incluídos) para ideias, revisões, docs e skills.\n- Mover item ou grupo é um rename atômico do arquivo/diretório, preservando id, autoria e conteúdo. Se o destino tiver o mesmo slug, falha com `VibeDeckError` em pt-BR sem sobrescrever e sem alterar origem nem destino.\n- Mover ou renomear um grupo para dentro dele mesmo ou de um descendente é recusado (Core e interface, arrastar e menu).\n- Apagar um grupo não vazio exige confirmação explícita no app. O CLI e o MCP recusam sem flag ou parâmetro de confirmação. Nunca apaga itens de autoria human em silêncio.\n\n### Segurança de caminhos\n- Nomes de grupo passam por `Slug.make` e não aceitam `..`, caminho absoluto nem separadores além dos níveis (`../x`, `/tmp` e `a//b` falham).\n- O caminho resolvido de grupo ou item é validado após standardizar e resolver symlinks. Se sair da pasta do conceito, é recusado com `VibeDeckError` em pt-BR. Um symlink dentro da pasta apontando para fora faz criar, mover e apagar falharem sem gravar nada fora.\n\n### App\n- Sidebar e listas de seção mostram a árvore de grupos (expandir/recolher). O filtro por texto e por #tag funciona em todos os níveis.\n- Mover item ou grupo entre grupos por arrastar ou por menu, em um único passo de undo, gravando no disco na hora. Desfazer devolve os arquivos ao caminho original.\n- Mudanças feitas fora do app (criar, mover, apagar diretórios) aparecem ao vivo. O `FileWatcher` observa subdiretórios de qualquer profundidade. Uma seleção ou aba aberta cujo item mudou de grupo é atualizada pelo id para o novo caminho.\n\n### CLI e MCP\n- Todo conceito fica acessível pelo app, pelo CLI e pelo MCP. As listagens `--json` de ideias, docs, revisões e skills incluem o campo do grupo (caminho completo). As operações de grupo (criar, renomear, mover, apagar) existem em ambos, com confirmação para apagar grupo não vazio.\n- Textos visíveis em pt-BR.\n\n## Escopo (arquivos e telas afetados)\n- Core: `Sources/VibeDeckCore/ProjectStore.swift` (`listIdeas`, `resolveIdeaSlug`, `createIdea`, `listDocs`, `createDoc`, `listGroups`, `listSkills`, `resolveSkillSlug`, `createSkill`, `skillURL`, `deleteSkill`, promoção/despromoção de ideias e operações de grupo novas; helpers `listRecords`, `resolveSlug`, `loadRecord`, `uniqueSlug`).\n- Core: `Models.swift`, `Rules.swift`, `Skills.swift`, `FileWatcher.swift`, `AgentsGuide.swift`, e `ReviewDiscover.swift`, `RuleDiscover.swift` e `DocGenerate.swift` onde usam slugs.\n- CLI e MCP: `Sources/vibedeck/CLI.swift` e `Sources/vibedeck/MCPServer.swift` ganham as operações de grupo e o campo de grupo no `--json`.\n- App (`Sources/VibeDeckApp`): `ProjectModel.swift` (undo único, seleção por id, watcher), `ProjectWindow.swift`, `SectionListView.swift`, `IdeaView.swift`, `DocView.swift`, `SkillView.swift`, `RulesView.swift`, `ReviewGroupView.swift`, `TabBar.swift`.\n- Schemas (`schema/v1`) e `worker/public` (gerado), se o formato mudar. A URL só muda via `scripts/set-schema-url.sh`.\n- Docs e testes: `README.md`, `.vibedeck/guide.md` (e o texto em `AgentsGuide.swift`); testes no Core, no ProjectModel, no FileWatcher, em `RulesTests` e em LoggingTests quando aplicável.\n\n## Critérios de aceite\n- Criar item em `a/b/slug` grava `<pasta>/a/b/<slug>.<ext>` (ideias, docs, reviews e skills), e listar devolve o grupo `a/b`.\n- Projeto plano existente lista tudo com grupo vazio, e nenhum arquivo é modificado.\n- Dois itens com o mesmo slug em grupos distintos coexistem sem sufixo. A referência simples falha com mensagem em pt-BR listando os caminhos, e a referência com caminho resolve.\n- Mover item mantém id e JSON. Mover grupo move todos os descendentes. Destino com mesmo slug falha sem sobrescrever (bytes de origem e destino iguais antes e depois). Mover `a` para `a/b` falha e a árvore permanece igual.\n- Apagar grupo com itens sem confirmação devolve erro e mantém os arquivos, no Core, CLI e MCP.\n- `../x`, `/tmp` e `a//b` falham com `VibeDeckError` em pt-BR. Symlink para fora da pasta falha em criar, mover e apagar. Nada é gravado fora da pasta.\n- Regras agrupadas continuam exigidas no check. Mover regra mantém id e histórico (teste em `RulesTests` com `submitCheck`).\n- `reviews/a/tema.json` dá os mesmos itens e o mesmo `openCount` do layout plano.\n- Mover ideia promovida mantém `promotedTopic` válido. Apagar o tópico despromove a ideia.\n- Skill em grupo: o caminho gerado aceito e o recusado têm teste, e o layout de Claude Code e Codex está registrado em `Skills.swift`.\n- Doc em `docs/a/b/x` com `../attachments/f.png` resolve para o mesmo anexo do layout plano.\n- Diretórios vazios e `.DS_Store` dentro de `ideas/a` não geram erro.\n- `FileWatcher`: criar `a/b/x.json` e mover `a` para `c` gera evento. No app, mover arquivo no disco mantém a seleção pelo id.\n- No app, mover registra um único undo e grava no disco na hora. Desfazer devolve os arquivos ao caminho original, com seleção coerente.\n- Listagens `--json` do CLI e do MCP incluem o grupo (teste de saída com item agrupado).\n- `swift test` passa, e README e guia estão atualizados.\n\n## Decisões confirmadas pelo usuário no questionário\n- Regras: campo opcional `group` por regra, dentro do JSON do tópico; IDs e checks são preservados.\n- Skills: agrupar somente os registros JSON do VibeDeck, sem exportação/sincronização de SKILL.md e sem mover os arquivos nativos ou recursos dos provedores. Esta decisão substitui a exigência de que o layout interno JSON seja um layout nativo descoberto pelo provedor; Claude e Codex acessam os registros pelo VibeDeck.\n- Promoção: `promotedTopic` continua sendo a referência ao tópico; o vínculo com a ideia é preservado por `sourceIdea` (UUID), inclusive ao mover grupos inteiros.\n- Implementar: quando a avaliação está ausente ou desatualizada, clicar reavalia o conteúdo atual; só uma avaliação positiva salva libera a implementação.\n- Mover atualiza referências existentes em workflows e próximos passos. Desfazer restaura caminhos e referências originais.\n- Árvore: sem busca preserva grupos, inclusive vazios ou com itens omitidos por status; durante a busca mostra apenas os caminhos com resultados.\n",
+  "createdAt" : "2026-10-12T02:59:36Z",
+  "id" : "572D100D-5729-4375-AB86-74EDC003F6C0",
+  "readiness" : {
+    "checkedAt" : "2026-10-13T18:54:49Z",
+    "fingerprint" : "69f87e53c463fa06",
+    "missing" : [
+      "Regras agrupadas: não se define como o agrupamento é armazenado. Regras ficam dentro do JSON do tópico (não como arquivos), então não são diretórios reais. Falta dizer se é um campo `group` por regra ou outro formato. Falta dizer se mudam o schema e a identidade da regra (id, caminho). Falta dizer se as operações de grupo cobrem regras no Core, CLI e MCP. A descrição diz 'quatro conceitos de arquivo', mas as regras de rascunho citam o agrupamento de regras.",
+      "Skills: o VibeDeck guarda skills como JSON em .vibedeck/skills/<slug>.json, e o Core só importa de .claude/skills/<nome>/SKILL.md. Não existe caminho 'gerado' para Claude ou Codex. A regra e o critério de aceite ('caminho gerado compatível, com teste') não dizem se é preciso criar uma exportação ou sincronização. Também não dizem como é o layout agrupado em .claude/skills ou .agents/skills (o Claude Code descobre skills aninhadas?). A regra 'só vale onde o provedor suporta' deixa em aberto o comportamento quando não suporta (bloquear a criação? ignorar o grupo?). Isso é decisão de produto e pesquisa pendentes.",
+      "Revisões: hoje 'grupo' já é o tema (ReviewGroup, um arquivo por tema, com listGroups). O novo 'grupo' é um diretório. Falta definir a nomenclatura no código, no CLI e no MCP para evitar colisão. Falta dizer se as operações de grupo de diretório de revisões convivem com o conceito de tema e como a referência `grupo/slug` se combina com a referência de tema já existente.",
+      "Ideias e promoção: falta definir o formato de `promotedTopic` e o slug do tópico quando a ideia tem caminho `a/b/slug`. O tópico de regras tem slug plano. Falta dizer se o tópico passa a conter '/', se vira só o slug final (colide entre grupos), ou se guarda o caminho completo da ideia num campo separado. Falta dizer o que acontece com os vínculos ao mover o grupo inteiro de ideias promovidas.",
+      "Pastas vazias: falta dizer se grupos vazios (diretórios sem itens) aparecem na listagem e na árvore. A criação de grupo vazio só faz sentido se aparecerem. A API de listagem devolve só itens com campo de grupo, então a API da árvore (tipo de retorno) não está definida.",
+      "Apagar grupo: falta o comportamento exato com itens de autoria human (recusar sempre, mesmo com confirmação? exigir confirmação extra?). 'Nunca apaga itens human em silêncio' é ambíguo em relação ao parâmetro de confirmação do CLI e do MCP.",
+      "Docs: falta dizer como o DocGenerate e a criação de docs recebem o grupo, e como anexos com caminho relativo (../attachments/…) resolvem a partir de docs em subdiretórios, já que a profundidade muda o caminho relativo.",
+      "Interface: falta definir o gesto e o destino do arrastar (soltar em grupo, na raiz), o menu de mover (seletor de destino), a criação, o renomeio e a exclusão de grupos na UI e seus textos em pt-BR. Também falta dizer como o undo único de mover um diretório inteiro restaura o estado e como interage com o UndoManager por doc/ideia, que é indexado por slug e muda com o caminho.",
+      "Sidebar: falta dizer como o filtro de omissão da sidebar (revisões com openCount > 0 e ideias done omitidas) se combina com a árvore: grupos sem itens visíveis são ocultados ou mostrados?",
+      "Rename/move de item vs. slug: falta dizer se renomear um item muda o slug dentro do grupo (e atualiza referências de nextSteps, ideias, abas) e como as referências existentes por slug plano (nextSteps, vínculos de revisão, vibedeck.json) se atualizam quando o caminho muda ao mover."
+    ],
+    "viable" : false
+  },
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:17:11Z",
+      "details" : "Teste no Core cria item em a/b/slug e confere que o arquivo existe em <pasta>/a/b/<slug>.<ext> e que listar devolve o grupo a/b.",
+      "id" : "C1D3A171-4FD9-437D-BD9F-19553E49953D",
+      "severity" : "must",
+      "text" : "Um grupo é um diretório real dentro da pasta do conceito (.vibedeck/ideas, reviews, docs, skills), com profundidade aninhada ilimitada; nenhum arquivo de índice guarda a hierarquia."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:17:11Z",
+      "details" : "Teste com dois itens de mesmo slug em grupos distintos: referência simples falha com a mensagem; referência com caminho resolve.",
+      "id" : "D12D845A-3299-4CF3-87D3-DA79FB432913",
+      "severity" : "must",
+      "text" : "A resolução de referência aceita o caminho completo grupo/slug; um slug simples ambíguo entre grupos devolve VibeDeckError em pt-BR listando os caminhos candidatos, sem escolher um."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:17:11Z",
+      "details" : "Teste carrega um projeto com layout plano e confere que todos os itens listam com grupo vazio e nenhum arquivo é modificado.",
+      "id" : "6425E787-9922-43FA-90A0-65BF17891A52",
+      "severity" : "must",
+      "text" : "Itens existentes em pasta plana (sem grupo) continuam válidos e aparecem na raiz, sem migração nem reescrita de arquivos."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:17:11Z",
+      "details" : "Testes: mover item entre grupos mantém o id e o JSON; mover grupo move todos os descendentes; destino com mesmo slug falha sem sobrescrever.",
+      "id" : "77081E43-5413-4645-9CAC-BA6FB2A8DD7A",
+      "severity" : "must",
+      "text" : "O Core oferece operações para criar, renomear, mover e apagar grupos (subtópicos incluídos) para ideias, revisões, docs e skills; mover um item ou grupo é rename atômico do arquivo/diretório, preservando id, autoria e conteúdo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:17:11Z",
+      "details" : "Teste: delete de grupo com itens sem confirmação devolve erro e mantém os arquivos.",
+      "id" : "74415E1E-50C7-4B40-B31E-8F1A03F2CDBB",
+      "severity" : "must",
+      "text" : "Apagar um grupo não vazio exige confirmação explícita no app e o CLI/MCP recusam sem flag/parâmetro de confirmação; nunca apaga itens de autoria human em silêncio."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:17:11Z",
+      "details" : "Teste com '../x', '/tmp' e 'a//b' falha com VibeDeckError em pt-BR e nada é gravado fora da pasta.",
+      "id" : "5E8BCE1E-5579-4BD8-8EFE-D9858186D638",
+      "severity" : "must",
+      "text" : "Nomes de grupo passam por Slug.make e não aceitam '..', caminho absoluto nem separadores além dos níveis; o caminho resolvido deve ficar dentro da pasta do conceito."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:17:11Z",
+      "details" : "Teste: regras agrupadas continuam exigidas no check; mover regra de grupo mantém o id e o histórico de checks.",
+      "id" : "15644BF7-1622-4164-A08D-893A4B9DC84D",
+      "severity" : "must",
+      "text" : "Regras são agrupadas dentro de um mesmo tópico (grupo de regras do tópico); a aplicabilidade do tópico e os checks continuam por regra, sem mudança de semântica, e o check exige resposta para toda regra aplicável independente do grupo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:17:11Z",
+      "details" : "Teste lista revisões em reviews/a/tema.json e confere que os itens e o openCount do tema são os mesmos do layout plano.",
+      "id" : "C0BC66BA-37B0-4B80-8C66-B7CBA5E5803A",
+      "severity" : "must",
+      "text" : "Revisões aceitam grupos de diretório que contêm os arquivos de grupo-por-tema; cada arquivo de revisão continua sendo um tema, e o diretório só organiza os arquivos."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:17:11Z",
+      "details" : "Verificar no app e por teste no ProjectModel que mover registra undo único e grava no disco na hora.",
+      "id" : "5C365B32-CBAB-475B-B720-4E6765DBBD61",
+      "severity" : "must",
+      "text" : "A sidebar e as listas de seção do app mostram a árvore de grupos (expandir/recolher), com filtro por texto e #tag funcionando sobre itens de todos os níveis, e permitem mover item entre grupos por arrastar ou menu, em um único passo de undo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:17:11Z",
+      "details" : "Teste do ProjectModel/watcher: mover arquivo no disco mantém a seleção pelo id.",
+      "id" : "C701BA53-C5D9-4CCB-A660-A2992000921A",
+      "severity" : "should",
+      "text" : "Mudanças de grupo feitas fora do app (criar, mover ou apagar diretórios) aparecem ao vivo, e uma seleção ou aba aberta cujo item mudou de grupo é atualizada para o novo caminho em vez de ficar inválida."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:17:11Z",
+      "details" : "Verificar o layout que Claude Code e Codex leem para skills antes de implementar; teste cobre o caminho gerado.",
+      "id" : "0B3C5091-52F2-4616-9C67-42EC84F9D841",
+      "severity" : "must",
+      "text" : "Skills em grupos (monorepo) continuam descobertas e usadas pelo Claude/Codex: o formato e o local lido pelos provedores não são quebrados, e o agrupamento só vale onde o diretório do provedor o suporta."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:17:11Z",
+      "details" : "Teste: mover ideia promovida mantém promotedTopic válido; apagar o tópico despromove a ideia.",
+      "id" : "414EDB73-7406-40ED-8EFD-40E55916A760",
+      "severity" : "must",
+      "text" : "Promover ideia de um grupo e despromover continuam funcionando: o vínculo ideia-tópico usa o caminho completo da ideia e não quebra ao mover a ideia de grupo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:56:19Z",
+      "details" : "Teste no Core para ideias, docs, reviews e skills: criar, ler o disco e chamar o list correspondente.",
+      "id" : "3C670929-448A-4BC9-9876-FDF84E350225",
+      "severity" : "must",
+      "text" : "Criar um item com referência de grupo a/b/slug grava exatamente <pasta do conceito>/a/b/<slug>.<ext>, criando os diretórios intermediários, e listar devolve o item com grupo \"a/b\"."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:56:19Z",
+      "details" : "Teste: criar a/x e b/x no mesmo conceito sem sufixo -2 em nenhum.",
+      "id" : "937EF838-B3FA-46D4-9947-983B2ABDB171",
+      "severity" : "must",
+      "text" : "O slug é único apenas dentro do seu grupo: dois itens com o mesmo slug em grupos distintos podem coexistir, e uniqueSlug só desambigua dentro do grupo de destino."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:56:19Z",
+      "details" : "Teste com um symlink dentro de ideas/ apontando para fora: criar, mover e apagar por ele falham e nada é gravado fora.",
+      "id" : "76B85B3E-B6DB-46EC-828A-FEB56A9341DC",
+      "severity" : "must",
+      "text" : "O caminho resolvido de um grupo ou item é validado após standardizar e resolver symlinks, e é recusado com VibeDeckError em pt-BR se sair da pasta do conceito."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:56:19Z",
+      "details" : "Teste comparando bytes dos dois arquivos antes e depois da falha.",
+      "id" : "CBDA75EB-82E5-470C-9873-84CF932F29ED",
+      "severity" : "must",
+      "text" : "Mover ou renomear item ou grupo para um destino que já tem o mesmo slug falha com VibeDeckError em pt-BR, sem sobrescrever e sem alterar origem nem destino."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:56:19Z",
+      "details" : "Teste: mover a para a/b falha e a árvore permanece igual.",
+      "id" : "DE2B1403-0A86-49A1-844F-D6F915C5B252",
+      "severity" : "must",
+      "text" : "Mover um grupo para dentro dele mesmo ou de um de seus descendentes é recusado com VibeDeckError em pt-BR, no Core e na interface (arrastar e menu)."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:56:19Z",
+      "details" : "Teste em RulesTests: mover, depois submitCheck e conferir que a regra continua exigida e que os checks antigos continuam ligados ao id.",
+      "id" : "1B00AA95-89C4-4588-94DF-CB401E7F2ACF",
+      "severity" : "must",
+      "text" : "Mover uma regra entre grupos de regras do mesmo tópico mantém o id e o histórico de checks, e o check continua exigindo resposta para ela."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:56:19Z",
+      "details" : "Teste de Core comparando as duas leituras.",
+      "id" : "3F4D5889-6BB3-427B-A9C8-C47DF04314FE",
+      "severity" : "must",
+      "text" : "reviews/a/tema.json produz os mesmos itens e o mesmo openCount do mesmo arquivo em layout plano, e o caminho do grupo de diretório não altera o tema do arquivo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:56:19Z",
+      "details" : "Antes de implementar, confirmar o layout de descoberta de cada provedor (por exemplo, se subdiretórios aninhados em skills/ são lidos) e registrar em Skills.swift. Teste cobrindo o caminho gerado aceito e o recusado.",
+      "id" : "4ACC47B4-5B04-4D92-B76A-F5733A3A63F2",
+      "severity" : "must",
+      "text" : "Skills em grupo só são criadas ou movidas para layouts que Claude Code e Codex leem; para qualquer outro, o Core recusa com VibeDeckError em pt-BR em vez de gravar uma skill que o provedor não descobre."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:56:19Z",
+      "details" : "Teste do watcher criando a/b/x.json e movendo a para c, esperando o evento.",
+      "id" : "7AB19394-B1A1-4DB8-9EAF-6640ADD8B134",
+      "severity" : "must",
+      "text" : "O FileWatcher observa subdiretórios de qualquer profundidade em ideas, reviews, docs e skills, e o app aplica criar, mover e apagar de diretórios feitos fora dele sem reabrir o projeto."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:56:19Z",
+      "details" : "Teste em ProjectModel: mover, undo, checar disco e seleção.",
+      "id" : "A5F2CD49-87E5-4260-A53A-0758956512E1",
+      "severity" : "must",
+      "text" : "Mover item ou grupo no app (arrastar ou menu) registra exatamente um passo de undo, e desfazer devolve os arquivos ao caminho original no disco."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:56:19Z",
+      "details" : "Teste: doc em docs/a/b/x com ../attachments/f.png resolve para o mesmo arquivo de anexo que o layout plano; anexos novos geram o link relativo correto para a profundidade.",
+      "id" : "9410176E-D0DE-46AD-B7F3-1252102A109C",
+      "severity" : "must",
+      "text" : "Imagens e links relativos a anexos em docs e ideias agrupadas continuam resolvendo e aparecem renderizados, independentemente da profundidade do grupo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:56:19Z",
+      "details" : "Conferir CLI.swift e MCPServer.swift; teste de saída JSON com item agrupado.",
+      "id" : "A839CB96-00A4-4FEB-82BA-DA1406AA255A",
+      "severity" : "must",
+      "text" : "As listagens do CLI e do MCP de ideias, docs, revisões e skills com --json incluem o campo do grupo (caminho completo), e as operações de grupo (criar, renomear, mover, apagar) existem em ambos com o parâmetro de confirmação para apagar."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:56:19Z",
+      "details" : "Teste com .DS_Store e diretório vazio dentro de ideas/a.",
+      "id" : "3F75F2E9-FF39-47EE-8DCD-CAA108ED214C",
+      "severity" : "should",
+      "text" : "A leitura de um grupo ignora arquivos que não são do formato do conceito (como .DS_Store e arquivos ocultos) e diretórios vazios aparecem como grupos sem itens, sem erro."
+    }
+  ],
+  "status" : "done",
+  "tags" : [
+    "ideias",
+    "revisoes",
+    "regras",
+    "core",
+    "interface",
+    "cli",
+    "mcp",
+    "schema",
+    "ui",
+    "claude",
+    "conceitos"
+  ],
+  "title" : "Permitir o agrupamento de ideias, Revisões, regras, docs, Skills",
+  "updatedAt" : "2026-10-13T22:13:27Z"
+}

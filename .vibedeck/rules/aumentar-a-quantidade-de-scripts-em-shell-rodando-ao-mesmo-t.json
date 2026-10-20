@@ -1,0 +1,594 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-13T17:02:09Z",
+  "description" : "Regras vindas da ideia \"Aumentar a quantidade de scripts em Shell rodando ao mesmo tempo\".",
+  "id" : "7E19FDD7-A4BF-47F4-9954-12B6FB9334ED",
+  "paths" : [
+    "Sources/VibeDeckCore/ProjectStore.swift",
+    "Sources/VibeDeckCore/RuleTests.swift",
+    "Sources/VibeDeckApp/RuleExecutionModel.swift",
+    "Sources/VibeDeckCore/RuleExecution.swift",
+    "Sources/VibeDeckApp/RuleExecutionView.swift",
+    "Sources/vibedeck/CLI.swift",
+    "Sources/vibedeck/MCPServer.swift",
+    "Tests/VibeDeckCoreTests/RuleExecutionTests.swift",
+    "Tests/VibeDeckCoreTests/RuleTestsTests.swift",
+    "Sources/VibeDeckApp/VibeDeckApp.swift",
+    "Sources/VibeDeckApp/ProjectModel.swift"
+  ],
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:21:50Z",
+      "details" : "Teste no Core com RuleTestRunner injetado que registra o pico de execuções simultâneas: com 8 regras de script e limite padrão, o pico é > 1 e ≤ activeProcessorCount.",
+      "id" : "89C65E91-9135-4B44-ACF8-9CDDD14C687C",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/89c65e91.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "89e96b8981ebf64f"
+      },
+      "text" : "O Core executa os scripts de regras em paralelo, até um limite de concorrência maior que 1 e no máximo ProcessInfo.activeProcessorCount."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:21:50Z",
+      "details" : "Teste com runner injetado que incrementa/decrementa um contador atômico e dorme alguns ms; com limite 2 e 6 regras, o pico observado é exatamente 2.",
+      "id" : "B61BCF40-3FBD-43F9-ADA3-81711BDF0CFF",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/b61bcf40.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "7b5a0e9ad240a93a"
+      },
+      "text" : "Nunca há mais scripts rodando ao mesmo tempo do que o limite de concorrência configurado."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:21:50Z",
+      "details" : "Teste com runner injetado em que a primeira regra demora mais que as outras; o array retornado mantém a ordem original.",
+      "id" : "36586250-BE02-409B-8E2C-35D8579F78CE",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/36586250.sh",
+        "generatedAt" : "2026-10-14T14:13:13Z",
+        "mode" : "script",
+        "ruleHash" : "3fd9846184f7abeb"
+      },
+      "text" : "runRuleTests e runRuleScripts devolvem os RuleTestRun na ordem de declaração das regras (tópico, depois regra), independente da ordem em que os scripts terminam."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:21:50Z",
+      "details" : "Teste coletando os eventos de onEvent (thread-safe) com runner injetado concorrente: para cada rule.id há um par started→finished.",
+      "id" : "B25E182D-21CA-4B63-AF31-18B0364F736C",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/b25e182d.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "51bd23e126b8a3b5"
+      },
+      "text" : "Cada regra de script emite exatamente um .started e um .finished, e o .started vem antes do .finished daquela regra, mesmo com execução paralela."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:21:50Z",
+      "details" : "Ler RuleTestRunner.live/ShellRunner.run: o timer é armado depois de process.run(), dentro da tarefa já liberada pelo limite de concorrência.",
+      "id" : "5A0EBACE-93C8-4C24-A1E8-CE1DAD08788C",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/5a0ebace.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "8e2a067545c231a4"
+      },
+      "text" : "O timeout de 120 s de cada script conta a partir do início daquele script, não do tempo que ele esperou na fila."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:21:50Z",
+      "details" : "Teste com ShellRunner real rodando dois comandos simultâneos (echo A; sleep / echo B; sleep): cada outcome.output contém só a própria marca.",
+      "id" : "61DA0448-28C7-4429-B5E0-F75BE713EC6E",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/61da0448.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "3ac61e199f9269c6"
+      },
+      "text" : "A saída de cada script fica só no seu RuleTestOutcome, sem misturar com a de scripts que rodam ao mesmo tempo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:21:50Z",
+      "details" : "Em startRuleExecution, o bloco withAI roda após o fim do stream de eventos e recebe scriptResults com todos os resultados de script.",
+      "id" : "493FE647-7C2C-466A-A734-9833580EF36F",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/493fe647.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "abc296157de69823"
+      },
+      "text" : "No app, a verificação por IA só começa depois que todos os scripts terminaram."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:21:50Z",
+      "details" : "Rodar vibedeck rules check (ou a execução do app) com limite 1 e com o limite padrão e comparar os verdicts por rule.id; nenhuma falha nova por lock de .build ou de node_modules.",
+      "id" : "81FA0D61-9139-4B06-A208-17B6A6648E7C",
+      "severity" : "must",
+      "test" : {
+        "generatedAt" : "2026-10-14T14:13:15Z",
+        "mode" : "manual",
+        "reason" : "Exige rodar o check completo com limite 1 e com o padrão e comparar vereditos; dentro de um script recursaria e disputaria locks de .build.",
+        "ruleHash" : "3a6cc36238cad03d"
+      },
+      "text" : "Rodar todos os scripts de regras do próprio projeto em paralelo dá os mesmos vereditos que rodar um por vez."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:21:50Z",
+      "details" : "Com 2+ scripts simultâneos, mais de um Step tem started != nil e ended == nil, e a RuleExecutionView exibe todos como em execução.",
+      "id" : "FB6C9696-E0F4-4BEA-9C3F-FA6C5FEFC7BB",
+      "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/fb6c9696.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "777ee4d12766b5c6"
+      },
+      "text" : "A tela de execução de regras mostra como em andamento todos os passos que estão rodando ao mesmo tempo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:21:50Z",
+      "details" : "Teste de RuleExecutionModel.remaining: com 4 jobs de 10 s e limite 4, a estimativa inicial é ~10 s, não 40 s.",
+      "id" : "93B728C6-E853-4599-BA59-34E03FC156A6",
+      "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/93b728c6.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "f2615b92d6e08f55"
+      },
+      "text" : "A estimativa de tempo restante da execução considera o paralelismo, não a soma das estimativas de todos os scripts."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:21:50Z",
+      "details" : "Em finish(), a duração usa o started do próprio passo; com scripts simultâneos, a duração gravada de um passo não inclui a espera de outro.",
+      "id" : "8271A947-C56C-4CEF-90C4-5DC581095D6C",
+      "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/8271a947.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "b41434b253519716"
+      },
+      "text" : "O tempo gravado de cada script vem do início e do fim do próprio script."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:21:50Z",
+      "details" : "submitCheck e runRuleTests chamam o mesmo runScripts paralelo; não há caminho sequencial separado só para CLI/MCP.",
+      "id" : "99B49EF4-3A88-4EA6-ADFC-6AEF6F26046B",
+      "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/99b49ef4.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "d041bb735f2e85de"
+      },
+      "text" : "O CLI (rules check) e o MCP (submit_rule_check) usam a mesma execução paralela do Core que o app."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:29:11Z",
+      "details" : "Procurar a chave do limite: deve existir só em Sources/VibeDeckApp (tela de configurações) e não em schema/v1 nem em Models.swift. O arquivo que lê ou grava UserDefaults precisa estar no LOCAL_OK de .vibedeck/tests/conceitos-do-produto/9e02c127.sh, com justificativa.",
+      "id" : "D02043AE-AB25-4919-9C9B-C22F8656125E",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/d02043ae.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "0aff86c8946c348a"
+      },
+      "text" : "O limite de scripts simultâneos é configurado só nas configurações do app e guardado por máquina (UserDefaults), nunca em vibedeck.json nem em .vibedeck/."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:29:11Z",
+      "details" : "Teste no Core: sem passar um limite, o máximo de execuções simultâneas observado no runner falso é min(activeProcessorCount, número de scripts).",
+      "id" : "89216809-7C07-49A2-A261-FC0D50698535",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/89216809.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "3e6164b72ecb598a"
+      },
+      "text" : "Sem valor configurado, o limite de concorrência é ProcessInfo.processInfo.activeProcessorCount."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:29:11Z",
+      "details" : "Teste no Core: com limite 0 e com limite activeProcessorCount+10, a execução termina, e o pico de concorrência fica entre 1 e activeProcessorCount.",
+      "id" : "1C3DD797-741E-49F0-BABE-E43EA737B481",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/1c3dd797.sh",
+        "generatedAt" : "2026-10-14T14:13:13Z",
+        "mode" : "script",
+        "ruleHash" : "431a62c8904f72cb"
+      },
+      "text" : "Um valor configurado acima de activeProcessorCount, ou menor que 1, é ajustado ao limite válido mais próximo antes de executar."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:29:11Z",
+      "details" : "Sources/vibedeck/CLI.swift e MCPServer.swift não declaram opção ou campo de concorrência e não leem UserDefaults.",
+      "id" : "82CA1706-CEC8-4F8D-AB54-4095D8F6AC66",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/82ca1706.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "139ab704c8e2cc2b"
+      },
+      "text" : "O CLI (rules check, rules for/run) e o MCP (submit_rule_check) não têm flag nem parâmetro de concorrência e usam sempre o limite padrão do Core."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:29:11Z",
+      "details" : "Teste no Core com runner falso: dois scripts que chamam a mesma ferramenta não se sobrepõem no tempo; um script com outra ferramenta roda junto deles.",
+      "id" : "E5238FE1-768D-4019-86A8-FF85B40F399B",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/e5238fe1.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "bb005692ef186832"
+      },
+      "text" : "Scripts que usam a mesma ferramenta de build nunca rodam ao mesmo tempo; scripts com ferramentas diferentes, ou sem ferramenta de build, podem rodar em paralelo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:29:11Z",
+      "details" : "Teste: duas regras cujo comando é 'bash .vibedeck/tests/x/a.sh' e 'bash .vibedeck/tests/x/b.sh', com os dois arquivos chamando 'swift test', são serializadas.",
+      "id" : "D19DF641-2603-41FE-B54F-06BFC13B0594",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/d19df641.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "bbf75cc056d6fa21"
+      },
+      "text" : "A detecção da ferramenta de build lê o conteúdo do arquivo de script da regra (.vibedeck/tests/<tópico>/<id>.sh), não só a string do comando."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:29:11Z",
+      "details" : "Teste unitário da função de detecção, com pelo menos um caso Java (gradle ou mvn), um C# (dotnet), um PHP (composer) e um Swift, cada um mapeado para a sua chave de serialização.",
+      "id" : "FBC8B973-A970-43CE-BADF-0040EC02E4B8",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/fbc8b973.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "015b30808a48e7d7"
+      },
+      "text" : "A detecção de ferramentas de build fica no Core, numa tabela única que cobre vários ecossistemas, não só swift e npm (por exemplo: swift, npm/yarn/pnpm, cargo, go, gradle, mvn, dotnet, composer, make)."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:29:11Z",
+      "details" : "Teste com runner falso bloqueante: depois do cancelamento, nenhum novo .started é emitido e os processos ativos recebem terminate. Hoje ShellRunner.run (RuleTests.swift:66) não tem como ser cancelado.",
+      "id" : "7BA6B94E-F37B-4A07-8B5B-E51B2AB60C90",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/7ba6b94e.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "e1c090ec44c92b22"
+      },
+      "text" : "Ao cancelar a execução no app, os scripts em andamento são encerrados (o processo é terminado) e os scripts da fila não chegam a iniciar."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:29:11Z",
+      "details" : "Em RuleExecutionModel.startRuleExecution, com withAI=true e uma interrupção, verify não é chamado.",
+      "id" : "67BAFB60-BC65-41B2-A4FF-9390164B8406",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/67bafb60.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "0829fe1885cedb07"
+      },
+      "text" : "Depois de um cancelamento ou de uma falha must que interrompe os scripts, o app não inicia a verificação por IA."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:29:11Z",
+      "details" : "Teste: com limite 2, dois scripts swift e um script sem ferramenta. O script sem ferramenta roda junto do primeiro swift em vez de ficar esperando atrás do segundo.",
+      "id" : "2CFC3383-E11A-4FA5-ACE2-534A6769C5B1",
+      "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/2cfc3383.sh",
+        "generatedAt" : "2026-10-14T14:13:13Z",
+        "mode" : "script",
+        "ruleHash" : "e52d054ea73b5b3a"
+      },
+      "text" : "Scripts serializados por usarem a mesma ferramenta de build também contam para o limite de concorrência enquanto rodam, e esperar pela trava da ferramenta não ocupa uma vaga."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:51:29Z",
+      "details" : "Teste com runner falso: regra must falha com limite 1. Nenhum .started é emitido para as regras seguintes.",
+      "id" : "E8609B07-A10E-47AC-A3F8-FD4BABE30845",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/e8609b07.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "f0237d923c1cdefa"
+      },
+      "text" : "No app, a falha de um script de regra must impede que os scripts da fila iniciem."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:51:29Z",
+      "details" : "Teste: submitCheck com uma regra must que falha e outras com script. O check gravado tem resultado .script para todas.",
+      "id" : "5C335D69-B345-44F4-AC82-46846231FD2B",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/5c335d69.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "11d719c6ad549097"
+      },
+      "text" : "submitCheck (CLI rules check e MCP submit_rule_check) roda todos os scripts candidatos mesmo depois de uma falha must, para que o check tenha resposta para toda regra."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:51:29Z",
+      "details" : "Teste no ProjectModel com runner bloqueante: cancelar não cria arquivo novo em .vibedeck/checks.",
+      "id" : "FAD870A7-625F-44E4-8ACE-5720D1C6D3C4",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/fad870a7.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "e2000a332b347807"
+      },
+      "text" : "Uma execução cancelada ou interrompida no app não grava check: completeRuleExecution não é chamado."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:51:29Z",
+      "details" : "Teste com 'sleep 30' cancelado após 0,5 s: a chamada retorna em menos de 5 s.",
+      "id" : "56F1F672-35FD-4C97-AA44-C21386C8B49C",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/56f1f672.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "c66f3983440b1b74"
+      },
+      "text" : "ShellRunner.run pode ser cancelado de fora. Ao cancelar, o processo recebe terminate e a chamada retorna sem esperar o timeout de 120 s."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:51:29Z",
+      "details" : "Teste: com limite 1, o primeiro script dá timeout ou 127 e o seguinte ainda inicia, quando não houve cancelamento.",
+      "id" : "EF9078D6-9ABB-4DED-8648-AE5D8361888B",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/ef9078d6.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "51f1e282aa84d783"
+      },
+      "text" : "A vaga do limite e a trava da ferramenta de build são liberadas quando o script termina por qualquer motivo: sucesso, falha, timeout, erro ao iniciar ou cancelamento."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:51:29Z",
+      "details" : "Teste unitário: o comando inline 'swift test --filter X' devolve a chave swift.",
+      "id" : "A4EB973B-803C-460B-9DBF-645F2A8FAEEF",
+      "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/a4eb973b.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "d6eab1b8daeef19b"
+      },
+      "text" : "Quando o comando da regra não aponta para um arquivo de .vibedeck/tests legível, a detecção da ferramenta usa a própria string do comando."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:51:29Z",
+      "details" : "Teste unitário: scripts com 'npm test' e 'pnpm test' devolvem a mesma chave.",
+      "id" : "D3A234D9-CEB4-4302-8C3D-14AF8E156963",
+      "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/d3a234d9.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "c42cddc1c44e8f60"
+      },
+      "text" : "npm, npx, yarn e pnpm têm a mesma chave de serialização, porque compartilham node_modules."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:51:29Z",
+      "details" : "Em Tests/VibeDeckCoreTests/RuleTestsTests.swift.",
+      "id" : "1541B031-56EF-4C19-A654-1560DA748D3C",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/1541b031.sh",
+        "generatedAt" : "2026-10-14T14:13:13Z",
+        "mode" : "script",
+        "ruleHash" : "8c346936df1ef349"
+      },
+      "text" : "O teste unitário da detecção cobre pelo menos um caso Java (gradle ou mvn), um C# (dotnet), um PHP (composer) e um Swift, e cada um tem uma chave de serialização diferente."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:51:29Z",
+      "details" : "O runner incrementa e decrementa um contador protegido por lock e registra o máximo.",
+      "id" : "58B4CFEB-B523-45F2-B308-263B1B2E580B",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/58b4cfeb.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "d574928d718889e1"
+      },
+      "text" : "RuleExecutionTests mede o pico de concorrência com um runner injetado: limite 2 com 6 regras dá pico exatamente 2, e os limites 0 e activeProcessorCount+10 terminam com pico entre 1 e activeProcessorCount."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:51:29Z",
+      "id" : "C9B7039C-54EF-41ED-BC14-5B61A83DD2D5",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/c9b7039c.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "411c98fa05e058ba"
+      },
+      "text" : "Um teste com o ShellRunner real roda dois comandos ao mesmo tempo ('echo A; sleep 1' e 'echo B; sleep 1'). Cada saída contém só a própria marca."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:51:29Z",
+      "details" : "grep UserDefaults em Sources/VibeDeckCore não acha nada relacionado ao limite.",
+      "id" : "2EBA639D-57AF-4B67-8F91-C78A555185F7",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/2eba639d.sh",
+        "generatedAt" : "2026-10-14T14:13:13Z",
+        "mode" : "script",
+        "ruleHash" : "f18f379cd81b9e75"
+      },
+      "text" : "O Core recebe o limite de concorrência como parâmetro opcional (nil usa o padrão) e não lê UserDefaults. É o app que lê o valor configurado e o repassa."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:51:29Z",
+      "details" : "grep -n UserDefaults Sources/vibedeck/CLI.swift Sources/vibedeck/MCPServer.swift não retorna nada.",
+      "id" : "87FC9655-20A6-48C8-97A8-3AE46526FFFE",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/87fc9655.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "dec29f0ebd57a7a0"
+      },
+      "text" : "CLI.swift e MCPServer.swift não referenciam UserDefaults."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:51:29Z",
+      "details" : "bash .vibedeck/tests/conceitos-do-produto/9e02c127.sh termina com exit 0.",
+      "id" : "118EEFDB-EB87-4EC9-9F46-8478FE0FF601",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/118eefdb.sh",
+        "generatedAt" : "2026-10-14T14:13:13Z",
+        "mode" : "script",
+        "ruleHash" : "7910715e8971b981"
+      },
+      "text" : "O arquivo do app que lê ou grava a chave do limite está no LOCAL_OK de .vibedeck/tests/conceitos-do-produto/9e02c127.sh, com justificativa, e o script continua passando."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:51:29Z",
+      "id" : "3B6122FA-9635-47A3-95EC-F33E09094144",
+      "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/3b6122fa.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "adb0525e8d535fb1"
+      },
+      "text" : "O campo do limite nas configurações do app só aceita valores de 1 a activeProcessorCount e mostra activeProcessorCount quando não há valor gravado."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:51:29Z",
+      "id" : "F897F2CA-2BC3-4F21-A5DC-17984E6CAB50",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/f897f2ca.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "3d2a8749f8a177cd"
+      },
+      "text" : "A RuleExecutionView mostra um botão Cancelar, em pt-BR, enquanto a execução está ativa, e o esconde quando ela termina."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:51:29Z",
+      "details" : "Teste: depois de cancelar, nenhum Step tem started != nil e ended == nil.",
+      "id" : "FDA4D667-CA4C-43F0-BB31-A91C6B25E0B4",
+      "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/fda4d667.sh",
+        "generatedAt" : "2026-10-14T14:13:15Z",
+        "mode" : "script",
+        "ruleHash" : "764d658df3ad694e"
+      },
+      "text" : "Depois de cancelar ou interromper, nenhum passo fica em andamento (started sem ended). Os passos que não iniciaram ficam sem resultado e marcados como não executados."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:51:29Z",
+      "details" : "Teste: depois de cancelar, os timings gravados em UserDefaults não mudam para os jobs cancelados.",
+      "id" : "6B9F65B7-72B8-494D-9989-F8DCDF7576FC",
+      "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/6b9f65b7.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "5473c24ff0ed5e05"
+      },
+      "text" : "Scripts cancelados ou interrompidos não registram duração em RuleExecutionTimings."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:51:29Z",
+      "details" : "Teste com runner paralelo e um callback que detecta reentrada.",
+      "id" : "EF1B4914-3AD4-44D6-A123-45754C6FB186",
+      "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/ef1b4914.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "5d7cb1efea2558d7"
+      },
+      "text" : "O onEvent de runScripts nunca é chamado concorrentemente: os eventos são entregues um por vez."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-12T03:51:29Z",
+      "id" : "BE94A4C8-96F1-460B-8772-8567A3FC063A",
+      "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/be94a4c8.sh",
+        "generatedAt" : "2026-10-14T14:13:14Z",
+        "mode" : "script",
+        "ruleHash" : "d3da20a97cfe159c"
+      },
+      "text" : "O README e o .vibedeck/guide.md documentam, em pt-BR, a execução paralela dos scripts, a serialização por ferramenta de build e a configuração do limite no app."
+    }
+  ],
+  "sourceIdea" : "3DB5BBBE-48F0-46D4-B6E8-71DE4426E819",
+  "title" : "Aumentar a quantidade de scripts em Shell rodando ao mesmo tempo"
+}

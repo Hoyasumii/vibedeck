@@ -4,11 +4,18 @@ import Testing
 @testable import VibeDeckCore
 @testable import VibeDeckApp
 
+private final class Ran: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _values: [String] = []
+    var values: [String] { lock.withLock { _values } }
+    func append(_ value: String) { lock.withLock { _values.append(value) } }
+}
+
 @Suite(.serialized) @MainActor
 struct RuleExecutionModelTests {
-    private func fixture() throws -> (ProjectModel, String, UUID, UUID) {
+    private func fixture(severity: RuleSeverity = .must) throws -> (ProjectModel, String, UUID, UUID) {
         let store = try ProjectStore.initialize(at: FileManager.default.temporaryDirectory.appending(path: "rule-flow-\(UUID())"))
-        let (slug, script) = try store.addRule(Rule(text: "Script rule"), toTopic: "Flow")
+        let (slug, script) = try store.addRule(Rule(text: "Script rule", severity: severity), toTopic: "Flow")
         _ = try store.setRuleTest(script.id.uuidString, mode: .script, command: "stub")
         let (_, manual) = try store.addRule(Rule(text: "Manual rule"), toTopic: slug)
         return (ProjectModel(store: store), slug, script.id, manual.id)
@@ -22,7 +29,7 @@ struct RuleExecutionModelTests {
     }
 
     @Test func scriptsBeforeAIAndPersistFailure() async throws {
-        let (model, slug, script, manual) = try fixture()
+        let (model, slug, script, manual) = try fixture(severity: .should)
         defer { try? FileManager.default.removeItem(at: model.store.root) }
         var aiCalls = 0
         model.startRuleExecution(topic: slug, withAI: true, runner: .init { _, _ in .init(exitCode: 1, output: "failure") }, providerAvailable: { _ in true }) { _, _, _, topic, rules, scripts in
@@ -36,7 +43,7 @@ struct RuleExecutionModelTests {
         #expect(aiCalls == 1)
         #expect(model.ruleExecution?.saved == true)
         #expect(model.ruleExecution?.progress == 1)
-        #expect(try model.store.listChecks().first?.passed == false)
+        #expect(try model.store.listChecks().first?.results.contains { $0.ruleId == script && $0.verdict == .fail } == true)
     }
 
     @Test func scriptsOnlyAndUnavailableProvider() async throws {
@@ -57,7 +64,7 @@ struct RuleExecutionModelTests {
     }
 
     @Test func providerFailureContinuesOtherTopicsWithoutSaving() async throws {
-        let (model, _, _, _) = try fixture()
+        let (model, _, _, _) = try fixture(severity: .should)
         defer { try? FileManager.default.removeItem(at: model.store.root) }
         _ = try model.store.addRule(Rule(text: "Another"), toTopic: "Second")
         var calls = 0
@@ -118,6 +125,114 @@ struct RuleExecutionModelTests {
         model.startRuleExecution(topic: "missing", withAI: false)
         #expect(model.ruleExecution?.active == false)
         #expect(model.ruleExecution?.progress == 1)
+    }
+
+    @Test func cancelTerminatesScriptsAndSkipsAIAndSaving() async throws {
+        let (model, slug, _, _) = try fixture()
+        defer { try? FileManager.default.removeItem(at: model.store.root) }
+        for index in 1...3 {
+            let (_, rule) = try model.store.addRule(Rule(text: "Queued \(index)"), toTopic: slug)
+            _ = try model.store.setRuleTest(rule.id.uuidString, mode: .script, command: "queued-\(index)")
+        }
+        let key = "ruleExecutionTimings:" + model.store.root.standardizedFileURL.path
+        defer { UserDefaults.standard.removeObject(forKey: key) }
+        let checks = model.store.root.appending(path: ".vibedeck/checks")
+        let before = (try? FileManager.default.contentsOfDirectory(atPath: checks.path)) ?? []
+        var aiCalls = 0
+        model.startRuleExecution(topic: slug, withAI: true, runner: .init { _, context in
+            // Blocks until terminated by the cancellation.
+            let done = DispatchSemaphore(value: 0)
+            context.cancellation?.onCancel { done.signal() }
+            done.wait()
+            return .init(exitCode: ShellRunner.cancelledStatus, output: "Cancelado.")
+        }, concurrency: 2, providerAvailable: { _ in true }) { _, _, _, _, _, _ in aiCalls += 1; return [] }
+        let execution = try #require(model.ruleExecution)
+        for _ in 0..<200 where execution.steps.filter({ $0.started != nil && $0.ended == nil }).count < 2 {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(execution.steps.filter { $0.started != nil && $0.ended == nil }.count == 2, "parallel steps show as running")
+        execution.cancel()
+        try await wait(model)
+        #expect(aiCalls == 0)
+        #expect(!execution.saved)
+        #expect(execution.steps.allSatisfy { !($0.started != nil && $0.ended == nil) })
+        #expect(execution.steps.filter(\.skipped).count >= 2)
+        #expect(execution.steps.filter { !$0.ai }.allSatisfy { $0.result == nil })
+        #expect(UserDefaults.standard.data(forKey: key) == nil, "cancelled scripts don't record durations")
+        #expect(((try? FileManager.default.contentsOfDirectory(atPath: checks.path)) ?? []) == before)
+    }
+
+    @Test func mustFailureInterruptsWithoutAI() async throws {
+        let (model, slug, _, _) = try fixture()
+        defer { try? FileManager.default.removeItem(at: model.store.root) }
+        let (_, next) = try model.store.addRule(Rule(text: "Next"), toTopic: slug)
+        _ = try model.store.setRuleTest(next.id.uuidString, mode: .script, command: "next")
+        var aiCalls = 0
+        let ran = Ran()
+        model.startRuleExecution(topic: slug, withAI: true, runner: .init { command, _ in
+            ran.append(command)
+            return .init(exitCode: command == "stub" ? 1 : 0, output: "")
+        }, concurrency: 1, providerAvailable: { _ in true }) { _, _, _, _, _, _ in aiCalls += 1; return [] }
+        try await wait(model)
+        #expect(ran.values == ["stub"])
+        #expect(aiCalls == 0)
+        #expect(model.ruleExecution?.saved == false)
+        #expect(model.ruleExecution?.steps.first { $0.id == next.id }?.skipped == true)
+        #expect(try model.store.listChecks().isEmpty)
+    }
+
+    @Test func cancellingDuringAIDoesNotStartAnotherTopicOrSave() async throws {
+        let (model, _, _, _) = try fixture()
+        defer { try? FileManager.default.removeItem(at: model.store.root) }
+        _ = try model.store.addRule(Rule(text: "Another manual rule"), toTopic: "Second")
+        let key = "ruleExecutionTimings:" + model.store.root.standardizedFileURL.path
+        defer { UserDefaults.standard.removeObject(forKey: key) }
+        var calls = 0
+        var timingBeforeCancellation: Data?
+        model.startRuleExecution(withAI: true, provider: .codex, runner: .init { _, _ in
+            .init(exitCode: 0, output: "pass")
+        }, providerAvailable: { _ in true }) { _, _, _, slug, rules, _ in
+            calls += 1
+            timingBeforeCancellation = UserDefaults.standard.data(forKey: key)
+            model.ruleExecution?.cancel()
+            await Task.yield()
+            return rules.map { RuleResult(topic: slug, ruleId: $0.id, verdict: .pass, note: "Evidence") }
+        }
+        try await wait(model)
+        #expect(calls == 1)
+        #expect(model.ruleExecution?.saved == false)
+        #expect(model.ruleExecution?.steps.allSatisfy { !($0.started != nil && $0.ended == nil) } == true)
+        #expect(UserDefaults.standard.data(forKey: key) == timingBeforeCancellation)
+        #expect(try model.store.listChecks().isEmpty)
+    }
+
+    @Test func remainingEstimateConsidersParallelism() throws {
+        let (model, slug, _, _) = try fixture()
+        defer { try? FileManager.default.removeItem(at: model.store.root) }
+        for index in 1...3 {
+            let (_, rule) = try model.store.addRule(Rule(text: "More \(index)"), toTopic: slug)
+            _ = try model.store.setRuleTest(rule.id.uuidString, mode: .script, command: "more-\(index)")
+        }
+        let root = model.store.root
+        let key = "ruleExecutionTimings:" + root.standardizedFileURL.path
+        defer { UserDefaults.standard.removeObject(forKey: key) }
+        let snapshot = [(slug: slug, topic: try model.store.loadTopic(slug))]
+        let start = Date(timeIntervalSince1970: 100)
+        let first = RuleExecutionModel(snapshot: snapshot, withAI: false, provider: .claude, root: root, concurrency: 1, now: start)
+        for step in first.steps {
+            first.begin([step.id], now: start)
+            first.finish([step.id], now: start.addingTimeInterval(10))
+        }
+        let cpu = ProcessInfo.processInfo.activeProcessorCount
+        let parallel = RuleExecutionModel(snapshot: snapshot, withAI: false, provider: .claude, root: root, concurrency: 4, now: start)
+        #expect(parallel.remaining(at: start) == 10 * Double((4 + min(4, cpu) - 1) / min(4, cpu)))
+        let serial = RuleExecutionModel(snapshot: snapshot, withAI: false, provider: .claude, root: root, concurrency: 1, now: start)
+        #expect(serial.remaining(at: start) == 40)
+        // Each step's duration uses its own start, not another step's wait.
+        parallel.begin([parallel.steps[0].id], now: start)
+        parallel.begin([parallel.steps[1].id], now: start.addingTimeInterval(5))
+        parallel.finish([parallel.steps[1].id], now: start.addingTimeInterval(7))
+        #expect(parallel.steps[1].ended!.timeIntervalSince(parallel.steps[1].started!) == 2)
     }
 
     @Test func sidebarGroupsUseOpenCountAndKeepSectionAccess() throws {

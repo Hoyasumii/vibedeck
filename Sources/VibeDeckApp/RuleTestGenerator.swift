@@ -33,13 +33,13 @@ enum RuleTestGenerator {
             usage.status = "completed"
             return
         }
-        guard let executable = ClaudeCode.executable else { throw Failure(message: "Claude Code não encontrado.") }
+        guard let executable = RemoteExecution.executable(.claude, root: root) else { throw Failure(message: "Claude Code não encontrado.") }
         let path = await Task.detached { ClaudeCode.childPATH() }.value
 
         let process = Process()
         process.executableURL = executable
         process.currentDirectoryURL = root
-        process.arguments = ClaudeLaunch.headlessArguments(prompt: prompt, model: ClaudeModel(rawValue: settings.model ?? "") ?? .automatic, effort: ClaudeEffort(rawValue: settings.effort ?? "") ?? .automatic)
+        process.arguments = ClaudeLaunch.headlessArguments(prompt: prompt, settings: settings)
         var environment = ProcessInfo.processInfo.environment
         environment["PATH"] = path
         process.environment = environment
@@ -52,6 +52,7 @@ enum RuleTestGenerator {
             process.terminationHandler = { continuation.yield($0.terminationStatus); continuation.finish() }
         }
         do {
+            try RemoteExecution.configure(process, root: root, program: "claude")
             try process.run()
         } catch {
             throw Failure(message: "Não foi possível iniciar o Claude Code: \(error.localizedDescription)")

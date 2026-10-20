@@ -1,0 +1,142 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-13T18:05:21Z",
+  "description" : "Regras vindas da ideia \"Para agilizar o desenvolvimento, seria bom se no app tivesse um botão para copiar o prompt da ideia\".",
+  "id" : "80CB7A58-DDE1-40C5-8F13-E00B7675A57B",
+  "paths" : [
+    "Sources/VibeDeckApp/IdeaView.swift",
+    "Sources/VibeDeckCore/Rules.swift",
+    "Tests/VibeDeckCoreTests/RulesTests.swift"
+  ],
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:24:43Z",
+      "details" : "Verificar que IdeaView.swift chama IdeaImplementation.prompt para copiar e que não há string de prompt literal nova na View.",
+      "id" : "B6C80920-CE75-4773-86C2-0C25EE2109DA",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/para-agilizar-o-desenvolvimento-seria-bom-se-no-app-tivesse-/b6c80920.sh",
+        "generatedAt" : "2026-10-14T14:13:57Z",
+        "mode" : "script",
+        "ruleHash" : "61f61e13a32a73b1"
+      },
+      "text" : "O botão de copiar o prompt da ideia fica em IdeaView e copia o texto de IdeaImplementation.prompt(slug:idea:topic:), o mesmo enviado por \"Implementar\", sem duplicar o texto na View."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:24:43Z",
+      "details" : "Verificar uso de clearContents + setString(.string) e ausência de chamada de escrita (model.* / AtomicFile) no handler do botão.",
+      "id" : "F0FDC1D4-3D2E-454B-8E8A-9A163730C3B1",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/para-agilizar-o-desenvolvimento-seria-bom-se-no-app-tivesse-/f0fdc1d4.sh",
+        "generatedAt" : "2026-10-14T14:13:57Z",
+        "mode" : "script",
+        "ruleHash" : "8ffb2acb5d006404"
+      },
+      "text" : "Copiar o prompt grava o texto na área de transferência (NSPasteboard.general) como string, substituindo o conteúdo anterior, e não altera nenhum arquivo do projeto."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:24:43Z",
+      "details" : "Verificar que o botão passa idea.promotedTopic (pode ser nil) e não chama promoteIdea.",
+      "id" : "4141EF0B-B881-487C-A99B-7C96BDC5F61C",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/para-agilizar-o-desenvolvimento-seria-bom-se-no-app-tivesse-/4141ef0b.sh",
+        "generatedAt" : "2026-10-14T14:13:57Z",
+        "mode" : "script",
+        "ruleHash" : "c63ced4729339192"
+      },
+      "text" : "O prompt copiado usa o tópico promovido (idea.promotedTopic) quando a ideia já foi promovida e, caso contrário, o prompt com as regras rascunho; o botão nunca promove a ideia."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:24:43Z",
+      "details" : "Verificar que o botão não está atrás da checagem de provedor suportado.",
+      "id" : "8679D9CB-E8D4-476B-A6B4-95B0C5AEAFF9",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/para-agilizar-o-desenvolvimento-seria-bom-se-no-app-tivesse-/8679d9cb.sh",
+        "generatedAt" : "2026-10-14T14:13:57Z",
+        "mode" : "script",
+        "ruleHash" : "9610e6c7b21ef4a3"
+      },
+      "text" : "O botão de copiar fica disponível mesmo sem provedor de IA na máquina, pois não usa IA."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:24:43Z",
+      "details" : "Verificar rótulo (ex.: \"Copiar prompt\"), .help e confirmação visual (ex.: troca de ícone/rótulo para \"Copiado\").",
+      "id" : "F8A2D37C-FDD8-42B9-804C-FDF609EAE1E9",
+      "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/para-agilizar-o-desenvolvimento-seria-bom-se-no-app-tivesse-/f8a2d37c.sh",
+        "generatedAt" : "2026-10-14T14:13:57Z",
+        "mode" : "script",
+        "ruleHash" : "e278589f74c5bad5"
+      },
+      "text" : "O botão de copiar o prompt usa rótulo e .help em pt-BR e dá feedback visível de que copiou."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:24:43Z",
+      "details" : "Verificar LoggedButton + .loggedControl(control:label:) e que o contexto do log não inclui o texto copiado.",
+      "id" : "91D9E3EC-6D75-46CE-9DF6-09229C62C2C5",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/para-agilizar-o-desenvolvimento-seria-bom-se-no-app-tivesse-/91d9e3ec.sh",
+        "generatedAt" : "2026-10-14T14:13:57Z",
+        "mode" : "script",
+        "ruleHash" : "5fa9761f620fc8b6"
+      },
+      "text" : "O botão de copiar o prompt usa LoggedButton com loggedControl de identificador estável e o log não guarda o conteúdo do prompt."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:24:43Z",
+      "details" : "Verificar que o handler chama flush() antes de montar o prompt, como readyToPromote.",
+      "id" : "268129FF-4826-4A85-ABE5-951D04EC57B0",
+      "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/para-agilizar-o-desenvolvimento-seria-bom-se-no-app-tivesse-/268129ff.sh",
+        "generatedAt" : "2026-10-14T14:13:57Z",
+        "mode" : "script",
+        "ruleHash" : "80178edb020dd4fa"
+      },
+      "text" : "Antes de copiar, o botão confirma pendências de edição (flush()) para que o prompt reflita título e regras atuais da ideia."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:24:43Z",
+      "details" : "Verificar em Tests/VibeDeckCoreTests/RulesTests.swift casos com topic não nil e nil, checando slug, título e menção ao tópico ou às regras rascunho.",
+      "id" : "197CD570-7A87-4D8D-9A05-2C328273F8AE",
+      "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/para-agilizar-o-desenvolvimento-seria-bom-se-no-app-tivesse-/197cd570.sh",
+        "generatedAt" : "2026-10-14T14:13:57Z",
+        "mode" : "script",
+        "ruleHash" : "70e4334d52ad33f9"
+      },
+      "text" : "Mudar o texto do prompt de IdeaImplementation.prompt exige teste em RulesTests cobrindo o prompt com e sem tópico promovido."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:24:43Z",
+      "details" : "Verificar menção na seção de Ideias do README.md e do guide.md.",
+      "id" : "B0890361-321E-4D39-9A49-94F0155879A2",
+      "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/para-agilizar-o-desenvolvimento-seria-bom-se-no-app-tivesse-/b0890361.sh",
+        "generatedAt" : "2026-10-14T14:13:57Z",
+        "mode" : "script",
+        "ruleHash" : "0079f9d67e7bce79"
+      },
+      "text" : "README e .vibedeck/guide.md mencionam o botão de copiar o prompt da ideia, em pt-BR."
+    }
+  ],
+  "sourceIdea" : "2232A516-9D24-4A40-B409-6B56580BA8B0",
+  "title" : "Para agilizar o desenvolvimento, seria bom se no app tivesse um botão para copiar o prompt da ideia"
+}

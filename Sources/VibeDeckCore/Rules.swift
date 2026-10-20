@@ -20,6 +20,8 @@ public enum RuleSeverity: String, Codable, CaseIterable, Sendable {
 public struct Rule: Codable, Equatable, Hashable, Identifiable, Sendable {
     public var id: UUID
     public var text: String
+    /// Nested organizational path within this topic; it never changes rule identity or applicability.
+    public var group: String?
     public var details: String?
     public var severity: RuleSeverity
     public var author: Author
@@ -36,12 +38,13 @@ public struct Rule: Codable, Equatable, Hashable, Identifiable, Sendable {
         self.createdAt = now
     }
 
-    enum CodingKeys: String, CodingKey { case id, text, details, severity, author, createdAt, test }
+    enum CodingKeys: String, CodingKey { case id, text, details, severity, author, createdAt, test, group }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
         text = try c.decode(String.self, forKey: .text)
+        group = try c.decodeIfPresent(String.self, forKey: .group)
         details = try c.decodeIfPresent(String.self, forKey: .details)
         severity = try c.decodeIfPresent(RuleSeverity.self, forKey: .severity) ?? .must
         author = try c.decodeIfPresent(Author.self, forKey: .author) ?? .human
@@ -53,6 +56,7 @@ public struct Rule: Codable, Equatable, Hashable, Identifiable, Sendable {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(id, forKey: .id)
         try c.encode(text, forKey: .text)
+        try c.encodeIfPresent(group, forKey: .group)
         try c.encodeIfPresent(details, forKey: .details)
         try c.encode(severity, forKey: .severity)
         try c.encode(author, forKey: .author)
@@ -142,6 +146,7 @@ public struct RuleTopic: Codable, Equatable, Identifiable, Sendable {
     public var schema: String?
     public var id: UUID
     public var title: String
+    public var author: Author
     public var description: String?
     public var tags: [String]
     public var paths: [String]
@@ -151,10 +156,11 @@ public struct RuleTopic: Codable, Equatable, Identifiable, Sendable {
     public var sourcePattern: String?
     public var createdAt: Date
 
-    public init(title: String, description: String? = nil, tags: [String] = [], paths: [String] = [], rules: [Rule] = [], sourceIdea: UUID? = nil, sourcePattern: String? = nil, now: Date = .now) {
+    public init(title: String, description: String? = nil, tags: [String] = [], paths: [String] = [], rules: [Rule] = [], sourceIdea: UUID? = nil, sourcePattern: String? = nil, author: Author = .human, now: Date = .now) {
         self.schema = SchemaURL.ruleTopic
         self.id = UUID()
         self.title = title
+        self.author = author
         self.description = description
         self.tags = tags
         self.paths = paths
@@ -165,7 +171,7 @@ public struct RuleTopic: Codable, Equatable, Identifiable, Sendable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case schema = "$schema", id, title, description, tags, paths, rules, sourceIdea, sourcePattern, createdAt
+        case schema = "$schema", id, title, author, description, tags, paths, rules, sourceIdea, sourcePattern, createdAt
     }
 
     public init(from decoder: Decoder) throws {
@@ -173,6 +179,7 @@ public struct RuleTopic: Codable, Equatable, Identifiable, Sendable {
         schema = try c.decodeIfPresent(String.self, forKey: .schema)
         id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
         title = try c.decode(String.self, forKey: .title)
+        author = try c.decodeIfPresent(Author.self, forKey: .author) ?? .human
         description = try c.decodeIfPresent(String.self, forKey: .description)
         tags = try c.decodeIfPresent([String].self, forKey: .tags) ?? []
         paths = try c.decodeIfPresent([String].self, forKey: .paths) ?? []
@@ -187,6 +194,7 @@ public struct RuleTopic: Codable, Equatable, Identifiable, Sendable {
         try c.encodeIfPresent(schema, forKey: .schema)
         try c.encode(id, forKey: .id)
         try c.encode(title, forKey: .title)
+        try c.encode(author, forKey: .author)
         try c.encodeIfPresent(description, forKey: .description)
         if !tags.isEmpty { try c.encode(tags, forKey: .tags) }
         if !paths.isEmpty { try c.encode(paths, forKey: .paths) }
@@ -321,6 +329,8 @@ extension Idea {
 
     /// Why "Implementar" is unavailable, or nil when the idea is viable: has rules, was verified by the AI with
     /// the current content and judged complete.
+    public var canRequestImplementation: Bool { !status.isClosed && !rules.isEmpty }
+
     public var implementBlocker: String? {
         if status.isClosed { return "Ideia \(status.label.lowercased())." }
         if rules.isEmpty { return "Sem regras: rode o Descubra para gerar as regras." }

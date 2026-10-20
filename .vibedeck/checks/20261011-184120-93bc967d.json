@@ -1,0 +1,276 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-11T18:41:20.885Z",
+  "failures" : [
+
+  ],
+  "files" : [
+    "Tests/VibeDeckCoreTests/RuleDiscoverTests.swift"
+  ],
+  "id" : "93BC967D-C7CE-4D38-99DE-65B25E433007",
+  "passed" : true,
+  "pending" : [
+    "Comportamento novo no Core vem com teste",
+    "README atualizado quando muda algo documentado"
+  ],
+  "results" : [
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/5fa116b6.sh (exit 77)\n(sem saída)",
+      "ruleId" : "5FA116B6-6FBE-45F9-8C5D-29E7548F6C2F",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/857149e6.sh (exit 77)\n(sem saída)",
+      "ruleId" : "857149E6-8C34-46A8-9C30-439EBE78309D",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/99bf0d79.sh (exit 77)\n(sem saída)",
+      "ruleId" : "99BF0D79-2F65-419A-87DA-0B4F37E4FEF5",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/5ed22d96.sh (exit 77)\n(sem saída)",
+      "ruleId" : "5ED22D96-FE5F-4683-8611-E3D264113B67",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/c6d79b9c.sh (exit 77)\n(sem saída)",
+      "ruleId" : "C6D79B9C-1F50-4AE3-8CD1-8CAE5C4F6B6F",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/57ada275.sh (exit 77)\n(sem saída)",
+      "ruleId" : "57ADA275-8A0F-42BA-9E14-BA3B34AB8235",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/4133c155.sh (exit 77)\n(sem saída)",
+      "ruleId" : "4133C155-F789-428E-9ED5-5EAC37C19700",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/b0277971.sh (exit 77)\n(sem saída)",
+      "ruleId" : "B0277971-459D-4CCB-9E9D-5990F1574F5B",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/7f7c6b09.sh (exit 77)\n(sem saída)",
+      "ruleId" : "7F7C6B09-EBCB-4CA0-BAAF-6B18D36F15C1",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/bc028be5.sh (exit 0)\n✔ Test submitCheck() passed after 0.009 seconds.\n✔ Suite RulesTests passed after 0.009 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.009 seconds.",
+      "ruleId" : "BC028BE5-D7E0-4DA3-BB5C-E8A628EBFA8A",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/64e65b59.sh (exit 0)\n✔ Test reviewItemGate() passed after 0.014 seconds.\n✔ Suite RulesTests passed after 0.014 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.014 seconds.",
+      "ruleId" : "64E65B59-8D5B-40DE-B381-CAF2B1BDC785",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/8d874a06.sh (exit 0)\n✔ Test applicableTopics() passed after 0.007 seconds.\n✔ Suite RulesTests passed after 0.007 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.007 seconds.",
+      "ruleId" : "8D874A06-515D-41B5-A094-DC8B83BB40B6",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/35d8d7c3.sh (exit 0)\n✔ Test ideasAndPromotion() passed after 0.009 seconds.\n✔ Suite RulesTests passed after 0.009 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.009 seconds.",
+      "ruleId" : "35D8D7C3-1224-45CC-8A80-66D0B6291C33",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/64334d9c.sh (exit 0)\n✔ Test globs() passed after 0.001 seconds.\n✔ Suite RulesTests passed after 0.001 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.001 seconds.",
+      "ruleId" : "64334D9C-327B-4811-B088-8B785EF4E0FE",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/ea5e6f7d.sh (exit 77)\n(sem saída)",
+      "ruleId" : "EA5E6F7D-1587-4FC5-87D9-51CE6F130C7B",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/97510532.sh (exit 0)\n✔ Test run with 189 tests in 26 suites passed after 0.815 seconds.\n✔ Test run with 38 tests in 6 suites passed after 0.526 seconds.",
+      "ruleId" : "97510532-2FCF-44BD-9D01-75086E554EB9",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/dfe3361b.sh (exit 77)\n(sem saída)",
+      "ruleId" : "DFE3361B-6AFE-4ED3-A741-4FC0818D197D",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/b659fd25.sh (exit 0)\n✔ Test unpromote() passed after 0.011 seconds.\n✔ Suite RulesTests passed after 0.011 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.012 seconds.",
+      "ruleId" : "B659FD25-792B-4C0E-BD08-6082ACFCC80A",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/a2b13b15.sh (exit 0)\n✔ Test unpromote() passed after 0.011 seconds.\n✔ Suite RulesTests passed after 0.011 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.011 seconds.",
+      "ruleId" : "A2B13B15-C59E-4189-8905-3A309C89DF28",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/9d6f362b.sh (exit 0)\n(sem saída)",
+      "ruleId" : "9D6F362B-9F0E-4661-97B3-6158B160D478",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/geral/9f92a765.sh (exit 77)\n(sem saída)",
+      "ruleId" : "9F92A765-76E7-4EA0-A66A-78AE12EE4C8F",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/ac4ba963.sh (exit 0)\n(sem saída)",
+      "ruleId" : "AC4BA963-CDEE-419C-B057-9140643E115D",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/geral/0e5aec71.sh (exit 77)\n(sem saída)",
+      "ruleId" : "0E5AEC71-405E-4113-AB27-615313AB2B5F",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/2f64266b.sh (exit 0)\n◇ Test run started.\n↳ Testing Library Version: 2084\n↳ Target Platform: arm64e-apple-macos14.0\n◇ Suite AIEfficiencyTests started.\n◇ Test contextPagesAreLosslessImmutableAndConfined() started.\n◇ Test workflowKeepsOldDecisionsAndFullOutputs() started.\n◇ Test mentionedChatIsRecoverableAndFullModeRemainsAvailable() started.\n✔ Test workflowKeepsOldDecisionsAndFullOutputs() passed after 0.011 seconds.\n✔ Test mentionedChatIsRecoverableAndFullModeRemainsAvailable() passed after 0.022 seconds.\n✔ Test contextPagesAreLosslessImmutableAndConfined() passed after 0.050 seconds.\n✔ Suite AIEfficiencyTests passed after 0.050 seconds.\n✔ Test run with 3 tests in 1 suite passed after 0.050 seconds.",
+      "ruleId" : "2F64266B-FD73-4B70-B293-D9317C7228A1",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/f12aa1dd.sh (exit 0)\n(sem saída)",
+      "ruleId" : "F12AA1DD-0FFB-48F8-912D-236E271AA842",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/3301bc0e.sh (exit 0)\n(sem saída)",
+      "ruleId" : "3301BC0E-BBC5-4E4F-9609-CA119DD2C8F3",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/64f3eca8.sh (exit 0)\n[2 / 59]\nBuild complete! (0,76 seg)\n◇ Test run started.\n↳ Testing Library Version: 2084\n↳ Target Platform: arm64e-apple-macos14.0\n◇ Suite AIRecoveryTests started.\n◇ Test invalidAnswerGetsOneRecoveryWithoutChangingSettings() started.\n◇ Test persistentFailureStopsAndTransportErrorsDoNotRetry() started.\n✔ Test invalidAnswerGetsOneRecoveryWithoutChangingSettings() passed after 0.007 seconds.\n✔ Test persistentFailureStopsAndTransportErrorsDoNotRetry() passed after 0.009 seconds.\n✔ Suite AIRecoveryTests passed after 0.009 seconds.\n✔ Test run with 2 tests in 1 suite passed after 0.009 seconds.",
+      "ruleId" : "64F3ECA8-2A3F-400C-8D41-5853009B7F91",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/fc9a5733.sh (exit 0)\nAnother instance of SwiftPM (PID: 7229) is already running using '/Users/hoy/Documents/vibedeck/.build', waiting until that process has finished execution...Building for debugging...\n[Computing dependencies]\n[Using on-disk description]\nBuild complete! (0,60 seg)\n◇ Test run started.\n↳ Testing Library Version: 2084\n↳ Target Platform: arm64e-apple-macos14.0\n◇ Suite AIEfficiencyTests started.\n◇ Test usageSeparatesMissingZeroCacheAndCumulativeCounts() started.\n✔ Test usageSeparatesMissingZeroCacheAndCumulativeCounts() passed after 0.003 seconds.\n✔ Suite AIEfficiencyTests passed after 0.003 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.003 seconds.",
+      "ruleId" : "FC9A5733-DC0E-4606-BB85-A3CC7592A4BC",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/6088cc95.sh (exit 0)\n◇ Test ruleCheckSummaryKeepsEveryVerdictAndPointsToTheFullCheck() started.\n◇ Test catalogPaginatesWithoutSendingUserPrompts() started.\n◇ Test compactRulesForKeepsEveryRuleAndResolvesItsIds() started.\n◇ Test guideReducesInitialContextWithoutLosingDocumentation() started.\n◇ Test sharedPolicyAppearsOnceInTheGuide() started.\n✔ Test sharedPolicyAppearsOnceInTheGuide() passed after 0.001 seconds.\n✔ Test ruleCheckSummaryKeepsEveryVerdictAndPointsToTheFullCheck() passed after 0.002 seconds.\n✔ Test catalogPaginatesWithoutSendingUserPrompts() passed after 0.006 seconds.\n✔ Test guideReducesInitialContextWithoutLosingDocumentation() passed after 0.019 seconds.\n✔ Test compactRulesForKeepsEveryRuleAndResolvesItsIds() passed after 0.037 seconds.\n✔ Suite AIEfficiencyTests passed after 0.037 seconds.\n✔ Test run with 5 tests in 1 suite passed after 0.038 seconds.\nAnother instance of SwiftPM (PID: 7743) is already running using '/Users/hoy/Documents/vibedeck/.build', waiting until that process has finished execution...Another instance of SwiftPM (PID: 8186) is already running using '/Users/hoy/Documents/vibedeck/.build', waiting until that process has finished execution...instructions: 2803 -> 988 (65% menor)\ntools: 42434 -> 29685 (31% menor)\nrules_for: 17018 -> 9422 (45% menor)",
+      "ruleId" : "6088CC95-37DF-4923-ACD6-B12FCCA307EC",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/7974ee31.sh (exit 0)\nAnother instance of SwiftPM (PID: 8443) is already running using '/Users/hoy/Documents/vibedeck/.build', waiting until that process has finished execution...Building for debugging...\n[Computing dependencies]\n[Using on-disk description]\nBuild complete! (0,60 seg)\n◇ Test run started.\n↳ Testing Library Version: 2084\n↳ Target Platform: arm64e-apple-macos14.0\n◇ Suite AIRecoveryTests started.\n◇ Test generationChecksOnlySelectedRulesAndRejectsChangedRequirements() started.\n✔ Test generationChecksOnlySelectedRulesAndRejectsChangedRequirements() passed after 0.009 seconds.\n✔ Suite AIRecoveryTests passed after 0.009 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.009 seconds.",
+      "ruleId" : "7974EE31-FD02-492A-8258-C2F15D594E77",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/ee39f0e7.sh (exit 0)\n(sem saída)",
+      "ruleId" : "EE39F0E7-7C01-4142-A7CD-6234BF40C8F4",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    }
+  ],
+  "task" : "Check de regras para Tests/VibeDeckCoreTests/RuleDiscoverTests.swift (alterado fora desta conversa; nesta sessão só respondi perguntas de design, sem editar código).",
+  "topics" : [
+    "core-e-formato-de-dados",
+    "geral",
+    "eficiencia-de-ia"
+  ],
+  "warnings" : [
+
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "ai",
+  "body" : "Propor uma indicação de possível recorrência quando um novo relato se parecer com revisões encerradas. Mostrar os registros anteriores como contexto e permitir ao usuário distinguir repetição, regressão ou problema diferente. Os dois relatos de imagens em Markdown estão done; devem permanecer separados, com seus estados e históricos preservados.",
+  "createdAt" : "2026-10-14T01:27:11Z",
+  "id" : "5B2541F8-96A1-45C8-85B4-D2A4C06EDB59",
+  "rules" : [
+
+  ],
+  "status" : "new",
+  "title" : "Consultar recorrências sem mesclar revisões encerradas",
+  "updatedAt" : "2026-10-14T01:27:11Z"
+}

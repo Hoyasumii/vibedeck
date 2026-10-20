@@ -1,0 +1,162 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "human",
+  "body" : "## Problema\n\nO catálogo `PatternCatalog.all` cobre apenas parte dos padrões que as pessoas usam. Hoje existem 24: tdd, solid, dependency-injection, functional-core, clean-code, hexagonal, clean-architecture, layered, mvvm, mvc, ddd, cqrs, event-sourcing, repository, strategy, observer, factory, builder, adapter, decorator, facade, command, state e singleton. Sem os padrões que deseja adotar, o usuário não consegue instruir a IA a desenvolver o código exatamente como quer.\n\n## Proposta\n\nAmpliar o catálogo com `PatternTemplate` contendo regras prontas e verificáveis, disponíveis no app, no CLI e no MCP pela mesma fonte, sem mudar a mecânica existente.\n\nA proposta original deixava a seleção dos padrões mais comuns ausentes em cada categoria para quem implementasse, priorizando ids indicados pelo usuário. As regras atuais fecham essa escolha neste lote de oito padrões:\n\n| Categoria | Id | Nome |\n| --- | --- | --- |\n| `practices` | `bdd` | Desenvolvimento orientado a comportamento |\n| `practices` | `design-by-contract` | Design por contrato |\n| `architecture` | `modular-monolith` | Monólito modular |\n| `architecture` | `event-driven` | Arquitetura orientada a eventos |\n| `domain` | `value-object` | Objeto de valor |\n| `domain` | `domain-service` | Serviço de domínio |\n| `design` | `composite` | Composição |\n| `design` | `proxy` | Representante |\n\nPreservar integralmente ids, nomes, categorias, summaries, aliases e regras dos 24 templates anteriores. O catálogo passa a ter 32 templates.\n\nCada template novo deve ter:\n\n- `id` único e em formato slug: `Slug.make(id) == id`.\n- `name`, `category` válida em `PatternCategory.all`, `summary` e pelo menos uma regra.\n- Aliases em português e inglês, incluindo siglas comuns quando existirem. A resolução deve funcionar por id, nome, nome em outro idioma e sigla comum, como já ocorre com `PatternCatalog.find(\"domain-driven design\")`, que devolve `ddd`.\n- Nenhuma colisão entre seu id, nome ou aliases e as referências de outro template, considerando a normalização usada por `matches(exactly:)`.\n- Regras atômicas: cada texto descreve um comportamento e cada `details` começa com `Verificar:`, explicando uma checagem concreta, sem termos vagos como “bom”, “adequado” ou “quando possível”.\n- Severidade `.must` para invariantes do padrão e `.should` somente para recomendações ou boas práticas opcionais, como testes.\n- Conteúdo agnóstico de linguagem e projeto. Summary, aliases e regras não citam caminhos, arquivos ou tipos do VibeDeck; exemplos de código, se houver, são genéricos.\n\nOs textos visíveis ao usuário ficam em pt-BR, mantendo nos aliases os nomes em outros idiomas necessários à busca. As regras desta ideia continuam sendo rascunho até sua promoção; esta tarefa não autoriza promovê-la.\n\n## Escopo\n\n- `Sources/VibeDeckCore/Patterns.swift`: acrescentar os oito templates em `PatternCatalog.all`, agrupados nas quatro categorias indicadas. A proposta original admite categoria nova apenas se necessária, com inclusão em `PatternCategory.all` e `PatternCategory.label(_:)`; este lote usa exclusivamente categorias existentes e não exige categoria nova.\n- `Tests/VibeDeckCoreTests/PatternsTests.swift`: manter os testes existentes e adicionar cobertura de integração por `addPatterns`, resolução inequívoca das referências do catálogo e prefixo de verificação das regras novas.\n- `Sources/VibeDeckApp/PatternsView.swift`: ajustar o `ForEach` de categorias do `PatternPicker`, que atualmente contém um array literal, para usar `PatternCategory.all`, filtrando categorias sem templates. Manter os padrões de cada seção derivados de `PatternCatalog.all`, sem lista fixa de ids. O agrupamento do catálogo acontece nesse seletor; a tela principal continua exibindo os padrões adotados pelo projeto.\n- `Sources/vibedeck/CLI.swift`: verificar a integração existente com `PatternCatalog.search(query)`, sem criar catálogo paralelo. A listagem e a busca do catálogo usam `vibedeck patterns catalog [texto] --json`; `patterns list` lista os padrões adotados pelo projeto, e não existe subcomando `patterns search`.\n- `Sources/vibedeck/MCPServer.swift`: verificar a ferramenta existente `pattern_catalog`, que consulta `PatternCatalog.search(query)`, sem listas paralelas. `list_patterns` continua listando os padrões adotados pelo projeto.\n- `README.md` e `.vibedeck/guide.md`: atualizar apenas se a ampliação mudar algo documentado, como uma contagem ou lista de padrões. Preservar os exemplos e comandos existentes que continuem válidos.\n\nGlobs do escopo: `Sources/VibeDeckCore/Patterns.swift`, `Tests/VibeDeckCoreTests/PatternsTests.swift`, `Sources/VibeDeckApp/PatternsView.swift`, `Sources/vibedeck/CLI.swift`, `Sources/vibedeck/MCPServer.swift`, `README.md` e, condicionalmente, `.vibedeck/guide.md`.\n\nNa implementação, seguir o fluxo do projeto: ler os itens de revisão abertos das áreas afetadas antes de editar, manter o item trabalhado em `in_progress` e concluir somente após check aprovado. Após modificar código, executar `graphify update .` para atualizar o grafo.\n\n## Critérios de aceite\n\n1. `PatternCatalog.all` contém exatamente os oito novos templates definidos neste lote, além dos 24 anteriores preservados integralmente. Cada novo template tem id slug único, nome, categoria válida, summary e pelo menos uma regra. O teste `catalogIdsAreUniqueAndEveryPatternHasRules` continua passando.\n2. Um teste automatizado percorre id, name e aliases de todos os templates. Para cada referência, exatamente um template retorna `true` em `matches(exactly:)`, e `PatternCatalog.find` devolve seu id. Repetições normalizadas dentro do mesmo template são permitidas. Os aliases dos padrões novos cobrem português, inglês e siglas comuns quando existirem.\n3. Toda regra nova é atômica e verificável, sem os termos vagos indicados. Um teste percorre os oito templates novos e confirma `details` não vazio e com `hasPrefix(\"Verificar:\")` em todas as regras, sem aplicar essa exigência retroativamente aos templates antigos. As invariantes usam `.must`; recomendações opcionais usam `.should`.\n4. Nenhum template novo cita caminhos, arquivos ou nomes de tipos do VibeDeck. Seus exemplos, se houver, são genéricos e independentes de linguagem ou projeto.\n5. Um teste chama `addPatterns` com cada novo id, ou com todos os ids do catálogo, e verifica que o tópico criado tem `topic.sourcePattern` igual ao id do template e `rules.count` igual à quantidade de regras do template. `swift test` passa.\n6. O `PatternPicker` mostra os oito padrões novos nas categorias correspondentes. Seu `ForEach` de categorias deriva de `PatternCategory.all`, omite categorias sem templates e não contém array literal de categorias; os templates exibidos derivam de `PatternCatalog.all`.\n7. `vibedeck patterns catalog --json` inclui os oito novos ids. Para cada novo id, `vibedeck patterns catalog <id> --json` inclui o template correspondente.\n8. A ferramenta MCP `pattern_catalog`, sem `query`, inclui os oito novos ids. Com `query` igual a cada novo id, inclui o template correspondente.\n9. Uma busca por ids de padrões fora de `Patterns.swift` e dos testes não encontra listas paralelas usadas pelo app, CLI ou MCP. Exemplos de uso e documentação não constituem catálogos paralelos.\n10. README e guia são atualizados somente se houver informação documentada afetada; textos novos visíveis ao usuário estão em pt-BR. A implementação só é concluída após as validações obrigatórias e um check aprovado.",
+  "createdAt" : "2026-10-12T02:58:53Z",
+  "id" : "071037EA-90BF-477E-AB26-51F926594AF5",
+  "paths" : [
+    "Sources/VibeDeckCore/Patterns.swift",
+    "Tests/VibeDeckCoreTests/PatternsTests.swift",
+    "Sources/VibeDeckApp/PatternsView.swift",
+    "Sources/vibedeck/CLI.swift",
+    "Sources/vibedeck/MCPServer.swift",
+    "README.md"
+  ],
+  "promotedTopic" : "aumentar-o-catalogo-de-padroes",
+  "readiness" : {
+    "checkedAt" : "2026-10-13T22:41:43Z",
+    "fingerprint" : "ebd7a612c456c694",
+    "viable" : true
+  },
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:49:48Z",
+      "details" : "Verificar: o teste catalogIdsAreUniqueAndEveryPatternHasRules passa; ids e category do padrão novo existem em PatternCategory.all.",
+      "id" : "BB4BE48B-F52E-4941-8604-2A9757784B5D",
+      "severity" : "must",
+      "text" : "Todo padrão novo do catálogo entra em PatternCatalog.all com id único, nome, category de PatternCategory.all, summary e pelo menos uma regra"
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:49:48Z",
+      "details" : "Verificar: Slug.make(id) == id e nenhum matches(exactly:) de outro template responde ao id, nome ou alias novo; senão find() resolve o padrão errado.",
+      "id" : "0103954E-9D50-46AC-B132-7D308EDC50FD",
+      "severity" : "must",
+      "text" : "O id do padrão novo é um slug (Slug.make) e não colide com id, nome ou alias de outro padrão do catálogo"
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:49:48Z",
+      "details" : "Verificar: PatternCatalog.find com o nome em outro idioma e com a sigla comum devolve o padrão (ex.: 'domain-driven design' → ddd).",
+      "id" : "BB16FAC4-DB6B-4BE0-91A8-143C75984EA5",
+      "severity" : "should",
+      "text" : "Cada padrão novo traz aliases em português e inglês para os nomes pelos quais é conhecido"
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:49:48Z",
+      "details" : "Verificar: as regras novas seguem o formato das existentes, sem termos vagos como 'bom', 'adequado' ou 'quando possível'.",
+      "id" : "D1840685-D260-42DC-8EB8-AE6FDCDBAE2C",
+      "severity" : "must",
+      "text" : "Cada regra de padrão é atômica e verificável: o texto diz um comportamento e details começa com 'Verificar:' descrevendo como checar"
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:49:48Z",
+      "details" : "Verificar: regras de testes ou boas práticas opcionais são .should; as que definem o padrão são .must.",
+      "id" : "39AC1941-6B06-4A0A-BEF9-26908D3D4788",
+      "severity" : "should",
+      "text" : "Regras de padrão usam severity must para o que é invariante do padrão e should só para recomendações"
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:49:48Z",
+      "details" : "Verificar: summary, aliases e regras do template não contêm paths ou nomes de tipos do VibeDeck; exemplos de código, se houver, são genéricos.",
+      "id" : "5819E3B4-56F4-4EEA-82F0-0FD993D8D057",
+      "severity" : "must",
+      "text" : "Um padrão do catálogo é agnóstico de linguagem e de projeto, sem citar caminhos, arquivos ou nomes deste repositório"
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:49:48Z",
+      "details" : "Verificar: PatternsTests tem um teste que adiciona cada novo id (ou todos os do catálogo) e confere topic.sourcePattern e rules.count.",
+      "id" : "64932D91-2FB9-4B39-AAB5-CEB3FB3BD5FD",
+      "severity" : "must",
+      "text" : "Um teste cobre os padrões adicionados: addPatterns pelo id cria um tópico com sourcePattern e o mesmo número de regras do template"
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:49:48Z",
+      "details" : "Verificar: a lista da PatternsView é derivada de PatternCatalog.all e PatternCategory.all, sem listas fixas de ids; uma categoria nova entra em PatternCategory.all e em label(_:).",
+      "id" : "DB3EAF5A-92E6-4292-AE04-3BA10FA10636",
+      "severity" : "should",
+      "text" : "A PatternsView exibe os padrões novos agrupados por PatternCategory sem mudança de código quando a categoria já existe"
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:49:48Z",
+      "details" : "Verificar: grep por ids de padrões fora de Patterns.swift e dos testes não acha listas paralelas; patterns list/search no CLI e no MCP devolvem os novos.",
+      "id" : "08E3B7D9-E896-4488-BDD9-8CFC543BB94C",
+      "severity" : "must",
+      "text" : "Os padrões novos aparecem no CLI e no MCP pela mesma PatternCatalog, sem lista duplicada"
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T22:39:32Z",
+      "details" : "Verificar: o lote acrescenta bdd (Desenvolvimento orientado a comportamento) e design-by-contract (Design por contrato) em practices; modular-monolith (Monólito modular) e event-driven (Arquitetura orientada a eventos) em architecture; value-object (Objeto de valor) e domain-service (Serviço de domínio) em domain; composite (Composição) e proxy (Representante) em design.",
+      "id" : "02A3A32C-235F-4E76-A34E-96CB1F6ED168",
+      "severity" : "must",
+      "text" : "O escopo desta ampliação é adicionar os oito padrões definidos neste lote, nas quatro categorias existentes."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T22:39:32Z",
+      "details" : "Verificar: comparar o catálogo antes e depois; os 24 templates anteriores mantêm ids, nomes, categorias, summaries, aliases e regras.",
+      "id" : "D017D9BD-74C1-4BCE-AA71-C5460B84AA17",
+      "severity" : "must",
+      "text" : "A ampliação preserva os templates que já existem no catálogo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T22:39:32Z",
+      "details" : "Verificar: em PatternsTests.swift, percorrer id, name e aliases de cada template; para cada referência, conferir que exatamente um template retorna true em matches(exactly:) e que find retorna seu id. Repetições normalizadas dentro do mesmo template são permitidas.",
+      "id" : "2FB10F58-AE83-4135-9758-A78F87B631C6",
+      "severity" : "must",
+      "text" : "Um teste automatizado cobre a resolução inequívoca de todas as referências do catálogo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T22:39:32Z",
+      "details" : "Verificar: um teste percorre os oito templates novos e confere details não vazio com hasPrefix(\"Verificar:\") em cada regra, sem exigir essa condição dos templates antigos.",
+      "id" : "9F756E3B-0FAB-415C-A1AD-05B073AB3188",
+      "severity" : "must",
+      "text" : "Um teste automatizado valida o prefixo de verificação nas regras dos templates novos."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T22:39:32Z",
+      "details" : "Verificar: o ForEach de categorias do PatternPicker usa PatternCategory.all, filtrando categorias sem templates; não contém um array literal de categorias.",
+      "id" : "26913F22-1A61-4E2F-B521-7ACDCCDA17A2",
+      "severity" : "must",
+      "text" : "O seletor de padrões deriva suas categorias de PatternCategory.all."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T22:39:32Z",
+      "details" : "Verificar: vibedeck patterns catalog --json inclui os oito ids; vibedeck patterns catalog <id> --json encontra cada novo template.",
+      "id" : "6EDC1FEB-592D-44F6-ADB9-42595BFC9236",
+      "severity" : "must",
+      "text" : "A validação do catálogo no CLI usa o comando existente patterns catalog, com seu argumento de busca."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T22:39:32Z",
+      "details" : "Verificar: chamar pattern_catalog sem query inclui os oito ids; chamar com query igual a cada novo id inclui o template correspondente.",
+      "id" : "E3842617-2628-42D2-91CB-A53882D71F14",
+      "severity" : "must",
+      "text" : "A validação do catálogo no MCP usa a ferramenta existente pattern_catalog."
+    }
+  ],
+  "status" : "done",
+  "tags" : [
+    "core",
+    "regras",
+    "ia",
+    "cli",
+    "mcp",
+    "interface"
+  ],
+  "title" : "Aumentar o catálogo de padrões",
+  "updatedAt" : "2026-10-13T22:54:11Z"
+}

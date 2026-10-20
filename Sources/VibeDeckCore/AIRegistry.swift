@@ -187,13 +187,8 @@ extension ProjectStore {
         case .command: let record = try loadCommand(step.ref); legacy = record.model; overrides = record.providerSettings
         case .skill: let record = try loadSkill(step.ref); legacy = record.model; overrides = record.providerSettings
         }
-        var settings = overrides?[run.provider.rawValue] ?? AIProviderSettings()
-        let requested = settings.model ?? legacy
-        if let requested, !availableModels.contains(requested) {
-            settings.model = fallback
-            return (settings, "Modelo \(requested) indisponível no \(run.provider.title); usando \(fallback ?? "padrão da sessão").")
-        }
-        settings.model = requested ?? fallback
+        let settings = try AISettingsResolver.resolve(provider: run.provider, resource: overrides?[run.provider.rawValue],
+            legacyModel: legacy, session: .init(model: fallback), availableModels: availableModels.isEmpty ? nil : availableModels)
         return (settings, nil)
     }
 
@@ -228,13 +223,8 @@ extension ProjectStore {
         } else if let slug = try? resolveSkillSlug(name) {
             let record = try loadSkill(slug); legacy = record.model; all = record.providerSettings
         } else { return nil }
-        var settings = all?[provider.rawValue] ?? AIProviderSettings()
-        let chosen = settings.model ?? legacy
-        if let chosen, !availableModels.contains(chosen) {
-            settings.model = fallback
-            return (settings, "Modelo \(chosen) indisponível no \(provider.title); usando \(fallback ?? "padrão da sessão").")
-        }
-        settings.model = chosen ?? fallback
+        let settings = try AISettingsResolver.resolve(provider: provider, resource: all?[provider.rawValue],
+            legacyModel: legacy, session: .init(model: fallback), availableModels: availableModels.isEmpty ? nil : availableModels)
         return (settings, nil)
     }
 }

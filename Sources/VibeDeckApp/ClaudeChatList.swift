@@ -16,31 +16,31 @@ struct ClaudeChatList: View {
                 } description: {
                     Text("As conversas com o Claude ficam salvas aqui para você voltar a elas.")
                 } actions: {
-                    Button("Nova conversa") { claude.newChat() }
+                    LoggedButton("Nova conversa") { claude.newChat() }.loggedControl(control: "claude_chat_list.button_1", label: "Nova conversa")
                         .buttonStyle(.glassProminent)
                 }
             } else {
                 List(claude.chats) { chat in
-                    Button { claude.open(chat.id) } label: { ChatRow(chat: chat) }
+                    LoggedButton { claude.open(chat.id) } label: { ChatRow(chat: chat) }.loggedControl(control: "claude_chat_list.button_2", label: "Ativar controle")
                         .buttonStyle(.plain)
                         .contextMenu {
-                            Button("Abrir") { claude.open(chat.id) }
-                            Button("Renomear…") { renaming = chat }
-                            Button("Limpar conversa") { claude.clear(chat.id) }
+                            LoggedButton("Abrir") { claude.open(chat.id) }.loggedControl(control: "claude_chat_list.button_3", label: "Abrir")
+                            LoggedButton("Renomear…") { renaming = chat }.loggedControl(control: "claude_chat_list.button_4", label: "Renomear…")
+                            LoggedButton("Limpar conversa") { claude.clear(chat.id) }.loggedControl(control: "claude_chat_list.button_5", label: "Limpar conversa")
                                 .disabled(chat.messages.isEmpty && chat.sessionId == nil)
                             Divider()
-                            Button("Apagar…", role: .destructive) { deleting = chat }
+                            LoggedButton("Apagar…", role: .destructive) { deleting = chat }.loggedControl(control: "claude_chat_list.button_6", label: "Apagar…")
                         }
                 }
                 .listStyle(.inset)
                 .scrollContentBackground(.hidden)
 
                 HStack {
-                    Button("Limpar histórico", role: .destructive) { confirmingClearHistory = true }
+                    LoggedButton("Limpar histórico", role: .destructive) { confirmingClearHistory = true }.loggedControl(control: "claude_chat_list.button_7", label: "Limpar histórico")
                         .buttonStyle(.plain)
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Button("Nova conversa") { claude.newChat() }
+                    LoggedButton("Nova conversa") { claude.newChat() }.loggedControl(control: "claude_chat_list.button_8", label: "Nova conversa")
                         .buttonStyle(.glassProminent)
                 }
                 .font(.callout)
@@ -49,7 +49,7 @@ struct ClaudeChatList: View {
         }
         .renameChatAlert($renaming)
         .confirmationDialog("Apagar todas as conversas deste projeto?", isPresented: $confirmingClearHistory) {
-            Button("Apagar todas", role: .destructive) { claude.clearHistory() }
+            LoggedButton("Apagar todas", role: .destructive) { claude.clearHistory() }.loggedControl(control: "claude_chat_list.button_9", label: "Apagar todas")
         } message: {
             Text("O histórico salvo no VibeDeck é removido e não pode ser recuperado.")
         }
@@ -58,7 +58,7 @@ struct ClaudeChatList: View {
             isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
             presenting: deleting
         ) { chat in
-            Button("Apagar", role: .destructive) { claude.delete(chat.id) }
+            LoggedButton("Apagar", role: .destructive) { claude.delete(chat.id) }.loggedControl(control: "claude_chat_list.button_10", label: "Apagar")
         }
     }
 }
@@ -98,16 +98,16 @@ struct ClaudeChatHeader: View {
     var body: some View {
         if let chat = claude.current {
             HStack(spacing: 6) {
-                Button { claude.leaveChat() } label: { Image(systemName: "chevron.left") }
+                LoggedButton { claude.leaveChat() } label: { Image(systemName: "chevron.left") }.loggedControl(control: "claude_chat_list.button_11", label: "Ativar controle")
                     .buttonStyle(.plain)
                     .foregroundStyle(.secondary)
                     .help("Sair da conversa (ela fica salva)")
                 Menu {
-                    Button("Renomear…") { renaming = chat }
-                    Button("Limpar conversa…") { confirmingClear = true }
+                    LoggedButton("Renomear…") { renaming = chat }.loggedControl(control: "claude_chat_list.button_12", label: "Renomear…")
+                    LoggedButton("Limpar conversa…") { confirmingClear = true }.loggedControl(control: "claude_chat_list.button_13", label: "Limpar conversa…")
                         .disabled(claude.entries.isEmpty && chat.sessionId == nil)
                     Divider()
-                    Button("Sair da conversa") { claude.leaveChat() }
+                    LoggedButton("Sair da conversa") { claude.leaveChat() }.loggedControl(control: "claude_chat_list.button_14", label: "Sair da conversa")
                 } label: {
                     Text(chat.title + " · " + chat.provider.title)
                         .font(.callout.weight(.semibold))
@@ -122,7 +122,7 @@ struct ClaudeChatHeader: View {
             .padding(.vertical, 6)
             .renameChatAlert($renaming)
             .confirmationDialog("Limpar esta conversa?", isPresented: $confirmingClear) {
-                Button("Limpar", role: .destructive) { claude.clear(chat.id) }
+                LoggedButton("Limpar", role: .destructive) { claude.clear(chat.id) }.loggedControl(control: "claude_chat_list.button_15", label: "Limpar")
             } message: {
                 Text("As mensagens e o contexto da IA são apagados; a conversa continua na lista com o mesmo nome.")
             }
@@ -142,7 +142,7 @@ struct MentionChips: View {
                     HStack(spacing: 4) {
                         Text("@" + (claude.title(of: id) ?? "conversa apagada"))
                             .lineLimit(1)
-                        Button { mentions.removeAll { $0 == id } } label: { Image(systemName: "xmark.circle.fill") }
+                        LoggedButton { mentions.removeAll { $0 == id } } label: { Image(systemName: "xmark.circle.fill") }.loggedControl(control: "claude_chat_list.button_16", label: "Ativar controle")
                             .buttonStyle(.plain)
                             .foregroundStyle(.secondary)
                             .help("Remover menção")
@@ -169,7 +169,7 @@ struct AttachmentChips: View {
                     HStack(spacing: 4) {
                         Label(url.lastPathComponent, systemImage: "paperclip")
                             .lineLimit(1)
-                        Button { files.removeAll { $0 == url } } label: { Image(systemName: "xmark.circle.fill") }
+                        LoggedButton { files.removeAll { $0 == url } } label: { Image(systemName: "xmark.circle.fill") }.loggedControl(control: "claude_chat_list.button_17", label: "Ativar controle")
                             .buttonStyle(.plain)
                             .foregroundStyle(.secondary)
                             .help("Remover anexo")
@@ -206,7 +206,7 @@ struct MentionPicker: View {
                     .padding(8)
             }
             ForEach(candidates) { chat in
-                Button {
+                LoggedButton {
                     mentions.append(chat.id)
                     onPick()
                 } label: {
@@ -216,7 +216,7 @@ struct MentionPicker: View {
                         .padding(.horizontal, 8)
                         .padding(.vertical, 5)
                         .contentShape(Rectangle())
-                }
+                }.loggedControl(control: "claude_chat_list.button_18", label: "Ativar controle")
                 .buttonStyle(.plain)
             }
         }
@@ -241,9 +241,9 @@ private struct RenameChatAlert: ViewModifier {
                 isPresented: Binding(get: { chat != nil }, set: { if !$0 { chat = nil } }),
                 presenting: chat
             ) { chat in
-                TextField("Nome", text: $title)
-                Button("Cancelar", role: .cancel) {}
-                Button("Renomear") { claude.rename(chat.id, to: title) }
+                LoggedTextField("Nome", text: $title).loggedField(control: "claudechatlist.text_1", label: "Nome")
+                LoggedButton("Cancelar", role: .cancel) {}.loggedControl(control: "claude_chat_list.button_19", label: "Cancelar")
+                LoggedButton("Renomear") { claude.rename(chat.id, to: title) }.loggedControl(control: "claude_chat_list.button_20", label: "Renomear")
             }
             .onChange(of: chat?.id) { title = chat?.title ?? "" }
     }

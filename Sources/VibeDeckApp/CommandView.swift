@@ -3,11 +3,13 @@ import VibeDeckCore
 
 /// Same page as `AgentView`, for a command: a slash-command-like prompt (with `$ARGUMENTS`) plus its flow.
 struct CommandView: View {
+    @Environment(\.logProject) private var providerRoot
     let slug: String
     let open: (SidebarItem) -> Void
     @Environment(ProjectModel.self) private var model
     @Environment(\.undoManager) private var undo
     @State private var showFlow = true
+    @State private var editingAction: String?
     @State private var text = ""
     @State private var savedText = ""
     @State private var loaded = false
@@ -19,7 +21,7 @@ struct CommandView: View {
         VStack(spacing: 0) {
             header
             Divider()
-            MarkdownEditor(text: $text, undoManager: model.undoManager(forDoc: "command:\(slug)"), autoFocus: false)
+            MarkdownEditor(text: $text, undoManager: model.undoManager(forDoc: "command:\(slug)"), autoFocus: false).editingAction { editingAction = $0 }
                 .overlay(alignment: .topLeading) {
                     if text.isEmpty {
                         Text("Prompt do comando em markdown. Use $ARGUMENTS para os argumentos da chamada.")
@@ -38,12 +40,14 @@ struct CommandView: View {
         .navigationTitle(command.title)
         .navigationSubtitle("\(command.model ?? "modelo herdado") · \(command.nextSteps.count) próximo(s) passo(s)")
         .toolbar {
+            ToolbarItem { KitCatalogButton() }
+            ToolbarItem { EditWithAIButton(kind: .command, slug: slug) }
             ToolbarItem {
-                Button { copyFlow() } label: { Label("Copiar fluxo (JSON)", systemImage: "curlybraces") }
+                LoggedButton { copyFlow() } label: { Label("Copiar fluxo (JSON)", systemImage: "curlybraces") }.loggedControl(control: "command_view.button_1", label: "Copiar fluxo (JSON)")
                     .help("Copia o JSON do fluxo (prompt + próximos passos) para orquestrar a IA")
             }
             ToolbarItem {
-                Button { showFlow.toggle() } label: { Label("Fluxo", systemImage: "arrow.triangle.branch") }
+                LoggedButton { showFlow.toggle() } label: { Label("Fluxo", systemImage: "arrow.triangle.branch") }.loggedControl(control: "command_view.button_2", label: "Fluxo")
                     .keyboardShortcut("i", modifiers: [.command, .option])
                     .help("Mostrar/ocultar o fluxo (⌥⌘I)")
             }
@@ -60,21 +64,21 @@ struct CommandView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 10) {
-            CommitTextField("Comando", value: command.title) { title in
+            CommitTextField(control: "commandview.field_1", "Comando", value: command.title) { title in
                 guard !title.isEmpty else { return }
                 model.mutateCommand(slug, "Renomear comando", undo: undo) { $0.title = title }
             }
             .font(.title2.weight(.semibold))
             .textFieldStyle(.plain)
 
-            CommitTextField("Descrição (o que o comando faz)", value: command.summary ?? "") { value in
+            CommitTextField(control: "commandview.field_2", "Descrição (o que o comando faz)", value: command.summary ?? "") { value in
                 model.mutateCommand(slug, "Alterar descrição", undo: undo) { $0.summary = value.isEmpty ? nil : value }
             }
             .textFieldStyle(.plain)
             .foregroundStyle(.secondary)
 
             // Hidden, not disabled, when no AI provider is installed.
-            if !AIProvider.installed.isEmpty {
+            if !AIProvider.installed(in: providerRoot).isEmpty {
                 AIProviderSettingsView(settings: command.providerSettings) { provider, settings in
                     model.mutateCommand(slug, "Configurar provedor", undo: undo) {
                         var all = $0.providerSettings ?? [:]; all[provider] = settings; $0.providerSettings = all
@@ -84,12 +88,12 @@ struct CommandView: View {
 
             // A single HStack (not ViewThatFits): see IdeaView.
             HStack(spacing: 12) {
-                CommitTextField("Argumentos (ex.: <mensagem>)", value: command.argumentHint ?? "") { value in
+                CommitTextField(control: "commandview.field_3", "Argumentos (ex.: <mensagem>)", value: command.argumentHint ?? "") { value in
                     model.mutateCommand(slug, "Alterar argumentos", undo: undo) { $0.argumentHint = value.isEmpty ? nil : value }
                 }
                 .textFieldStyle(.roundedBorder)
                 .frame(width: 200)
-                CommitTextField("Modelo (ex.: sonnet, opus)", value: command.model ?? "") { value in
+                CommitTextField(control: "commandview.field_4", "Modelo (ex.: sonnet, opus)", value: command.model ?? "") { value in
                     model.mutateCommand(slug, "Alterar modelo", undo: undo) { $0.model = value.isEmpty ? nil : value }
                 }
                 .textFieldStyle(.roundedBorder)
@@ -135,9 +139,11 @@ struct CommandView: View {
     }
 
     private func save() {
-        let prompt = text
-        model.mutateCommand(slug, "Editar prompt", undo: nil) { $0.prompt = prompt }
-        savedText = prompt
+        VDLog.$actionID.withValue(VDLog.actionID ?? editingAction) {
+            let prompt = text
+            model.mutateCommand(slug, "Editar prompt", undo: nil) { $0.prompt = prompt }
+            savedText = prompt
+        }
     }
 
     private func flush() {

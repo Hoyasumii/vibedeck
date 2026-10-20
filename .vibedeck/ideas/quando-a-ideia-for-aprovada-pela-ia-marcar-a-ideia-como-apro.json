@@ -1,0 +1,145 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "human",
+  "body" : "## Problema\n\nHoje, ao clicar em **Salvar avaliação** na avaliação de viabilidade feita pela IA (Descubra/Verificar), o app só grava o `readiness` da ideia. Mesmo com veredito viável, a ideia continua em `new` ou `exploring`, embora o usuário já tenha aceitado e salvado a avaliação.\n\n## Proposta\n\nQuando o usuário clicar em **Salvar avaliação** e o veredito for viável (e a ideia tiver regras), marcar a ideia como `approved`, na mesma gravação do `readiness`.\n\n- A decisão do novo status fica no Core (sem SwiftUI), numa função que aplica o `RuleDiscoverVerdict` a uma `Idea`. O app (`IdeaView.applyVerdict`) apenas chama essa função dentro de **uma única** `model.mutateIdea`, para que desfazer restaure status e readiness juntos.\n- Só o clique em **Salvar avaliação** muda o status; rodar Descubra ou Verificar sem salvar não altera nada.\n- Veredito não viável, ou viável em ideia sem regras, não aprova (`readiness.viable` fica false). Ideia que já está `approved` continua `approved`, mesmo com veredito não viável (o readiness é gravado).\n- Ideias fechadas (`discarded` ou `done`, via `IdeaStatus.isClosed`) e ideias já promovidas (`promotedTopic` preenchido) não mudam de status nem de `promotedTopic`.\n- `approved` por avaliação **não é promoção**: `promotedTopic` continua vazio, nenhum tópico de regras é criado e as regras da ideia continuam rascunho (sem regras ativas).\n- Registrar no log (sem conteúdo da ideia) a gravação (caminho relativo e nome do undo) e a mudança de status (apenas slug e novo status).\n\n## Escopo\n\n- `Sources/VibeDeckCore/RuleDiscover.swift` e/ou `Sources/VibeDeckCore/Rules.swift`: função que aplica o veredito a uma `Idea` (readiness + status).\n- `Sources/VibeDeckApp/IdeaView.swift` (`applyVerdict`, ~linha 221): usar a função do Core numa só `mutateIdea`.\n- `Sources/VibeDeckApp/RuleDiscover.swift` (botão \"Salvar avaliação\", ~linha 327): sem mudança de status fora desse closure.\n- `Sources/VibeDeckCore/ProjectStore.swift`: só se precisar para a regra de promoção/tópicos.\n- Testes: `Tests/VibeDeckCoreTests/RuleDiscoverTests.swift` (e `ProjectStoreTests.swift` para checar que nenhum tópico é criado).\n- Documentação em pt-BR: `README.md`, `.vibedeck/guide.md` e o texto do guia em `Sources/VibeDeckCore/AgentsGuide.swift` (dizer que Salvar avaliação com veredito viável marca como `approved` e que isso não é promoção).\n\n## Critérios de aceite\n\n- Veredito viável + ideia com regras + status `new`, `exploring` ou `approved` resulta em `approved` e `readiness.viable == true`.\n- Veredito não viável não altera o status (inclusive se já `approved`) e grava o readiness.\n- Ideia sem regras não vira `approved`.\n- Ideia `discarded`/`done` mantém o status; ideia promovida mantém status e `promotedTopic`.\n- Após salvar, `promotedTopic == nil` e nenhum tópico foi criado.\n- Status e readiness mudam em um único passo de undo.\n- Descubra/Verificar sem salvar não mudam o status.\n- Testes cobrem viável aprova, não viável não aprova, ideia fechada não muda e ideia sem regras não aprova; `swift test` passa.\n- README, guide.md e AgentsGuide.swift documentam o comportamento.",
+  "createdAt" : "2026-10-13T17:21:47Z",
+  "id" : "A76BAD83-046A-4B42-8E4E-F388005756A1",
+  "paths" : [
+    "Sources/VibeDeckApp/IdeaView.swift",
+    "Sources/VibeDeckCore/Rules.swift",
+    "Sources/VibeDeckCore/RuleDiscover.swift",
+    "Tests/VibeDeckCoreTests/RuleDiscoverTests.swift",
+    "Sources/VibeDeckApp/RuleDiscover.swift",
+    "Sources/VibeDeckCore/ProjectStore.swift",
+    "Tests/VibeDeckCoreTests/ProjectStoreTests.swift"
+  ],
+  "promotedTopic" : "quando-a-ideia-for-aprovada-pela-ia-marcar-a-ideia-como-apro",
+  "readiness" : {
+    "checkedAt" : "2026-10-13T18:19:23Z",
+    "fingerprint" : "c94fb62e244d3f1e",
+    "viable" : true
+  },
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:27:12Z",
+      "details" : "Teste no Core: aplicar RuleDiscoverVerdict(viable: true) a uma ideia com regras e status new ou exploring resulta em status == .approved e readiness.viable == true.",
+      "id" : "C7BD826F-983F-40CF-84E1-C509ECC8AE37",
+      "severity" : "must",
+      "text" : "Ao salvar a avaliação (Salvar avaliação) com veredito viável, a ideia passa para status approved."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:27:12Z",
+      "details" : "Em IdeaView.applyVerdict há uma só chamada a model.mutateIdea; desfazer restaura status e readiness juntos.",
+      "id" : "6A83084F-6C73-4A55-9E5A-4A5868751F03",
+      "severity" : "must",
+      "text" : "A mudança para approved e a gravação do readiness acontecem na mesma mutateIdea, formando um único passo de undo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:27:12Z",
+      "details" : "Função em RuleDiscover.swift ou Rules.swift (ex.: aplicar o veredito a uma Idea) chamada por IdeaView; o app não decide o status por conta própria.",
+      "id" : "C1525B3C-6844-48C1-89FA-34AE1D43958E",
+      "severity" : "must",
+      "text" : "A lógica que decide o novo status a partir do veredito fica no Core, sem depender de SwiftUI, e é usada pelo app."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:27:12Z",
+      "details" : "Teste: veredito viável sobre ideia discarded ou done mantém o status; use IdeaStatus.isClosed.",
+      "id" : "FD139F97-0805-402A-A434-E5BF5B180697",
+      "severity" : "must",
+      "text" : "Uma ideia com status discarded ou done nunca muda de status ao salvar a avaliação."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:27:12Z",
+      "details" : "readiness.viable fica false nesses casos (RuleDiscover.swift:576); teste confirma que o status permanece o mesmo.",
+      "id" : "3D36EF16-3B24-4138-9155-D409AC41CB97",
+      "severity" : "must",
+      "text" : "Veredito não viável, ou viável em ideia sem regras, não marca a ideia como approved."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:27:12Z",
+      "details" : "Teste: após aplicar o veredito viável, idea.promotedTopic == nil e o diretório de tópicos não muda.",
+      "id" : "C406A2E1-FAAC-4CD1-8B26-F4B3D12A9B2D",
+      "severity" : "must",
+      "text" : "Salvar a avaliação não promove a ideia: promotedTopic continua vazio e nenhum tópico é criado."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:27:12Z",
+      "details" : "O status só é escrito dentro do closure applyVerdict (RuleDiscover.swift:327); nenhuma outra etapa da execução chama mutateIdea para status.",
+      "id" : "5037F7FE-C153-4990-9512-C6CD4D80DD29",
+      "severity" : "must",
+      "text" : "A ideia só vira approved quando o usuário clica em Salvar avaliação; rodar Descubra ou Verificar sem salvar não altera o status."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:27:12Z",
+      "details" : "A entrada de gravação traz o caminho relativo e o nome do undo; a entrada de status traz só slug e o novo status.",
+      "id" : "724BCD1F-3BBC-4D5F-B4AD-498108E71107",
+      "severity" : "should",
+      "text" : "Salvar a avaliação registra no log a ação e a mudança de status, sem conteúdo da ideia."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:27:12Z",
+      "details" : "Rodar swift test e conferir os quatro casos.",
+      "id" : "EC979504-BE27-4F99-BC0A-0D21CFF38F3F",
+      "severity" : "must",
+      "text" : "O teste da regra de aprovação por avaliação fica em Tests/VibeDeckCoreTests/RuleDiscoverTests.swift e cobre: viável aprova, não viável não aprova, ideia fechada não muda e ideia sem regras não aprova."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:28:48Z",
+      "details" : "Teste no Core: partindo de new, exploring e approved, com veredito viável e regras, o status resultante é approved.",
+      "id" : "E3F5E0D2-296A-442B-998A-2256422ED38E",
+      "severity" : "must",
+      "text" : "Salvar a avaliação com veredito viável em ideia com status new ou exploring muda o status para approved; ideia que já está approved continua approved."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:28:48Z",
+      "details" : "Teste no Core: ideia approved + veredito não viável mantém approved e grava o readiness.",
+      "id" : "1470074F-0C18-4655-A29C-55BA9AB8CE2E",
+      "severity" : "must",
+      "text" : "Salvar avaliação com veredito não viável não altera o status da ideia, inclusive quando ela já está approved."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:28:48Z",
+      "details" : "Teste no Core com ideia promovida: status e promotedTopic idênticos antes e depois.",
+      "id" : "3EEF4536-1AFA-4787-BFE9-1307C289979B",
+      "severity" : "must",
+      "text" : "Salvar avaliação em ideia já promovida (promotedTopic preenchido) não altera status nem promotedTopic."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:28:48Z",
+      "details" : "Após salvar a avaliação, listar tópicos do projeto e confirmar que nenhum tópico foi criado; o guia deve dizer que approved por avaliação não é promoção.",
+      "id" : "C55C68D9-357A-4420-A19C-C23B75C12F78",
+      "severity" : "must",
+      "text" : "Ideia marcada approved só por avaliação (sem promotedTopic) continua sem regras ativas: nenhum tópico de regras passa a valer para ela."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:28:48Z",
+      "details" : "Buscar 'Salvar avaliação' e 'approved' nos três arquivos.",
+      "id" : "BB620E68-53BB-4149-99FC-3D58A2E689B0",
+      "severity" : "should",
+      "text" : "O README e o .vibedeck/guide.md (e o texto do guia em AgentsGuide.swift) documentam, em pt-BR, que Salvar avaliação com veredito viável marca a ideia como approved."
+    }
+  ],
+  "status" : "done",
+  "tags" : [
+    "ideias",
+    "ia",
+    "regras",
+    "core"
+  ],
+  "title" : "Quando a ideia for aprovada pela IA, marcar a ideia como aprovada, pois o usuário salvou a avaliação",
+  "updatedAt" : "2026-10-13T18:26:21Z"
+}

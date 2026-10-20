@@ -4,6 +4,7 @@ import VibeDeckCore
 /// The code patterns the project follows (TDD, hexagonal, DDD…): what the AI reads (list_patterns /
 /// `vibedeck patterns`) before implementing, each one enforced by its own rule topic.
 struct PatternsView: View {
+    @Environment(\.logProject) private var logProject
     let onOpen: (SidebarItem) -> Void
     @Environment(ProjectModel.self) private var model
     @Environment(\.undoManager) private var undo
@@ -33,7 +34,7 @@ struct PatternsView: View {
                 } description: {
                     Text("Escolha como o código deve ser escrito (TDD, arquitetura hexagonal, DDD, CQRS…). A IA segue esses padrões ao implementar, e as regras de cada um são cobradas antes de ela concluir uma tarefa.")
                 } actions: {
-                    Button("Escolher padrões") { adding = true }.buttonStyle(.glass)
+                    LoggedButton("Escolher padrões") { adding = true }.loggedControl(control: "patterns_view.button_1", label: "Escolher padrões").buttonStyle(.glass)
                 }
             } else {
                 ScrollView {
@@ -49,7 +50,7 @@ struct PatternsView: View {
         .searchable(text: $search, placement: .toolbar, prompt: "Filtrar padrões (texto ou #tag)")
         .toolbar {
             ToolbarItem {
-                Button { adding = true } label: { Label("Adicionar padrão", systemImage: "plus") }
+                LoggedButton { adding = true } label: { Label("Adicionar padrão", systemImage: "plus") }.loggedControl(control: "patterns_view.button_2", label: "Adicionar padrão")
             }
         }
         .sheet(isPresented: $adding) { PatternPicker() }
@@ -57,10 +58,10 @@ struct PatternsView: View {
         .confirmationDialog(
             "Remover o padrão \"\(removing?.name ?? "")\"?", isPresented: Binding { removing != nil } set: { if !$0 { removing = nil } }
         ) {
-            Button("Remover", role: .destructive) {
+            LoggedButton("Remover", role: .destructive) {
                 if let id = removing?.id { model.changePatterns("Remover padrão", undo: undo) { try $0.removePatterns([id]) } }
                 removing = nil
-            }
+            }.loggedControl(control: "patterns_view.button_3", label: "Remover")
         } message: {
             Text("O tópico de regras do padrão também é apagado, e a IA deixa de ser cobrada por ele. Dá para desfazer com ⌘Z.")
         }
@@ -95,7 +96,7 @@ struct PatternsView: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
                     Spacer(minLength: 0)
-                    Button("\(topic.value.rules.count) regra(s)") { onOpen(.topic(topic.slug)) }
+                    LoggedButton("\(topic.value.rules.count) regra(s)") { onOpen(.topic(topic.slug)) }.loggedControl(control: "patterns_view.button_4", label: "Ativar controle")
                         .buttonStyle(.link)
                         .fixedSize()
                         .help("Abrir o tópico de regras do padrão")
@@ -110,7 +111,7 @@ struct PatternsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
         .contentShape(Rectangle())
-        .onTapGesture(count: 2) { editing = pattern }
+        .onTapGesture(count: 2) { VDLog.withAction(control: "patterns_view.tap_15", label: "Selecionar", project: logProject) { editing = pattern } }
         .draggable(pattern.id)
         .dropDestination(for: String.self) { ids, _ in
             guard let dragged = ids.first, dragged != pattern.id,
@@ -120,10 +121,10 @@ struct PatternsView: View {
             return true
         }
         .contextMenu {
-            Button("Editar nota e escopo…") { editing = pattern }
-            if let topic { Button("Ver regras") { onOpen(.topic(topic.slug)) } }
+            LoggedButton("Editar nota e escopo…") { editing = pattern }.loggedControl(control: "patterns_view.button_5", label: "Editar nota e escopo…")
+            if let topic { LoggedButton("Ver regras") { onOpen(.topic(topic.slug)) }.loggedControl(control: "patterns_view.button_6", label: "Ver regras") }
             Divider()
-            Button("Remover…", role: .destructive) { removing = pattern }
+            LoggedButton("Remover…", role: .destructive) { removing = pattern }.loggedControl(control: "patterns_view.button_7", label: "Remover…")
         }
     }
 }
@@ -135,6 +136,7 @@ private func parsePaths(_ text: String) -> [String] {
 
 /// Catalog patterns (grouped by category) plus a form for a pattern of the project's own.
 private struct PatternPicker: View {
+    @Environment(\.logProject) private var logProject
     @Environment(ProjectModel.self) private var model
     @Environment(\.undoManager) private var undo
     @Environment(\.dismiss) private var dismiss
@@ -150,7 +152,7 @@ private struct PatternPicker: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Picker("", selection: $custom) {
+            Picker("", selection: $custom.logging(control: "patterns_view.selection_12", label: "Seleção", project: logProject)) {
                 Text("Catálogo").tag(false)
                 Text("Personalizado").tag(true)
             }
@@ -168,8 +170,8 @@ private struct PatternPicker: View {
                 Text(custom ? "Cada linha de regras vira uma regra obrigatória." : "\(picked.count) selecionado(s) · cada padrão cria um tópico de regras")
                     .font(.caption).foregroundStyle(.secondary)
                 Spacer()
-                Button("Cancelar") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Adicionar", action: add)
+                LoggedButton("Cancelar") { dismiss() }.loggedControl(control: "patterns_view.button_8", label: "Cancelar").keyboardShortcut(.cancelAction)
+                LoggedButton("Adicionar", action: add).loggedControl(control: "patterns_view.button_9", label: "Adicionar")
                     .keyboardShortcut(.defaultAction)
                     .buttonStyle(.glassProminent)
                     .disabled(custom ? name.trimmingCharacters(in: .whitespaces).isEmpty || parseRules.isEmpty : picked.isEmpty)
@@ -180,15 +182,17 @@ private struct PatternPicker: View {
 
     private var catalog: some View {
         List {
-            ForEach(["practices", "architecture", "domain", "design"], id: \.self) { category in
+            ForEach(PatternCategory.all.filter { category in
+                PatternCatalog.all.contains { $0.category == category }
+            }, id: \.self) { category in
                 Section(PatternCategory.label(category)) {
                     ForEach(PatternCatalog.all.filter { $0.category == category }) { row($0) }
                 }
             }
             Section("Escopo e nota (opcionais, valem para os selecionados)") {
-                TextField("Globs, separados por vírgula (vazio = projeto inteiro)", text: $paths)
+                LoggedTextField("Globs, separados por vírgula (vazio = projeto inteiro)", text: $paths).loggedField(control: "patternsview.text_1", label: "Globs, separados por vírgula (vazio = projeto inteiro)")
                     .font(.callout.monospaced())
-                TextField("Como o projeto aplica (ex.: só no Core)", text: $note)
+                LoggedTextField("Como o projeto aplica (ex.: só no Core)", text: $note).loggedField(control: "patternsview.text_2", label: "Como o projeto aplica (ex.: só no Core)")
             }
         }
     }
@@ -196,7 +200,7 @@ private struct PatternPicker: View {
     private func row(_ template: PatternTemplate) -> some View {
         let added = current.contains(template.id)
         let isPicked = added || picked.contains(template.id)
-        return Button {
+        return LoggedButton {
             guard !added else { return }
             if isPicked { picked.removeAll { $0 == template.id } } else { picked.append(template.id) }
         } label: {
@@ -213,7 +217,7 @@ private struct PatternPicker: View {
                 Spacer(minLength: 0)
             }
             .contentShape(Rectangle())
-        }
+        }.loggedControl(control: "patterns_view.button_10", label: "Ativar controle")
         .buttonStyle(.plain)
         .disabled(added)
         .help(template.rules.map { "• " + $0.text }.joined(separator: "\n"))
@@ -221,17 +225,17 @@ private struct PatternPicker: View {
 
     private var customForm: some View {
         Form {
-            TextField("Nome", text: $name, prompt: Text("Ex.: Feature folders"))
-            TextField("Resumo", text: $summary, prompt: Text("O que o padrão é, em uma frase"), axis: .vertical)
+            LoggedTextField("Nome", text: $name, prompt: Text("Ex.: Feature folders")).loggedField(control: "patternsview.text_3", label: "Nome")
+            LoggedTextField("Resumo", text: $summary, prompt: Text("O que o padrão é, em uma frase"), axis: .vertical).loggedField(control: "patternsview.text_4", label: "Resumo")
                 .lineLimit(1...3)
             Section("Regras (uma por linha)") {
                 TextEditor(text: $rules)
                     .font(.callout)
                     .frame(minHeight: 120)
             }
-            TextField("Escopo", text: $paths, prompt: Text("Globs, separados por vírgula (vazio = projeto inteiro)"))
+            LoggedTextField("Escopo", text: $paths, prompt: Text("Globs, separados por vírgula (vazio = projeto inteiro)")).loggedField(control: "patternsview.text_5", label: "Escopo")
                 .font(.callout.monospaced())
-            TextField("Nota", text: $note, prompt: Text("Como o projeto aplica"))
+            LoggedTextField("Nota", text: $note, prompt: Text("Como o projeto aplica")).loggedField(control: "patternsview.text_6", label: "Nota")
         }
         .formStyle(.grouped)
     }
@@ -255,6 +259,7 @@ private struct PatternPicker: View {
 
 /// Edits a pattern's note and scope in place: each field is written (and undoable) on Return or when it loses focus.
 private struct PatternEditor: View {
+    @Environment(\.logProject) private var logProject
     let pattern: ProjectPattern
     @Environment(ProjectModel.self) private var model
     @Environment(\.undoManager) private var undo
@@ -272,13 +277,13 @@ private struct PatternEditor: View {
     var body: some View {
         Form {
             LabeledContent("Padrão", value: pattern.name)
-            TextField("Nota", text: $note, prompt: Text("Como o projeto aplica (ex.: hexagonal só no Core)"))
+            LoggedTextField("Nota", text: $note, prompt: Text("Como o projeto aplica (ex.: hexagonal só no Core)"), onCommit: commitNote).loggedField(control: "patternsview.text_7", label: "Nota")
                 .focused($focus, equals: .note)
-                .onSubmit(commitNote)
-            TextField("Escopo", text: $paths, prompt: Text("Globs, separados por vírgula (vazio = projeto inteiro)"))
+
+            LoggedTextField("Escopo", text: $paths, prompt: Text("Globs, separados por vírgula (vazio = projeto inteiro)"), onCommit: commitPaths).loggedField(control: "patternsview.text_8", label: "Escopo")
                 .font(.callout.monospaced())
                 .focused($focus, equals: .paths)
-                .onSubmit(commitPaths)
+
                 .disabled(pattern.topic == nil)
             Text("A nota vai para a descrição do tópico de regras; o escopo define em quais arquivos as regras são cobradas.")
                 .font(.caption).foregroundStyle(.secondary)
@@ -298,7 +303,7 @@ private struct PatternEditor: View {
         }
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("Concluído") { commitNote(); commitPaths(); dismiss() }
+                LoggedButton("Concluído") { commitNote(); commitPaths(); dismiss() }.loggedControl(control: "patterns_view.button_11", label: "Concluído")
             }
         }
     }

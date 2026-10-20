@@ -12,11 +12,11 @@ struct AIUsageHistoryView: View {
             HStack {
                 Text("Consumo de IA neste projeto").font(.headline)
                 Spacer()
-                Button("Limpar métricas", role: .destructive) {
+                LoggedButton("Limpar métricas", role: .destructive) {
                     do { try AIUsageStore(root: root).clear(); reload() }
                     catch { errorMessage = error.localizedDescription }
-                }.disabled(records.isEmpty)
-                Button("Fechar") { dismiss() }
+                }.loggedControl(control: "aiusage_history_view.button_1", label: "Limpar métricas").disabled(records.isEmpty)
+                LoggedButton("Fechar") { dismiss() }.loggedControl(control: "aiusage_history_view.button_2", label: "Fechar")
             }
             Text("Tokens informados pelo provedor. Chamadas externas podem não estar incluídas. Caracteres medem a entrada da tarefa, sem instruções de sistema e leituras posteriores.")
                 .font(.caption).foregroundStyle(.secondary)

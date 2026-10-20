@@ -24,34 +24,43 @@ final class GraphRunner {
     func start(root: URL, provider: AIProvider, available: (AIProvider) -> Bool = { $0.isInstalled },
                extract: Extract? = nil, analyze: Analyze? = nil) {
         guard state != .running else { return }
-        guard available(provider) else { state = .failed("\(provider.title) não está disponível. Instale o provedor selecionado."); return }
+        guard RemoteWorkspace.existing(at: root) != nil || available(provider) else { state = .failed("\(provider.title) não está disponível. Instale o provedor selecionado."); return }
         state = .running; cancelled = false; progress = "Preparando cópia do projeto…"
         task = Task {
             var snapshot: URL?
             defer {
-                if let snapshot { try? FileManager.default.removeItem(at: snapshot) }
+                if let snapshot {
+                    try? FileManager.default.removeItem(at: snapshot)
+                    if let workspace = RemoteWorkspace.existing(at: root) {
+                        let path = snapshot.lastPathComponent
+                        Task.detached { _ = try? SSHConnection(workspace.destination).run("rm -rf " + SSHConnection.quote(path)) }
+                    }
+                }
                 task = nil
             }
             do {
-                let stage = try await Task.detached { try Self.snapshot(root: root) }.value
+                let stage = try await VDLog.detached { try Self.snapshot(root: root) }.value
                 snapshot = stage
                 try Task.checkCancellation()
                 progress = "Gerando estrutura do código…"
-                if let extract { try await extract(stage) } else { try await Self.extractCode(root: stage) }
+                if let extract { try await extract(stage) } else { try await Self.extractCode(root: stage, projectRoot: root) }
                 try Task.checkCancellation()
-                let graph = try await Task.detached { try ProjectGraph.load(root: stage) }.value
+                let graph = try await VDLog.detached { try ProjectGraph.load(root: stage) }.value
                 progress = "Analisando documentos e conceitos com \(provider.title)…"
                 let semantic: JSONValue
                 if let analyze { semantic = try await analyze(graph, stage, provider) }
                 else { semantic = try await Self.analyze(graph: graph, snapshot: stage, root: root, provider: provider) }
-                let merged = try await Task.detached { try graph.merging(semantic).generated(at: .now, provider: provider) }.value
+                let merged = try await VDLog.detached { try graph.merging(semantic).generated(at: .now, provider: provider) }.value
                 progress = "Validando JSON e visualização offline…"
-                try await Task.detached {
+                try await VDLog.detached {
                     try AtomicFile.write(VDJSON.encode(merged.value), to: stage.appending(path: "graphify-out/graph.json"))
                     try GraphHTML.write(merged, root: root, output: stage.appending(path: "graphify-out/graph.html"))
                     try AtomicFile.write(Data(root.path.utf8), to: stage.appending(path: "graphify-out/.graphify_root"))
                 }.value
                 try Task.checkCancellation()
+                if let workspace = RemoteWorkspace.existing(at: root) {
+                    try await VDLog.detached { try Self.publishRemoteGraph(snapshot: stage, workspace: workspace) }.value
+                }
                 try finish(snapshot: stage, root: root)
             } catch {
                 if cancelled || error is CancellationError { state = .idle; progress = "Cancelado; resultado anterior preservado." }
@@ -108,7 +117,7 @@ final class GraphRunner {
         }
     }
 
-    nonisolated private static func extractCode(root: URL) async throws {
+    nonisolated private static func extractCode(root: URL, projectRoot: URL? = nil) async throws {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sh")
         process.arguments = ["-lc", "exec graphify update ."]
@@ -116,9 +125,14 @@ final class GraphRunner {
         var environment = ProcessInfo.processInfo.environment
         environment["PATH"] = ClaudeCode.childPATH(); process.environment = environment
         let output = Pipe(); process.standardOutput = output; process.standardError = output
+        if let projectRoot, RemoteWorkspace.existing(at: projectRoot) != nil {
+            let stage = SSHConnection.quote(root.lastPathComponent)
+            let script = "command -v graphify >/dev/null 2>&1 || { printf '%s\\n' 'graphify não encontrado no servidor.' >&2; exit 127; }; mkdir " + stage + " || exit; for p in * .[!.]* ..?*; do test -e \"$p\" || continue; case \"$p\" in .git|.build|build|node_modules|.agents|.codex|.aws|.graphify-staging-*) continue;; esac; test ! -L \"$p\" || continue; cp -R \"$p\" " + stage + "/ || exit; done; cd " + stage + " && graphify update ."
+            try RemoteExecution.configure(process, root: projectRoot, command: script)
+        }
         try process.run()
         let data = await withTaskCancellationHandler {
-            await Task.detached {
+            await VDLog.detached {
                 let data = output.fileHandleForReading.readDataToEndOfFile()
                 process.waitUntilExit(); return data
             }.value
@@ -128,12 +142,30 @@ final class GraphRunner {
             throw VibeDeckError.graph(process.terminationStatus == 127 ? "graphify não encontrado. Instale graphifyy e tente novamente."
                 : "Falha na geração: " + String(decoding: data.suffix(2000), as: UTF8.self))
         }
+        if let projectRoot, let workspace = RemoteWorkspace.existing(at: projectRoot) {
+            let data = try await VDLog.detached {
+                try SSHConnection(workspace.destination).run("cat " + SSHConnection.quote(root.lastPathComponent + "/graphify-out/graph.json"))
+            }.value
+            try AtomicFile.write(data, to: root.appending(path: "graphify-out/graph.json"))
+        }
+    }
+
+    nonisolated private static func publishRemoteGraph(snapshot: URL, workspace: RemoteWorkspace) throws {
+        let connection = SSHConnection(workspace.destination)
+        let stage = snapshot.lastPathComponent
+        for file in ["graph.json", "graph.html"] {
+            _ = try connection.run("cat > " + SSHConnection.quote(stage + "/graphify-out/" + file), input: Data(contentsOf: snapshot.appending(path: "graphify-out/" + file)))
+        }
+        let backup = ".graphify-staging-backup-" + UUID().uuidString
+        let target = SSHConnection.quote(stage + "/graphify-out"), saved = SSHConnection.quote(backup)
+        _ = try connection.run("test ! -L graphify-out || exit 45; if test -e graphify-out; then mv graphify-out " + saved + " || exit; fi; if mv " + target + " graphify-out; then rm -rf " + saved + "; else test ! -e " + saved + " || mv " + saved + " graphify-out; exit 1; fi")
     }
 
     private static func analyze(graph: ProjectGraph, snapshot: URL, root: URL, provider: AIProvider) async throws -> JSONValue {
         let candidates = graph.nodes.prefix(400).map { node in
             "\(node["id"]?.string ?? ""): \(node["label"]?.string ?? "") — \(node["source_file"]?.string ?? "")"
         }.joined(separator: "\n")
+        let snapshot = RemoteWorkspace.existing(at: root).map { URL(fileURLWithPath: $0.destination.directory).appending(path: snapshot.lastPathComponent) } ?? snapshot
         let prompt = """
         Analise documentos e conceitos do projeto usando apenas leitura. Não altere arquivos nem execute comandos.
         Leia o snapshot em \(snapshot.path), incluindo documentação e .vibedeck/docs, e o grafo estrutural em
@@ -161,6 +193,8 @@ final class GraphRunner {
 }
 
 struct GraphView: View {
+    @Environment(\.logProject) private var providerRoot
+    @Environment(\.logProject) private var logProject
     @Environment(ProjectModel.self) private var model
     @State private var provider: AIProvider = .codex
     @State private var document: GraphDocument.State = .loading
@@ -179,17 +213,17 @@ struct GraphView: View {
         .toolbar {
             ToolbarItem {
                 if runner.state == .running {
-                    Button("Cancelar", systemImage: "xmark.circle") { runner.cancel() }
-                } else if !AIProvider.installed.isEmpty {
-                    Picker("Provedor", selection: $provider) {
-                        ForEach(AIProvider.installed, id: \.self) { Text($0.title).tag($0) }
+                    LoggedButton("Cancelar", systemImage: "xmark.circle") { runner.cancel() }.loggedControl(control: "graph_view.button_1", label: "Cancelar")
+                } else if !AIProvider.installed(in: providerRoot).isEmpty {
+                    Picker("Provedor", selection: $provider.logging(control: "graph_view.selection_4", label: "Provedor", project: logProject)) {
+                        ForEach(AIProvider.installed(in: providerRoot), id: \.self) { Text($0.title).tag($0) }
                     }
                     .help("Provedor para a análise semântica")
                 }
             }
             ToolbarItem {
-                if runner.state != .running, !AIProvider.installed.isEmpty {
-                    Button("Atualizar", systemImage: "arrow.clockwise") { runner.start(root: model.store.root, provider: provider) }
+                if runner.state != .running, !AIProvider.installed(in: providerRoot).isEmpty {
+                    LoggedButton("Atualizar", systemImage: "arrow.clockwise") { runner.start(root: model.store.root, provider: provider) }.loggedControl(control: "graph_view.button_2", label: "Atualizar")
                 }
             }
         }
@@ -210,8 +244,8 @@ struct GraphView: View {
         ContentUnavailableView {
             Label(title, systemImage: "point.3.connected.trianglepath.dotted")
         } description: { Text(message) } actions: {
-            if !AIProvider.installed.isEmpty {
-                Button("Gerar grafo") { runner.start(root: model.store.root, provider: provider) }
+            if !AIProvider.installed(in: providerRoot).isEmpty {
+                LoggedButton("Gerar grafo") { runner.start(root: model.store.root, provider: provider) }.loggedControl(control: "graph_view.button_3", label: "Gerar grafo")
                     .disabled(runner.state == .running)
             }
         }
@@ -224,7 +258,7 @@ enum GraphDocument {
         case loading, missing, empty, invalid(String), incompatible(String), ready(URL, String)
     }
     static func load(root: URL) async -> State {
-        await Task.detached {
+        await VDLog.detached {
             guard FileManager.default.fileExists(atPath: root.appending(path: "graphify-out/graph.json").path) else { return .missing }
             do {
                 let graph = try ProjectGraph.load(root: root)
@@ -288,7 +322,7 @@ struct GraphWebView: NSViewRepresentable {
             if Self.permits(url, file: file, readAccess: readAccess) { return .allow }
             let projectRoot = root
             if action.navigationType == .linkActivated, url.scheme == "vibedeck-source", url.host == "node",
-               let graph = try? await Task.detached(operation: { try ProjectGraph.load(root: projectRoot) }).value,
+               let graph = try? await VDLog.detached(operation: { try ProjectGraph.load(root: projectRoot) }).value,
                let node = graph.nodes.first(where: { $0["id"]?.string == String(url.path.dropFirst()) }),
                let source = ProjectGraph.sourceURL(node["source_file"]?.string ?? "", root: root) {
                 NSWorkspace.shared.activateFileViewerSelecting([source])

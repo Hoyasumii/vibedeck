@@ -1,0 +1,1115 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-12T03:58:42.240Z",
+  "failures" : [
+    "Item de revisão com regras só vai para done com check aprovado",
+    "Tópico apagado de qualquer jeito despromove a ideia no app",
+    "Qualquer item pode abrir em aba",
+    "O Descubra nunca grava direto: mostra uma proposta e o usuário aceita (tudo ou por campo); cada aceite é um único passo de undo.",
+    "A visualização já gerada funciona offline.",
+    "Otimizações têm testes de integridade e economia",
+    "A lista de Revisões na sidebar mostra só grupos com pelo menos um item aberto (openCount > 0).",
+    "Grupos de revisão sem itens abertos continuam acessíveis na tela de Revisões (seção .groups).",
+    "A lista de Ideias na sidebar omite ideias com status done (Implementada).",
+    "Ideias com status done continuam listadas na tela de Ideias.",
+    "A sidebar de Revisões e de Ideias mostra o mesmo conjunto de itens após filtrar, e a tela de Revisões (.groups) e a de Ideias continuam usando a lista completa, sem o filtro de omissão.",
+    "Ideias com status diferente de done (por exemplo rascunho, promovida) continuam aparecendo na sidebar.",
+    "O botão de gerar documentos fica na lista da seção Docs e só aparece quando há provedor de IA suportado (Claude Code ou Codex) na máquina.",
+    "Os documentos gerados nunca são gravados direto: o app mostra uma proposta com título e conteúdo e o usuário aceita (tudo ou por documento) antes de gravar.",
+    "Mudar o conteúdo ou o título de uma proposta de documento antes de aceitar não deve alterar nenhum arquivo em disco; só o aceite grava.",
+    "O texto digitado no editor continua sendo markdown puro: a renderização muda só atributos de exibição e o binding text recebe exatamente os caracteres markdown, sem perda nem reescrita.",
+    "A sintaxe markdown (#, **, `, [](), marcadores) fica oculta ou esmaecida nas linhas fora do cursor e visível na linha/bloco em que o cursor está.",
+    "Undo/redo (⌘Z/⇧⌘Z), UndoManager por documento, importação de anexos por arrastar/colar e inserção pelo botão Anexar continuam funcionando no novo editor."
+  ],
+  "files" : [
+    ".vibedeck/guide.md",
+    "README.md",
+    "Sources/VibeDeckApp/AIGuideView.swift",
+    "Sources/VibeDeckApp/AIProviderSettingsView.swift",
+    "Sources/VibeDeckApp/AIReadOnlyOperation.swift",
+    "Sources/VibeDeckApp/AIUsageHistoryView.swift",
+    "Sources/VibeDeckApp/AgentView.swift",
+    "Sources/VibeDeckApp/ClaudeChatList.swift",
+    "Sources/VibeDeckApp/ClaudeChatPage.swift",
+    "Sources/VibeDeckApp/ClaudeItemsView.swift",
+    "Sources/VibeDeckApp/ClaudeSession.swift",
+    "Sources/VibeDeckApp/ClaudeUsageView.swift",
+    "Sources/VibeDeckApp/CloudLaunchSheet.swift",
+    "Sources/VibeDeckApp/CommandView.swift",
+    "Sources/VibeDeckApp/DiagnosticsView.swift",
+    "Sources/VibeDeckApp/DocGenerate.swift",
+    "Sources/VibeDeckApp/DocView.swift",
+    "Sources/VibeDeckApp/GraphView.swift",
+    "Sources/VibeDeckApp/IdeaView.swift",
+    "Sources/VibeDeckApp/LinksView.swift",
+    "Sources/VibeDeckApp/LoggedControls.swift",
+    "Sources/VibeDeckApp/MarkdownEditor.swift",
+    "Sources/VibeDeckApp/MarkdownPreview.swift",
+    "Sources/VibeDeckApp/NextStepsInspector.swift",
+    "Sources/VibeDeckApp/PatternsView.swift",
+    "Sources/VibeDeckApp/ProjectModel.swift",
+    "Sources/VibeDeckApp/ProjectWindow.swift",
+    "Sources/VibeDeckApp/ReviewDiscover.swift",
+    "Sources/VibeDeckApp/ReviewGroupView.swift",
+    "Sources/VibeDeckApp/RuleDiscover.swift",
+    "Sources/VibeDeckApp/RuleExecutionModel.swift",
+    "Sources/VibeDeckApp/RuleExecutionView.swift",
+    "Sources/VibeDeckApp/RulesView.swift",
+    "Sources/VibeDeckApp/SectionListView.swift",
+    "Sources/VibeDeckApp/SkillView.swift",
+    "Sources/VibeDeckApp/StackView.swift",
+    "Sources/VibeDeckApp/TabBar.swift",
+    "Sources/VibeDeckApp/VibeDeckApp.swift",
+    "Sources/VibeDeckApp/WelcomeView.swift",
+    "Sources/VibeDeckApp/WorkflowDiagram.swift",
+    "Sources/VibeDeckApp/WorkflowView.swift",
+    "Sources/VibeDeckCore/Logging.swift",
+    "Sources/VibeDeckCore/ProjectStore.swift",
+    "Sources/VibeDeckCore/RuleTests.swift",
+    "Sources/vibedeck/CLI.swift",
+    "Sources/vibedeck/MCPServer.swift",
+    "Tests/VibeDeckCoreTests/LoggingTests.swift"
+  ],
+  "id" : "F1CA7AEE-368D-41DE-9FCB-004FA3853D16",
+  "passed" : false,
+  "pending" : [
+    "Operação nova no Core aparece no CLI e no MCP",
+    "Comandos de listagem e consulta mantêm --json",
+    "Comportamento novo no Core vem com teste",
+    "README atualizado quando muda algo documentado",
+    "Escritas próprias não recarregam; escritas externas são aplicadas",
+    "Contrato das abas",
+    "O accordion da sidebar não depende da seleção",
+    "Todo conceito é acessível pelo app, pelo CLI e pelo MCP",
+    "O grafo grande não bloqueia a interface e começa por uma visão agrupada.",
+    "A exploração oferece busca, zoom, centralização, visão geral e inspeção de nós.",
+    "Os documentos gerados cobrem conteúdo verificável do repositório (como rodar, dependências, regras de negócio) e cada afirmação cita o arquivo de origem.",
+    "A coleção do Claude nunca importa itens sozinha: só entra o que o usuário adiciona.",
+    "Remover um item da coleção não chama nenhuma API do Claude nem apaga nada na conta.",
+    "Todo item tem tipo (artefato ou doc) visível na lista, e a lista filtra por tipo.",
+    "Itens da coleção ficam disponíveis no CLI e no MCP, com --json na listagem.",
+    "Toda ação do usuário no app (clique em botão, item de menu, atalho de teclado, troca de aba/seleção na sidebar) grava uma entrada de log com level info e component app.",
+    "A entrada de uma ação identifica o controle por um identificador estável em context[\"control\"] (ex.: \"docs.generate\"), não localizado, além do rótulo visível em context[\"label\"].",
+    "Eventos de ação usam o prefixo \"ui.\" e eventos de reação usam o prefixo da área que reagiu (store., ai., rules., cli., mcp.), no formato area.verbo_em_snake_case.",
+    "Cada ação recebe um id de correlação (context[\"action\"]) e toda reação causada por ela (gravação em disco, chamada de IA, check, erro) carrega o mesmo context[\"action\"].",
+    "Toda gravação de dados do projeto feita pelo ProjectModel registra uma entrada info com o caminho relativo do arquivo e o nome da ação de undo.",
+    "Mudanças externas aplicadas ao vivo pelo app (arquivo alterado fora do app) registram uma entrada info com o arquivo relativo e a origem external.",
+    "Operações do CLI e ferramentas do MCP concluídas com sucesso registram entrada info (não só debug), com nome do comando/ferramenta e duração em ms.",
+    "Logs de ação e reação nunca guardam conteúdo de prompts, docs, ideias, regras, campos de texto ou argumentos de ferramenta; só nomes, slugs, ids, caminhos relativos, tamanhos e códigos.",
+    "Digitação em campos de texto não gera uma entrada por tecla: registra-se só a confirmação (Return ou perda de foco).",
+    "Registrar ações nunca bloqueia a interface: o app usa VDLog.log assíncrono (sync=false) fora de handlers de crash e saída do processo.",
+    "A janela Diagnóstico permite ver ações e reações: o filtro de nível oferece Info e há filtro ou busca pelo id de correlação de uma ação.",
+    "O MCP expõe a leitura dos logs de ação com filtro de nível, período e componente, além dos resources atuais (que só trazem aviso ou pior).",
+    "Os logs continuam fora do projeto, em Application Support, como JSON Lines por dia com O_APPEND, e não passam por AtomicFile.write.",
+    "O formato de entrada novo (id de correlação, control, label) vem com teste em LoggingTests cobrindo codificação, decodificação tolerante e o filtro por ação.",
+    "README e .vibedeck/guide.md documentam o registro de ações e reações e como lê-los pelo app, CLI e MCP, em pt-BR."
+  ],
+  "results" : [
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/cli-e-mcp/643aa948.sh (exit 0)\n(sem saída)",
+      "ruleId" : "643AA948-85C0-485E-A110-E83B59C0B5BC",
+      "source" : "script",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/cli-e-mcp/30a2fc1a.sh (exit 0)\n(sem saída)",
+      "ruleId" : "30A2FC1A-16E7-4708-A559-0CA78431EDD7",
+      "source" : "script",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/cli-e-mcp/a34c030c.sh (exit 0)\n(sem saída)",
+      "ruleId" : "A34C030C-D9E7-4C1A-A8E1-23E47D9B15AF",
+      "source" : "script",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/cli-e-mcp/7a76b622.sh (exit 0)\n(sem saída)",
+      "ruleId" : "7A76B622-C234-4B41-9ECA-C8C414AB47FE",
+      "source" : "script",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/cli-e-mcp/ed4d47d8.sh (exit 0)\n(sem saída)",
+      "ruleId" : "ED4D47D8-F744-4E94-A8EE-807E2AFF0670",
+      "source" : "script",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/cli-e-mcp/05f179f3.sh (exit 0)\n(sem saída)",
+      "ruleId" : "05F179F3-EB5F-474B-B8C1-9E4E0926B388",
+      "source" : "script",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/cli-e-mcp/4913b3af.sh (exit 0)\n(sem saída)",
+      "ruleId" : "4913B3AF-4F67-4717-A7D4-9600D8BF0942",
+      "source" : "script",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/cli-e-mcp/d94f39e0.sh (exit 0)\n(sem saída)",
+      "ruleId" : "D94F39E0-F874-43A0-86DC-21D9FEDEC02D",
+      "source" : "script",
+      "topic" : "cli-e-mcp",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/5fa116b6.sh (exit 0)\n(sem saída)",
+      "ruleId" : "5FA116B6-6FBE-45F9-8C5D-29E7548F6C2F",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/857149e6.sh (exit 0)\n(sem saída)",
+      "ruleId" : "857149E6-8C34-46A8-9C30-439EBE78309D",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/99bf0d79.sh (exit 0)\n(sem saída)",
+      "ruleId" : "99BF0D79-2F65-419A-87DA-0B4F37E4FEF5",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/5ed22d96.sh (exit 0)\n(sem saída)",
+      "ruleId" : "5ED22D96-FE5F-4683-8611-E3D264113B67",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/c6d79b9c.sh (exit 0)\n(sem saída)",
+      "ruleId" : "C6D79B9C-1F50-4AE3-8CD1-8CAE5C4F6B6F",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/57ada275.sh (exit 0)\n(sem saída)",
+      "ruleId" : "57ADA275-8A0F-42BA-9E14-BA3B34AB8235",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/4133c155.sh (exit 77)\n(sem saída)",
+      "ruleId" : "4133C155-F789-428E-9ED5-5EAC37C19700",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/b0277971.sh (exit 0)\n(sem saída)",
+      "ruleId" : "B0277971-459D-4CCB-9E9D-5990F1574F5B",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/7f7c6b09.sh (exit 0)\n(sem saída)",
+      "ruleId" : "7F7C6B09-EBCB-4CA0-BAAF-6B18D36F15C1",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/bc028be5.sh (exit 0)\n✔ Test submitCheck() passed after 0.009 seconds.\n✔ Suite RulesTests passed after 0.009 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.009 seconds.",
+      "ruleId" : "BC028BE5-D7E0-4DA3-BB5C-E8A628EBFA8A",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/64e65b59.sh (exit 1)\nBuilding for debugging...\n[1 / 10]\n[2 / 11] VibeDeckCore\n[4 / 13] VibeDeckCore\n[11 / 16] VibeDeckCoreTests-product\n[16 / 21] VibeDeckCoreTests-product\n[22 / 26] VibeDeckCoreTests-product\nBuild complete! (3,48 seg)",
+      "ruleId" : "64E65B59-8D5B-40DE-B381-CAF2B1BDC785",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/8d874a06.sh (exit 0)\n✔ Test applicableTopics() passed after 0.007 seconds.\n✔ Suite RulesTests passed after 0.007 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.007 seconds.",
+      "ruleId" : "8D874A06-515D-41B5-A094-DC8B83BB40B6",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/35d8d7c3.sh (exit 0)\n✔ Test ideasAndPromotion() passed after 0.009 seconds.\n✔ Suite RulesTests passed after 0.009 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.009 seconds.",
+      "ruleId" : "35D8D7C3-1224-45CC-8A80-66D0B6291C33",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/64334d9c.sh (exit 0)\n✔ Test globs() passed after 0.001 seconds.\n✔ Suite RulesTests passed after 0.001 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.001 seconds.",
+      "ruleId" : "64334D9C-327B-4811-B088-8B785EF4E0FE",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/ea5e6f7d.sh (exit 0)\n(sem saída)",
+      "ruleId" : "EA5E6F7D-1587-4FC5-87D9-51CE6F130C7B",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/97510532.sh (exit 0)\n✔ Test run with 217 tests in 29 suites passed after 0.741 seconds.\n✔ Test run with 39 tests in 7 suites passed after 0.579 seconds.",
+      "ruleId" : "97510532-2FCF-44BD-9D01-75086E554EB9",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/dfe3361b.sh (exit 0)\n(sem saída)",
+      "ruleId" : "DFE3361B-6AFE-4ED3-A741-4FC0818D197D",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/b659fd25.sh (exit 0)\n✔ Test unpromote() passed after 0.011 seconds.\n✔ Suite RulesTests passed after 0.011 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.011 seconds.",
+      "ruleId" : "B659FD25-792B-4C0E-BD08-6082ACFCC80A",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/a2b13b15.sh (exit 0)\n✔ Test unpromote() passed after 0.012 seconds.\n✔ Suite RulesTests passed after 0.012 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.012 seconds.",
+      "ruleId" : "A2B13B15-C59E-4189-8905-3A309C89DF28",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/9d6f362b.sh (exit 0)\n(sem saída)",
+      "ruleId" : "9D6F362B-9F0E-4661-97B3-6158B160D478",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/geral/9f92a765.sh (exit 77)\n(sem saída)",
+      "ruleId" : "9F92A765-76E7-4EA0-A66A-78AE12EE4C8F",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/ac4ba963.sh (exit 0)\n(sem saída)",
+      "ruleId" : "AC4BA963-CDEE-419C-B057-9140643E115D",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/0e5aec71.sh (exit 0)\n(sem saída)",
+      "ruleId" : "0E5AEC71-405E-4113-AB27-615313AB2B5F",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/interface-do-app/ee65a0a5.sh (exit 0)\n(sem saída)",
+      "ruleId" : "EE65A0A5-71DA-431A-A4B7-567144D40423",
+      "source" : "script",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/interface-do-app/9a4878f2.sh (exit 0)\n(sem saída)",
+      "ruleId" : "9A4878F2-54AD-4B93-9E8B-9D7683C8F9F2",
+      "source" : "script",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/interface-do-app/047d2216.sh (exit 0)\n(sem saída)",
+      "ruleId" : "047D2216-D1C9-4AFC-AA0A-D789DC1E8A60",
+      "source" : "script",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/interface-do-app/00e57961.sh (exit 0)\n(sem saída)",
+      "ruleId" : "00E57961-FE6D-4AFC-BB1A-3DC70152D38D",
+      "source" : "script",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/interface-do-app/b065b5af.sh (exit 0)\n(sem saída)",
+      "ruleId" : "B065B5AF-B93F-4698-8E43-BB4369E74351",
+      "source" : "script",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/interface-do-app/3d508dea.sh (exit 0)\n(sem saída)",
+      "ruleId" : "3D508DEA-D43E-4E33-91B7-F46039B6B53D",
+      "source" : "script",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/interface-do-app/a999b857.sh (exit 0)\n(sem saída)",
+      "ruleId" : "A999B857-E236-4893-97A9-07257A538B57",
+      "source" : "script",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/interface-do-app/dc9eed4d.sh (exit 0)\n(sem saída)",
+      "ruleId" : "DC9EED4D-8823-4FD1-83ED-3B820A83E8B4",
+      "source" : "script",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/interface-do-app/492100c1.sh (exit 0)\n(sem saída)",
+      "ruleId" : "492100C1-EFE3-488F-8368-08CE17A797DA",
+      "source" : "script",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/interface-do-app/b382469c.sh (exit 0)\n(sem saída)",
+      "ruleId" : "B382469C-4D35-4314-BEC2-50BCEC7C6855",
+      "source" : "script",
+      "topic" : "interface-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/interface-do-app/1a4ef162.sh (exit 1)\nSources/VibeDeckApp/IdeaView.swift: menu de contexto 'Despromover' ausente",
+      "ruleId" : "1A4EF162-82B1-4940-8251-A2102964C3E8",
+      "source" : "script",
+      "topic" : "interface-do-app",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/conceitos-do-produto/9e02c127.sh (exit 0)\n(sem saída)",
+      "ruleId" : "9E02C127-7793-4588-A770-0E817687B02F",
+      "source" : "script",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/conceitos-do-produto/116aea24.sh (exit 0)\n(sem saída)",
+      "ruleId" : "116AEA24-9A0B-431B-9FC1-8ABE22683898",
+      "source" : "script",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/conceitos-do-produto/f7531e2b.sh (exit 0)\n(sem saída)",
+      "ruleId" : "F7531E2B-4846-4C63-BE0F-3DFA1771CCCC",
+      "source" : "script",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/conceitos-do-produto/be018170.sh (exit 0)\n(sem saída)",
+      "ruleId" : "BE018170-5258-45AA-876E-5B761B643714",
+      "source" : "script",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/conceitos-do-produto/257d96b2.sh (exit 0)\n(sem saída)",
+      "ruleId" : "257D96B2-3561-47D2-AB56-33FA0900B331",
+      "source" : "script",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/conceitos-do-produto/54a2d6b0.sh (exit 0)\n(sem saída)",
+      "ruleId" : "54A2D6B0-BC39-4555-A4E9-DB8D418D55CB",
+      "source" : "script",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/conceitos-do-produto/6e22946d.sh (exit 0)\n(sem saída)",
+      "ruleId" : "6E22946D-DF9C-4D59-B403-1BB9F3F0FFB5",
+      "source" : "script",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/conceitos-do-produto/c637a278.sh (exit 0)\n(sem saída)",
+      "ruleId" : "C637A278-87F1-4586-BB2F-0864EDB552CB",
+      "source" : "script",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/conceitos-do-produto/c9bee6a5.sh (exit 0)\n(sem saída)",
+      "ruleId" : "C9BEE6A5-C314-4547-AE52-52D116B11220",
+      "source" : "script",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/conceitos-do-produto/b9e9dd35.sh (exit 0)\n(sem saída)",
+      "ruleId" : "B9E9DD35-4A5F-4FA3-BDDF-014238B8CB50",
+      "source" : "script",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/conceitos-do-produto/a31d4912.sh (exit 0)\n(sem saída)",
+      "ruleId" : "A31D4912-A7FA-4E2A-B1C2-CC27D577177B",
+      "source" : "script",
+      "topic" : "conceitos-do-produto",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/dinamicas-da-interface/3901fa3e.sh (exit 0)\n(sem saída)",
+      "ruleId" : "3901FA3E-16BD-4E00-A844-DAB5A87BDFC1",
+      "source" : "script",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/dinamicas-da-interface/8d5fca3b.sh (exit 0)\n(sem saída)",
+      "ruleId" : "8D5FCA3B-9398-45CD-AF1E-03A04F22526C",
+      "source" : "script",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/dinamicas-da-interface/9bbfb48c.sh (exit 0)\n(sem saída)",
+      "ruleId" : "9BBFB48C-17CC-4FD9-8D7C-F1FD71529D95",
+      "source" : "script",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/dinamicas-da-interface/34d2ea32.sh (exit 0)\n(sem saída)",
+      "ruleId" : "34D2EA32-DD0D-4405-93F6-FDABEBA7CC1B",
+      "source" : "script",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/dinamicas-da-interface/3d22a05a.sh (exit 1)\nSources/VibeDeckApp/ProjectWindow.swift: openInNewTabButton não abre em nova aba\nSources/VibeDeckApp/SectionListView.swift: lista sem \"Abrir em Nova Aba\" no menu de contexto",
+      "ruleId" : "3D22A05A-9E61-433B-A8E2-00BFA2A968EE",
+      "source" : "script",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/dinamicas-da-interface/365080a7.sh (exit 1)\nSources/VibeDeckApp/VibeDeckApp.swift: menu sem Abrir Projeto… (⌘O)\nSources/VibeDeckApp/WelcomeView.swift: sheet sem nome do projeto / botão Inicializar projeto",
+      "ruleId" : "365080A7-DD8F-4EBE-9CDF-979D07F6A5C3",
+      "source" : "script",
+      "topic" : "dinamicas-da-interface",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/fluxo-padrao/ea7c01e6.sh (exit 0)\n(sem saída)",
+      "ruleId" : "EA7C01E6-5CC5-4199-94B6-11536B1ABDFA",
+      "source" : "script",
+      "topic" : "fluxo-padrao",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/fluxo-padrao/8f28f353.sh (exit 0)\n(sem saída)",
+      "ruleId" : "8F28F353-95A9-4EEC-8223-383AF2FF6140",
+      "source" : "script",
+      "topic" : "fluxo-padrao",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/fluxo-padrao/3a31b517.sh (exit 0)\n(sem saída)",
+      "ruleId" : "3A31B517-334E-484C-9205-0513AF158AE8",
+      "source" : "script",
+      "topic" : "fluxo-padrao",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/fluxo-padrao/09c9f3a9.sh (exit 0)\n(sem saída)",
+      "ruleId" : "09C9F3A9-5B74-496C-8A2D-F93C4294CAD2",
+      "source" : "script",
+      "topic" : "fluxo-padrao",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/botao-de-descubra-em-onde-e-regras-nas-revisoes/46a96b82.sh (exit 1)\nSources/VibeDeckApp/ReviewDiscover.swift: a sheet precisa de um botão de aceite explícito\nSources/VibeDeckApp/ReviewDiscover.swift: Aplicar selecionados deve chamar apply(fields, topics)",
+      "ruleId" : "46A96B82-5BDD-43F8-982F-BBC35B5C6EAA",
+      "source" : "script",
+      "topic" : "botao-de-descubra-em-onde-e-regras-nas-revisoes",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/botao-de-descubra-em-onde-e-regras-nas-revisoes/4d2eec85.sh (exit 0)\n(sem saída)",
+      "ruleId" : "4D2EEC85-41C6-4A77-B792-F9DB87651D48",
+      "source" : "script",
+      "topic" : "botao-de-descubra-em-onde-e-regras-nas-revisoes",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/botao-de-descubra-em-onde-e-regras-nas-revisoes/06b55036.sh (exit 0)\n(sem saída)",
+      "ruleId" : "06B55036-7BD0-4348-82F4-39B67519FBA0",
+      "source" : "script",
+      "topic" : "botao-de-descubra-em-onde-e-regras-nas-revisoes",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/botao-de-descubra-em-onde-e-regras-nas-revisoes/52b60258.sh (exit 0)\n(sem saída)",
+      "ruleId" : "52B60258-B539-41CF-98C3-E67E74C72F3E",
+      "source" : "script",
+      "topic" : "botao-de-descubra-em-onde-e-regras-nas-revisoes",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/botao-de-descubra-em-onde-e-regras-nas-revisoes/d670fad9.sh (exit 0)\n(sem saída)",
+      "ruleId" : "D670FAD9-8DC7-429F-A65F-A1280F81DF19",
+      "source" : "script",
+      "topic" : "botao-de-descubra-em-onde-e-regras-nas-revisoes",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/botao-de-descubra-em-onde-e-regras-nas-revisoes/a9d8fa72.sh (exit 0)\n(sem saída)",
+      "ruleId" : "A9D8FA72-F39C-48F4-92B6-9C22760A37CC",
+      "source" : "script",
+      "topic" : "botao-de-descubra-em-onde-e-regras-nas-revisoes",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/botao-de-descubra-em-onde-e-regras-nas-revisoes/2635526c.sh (exit 0)\n(sem saída)",
+      "ruleId" : "2635526C-DBAB-471A-BD6A-CC8BA52F22E1",
+      "source" : "script",
+      "topic" : "botao-de-descubra-em-onde-e-regras-nas-revisoes",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/botao-de-descubra-em-onde-e-regras-nas-revisoes/7334a6cd.sh (exit 1)\nSources/VibeDeckApp/ReviewGroupView.swift: o inspetor precisa de um botão Cancelar durante o Descubra",
+      "ruleId" : "7334A6CD-9FD4-4865-9803-5B0AC0BCBCCF",
+      "source" : "script",
+      "topic" : "botao-de-descubra-em-onde-e-regras-nas-revisoes",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/exibir-o-grafo-de-graphify-em-algum-lugar-do-app/e05fee58.sh (exit 0)\n(sem saída)",
+      "ruleId" : "E05FEE58-311A-4937-9741-8574628C146E",
+      "source" : "script",
+      "topic" : "exibir-o-grafo-de-graphify-em-algum-lugar-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/exibir-o-grafo-de-graphify-em-algum-lugar-do-app/a6924aea.sh (exit 1)\ngraphify-out/graph.html:6: o HTML gerado depende de CDN (<script src=\"https://unpkg.com/vis-network@9.1.6/standalone/umd/vis-network.min.js\") e não funciona offline",
+      "ruleId" : "A6924AEA-CB55-4D5E-8D4C-14AFDE3A3C1D",
+      "source" : "script",
+      "topic" : "exibir-o-grafo-de-graphify-em-algum-lugar-do-app",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/exibir-o-grafo-de-graphify-em-algum-lugar-do-app/47d7e369.sh (exit 0)\n(sem saída)",
+      "ruleId" : "47D7E369-D27D-41C3-B865-E9C44C39298C",
+      "source" : "script",
+      "topic" : "exibir-o-grafo-de-graphify-em-algum-lugar-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/exibir-o-grafo-de-graphify-em-algum-lugar-do-app/13b819f9.sh (exit 0)\n(sem saída)",
+      "ruleId" : "13B819F9-39E6-4299-BBBD-CA2818356405",
+      "source" : "script",
+      "topic" : "exibir-o-grafo-de-graphify-em-algum-lugar-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/exibir-o-grafo-de-graphify-em-algum-lugar-do-app/076cd160.sh (exit 0)\n(sem saída)",
+      "ruleId" : "076CD160-EA6F-4299-BED8-2D34D48DC743",
+      "source" : "script",
+      "topic" : "exibir-o-grafo-de-graphify-em-algum-lugar-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/exibir-o-grafo-de-graphify-em-algum-lugar-do-app/fc2c752b.sh (exit 0)\n(sem saída)",
+      "ruleId" : "FC2C752B-31B2-4CAD-A811-C588B9B02764",
+      "source" : "script",
+      "topic" : "exibir-o-grafo-de-graphify-em-algum-lugar-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/exibir-o-grafo-de-graphify-em-algum-lugar-do-app/d4b23e74.sh (exit 0)\n(sem saída)",
+      "ruleId" : "D4B23E74-8CF0-4F17-AB17-12DD8298E1C0",
+      "source" : "script",
+      "topic" : "exibir-o-grafo-de-graphify-em-algum-lugar-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/exibir-o-grafo-de-graphify-em-algum-lugar-do-app/dd9dc2d9.sh (exit 0)\n(sem saída)",
+      "ruleId" : "DD9DC2D9-1693-4B04-86FD-F82E4328CF84",
+      "source" : "script",
+      "topic" : "exibir-o-grafo-de-graphify-em-algum-lugar-do-app",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/2f64266b.sh (exit 0)\n◇ Test run started.\n↳ Testing Library Version: 2084\n↳ Target Platform: arm64e-apple-macos14.0\n◇ Suite AIEfficiencyTests started.\n◇ Test mentionedChatIsRecoverableAndFullModeRemainsAvailable() started.\n◇ Test contextPagesAreLosslessImmutableAndConfined() started.\n◇ Test workflowKeepsOldDecisionsAndFullOutputs() started.\n✔ Test workflowKeepsOldDecisionsAndFullOutputs() passed after 0.015 seconds.\n✔ Test mentionedChatIsRecoverableAndFullModeRemainsAvailable() passed after 0.029 seconds.\n✔ Test contextPagesAreLosslessImmutableAndConfined() passed after 0.070 seconds.\n✔ Suite AIEfficiencyTests passed after 0.071 seconds.\n✔ Test run with 3 tests in 1 suite passed after 0.071 seconds.",
+      "ruleId" : "2F64266B-FD73-4B70-B293-D9317C7228A1",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/f12aa1dd.sh (exit 0)\n(sem saída)",
+      "ruleId" : "F12AA1DD-0FFB-48F8-912D-236E271AA842",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/3301bc0e.sh (exit 0)\n(sem saída)",
+      "ruleId" : "3301BC0E-BBC5-4E4F-9609-CA119DD2C8F3",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/64f3eca8.sh (exit 0)\n↳ Target Platform: arm64e-apple-macos14.0\n◇ Suite AIRecoveryTests started.\n◇ Test invalidAnswerGetsOneRecoveryWithoutChangingSettings(provider:) started.\n◇ Test persistentFailureStopsAndTransportErrorsDoNotRetry(provider:) started.\n◇ Test case passing 1 argument provider → .codex to persistentFailureStopsAndTransportErrorsDoNotRetry(provider:) started.\n◇ Test case passing 1 argument provider → .claude to persistentFailureStopsAndTransportErrorsDoNotRetry(provider:) started.\n◇ Test case passing 1 argument provider → .codex to invalidAnswerGetsOneRecoveryWithoutChangingSettings(provider:) started.\n◇ Test case passing 1 argument provider → .claude to invalidAnswerGetsOneRecoveryWithoutChangingSettings(provider:) started.\n✔ Test persistentFailureStopsAndTransportErrorsDoNotRetry(provider:) with 2 test cases passed after 0.012 seconds.\n✔ Test invalidAnswerGetsOneRecoveryWithoutChangingSettings(provider:) with 2 test cases passed after 0.014 seconds.\n✔ Suite AIRecoveryTests passed after 0.014 seconds.\n✔ Test run with 2 tests in 1 suite passed after 0.014 seconds.",
+      "ruleId" : "64F3ECA8-2A3F-400C-8D41-5853009B7F91",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/fc9a5733.sh (exit 0)\n[70 / 75] VibeDeckAppTests-product\n[73 / 76] VibeDeckAppTests-product\n[76 / 80] VibeDeckAppTests-product\nBuild complete! (8,71 seg)\n◇ Test run started.\n↳ Testing Library Version: 2084\n↳ Target Platform: arm64e-apple-macos14.0\n◇ Suite AIEfficiencyTests started.\n◇ Test usageSeparatesMissingZeroCacheAndCumulativeCounts() started.\n✔ Test usageSeparatesMissingZeroCacheAndCumulativeCounts() passed after 0.004 seconds.\n✔ Suite AIEfficiencyTests passed after 0.004 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.004 seconds.",
+      "ruleId" : "FC9A5733-DC0E-4606-BB85-A3CC7592A4BC",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/6088cc95.sh (exit 1)\n◇ Test guideReducesInitialContextWithoutLosingDocumentation() started.\n◇ Test compactRulesForKeepsEveryRuleAndResolvesItsIds() started.\n◇ Test ruleCheckSummaryKeepsEveryVerdictAndPointsToTheFullCheck() started.\n◇ Test catalogPaginatesWithoutSendingUserPrompts() started.\n◇ Test sharedPolicyAppearsOnceInTheGuide() started.\n✔ Test sharedPolicyAppearsOnceInTheGuide() passed after 0.001 seconds.\n✔ Test ruleCheckSummaryKeepsEveryVerdictAndPointsToTheFullCheck() passed after 0.002 seconds.\n✔ Test catalogPaginatesWithoutSendingUserPrompts() passed after 0.007 seconds.\n✔ Test guideReducesInitialContextWithoutLosingDocumentation() passed after 0.022 seconds.\n✔ Test compactRulesForKeepsEveryRuleAndResolvesItsIds() passed after 0.039 seconds.\n✔ Suite AIEfficiencyTests passed after 0.039 seconds.\n✔ Test run with 5 tests in 1 suite passed after 0.039 seconds.\nAnother instance of SwiftPM (PID: 90098) is already running using '/Users/hoy/Documents/vibedeck/.build', waiting until that process has finished execution...Another instance of SwiftPM (PID: 90334) is already running using '/Users/hoy/Documents/vibedeck/.build', waiting until that process has finished execution...instructions: 2803 -> 988 (65% menor)\ntools: 42434 -> 30326 (29% menor)\nrules_for: 17018 -> 9558 (44% menor)\ncatálogo de tools 30326 > 70% da baseline 42434",
+      "ruleId" : "6088CC95-37DF-4923-ACD6-B12FCCA307EC",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/7974ee31.sh (exit 0)\n[41 / 46] VibeDeckAppTests-product\n[44 / 47] VibeDeckAppTests-product\n[46 / 50] VibeDeckAppTests-product\nBuild complete! (8,35 seg)\n◇ Test run started.\n↳ Testing Library Version: 2084\n↳ Target Platform: arm64e-apple-macos14.0\n◇ Suite AIRecoveryTests started.\n◇ Test generationChecksOnlySelectedRulesAndRejectsChangedRequirements() started.\n✔ Test generationChecksOnlySelectedRulesAndRejectsChangedRequirements() passed after 0.012 seconds.\n✔ Suite AIRecoveryTests passed after 0.012 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.012 seconds.",
+      "ruleId" : "7974EE31-FD02-492A-8258-C2F15D594E77",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/ee39f0e7.sh (exit 0)\n(sem saída)",
+      "ruleId" : "EE39F0E7-7C01-4142-A7CD-6234BF40C8F4",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/painel-lateral-melhorado/e044fe9d.sh (exit 1)\n… (saída cortada)\nck.build/Debug/VibeDeckApp-7CB336D0477FF529-testable-t.build/Objects-normal/arm64/VibeDeckApp-dependencies-1.json -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -I /Users/hoy/Documents/vibedeck/.build/out/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /Users/hoy/Documents/vibedeck/.build/out/Products/Debug/PackageFrameworks -F /Users/hoy/Documents/vibedeck/.build/out/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -module-cache-path /Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -color-diagnostics -Xcc -fcolor-diagnostics -enable-testing -g -debug-info-format\\=dwarf -dwarf-version\\=5 -swift-version 5 -Onone -D SWIFT_PACKAGE -D DEBUG -D Xcode -entry-point-function-name VibeDeckApp_main -serialize-debugging-options -enable-experimental-feature DebugDescriptionMacro -empty-abi-descriptor -validate-clang-modules-once -clang-build-session-file /Users/hoy/Documents/vibedeck/.build/out/ModuleCache.noindex/Session.modulevalidation -disable-sandbox -Xcc -working-directory -Xcc /Users/hoy/Documents -enable-anonymous-context-mangled-names -file-compilation-dir /Users/hoy/Documents -Xcc -fmodule-map-file\\=/Users/hoy/Documents/vibedeck/.build/checkouts/swift-cmark/src/include/module.modulemap -Xcc -fmodule-map-file\\=/Users/hoy/Documents/vibedeck/.build/checkouts/swift-cmark/extensions/include/module.modulemap -Xcc -D_LIBCPP_HARDENING_MODE\\=_LIBCPP_HARDENING_MODE_DEBUG -Xcc -ivfsstatcache -Xcc /Users/hoy/Documents/vibedeck/.build/out/SDKStatCaches.noindex/macosx27.0-26A425-a0facfad118c1a7a18f0aad9463f65497231f6df4def33e022ae2eb8f782df1a.sdkstatcache -Xcc -fmodules-prune-interval\\=86400 -Xcc -fmodules-prune-after\\=345600 -Xcc -I/Users/hoy/Documents/vibedeck/.build/checkouts/swift-cmark/src/include -Xcc -I/Users/hoy/Documents/vibedeck/.build/checkouts/swift-cmark/extensions/include -Xcc -I/Users/hoy/Documents/vibedeck/.build/out/Products/Debug/include -Xcc -I/Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-7CB336D0477FF529-testable-t.build/DerivedSources-normal/arm64 -Xcc -I/Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-7CB336D0477FF529-testable-t.build/DerivedSources/arm64 -Xcc -I/Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-7CB336D0477FF529-testable-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\\=1 -no-auto-bridging-header-chaining -module-name VibeDeckApp -package-name vibedeck -const-gather-protocols-file /Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-7CB336D0477FF529-testable-t.build/Objects-normal/arm64/VibeDeckApp-7CB336D0477FF529-testable_const_extract_protocols.json -disable-clang-spi -clang-target arm64-apple-macos27.0 -target-sdk-version 27.0 -target-sdk-name macosx27.0 -in-process-plugin-server-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -parse-as-library -o /Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-7CB336D0477FF529-testable-t.build/Objects-normal/arm64/ProjectModel.o -debug-module-path /Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-7CB336D0477FF529-testable-t.build/Objects-normal/arm64/VibeDeckApp.swiftmodule -index-unit-output-path /VibeDeck.build/Debug/VibeDeckApp-7CB336D0477FF529-testable-t.build/Objects-normal/arm64/ProjectModel.o -index-store-path /Users/hoy/Documents/vibedeck/.build/out -index-system-modules\nerror: Build failed\nerror: fatalError\n\nTests/VibeDeckAppTests/RuleExecutionModelTests.swift:123: e044fe9d: Swift test falhou (exit 1)",
+      "ruleId" : "E044FE9D-EF2F-40E6-A5F4-3345A69AD9C8",
+      "source" : "script",
+      "topic" : "painel-lateral-melhorado",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/painel-lateral-melhorado/48a075fc.sh (exit 1)\nSources/VibeDeckApp/SectionListView.swift:216: 48a075fc: ligação exigida ausente: Table(rows, selection: $selection)",
+      "ruleId" : "48A075FC-F155-4EC3-898A-C98B196C54CA",
+      "source" : "script",
+      "topic" : "painel-lateral-melhorado",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/painel-lateral-melhorado/e248d5a3.sh (exit 1)\n… (saída cortada)\nveloper/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\\#SwiftUIMacros -disable-implicit-swift-modules -Xcc -fno-implicit-modules -Xcc -fno-implicit-module-maps -explicit-swift-module-map-file /Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-p.build/Objects-normal/arm64/VibeDeckApp-dependencies-1.json -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -I /Users/hoy/Documents/vibedeck/.build/out/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /Users/hoy/Documents/vibedeck/.build/out/Products/Debug/PackageFrameworks -F /Users/hoy/Documents/vibedeck/.build/out/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -module-cache-path /Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -color-diagnostics -Xcc -fcolor-diagnostics -enable-testing -g -debug-info-format\\=dwarf -dwarf-version\\=5 -swift-version 5 -Onone -D SWIFT_PACKAGE -D DEBUG -D Xcode -serialize-debugging-options -enable-experimental-feature DebugDescriptionMacro -empty-abi-descriptor -validate-clang-modules-once -clang-build-session-file /Users/hoy/Documents/vibedeck/.build/out/ModuleCache.noindex/Session.modulevalidation -disable-sandbox -Xcc -working-directory -Xcc /Users/hoy/Documents -enable-anonymous-context-mangled-names -file-compilation-dir /Users/hoy/Documents -Xcc -fmodule-map-file\\=/Users/hoy/Documents/vibedeck/.build/checkouts/swift-cmark/src/include/module.modulemap -Xcc -fmodule-map-file\\=/Users/hoy/Documents/vibedeck/.build/checkouts/swift-cmark/extensions/include/module.modulemap -Xcc -D_LIBCPP_HARDENING_MODE\\=_LIBCPP_HARDENING_MODE_DEBUG -Xcc -ivfsstatcache -Xcc /Users/hoy/Documents/vibedeck/.build/out/SDKStatCaches.noindex/macosx27.0-26A425-a0facfad118c1a7a18f0aad9463f65497231f6df4def33e022ae2eb8f782df1a.sdkstatcache -Xcc -fmodules-prune-interval\\=86400 -Xcc -fmodules-prune-after\\=345600 -Xcc -I/Users/hoy/Documents/vibedeck/.build/checkouts/swift-cmark/src/include -Xcc -I/Users/hoy/Documents/vibedeck/.build/checkouts/swift-cmark/extensions/include -Xcc -I/Users/hoy/Documents/vibedeck/.build/out/Products/Debug/include -Xcc -I/Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-p.build/DerivedSources-normal/arm64 -Xcc -I/Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-p.build/DerivedSources/arm64 -Xcc -I/Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-p.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\\=1 -no-auto-bridging-header-chaining -module-name VibeDeckApp -package-name vibedeck -const-gather-protocols-file /Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-p.build/Objects-normal/arm64/VibeDeckApp_const_extract_protocols.json -disable-clang-spi -clang-target arm64-apple-macos27.0 -target-sdk-version 27.0 -target-sdk-name macosx27.0 -in-process-plugin-server-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -parse-as-library -o /Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-p.build/Objects-normal/arm64/ProjectModel.o -debug-module-path /Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-p.build/Objects-normal/arm64/VibeDeckApp.swiftmodule -index-unit-output-path /VibeDeck.build/Debug/VibeDeckApp-p.build/Objects-normal/arm64/ProjectModel.o -index-store-path /Users/hoy/Documents/vibedeck/.build/out -index-system-modules\nerror: Build failed\nerror: fatalError\n\nTests/VibeDeckAppTests/RuleExecutionModelTests.swift:167: e248d5a3: Swift test falhou (exit 1)",
+      "ruleId" : "E248D5A3-186D-47B0-B365-1B8D777BB1EF",
+      "source" : "script",
+      "topic" : "painel-lateral-melhorado",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/painel-lateral-melhorado/605fc62c.sh (exit 1)\nSources/VibeDeckApp/SectionListView.swift:216: 605fc62c: ligação exigida ausente: Table(rows, selection: $selection)",
+      "ruleId" : "605FC62C-F962-4D34-8982-846A0F8E3C4A",
+      "source" : "script",
+      "topic" : "painel-lateral-melhorado",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/painel-lateral-melhorado/122bdd0c.sh (exit 1)\n… (saída cortada)\nck.build/Debug/VibeDeckApp-7CB336D0477FF529-testable-t.build/Objects-normal/arm64/VibeDeckApp-dependencies-2.json -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -I /Users/hoy/Documents/vibedeck/.build/out/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /Users/hoy/Documents/vibedeck/.build/out/Products/Debug/PackageFrameworks -F /Users/hoy/Documents/vibedeck/.build/out/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -module-cache-path /Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -color-diagnostics -Xcc -fcolor-diagnostics -enable-testing -g -debug-info-format\\=dwarf -dwarf-version\\=5 -swift-version 5 -Onone -D SWIFT_PACKAGE -D DEBUG -D Xcode -entry-point-function-name VibeDeckApp_main -serialize-debugging-options -enable-experimental-feature DebugDescriptionMacro -empty-abi-descriptor -validate-clang-modules-once -clang-build-session-file /Users/hoy/Documents/vibedeck/.build/out/ModuleCache.noindex/Session.modulevalidation -disable-sandbox -Xcc -working-directory -Xcc /Users/hoy/Documents -enable-anonymous-context-mangled-names -file-compilation-dir /Users/hoy/Documents -Xcc -fmodule-map-file\\=/Users/hoy/Documents/vibedeck/.build/checkouts/swift-cmark/src/include/module.modulemap -Xcc -fmodule-map-file\\=/Users/hoy/Documents/vibedeck/.build/checkouts/swift-cmark/extensions/include/module.modulemap -Xcc -D_LIBCPP_HARDENING_MODE\\=_LIBCPP_HARDENING_MODE_DEBUG -Xcc -ivfsstatcache -Xcc /Users/hoy/Documents/vibedeck/.build/out/SDKStatCaches.noindex/macosx27.0-26A425-a0facfad118c1a7a18f0aad9463f65497231f6df4def33e022ae2eb8f782df1a.sdkstatcache -Xcc -fmodules-prune-interval\\=86400 -Xcc -fmodules-prune-after\\=345600 -Xcc -I/Users/hoy/Documents/vibedeck/.build/checkouts/swift-cmark/src/include -Xcc -I/Users/hoy/Documents/vibedeck/.build/checkouts/swift-cmark/extensions/include -Xcc -I/Users/hoy/Documents/vibedeck/.build/out/Products/Debug/include -Xcc -I/Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-7CB336D0477FF529-testable-t.build/DerivedSources-normal/arm64 -Xcc -I/Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-7CB336D0477FF529-testable-t.build/DerivedSources/arm64 -Xcc -I/Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-7CB336D0477FF529-testable-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\\=1 -no-auto-bridging-header-chaining -module-name VibeDeckApp -package-name vibedeck -const-gather-protocols-file /Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-7CB336D0477FF529-testable-t.build/Objects-normal/arm64/VibeDeckApp-7CB336D0477FF529-testable_const_extract_protocols.json -disable-clang-spi -clang-target arm64-apple-macos27.0 -target-sdk-version 27.0 -target-sdk-name macosx27.0 -in-process-plugin-server-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -parse-as-library -o /Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-7CB336D0477FF529-testable-t.build/Objects-normal/arm64/ProjectModel.o -debug-module-path /Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-7CB336D0477FF529-testable-t.build/Objects-normal/arm64/VibeDeckApp.swiftmodule -index-unit-output-path /VibeDeck.build/Debug/VibeDeckApp-7CB336D0477FF529-testable-t.build/Objects-normal/arm64/ProjectModel.o -index-store-path /Users/hoy/Documents/vibedeck/.build/out -index-system-modules\nerror: Build failed\nerror: fatalError\n\nTests/VibeDeckAppTests/RuleExecutionModelTests.swift:224: 122bdd0c: Swift test falhou (exit 1)",
+      "ruleId" : "122BDD0C-E3A0-4A9D-9FBE-A99446016FCF",
+      "source" : "script",
+      "topic" : "painel-lateral-melhorado",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/painel-lateral-melhorado/279a3ff7.sh (exit 1)\n… (saída cortada)\nck.build/Debug/VibeDeckApp-7CB336D0477FF529-testable-t.build/Objects-normal/arm64/VibeDeckApp-dependencies-2.json -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -I /Users/hoy/Documents/vibedeck/.build/out/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /Users/hoy/Documents/vibedeck/.build/out/Products/Debug/PackageFrameworks -F /Users/hoy/Documents/vibedeck/.build/out/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -module-cache-path /Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -color-diagnostics -Xcc -fcolor-diagnostics -enable-testing -g -debug-info-format\\=dwarf -dwarf-version\\=5 -swift-version 5 -Onone -D SWIFT_PACKAGE -D DEBUG -D Xcode -entry-point-function-name VibeDeckApp_main -serialize-debugging-options -enable-experimental-feature DebugDescriptionMacro -empty-abi-descriptor -validate-clang-modules-once -clang-build-session-file /Users/hoy/Documents/vibedeck/.build/out/ModuleCache.noindex/Session.modulevalidation -disable-sandbox -Xcc -working-directory -Xcc /Users/hoy/Documents -enable-anonymous-context-mangled-names -file-compilation-dir /Users/hoy/Documents -Xcc -fmodule-map-file\\=/Users/hoy/Documents/vibedeck/.build/checkouts/swift-cmark/src/include/module.modulemap -Xcc -fmodule-map-file\\=/Users/hoy/Documents/vibedeck/.build/checkouts/swift-cmark/extensions/include/module.modulemap -Xcc -D_LIBCPP_HARDENING_MODE\\=_LIBCPP_HARDENING_MODE_DEBUG -Xcc -ivfsstatcache -Xcc /Users/hoy/Documents/vibedeck/.build/out/SDKStatCaches.noindex/macosx27.0-26A425-a0facfad118c1a7a18f0aad9463f65497231f6df4def33e022ae2eb8f782df1a.sdkstatcache -Xcc -fmodules-prune-interval\\=86400 -Xcc -fmodules-prune-after\\=345600 -Xcc -I/Users/hoy/Documents/vibedeck/.build/checkouts/swift-cmark/src/include -Xcc -I/Users/hoy/Documents/vibedeck/.build/checkouts/swift-cmark/extensions/include -Xcc -I/Users/hoy/Documents/vibedeck/.build/out/Products/Debug/include -Xcc -I/Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-7CB336D0477FF529-testable-t.build/DerivedSources-normal/arm64 -Xcc -I/Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-7CB336D0477FF529-testable-t.build/DerivedSources/arm64 -Xcc -I/Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-7CB336D0477FF529-testable-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\\=1 -no-auto-bridging-header-chaining -module-name VibeDeckApp -package-name vibedeck -const-gather-protocols-file /Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-7CB336D0477FF529-testable-t.build/Objects-normal/arm64/VibeDeckApp-7CB336D0477FF529-testable_const_extract_protocols.json -disable-clang-spi -clang-target arm64-apple-macos27.0 -target-sdk-version 27.0 -target-sdk-name macosx27.0 -in-process-plugin-server-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -parse-as-library -o /Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-7CB336D0477FF529-testable-t.build/Objects-normal/arm64/ProjectModel.o -debug-module-path /Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-7CB336D0477FF529-testable-t.build/Objects-normal/arm64/VibeDeckApp.swiftmodule -index-unit-output-path /VibeDeck.build/Debug/VibeDeckApp-7CB336D0477FF529-testable-t.build/Objects-normal/arm64/ProjectModel.o -index-store-path /Users/hoy/Documents/vibedeck/.build/out -index-system-modules\nerror: Build failed\nerror: fatalError\n\nTests/VibeDeckAppTests/RuleExecutionModelTests.swift:190: 279a3ff7: Swift test falhou (exit 1)",
+      "ruleId" : "279A3FF7-0F45-4FB1-B77A-F2DACA0AC289",
+      "source" : "script",
+      "topic" : "painel-lateral-melhorado",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/painel-lateral-melhorado/1409d15b.sh (exit 1)\n… (saída cortada)\nveloper/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server\\#SwiftUIMacros -disable-implicit-swift-modules -Xcc -fno-implicit-modules -Xcc -fno-implicit-module-maps -explicit-swift-module-map-file /Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-p.build/Objects-normal/arm64/VibeDeckApp-dependencies-2.json -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -I /Users/hoy/Documents/vibedeck/.build/out/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /Users/hoy/Documents/vibedeck/.build/out/Products/Debug/PackageFrameworks -F /Users/hoy/Documents/vibedeck/.build/out/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -module-cache-path /Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -color-diagnostics -Xcc -fcolor-diagnostics -enable-testing -g -debug-info-format\\=dwarf -dwarf-version\\=5 -swift-version 5 -Onone -D SWIFT_PACKAGE -D DEBUG -D Xcode -serialize-debugging-options -enable-experimental-feature DebugDescriptionMacro -empty-abi-descriptor -validate-clang-modules-once -clang-build-session-file /Users/hoy/Documents/vibedeck/.build/out/ModuleCache.noindex/Session.modulevalidation -disable-sandbox -Xcc -working-directory -Xcc /Users/hoy/Documents -enable-anonymous-context-mangled-names -file-compilation-dir /Users/hoy/Documents -Xcc -fmodule-map-file\\=/Users/hoy/Documents/vibedeck/.build/checkouts/swift-cmark/src/include/module.modulemap -Xcc -fmodule-map-file\\=/Users/hoy/Documents/vibedeck/.build/checkouts/swift-cmark/extensions/include/module.modulemap -Xcc -D_LIBCPP_HARDENING_MODE\\=_LIBCPP_HARDENING_MODE_DEBUG -Xcc -ivfsstatcache -Xcc /Users/hoy/Documents/vibedeck/.build/out/SDKStatCaches.noindex/macosx27.0-26A425-a0facfad118c1a7a18f0aad9463f65497231f6df4def33e022ae2eb8f782df1a.sdkstatcache -Xcc -fmodules-prune-interval\\=86400 -Xcc -fmodules-prune-after\\=345600 -Xcc -I/Users/hoy/Documents/vibedeck/.build/checkouts/swift-cmark/src/include -Xcc -I/Users/hoy/Documents/vibedeck/.build/checkouts/swift-cmark/extensions/include -Xcc -I/Users/hoy/Documents/vibedeck/.build/out/Products/Debug/include -Xcc -I/Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-p.build/DerivedSources-normal/arm64 -Xcc -I/Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-p.build/DerivedSources/arm64 -Xcc -I/Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-p.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\\=1 -no-auto-bridging-header-chaining -module-name VibeDeckApp -package-name vibedeck -const-gather-protocols-file /Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-p.build/Objects-normal/arm64/VibeDeckApp_const_extract_protocols.json -disable-clang-spi -clang-target arm64-apple-macos27.0 -target-sdk-version 27.0 -target-sdk-name macosx27.0 -in-process-plugin-server-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -parse-as-library -o /Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-p.build/Objects-normal/arm64/ProjectModel.o -debug-module-path /Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-p.build/Objects-normal/arm64/VibeDeckApp.swiftmodule -index-unit-output-path /VibeDeck.build/Debug/VibeDeckApp-p.build/Objects-normal/arm64/ProjectModel.o -index-store-path /Users/hoy/Documents/vibedeck/.build/out -index-system-modules\nerror: Build failed\nerror: fatalError\n\nTests/VibeDeckAppTests/RuleExecutionModelTests.swift:138: 1409d15b: Swift test falhou (exit 1)",
+      "ruleId" : "1409D15B-204A-4682-814B-B7D00C0DED66",
+      "source" : "script",
+      "topic" : "painel-lateral-melhorado",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/painel-lateral-melhorado/5e0c4b04.sh (exit 1)\nSources/VibeDeckApp/SectionListView.swift:216: 5e0c4b04: ligação exigida ausente: Table(rows, selection: $selection)",
+      "ruleId" : "5E0C4B04-4D23-4AC8-B65E-8F0FE8F8AED3",
+      "source" : "script",
+      "topic" : "painel-lateral-melhorado",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/painel-lateral-melhorado/7332715d.sh (exit 1)\n… (saída cortada)\natform/Developer/usr/bin/swift-plugin-server\\#SwiftUIMacros -disable-implicit-swift-modules -Xcc -fno-implicit-modules -Xcc -fno-implicit-module-maps -explicit-swift-module-map-file /Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-p.build/Objects-normal/arm64/VibeDeckApp-dependencies-1.json -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.0.sdk -I /Users/hoy/Documents/vibedeck/.build/out/Products/Debug -Isystem /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib -F /Users/hoy/Documents/vibedeck/.build/out/Products/Debug/PackageFrameworks -F /Users/hoy/Documents/vibedeck/.build/out/Products/Debug -F /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks -module-cache-path /Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -color-diagnostics -Xcc -fcolor-diagnostics -enable-testing -g -debug-info-format\\=dwarf -dwarf-version\\=5 -swift-version 5 -Onone -D SWIFT_PACKAGE -D DEBUG -D Xcode -serialize-debugging-options -enable-experimental-feature DebugDescriptionMacro -empty-abi-descriptor -validate-clang-modules-once -clang-build-session-file /Users/hoy/Documents/vibedeck/.build/out/ModuleCache.noindex/Session.modulevalidation -disable-sandbox -Xcc -working-directory -Xcc /Users/hoy/Documents -enable-anonymous-context-mangled-names -file-compilation-dir /Users/hoy/Documents -Xcc -fmodule-map-file\\=/Users/hoy/Documents/vibedeck/.build/checkouts/swift-cmark/src/include/module.modulemap -Xcc -fmodule-map-file\\=/Users/hoy/Documents/vibedeck/.build/checkouts/swift-cmark/extensions/include/module.modulemap -Xcc -D_LIBCPP_HARDENING_MODE\\=_LIBCPP_HARDENING_MODE_DEBUG -Xcc -ivfsstatcache -Xcc /Users/hoy/Documents/vibedeck/.build/out/SDKStatCaches.noindex/macosx27.0-26A425-a0facfad118c1a7a18f0aad9463f65497231f6df4def33e022ae2eb8f782df1a.sdkstatcache -Xcc -fmodules-prune-interval\\=86400 -Xcc -fmodules-prune-after\\=345600 -Xcc -I/Users/hoy/Documents/vibedeck/.build/checkouts/swift-cmark/src/include -Xcc -I/Users/hoy/Documents/vibedeck/.build/checkouts/swift-cmark/extensions/include -Xcc -I/Users/hoy/Documents/vibedeck/.build/out/Products/Debug/include -Xcc -I/Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-p.build/DerivedSources-normal/arm64 -Xcc -I/Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-p.build/DerivedSources/arm64 -Xcc -I/Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-p.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\\=1 -no-auto-bridging-header-chaining -module-name VibeDeckApp -package-name vibedeck -const-gather-protocols-file /Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-p.build/Objects-normal/arm64/VibeDeckApp_const_extract_protocols.json -disable-clang-spi -clang-target arm64-apple-macos27.0 -target-sdk-version 27.0 -target-sdk-name macosx27.0 -in-process-plugin-server-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -parse-as-library -o /Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-p.build/Objects-normal/arm64/ProjectModel.o -debug-module-path /Users/hoy/Documents/vibedeck/.build/out/Intermediates.noindex/VibeDeck.build/Debug/VibeDeckApp-p.build/Objects-normal/arm64/VibeDeckApp.swiftmodule -index-unit-output-path /VibeDeck.build/Debug/VibeDeckApp-p.build/Objects-normal/arm64/ProjectModel.o -index-store-path /Users/hoy/Documents/vibedeck/.build/out -index-system-modules\n[59 / 84] vibedeck-product\nerror: Build failed\nerror: fatalError\n\nTests/VibeDeckAppTests/RuleExecutionModelTests.swift:167: 7332715d: Swift test falhou (exit 1)",
+      "ruleId" : "7332715D-BF28-4041-B881-397DD6FD8B33",
+      "source" : "script",
+      "topic" : "painel-lateral-melhorado",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/botao-de-gerar-documentos/90397722.sh (exit 1)\nSources/VibeDeckApp/SectionListView.swift:1: Botão deve ficar condicionado a Docs e provedor instalado",
+      "ruleId" : "90397722-8EDC-468C-823F-CC4C00ED5474",
+      "source" : "script",
+      "topic" : "botao-de-gerar-documentos",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/botao-de-gerar-documentos/83d8da0a.sh (exit 0)\n83D8DA0A: cumpre (contratos de código)",
+      "ruleId" : "83D8DA0A-300F-4F3D-83C6-AC2681A30537",
+      "source" : "script",
+      "topic" : "botao-de-gerar-documentos",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/botao-de-gerar-documentos/f0aaab3e.sh (exit 1)\nSources/VibeDeckApp/DocGenerate.swift:1: Título deve editar somente a proposta\nSources/VibeDeckApp/DocGenerate.swift:1: Permitir aceite por documento\nSources/VibeDeckApp/DocGenerate.swift:1: Permitir aceite de todos",
+      "ruleId" : "F0AAAB3E-F75E-4FD4-888B-B78C9E0D22A4",
+      "source" : "script",
+      "topic" : "botao-de-gerar-documentos",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/botao-de-gerar-documentos/fcf3ba40.sh (exit 0)\nFCF3BA40: cumpre (contratos de código; 1 testes Swift passaram)",
+      "ruleId" : "FCF3BA40-0E98-4755-928E-FDB201812383",
+      "source" : "script",
+      "topic" : "botao-de-gerar-documentos",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/botao-de-gerar-documentos/778e9bf5.sh (exit 0)\n778E9BF5: cumpre (contratos de código; 1 testes Swift passaram)",
+      "ruleId" : "778E9BF5-D317-4BDF-A0B2-5BDB3169B385",
+      "source" : "script",
+      "topic" : "botao-de-gerar-documentos",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/botao-de-gerar-documentos/da211ac8.sh (exit 0)\nDA211AC8: cumpre (contratos de código; 2 testes Swift passaram)",
+      "ruleId" : "DA211AC8-6BAC-47E8-BD90-07DD335F2D57",
+      "source" : "script",
+      "topic" : "botao-de-gerar-documentos",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/botao-de-gerar-documentos/2ce9184c.sh (exit 0)\n2CE9184C: cumpre (contratos de código; 2 testes Swift passaram)",
+      "ruleId" : "2CE9184C-7983-4532-821E-2FCED3A0258F",
+      "source" : "script",
+      "topic" : "botao-de-gerar-documentos",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/botao-de-gerar-documentos/205f9706.sh (exit 0)\n205F9706: cumpre (contratos de código; 1 testes Swift passaram)",
+      "ruleId" : "205F9706-54D5-4938-8D8F-F33FFCE8693C",
+      "source" : "script",
+      "topic" : "botao-de-gerar-documentos",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/botao-de-gerar-documentos/26b70328.sh (exit 1)\nSources/VibeDeckApp/DocGenerate.swift:1: Título deve editar somente a proposta\nSources/VibeDeckApp/DocGenerate.swift:1: Permitir aceite por documento\nSources/VibeDeckApp/DocGenerate.swift:1: Permitir aceite de todos",
+      "ruleId" : "26B70328-770E-4641-8228-F9674C3C24BE",
+      "source" : "script",
+      "topic" : "botao-de-gerar-documentos",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/botao-de-gerar-documentos/5dc6ae92.sh (exit 0)\n5DC6AE92: cumpre (contratos de código; 2 testes Swift passaram)",
+      "ruleId" : "5DC6AE92-7086-42E6-B8B7-930C63954281",
+      "source" : "script",
+      "topic" : "botao-de-gerar-documentos",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/botao-de-gerar-documentos/c5d852bd.sh (exit 0)\nC5D852BD: cumpre (contratos de código; 1 testes Swift passaram)",
+      "ruleId" : "C5D852BD-F0D4-4FCC-8A92-A9ADFA42BBD9",
+      "source" : "script",
+      "topic" : "botao-de-gerar-documentos",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/botao-de-gerar-documentos/9bdc1723.sh (exit 0)\n9BDC1723: cumpre (contratos de código; 1 testes Swift passaram)",
+      "ruleId" : "9BDC1723-D1FA-4950-807A-F65530A41737",
+      "source" : "script",
+      "topic" : "botao-de-gerar-documentos",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/botao-de-gerar-documentos/81d69362.sh (exit 0)\n81D69362: cumpre (contratos de código)",
+      "ruleId" : "81D69362-44FE-474D-A375-A5A77EADAAB2",
+      "source" : "script",
+      "topic" : "botao-de-gerar-documentos",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/botao-de-gerar-documentos/488adc70.sh (exit 0)\n488ADC70: cumpre (contratos de código; 2 testes Swift passaram)",
+      "ruleId" : "488ADC70-B8B4-4BF2-BAE9-C796935FA6D6",
+      "source" : "script",
+      "topic" : "botao-de-gerar-documentos",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/botao-de-gerar-documentos/8b870feb.sh (exit 1)\nSources/VibeDeckApp/DocGenerate.swift:93: texto novo sem contrato de pt-BR: \"doc_generate.selection_6\"\nSources/VibeDeckApp/DocGenerate.swift:95: texto novo sem contrato de pt-BR: \"doc_generate.button_1\"\nSources/VibeDeckApp/DocGenerate.swift:95: texto novo sem contrato de pt-BR: \"Ativar controle\"\nSources/VibeDeckApp/DocGenerate.swift:98: texto novo sem contrato de pt-BR: \"doc_generate.button_2\"\nSources/VibeDeckApp/DocGenerate.swift:103: texto novo sem contrato de pt-BR: \"docgenerate.text_1\"\nSources/VibeDeckApp/DocGenerate.swift:125: texto novo sem contrato de pt-BR: \"doc_generate.button_3\"\nSources/VibeDeckApp/DocGenerate.swift:125: texto novo sem contrato de pt-BR: \"Ativar controle\"\nSources/VibeDeckApp/DocGenerate.swift:128: texto novo sem contrato de pt-BR: \"doc_generate.button_4\"\nSources/VibeDeckApp/DocGenerate.swift:130: texto novo sem contrato de pt-BR: \"doc_generate.button_5\"",
+      "ruleId" : "8B870FEB-13EA-4F82-AA41-4C23080923F1",
+      "source" : "script",
+      "topic" : "botao-de-gerar-documentos",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/melhorar-o-md-viewer/0dd08791.sh (exit 0)\n0DD08791: OK",
+      "ruleId" : "0DD08791-BEDE-416F-9AD4-766540952496",
+      "source" : "script",
+      "topic" : "melhorar-o-md-viewer",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/melhorar-o-md-viewer/6b1849e4.sh (exit 0)\n6B1849E4: OK",
+      "ruleId" : "6B1849E4-6A0C-4140-9706-54E6EB95A61A",
+      "source" : "script",
+      "topic" : "melhorar-o-md-viewer",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/melhorar-o-md-viewer/f8fdc0f6.sh (exit 1)\n/var/folders/tf/290nt0fx3v523y5x53mtn_500000gn/T/vibedeck-markdown-0xq_wijm/MarkdownEditor.swift:1:8: error: no such module 'VibeDeckCore'\n  1 | import VibeDeckCore\n    |        `- error: no such module 'VibeDeckCore'\n  2 | import AppKit\n  3 | import SwiftUI\nSources/VibeDeckApp/MarkdownEditor.swift:1: verificação retornou 1",
+      "ruleId" : "F8FDC0F6-4F90-40AF-9A18-2FA6139565A3",
+      "source" : "script",
+      "topic" : "melhorar-o-md-viewer",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/melhorar-o-md-viewer/501b105d.sh (exit 1)\n/var/folders/tf/290nt0fx3v523y5x53mtn_500000gn/T/vibedeck-markdown-3izuax_o/MarkdownEditor.swift:1:8: error: no such module 'VibeDeckCore'\n  1 | import VibeDeckCore\n    |        `- error: no such module 'VibeDeckCore'\n  2 | import AppKit\n  3 | import SwiftUI\nSources/VibeDeckApp/MarkdownEditor.swift:1: verificação retornou 1",
+      "ruleId" : "501B105D-5D4B-4BE3-A68B-06A64DCBEAFA",
+      "source" : "script",
+      "topic" : "melhorar-o-md-viewer",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/melhorar-o-md-viewer/db31b66d.sh (exit 0)\nDB31B66D: OK",
+      "ruleId" : "DB31B66D-C3D7-41D0-B755-B66665E8F441",
+      "source" : "script",
+      "topic" : "melhorar-o-md-viewer",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/melhorar-o-md-viewer/bf5ba615.sh (exit 0)\nBF5BA615: OK",
+      "ruleId" : "BF5BA615-1D1B-4DB7-B210-BA07AB133792",
+      "source" : "script",
+      "topic" : "melhorar-o-md-viewer",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/melhorar-o-md-viewer/ada320a2.sh (exit 1)\n/var/folders/tf/290nt0fx3v523y5x53mtn_500000gn/T/vibedeck-markdown-n_f0se9p/MarkdownEditor.swift:1:8: error: no such module 'VibeDeckCore'\n  1 | import VibeDeckCore\n    |        `- error: no such module 'VibeDeckCore'\n  2 | import AppKit\n  3 | import SwiftUI\nSources/VibeDeckApp/MarkdownEditor.swift:1: verificação retornou 1",
+      "ruleId" : "ADA320A2-579B-409E-8B90-B1EFD90805E7",
+      "source" : "script",
+      "topic" : "melhorar-o-md-viewer",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/melhorar-o-md-viewer/d4086f37.sh (exit 1)\n/var/folders/tf/290nt0fx3v523y5x53mtn_500000gn/T/vibedeck-markdown-cr7y_38_/MarkdownEditor.swift:1:8: error: no such module 'VibeDeckCore'\n  1 | import VibeDeckCore\n    |        `- error: no such module 'VibeDeckCore'\n  2 | import AppKit\n  3 | import SwiftUI\nSources/VibeDeckApp/MarkdownEditor.swift:1: verificação retornou 1",
+      "ruleId" : "D4086F37-888E-4FAB-B1CA-B9BC8C75B01B",
+      "source" : "script",
+      "topic" : "melhorar-o-md-viewer",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/melhorar-o-md-viewer/27ac8b98.sh (exit 1)\n/var/folders/tf/290nt0fx3v523y5x53mtn_500000gn/T/vibedeck-markdown-eaqsdlnw/MarkdownEditor.swift:1:8: error: no such module 'VibeDeckCore'\n  1 | import VibeDeckCore\n    |        `- error: no such module 'VibeDeckCore'\n  2 | import AppKit\n  3 | import SwiftUI\nSources/VibeDeckApp/MarkdownEditor.swift:1: verificação retornou 1",
+      "ruleId" : "27AC8B98-7A40-44C9-A3F2-F3DB43A24B19",
+      "source" : "script",
+      "topic" : "melhorar-o-md-viewer",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/melhorar-o-md-viewer/a1657562.sh (exit 1)\nSources/VibeDeckApp/AgentView.swift:1: consumidor perdeu binding, undo próprio ou política de foco",
+      "ruleId" : "A1657562-8F5C-4BBE-A007-717DA3C7C4D8",
+      "source" : "script",
+      "topic" : "melhorar-o-md-viewer",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/melhorar-o-md-viewer/5c7f52c8.sh (exit 0)\n… (saída cortada)\nponents for colorspace model -1\n✔ Test materializesImagesUniquelyAndKeepsOriginalFiles() passed after 0.012 seconds.\n◇ Test failuresDoNotReturnInvalidPaths() started.\n✔ Test relativeImagesRenderOnlyOutsideCursorWithoutReplacingSource() passed after 0.033 seconds.\n◇ Test scopedRenderingLeavesRestOfLargeDocumentUntouched() started.\n2026-10-12 00:58:41.572 swiftpm-testing-helper[275:3148616] Unrecognized colorspace number -1\n2026-10-12 00:58:41.572 swiftpm-testing-helper[275:3148616] Unknown number of components for colorspace model -1\n✔ Test failuresDoNotReturnInvalidPaths() passed after 0.199 seconds.\n◇ Test promisesWaitForEveryFileAndPreserveOrder() started.\n✔ Test timeoutShowsErrorWithoutCreatingDocs() passed after 0.212 seconds.\n◇ Test acceptingBatchUpdatesListAndIsOneUndoWithRedo() started.\n✔ Test scriptsOnlyAndUnavailableProvider() passed after 0.216 seconds.\n✔ Test scopedRenderingLeavesRestOfLargeDocumentUntouched() passed after 0.194 seconds.\n◇ Test providerFailureContinuesOtherTopicsWithoutSaving() started.\n◇ Test promptEditorsKeepSourceSyntaxVisible() started.\n✔ Test acceptingBatchUpdatesListAndIsOneUndoWithRedo() passed after 0.019 seconds.\n✔ Test promptEditorsKeepSourceSyntaxVisible() passed after 0.017 seconds.\n◇ Test selectedAcceptanceAndInvalidEdits() started.\n◇ Test pastedFilesAndImagesUseImportCallbacks() started.\n✔ Test promisesWaitForEveryFileAndPreserveOrder() passed after 0.021 seconds.\n◇ Test failedPromiseThrows() started.\n✔ Test selectedAcceptanceAndInvalidEdits() passed after 0.181 seconds.\n✔ Test providerFailureContinuesOtherTopicsWithoutSaving() passed after 0.199 seconds.\n✔ Suite DocGenerateAppTests passed after 0.508 seconds.\n◇ Test staleRulesGoToAIAndChangesPreventSaving() started.\n✔ Test pastedFilesAndImagesUseImportCallbacks() passed after 0.181 seconds.\n◇ Test imageDrawingAndTransparentBackgroundInBothAppearances() started.\n✔ Test failureAndCancellationPreserveOldArtifacts() passed after 0.430 seconds.\n◇ Test documentDistinguishesStatesAndIgnoresUntrustedHTML() started.\n✔ Test failedPromiseThrows() passed after 0.196 seconds.\n◇ Test terminalReceivesOnePasteAndIgnoresDropAfterExit() started.\n✔ Test staleRulesGoToAIAndChangesPreventSaving() passed after 0.077 seconds.\n◇ Test progressEstimateAndEmptyScope() started.\n✔ Test imageDrawingAndTransparentBackgroundInBothAppearances() passed after 0.077 seconds.\n◇ Test typingAttachmentsExternalChangeAndUndoKeepBindingExact() started.\n✔ Test progressEstimateAndEmptyScope() passed after 0.019 seconds.\n✔ Test terminalReceivesOnePasteAndIgnoresDropAfterExit() passed after 0.081 seconds.\n◇ Test mouseEventsFollowTheApplicationsNegotiatedMode() started.\n◇ Test sidebarGroupsUseOpenCountAndKeepSectionAccess() started.\n✔ Test documentDistinguishesStatesAndIgnoresUntrustedHTML() passed after 0.083 seconds.\n✔ Suite GraphRunnerTests passed after 0.607 seconds.\n✔ Test mouseEventsFollowTheApplicationsNegotiatedMode() passed after 0.011 seconds.\n✔ Test typingAttachmentsExternalChangeAndUndoKeepBindingExact() passed after 0.031 seconds.\n✔ Suite TerminalDropTests passed after 0.616 seconds.\n✔ Test sidebarGroupsUseOpenCountAndKeepSectionAccess() passed after 0.011 seconds.\n✔ Suite MarkdownHighlighterTests passed after 0.616 seconds.\n◇ Test sidebarGroupReappearsAfterUndoAndExternalEdit() started.\n✔ Test sidebarGroupReappearsAfterUndoAndExternalEdit() passed after 0.062 seconds.\n◇ Test sidebarIdeasOnlyOmitDoneIncludingPromotedIdeas() started.\n✔ Test sidebarIdeasOnlyOmitDoneIncludingPromotedIdeas() passed after 0.008 seconds.\n◇ Test sidebarSearchFiltersVisibleRowsAcrossAllSections() started.\n✔ Test sidebarSearchFiltersVisibleRowsAcrossAllSections() passed after 0.008 seconds.\n◇ Test sidebarSelectedTargetsRemainResolvableAcrossStatusChanges() started.\n✔ Test sidebarSelectedTargetsRemainResolvableAcrossStatusChanges() passed after 0.008 seconds.\n✔ Suite RuleExecutionModelTests passed after 0.705 seconds.\n✔ Test run with 39 tests in 7 suites passed after 0.706 seconds.\n5C7F52C8: OK",
+      "ruleId" : "5C7F52C8-DC84-4FFE-AF21-5167DB99F96A",
+      "source" : "script",
+      "topic" : "melhorar-o-md-viewer",
+      "verdict" : "pass"
+    }
+  ],
+  "task" : "Implementar Sistema de Logs: ações e reações correlacionadas, privacidade, diagnóstico e leitura CLI/MCP",
+  "topics" : [
+    "cli-e-mcp",
+    "core-e-formato-de-dados",
+    "geral",
+    "interface-do-app",
+    "conceitos-do-produto",
+    "dinamicas-da-interface",
+    "fluxo-padrao",
+    "botao-de-descubra-em-onde-e-regras-nas-revisoes",
+    "exibir-o-grafo-de-graphify-em-algum-lugar-do-app",
+    "eficiencia-de-ia",
+    "painel-lateral-melhorado",
+    "botao-de-gerar-documentos",
+    "melhorar-o-md-viewer",
+    "colecao-de-artefatos-e-docs-do-claude",
+    "sistema-de-logs"
+  ],
+  "warnings" : [
+    "Pasta sem vibedeck.json oferece \"Inicializar projeto\"",
+    "O Descubra tem botão de cancelar e timeout, e descarta a resposta se o item mudou ou deixou de estar selecionado durante a chamada.",
+    "Um grupo de revisão ou ideia aberto/selecionado que a sidebar omite não deixa a seleção ou a aba inválida.",
+    "O filtro por texto e por #tag da sidebar continua funcionando sobre os grupos e ideias que ela exibe.",
+    "Um grupo de revisão omitido da sidebar volta a aparecer nela assim que algum de seus itens passa a ter status aberto (open ou in_progress, conforme openCount).",
+    "O README e o guia (.vibedeck/guide.md) documentam a geração de documentos e o texto visível ao usuário (botão, progresso, erros) está em pt-BR.",
+    "Imagens e links relativos (../attachments/…) continuam resolvendo contra docsDir/ideasDir e aparecem renderizados no editor WYSIWYG.",
+    "O editor renderizado não trava ao digitar em documentos grandes: a re-renderização é limitada ao trecho editado ou ocorre fora do caminho de digitação.",
+    "Os agentes, comandos e skills que usam MarkdownEditor (AgentView, CommandView, SkillView) mantêm o comportamento atual de edição e ganham o mesmo fundo da janela."
+  ]
+}

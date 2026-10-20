@@ -13,7 +13,7 @@ public struct UnverifiedChange: Encodable, Equatable, Sendable {
 extension ProjectStore {
     /// Files that change as a side effect (check records, run state, the guide regenerated from AgentsGuide.swift,
     /// granted permissions) and never need a check of their own.
-    static let stopGateIgnored = [".vibedeck/checks/", ".vibedeck/runs/", ".vibedeck/AGENTS.md", ".claude/settings.local.json"]
+    static let stopGateIgnored = [".vibedeck/checks/", ".vibedeck/runs/", ".vibedeck/AGENTS.md", ".claude/settings.local.json", ".codex/hooks.json"]
 
     /// Files changed in the working tree (tracked against HEAD, plus untracked), with their modification
     /// date, keeping only those modified at or after `since`. Deleted files have no date and are skipped.

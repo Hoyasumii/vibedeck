@@ -156,6 +156,30 @@
         "claude",
         "codex"
       ]
+    },
+    "checkpoint": {
+      "type": "object",
+      "description": "Durable completed or partial step output; explicit resume preserves it.",
+      "required": [
+        "step",
+        "output",
+        "completed"
+      ],
+      "properties": {
+        "step": {
+          "type": "string"
+        },
+        "verdict": {
+          "type": "string"
+        },
+        "output": {
+          "type": "string"
+        },
+        "completed": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false

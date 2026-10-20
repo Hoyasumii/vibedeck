@@ -60,6 +60,7 @@ enum CodexReadTools {
         return text
     }
     static func execute(root: URL, tool: String, arguments: JSONValue) throws -> String {
+        if let workspace = RemoteWorkspace.existing(at: root) { return try SSHReadTools.execute(workspace, tool: tool, arguments: arguments) }
         guard ["Read", "Glob", "Grep"].contains(tool) else { throw invalid("Ferramenta não permitida: \(tool)") }
         let metadata = RuleDiscover.projectFiles(root: root.appending(path: ".vibedeck"))
             .map { ".vibedeck/" + $0 }

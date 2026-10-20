@@ -15,7 +15,7 @@ run_tests() {
     grep -rqE "func ${name}\(" Tests/VibeDeckCoreTests || { echo "Tests/VibeDeckCoreTests: teste '${name}' não existe mais (${spec})"; exit 1; }
     args+=(--filter "${suite}/${name}")
   done
-  swift build --target VibeDeckCoreTests >/dev/null 2>&1 || { swift build --target VibeDeckCoreTests 2>&1 | tail -20; exit 1; }
+  swift build --build-tests >/dev/null 2>&1 || { swift build --build-tests 2>&1 | tail -20; exit 1; }
   local out
   if ! out=$(swift test --skip-build "${args[@]}" 2>&1); then
     printf '%s\n' "$out" | tail -40; exit 1

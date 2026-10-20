@@ -5,6 +5,7 @@ import VibeDeckCore
 /// Creates a Claude Code cloud session on the project's GitHub repo, after checking that the local default
 /// branch matches origin. Differing branches stop here; uncommitted changes only need a confirmation.
 struct CloudLaunchSheet: View {
+    @Environment(\.logProject) private var logProject
     let root: URL
     var provider: AIProvider = .claude
     @State private var environment = ""
@@ -48,7 +49,7 @@ struct CloudLaunchSheet: View {
                 .foregroundStyle(.red)
                 .fixedSize(horizontal: false, vertical: true)
             buttons {
-                Button("Verificar de novo") { Task { await check() } }
+                LoggedButton("Verificar de novo") { Task { await check() } }.loggedControl(control: "cloud_launch_sheet.button_1", label: "Verificar de novo")
                     .buttonStyle(.glassProminent)
             }
 
@@ -57,17 +58,17 @@ struct CloudLaunchSheet: View {
                 .foregroundStyle(.green)
             if !sync.dirty.isEmpty { dirtyWarning(sync) }
             if provider == .codex {
-                TextField("ID do ambiente Codex Cloud", text: $environment).textFieldStyle(.roundedBorder)
+                LoggedTextField("ID do ambiente Codex Cloud", text: $environment).loggedField(control: "cloudlaunchsheet.text_1", label: "ID do ambiente Codex Cloud").textFieldStyle(.roundedBorder)
                 Text("O ambiente fica salvo neste projeto.").font(.caption).foregroundStyle(.secondary)
             }
-            TextField("O que a sessão deve fazer?", text: $task, axis: .vertical)
+            LoggedTextField("O que a sessão deve fazer?", text: $task, axis: .vertical).loggedField(control: "cloudlaunchsheet.text_2", label: "O que a sessão deve fazer?")
                 .textFieldStyle(.roundedBorder)
                 .lineLimit(2...6)
             buttons {
                 if case .launching = phase {
                     ProgressView().controlSize(.small)
                 }
-                Button("Criar na nuvem") { launch() }
+                LoggedButton("Criar na nuvem") { launch() }.loggedControl(control: "cloud_launch_sheet.button_2", label: "Criar na nuvem")
                     .buttonStyle(.glassProminent)
                     .keyboardShortcut(.defaultAction)
                     .disabled(!canLaunch(sync))
@@ -77,7 +78,7 @@ struct CloudLaunchSheet: View {
             if let url {
                 Label("Sessão criada e aberta no navegador.", systemImage: "checkmark.circle.fill")
                     .foregroundStyle(.green)
-                Button(url.absoluteString) { NSWorkspace.shared.open(url) }
+                LoggedButton("Abrir sessão na nuvem") { NSWorkspace.shared.open(url) }.loggedControl(control: "cloud_launch_sheet.button_3", label: "Abrir sessão na nuvem")
                     .buttonStyle(.link)
                     .font(.callout)
                     .textSelection(.enabled)
@@ -93,7 +94,7 @@ struct CloudLaunchSheet: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .textSelection(.enabled)
             buttons {
-                Button("Verificar de novo") { Task { await check() } }
+                LoggedButton("Verificar de novo") { Task { await check() } }.loggedControl(control: "cloud_launch_sheet.button_4", label: "Verificar de novo")
                     .buttonStyle(.glassProminent)
             }
         }
@@ -107,14 +108,14 @@ struct CloudLaunchSheet: View {
             Text((sync.dirty.prefix(5) + (sync.dirty.count > 5 ? ["… e mais \(sync.dirty.count - 5)"] : [])).joined(separator: "\n"))
                 .font(.caption.monospaced())
                 .foregroundStyle(.secondary)
-            Toggle("Criar mesmo assim", isOn: $allowDirty)
+            Toggle("Criar mesmo assim", isOn: $allowDirty.logging(control: "cloud_launch_sheet.selection_6", label: "Criar mesmo assim", project: logProject))
         }
     }
 
     private func buttons(@ViewBuilder _ actions: () -> some View) -> some View {
         HStack {
             Spacer()
-            Button("Fechar", role: .cancel) { dismiss() }.buttonStyle(.glass)
+            LoggedButton("Fechar", role: .cancel) { dismiss() }.loggedControl(control: "cloud_launch_sheet.button_5", label: "Fechar").buttonStyle(.glass)
             actions()
         }
     }
@@ -127,7 +128,7 @@ struct CloudLaunchSheet: View {
     private func check() async {
         phase = .checking
         let root = root
-        phase = .checked(await Task.detached { CloudSession.check(root: root) }.value)
+        phase = .checked(await VDLog.detached { CloudSession.check(root: root) }.value)
     }
 
     private func launch() {
@@ -137,7 +138,7 @@ struct CloudLaunchSheet: View {
         let root = root, description = task.trimmingCharacters(in: .whitespacesAndNewlines), allowDirty = allowDirty
         Task {
             do {
-                let result = try await Task.detached {
+                let result = try await VDLog.detached {
                     try CloudSession.launch(root: root, description: description, allowDirty: allowDirty, provider: provider, environment: environment)
                 }.value
                 if provider == .codex {

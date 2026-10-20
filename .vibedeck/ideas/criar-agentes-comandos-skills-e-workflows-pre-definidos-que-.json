@@ -1,0 +1,105 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "human",
+  "body" : "## Problema\nO VibeDeck permite criar agentes, comandos, skills e workflows, mas sempre do zero. Quem começa um projeto não tem um ponto de partida pronto para um fluxo de desenvolvimento com IA organizado, que siga padrões e evite código espaguete.\n\n## Proposta\nCriar um **catálogo de kits pré-definidos** de agentes, comandos, skills e workflows. O usuário escolhe quais itens adicionar ao projeto. Depois de adicionados, eles são itens comuns, editáveis à mão ou por IA. Juntos, os kits formam um conjunto completo para Vibe Coding. O catálogo traz dois kits:\n\n1. **Manutenção de sistema**: corrigir, evoluir e revisar código existente. Pode reaproveitar parte do que o próprio projeto já usa como pré-definição.\n2. **Desenvolvimento de novas ferramentas**: desenvolvimento organizado de um projeto, seguindo os padrões e técnicas definidos por ele.\n\nCada kit tem pelo menos um agente, um comando, uma skill e um workflow.\n\nO texto dos itens instrui a seguir as regras e tópicos do VibeDeck, o fluxo de revisão e check, e a evitar código espaguete. Ele não cita caminhos nem nomes específicos deste repositório.\n\n## Escopo\n- **Core** (`Sources/VibeDeckCore`, sem SwiftUI/AppKit): novo tipo do catálogo, com os kits e seus itens. A adição usa as operações existentes `createAgent`, `createCommand`, `createSkill` e `createWorkflow` de `Sources/VibeDeckCore/ProjectStore.swift`, que gravam via `AtomicFile.write`. Os slugs usam `Slug.make` + `uniqueSlug`.\n- **App** (`Sources/VibeDeckApp`):\n  - `ProjectModel.swift`: operação de adicionar kit/itens, com um único passo de undo e atualização ao vivo.\n  - `SectionListView.swift`, `AgentView.swift`, `CommandView.swift`, `SkillView.swift` e `WorkflowView.swift`: entrada de interface para abrir o catálogo e selecionar itens, em pt-BR.\n- **CLI/MCP**: a operação nova aparece nos dois (regra do projeto: toda operação do Core aparece no CLI e no MCP).\n- **Documentação**: `README.md` e `.vibedeck/guide.md`.\n- **Testes** (`Tests/VibeDeckCoreTests`): testes do catálogo e da adição, no padrão de `AgentsTests`, `CommandsTests`, `SkillsTests` e `WorkflowsTests`.\n\n## Critérios de aceite\n- O catálogo está no Core e o target não importa SwiftUI nem AppKit.\n- Adicionar passa pelas operações de `ProjectStore` e grava via `AtomicFile.write`, sem escrita direta de arquivos.\n- Nada é adicionado sem seleção e confirmação explícitas do usuário.\n- Adicionar nunca sobrescreve nem apaga item existente. Adicionar o mesmo item duas vezes gera dois itens com slugs distintos e preserva o conteúdo do primeiro.\n- Os itens adicionados são ordinários: editáveis pelo store e pelo editor, por humano e por IA. A edição persiste e o catálogo não a reverte.\n- Os arquivos gerados têm o mesmo formato dos itens criados à mão, validam no schema atual e são lidos por `ProjectStore` sem tratamento especial.\n- Referências entre itens (`nextSteps`, passos e transições de workflow) resolvem por slug dentro do kit adicionado ou entre itens que já existem no projeto. Adicionar um kit completo não deixa alvos pendentes, e adicionar um item isolado não deixa referência pendente.\n- Há um kit de manutenção e um kit de novas ferramentas, cada um com pelo menos um agente, um comando, uma skill e um workflow. Um teste unitário conta os itens por tipo.\n- Nenhum texto do catálogo contém `Sources/VibeDeck` nem nomes de arquivos do VibeDeck. Os textos orientam seguir os padrões do projeto e evitar código espaguete.\n- Adicionar um kit com vários itens aceita um único ⌘Z que remove todos, e os itens aparecem ao vivo na lista da seção, sem recarregar.\n- O texto visível ao usuário está em pt-BR, e o README e o guia documentam o recurso.\n- `swift test` passa.",
+  "createdAt" : "2026-10-12T03:00:47Z",
+  "id" : "A64488F7-96B0-4437-8610-F98D6981550A",
+  "promotedTopic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+  "readiness" : {
+    "checkedAt" : "2026-10-13T17:12:30Z",
+    "fingerprint" : "a5aada9307ced215",
+    "viable" : true
+  },
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:11:31Z",
+      "details" : "Verificar que o tipo do catálogo está em Sources/VibeDeckCore e que o target não importa SwiftUI/AppKit.",
+      "id" : "133B62CD-0226-4845-9E53-4F502A05CA08",
+      "severity" : "must",
+      "text" : "O catálogo de kits pré-definidos (agentes, comandos, skills e workflows) fica no Core, sem depender de SwiftUI."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:11:31Z",
+      "details" : "Verificar que a adição não escreve arquivos direto e reutiliza as operações existentes de ProjectStore.swift.",
+      "id" : "A21B5419-49D4-4F31-9BEC-DEA037FB9F2F",
+      "severity" : "must",
+      "text" : "Adicionar um item do catálogo ao projeto passa por uma operação do ProjectStore (createAgent/createCommand/createSkill/createWorkflow) e grava via AtomicFile.write."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:11:31Z",
+      "details" : "Teste: abrir o catálogo e confirmar que nenhum item é criado até o usuário confirmar a seleção.",
+      "id" : "D4DD944D-5DC9-4EEA-9139-DEE9F8968FEF",
+      "severity" : "must",
+      "text" : "O usuário escolhe quais itens pré-definidos adicionar; nada é adicionado sem seleção explícita."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:11:31Z",
+      "details" : "Teste no Core: adicionar o mesmo item duas vezes gera dois itens com slugs distintos e preserva o conteúdo do primeiro.",
+      "id" : "4D89A4DA-FD25-4B06-8C32-504434336A75",
+      "severity" : "must",
+      "text" : "Adicionar um item do catálogo nunca sobrescreve nem apaga item existente; se o slug já existe, usa Slug.make + uniqueSlug."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:11:31Z",
+      "details" : "Teste: após adicionar, editar o corpo pelo store e pelo editor; a edição persiste e o catálogo não a reverte.",
+      "id" : "953B1E7E-82E7-4157-AD7D-2F0576EF05AC",
+      "severity" : "must",
+      "text" : "Itens adicionados do catálogo são ordinários: editáveis manualmente e por IA como qualquer agente, comando, skill ou workflow, sem vínculo que bloqueie edição."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:11:31Z",
+      "details" : "Verificar que os JSON/markdown gerados validam no schema atual e são lidos por ProjectStore sem tratamento especial.",
+      "id" : "384B5C03-96A1-47DA-B363-30B8EF61E50C",
+      "severity" : "must",
+      "text" : "Itens adicionados a partir do catálogo ficam em arquivos do repo, no mesmo formato dos itens criados à mão."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:11:31Z",
+      "details" : "Teste: adicionar um kit completo e validar que todos os alvos resolvem por slug; adicionar um item isolado não deixa referência pendente.",
+      "id" : "103B84BC-17CD-4929-839E-BE0B82B976D8",
+      "severity" : "must",
+      "text" : "Referências entre itens do catálogo (nextSteps de comandos/skills, passos e transições de workflows) só apontam para itens que estão no kit adicionado ou já existem no projeto."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:11:31Z",
+      "details" : "Teste unitário conta os itens por tipo em cada kit.",
+      "id" : "2621DABD-5DC8-44DE-943C-A601518D7929",
+      "severity" : "must",
+      "text" : "O catálogo traz um kit para manutenção de sistema e um kit para desenvolvimento de novas ferramentas, cada um com pelo menos um agente, um comando, uma skill e um workflow."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:11:31Z",
+      "details" : "Teste: nenhum texto do catálogo contém 'Sources/VibeDeck' nem nomes de arquivos do VibeDeck; revisão manual do texto.",
+      "id" : "BBA08717-71D1-4963-B090-6E869319B8D2",
+      "severity" : "should",
+      "text" : "Os conteúdos pré-definidos instruem seguir os padrões do projeto (regras e tópicos do VibeDeck, fluxo de revisão e check) e evitar código espaguete, sem referenciar caminhos ou nomes específicos deste repositório."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:11:31Z",
+      "details" : "Teste/manual: adicionar kit com vários itens e desfazer com ⌘Z remove todos de uma vez.",
+      "id" : "8A34AE9E-0913-41BD-8441-4B7E1652275B",
+      "severity" : "should",
+      "text" : "Adicionar item do catálogo aceita um único passo de undo no app e aparece ao vivo na lista da seção, sem recarregar."
+    }
+  ],
+  "status" : "done",
+  "tags" : [
+    "ia",
+    "core",
+    "workflows",
+    "interface",
+    "produto"
+  ],
+  "title" : "Criar Agentes, Comandos, Skills e Workflows pré-definidos, que podem ser selecionados pelo usuário, e eles podem ser editáveis por IA, ou manualmente",
+  "updatedAt" : "2026-10-13T17:59:41Z"
+}

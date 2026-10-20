@@ -9,6 +9,8 @@ public enum DocGenerate {
         public var title: String
         public var content: String
         public var id = UUID()
+        /// Local destination chosen in the app, never accepted from the AI response or serialized.
+        public var group: String? = nil
 
         public init(title: String, content: String) {
             self.title = title

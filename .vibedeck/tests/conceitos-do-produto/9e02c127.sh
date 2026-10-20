@@ -81,6 +81,8 @@ LOCAL_OK = {
     "Sources/VibeDeckApp/AIReadOnlyOperation.swift",  # modelo/esforço do provedor escolhidos no painel (preferência da máquina)
     "Sources/VibeDeckCore/AIPromptPolicy.swift",  # snapshots de contexto e uso de IA da máquina (Application Support), fora do repo
     "Sources/VibeDeckApp/RuleExecutionModel.swift",  # cache de duração dependente da máquina; regras/resultados continuam no repo
+    "Sources/VibeDeckApp/AppSettingsView.swift",  # limite de scripts simultâneos: depende dos núcleos da máquina, não do projeto
+    "Sources/VibeDeckCore/Logging.swift",  # logs de erros/crashes da máquina (todos os processos), fora do repo e do git
 }
 for f, s in allsrc.items():
     for i, l in enumerate(s.split("\n")):

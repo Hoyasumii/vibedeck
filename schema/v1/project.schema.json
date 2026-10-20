@@ -33,6 +33,13 @@
         "$ref": "#/$defs/link"
       }
     },
+    "claude": {
+      "description": "Curated Claude artifacts and docs for this project; omitted when empty.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/claudeItem"
+      }
+    },
     "stack": {
       "description": "The project's highlighted technologies, in display order. Read by people opening the project and by AI agents before implementing.",
       "type": "array",
@@ -61,6 +68,47 @@
   },
   "additionalProperties": false,
   "$defs": {
+    "claudeItem": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "url",
+        "kind",
+        "addedAt"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "title": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^[hH][tT][tT][pP][sS]?://[cC][lL][aA][uU][dD][eE]\\.[aA][iI](?::[0-9]+)?(?:[/?#]|$)"
+        },
+        "kind": {
+          "enum": [
+            "artifact",
+            "doc"
+          ]
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "addedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    },
     "pattern": {
       "type": "object",
       "required": ["id", "name"],

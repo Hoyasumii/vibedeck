@@ -5,11 +5,11 @@ set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
 applies
 prop=$(body "$CORE" 'public static func proposal\(')
-printf '%s\n' "$prop" | grep -q 'existingFile(' || { echo "$CORE: proposal não valida arquivos com existingFile"; fail=1; }
-printf '%s\n' "$prop" | grep -q 'candidateTopics(' || { echo "$CORE: proposal não restringe tópicos a candidateTopics"; fail=1; }
+printf '%s\n' "$prop" | grep 'existingFile(' >/dev/null || { echo "$CORE: proposal não valida arquivos com existingFile"; fail=1; }
+printf '%s\n' "$prop" | grep 'candidateTopics(' >/dev/null || { echo "$CORE: proposal não restringe tópicos a candidateTopics"; fail=1; }
 ex=$(body "$CORE" 'static func existingFile\(')
-printf '%s\n' "$ex" | grep -q 'fileExists(' || { echo "$CORE: existingFile não confere se o arquivo existe"; fail=1; }
-printf '%s\n' "$ex" | grep -q 'hasPrefix(rootPath)' || { echo "$CORE: existingFile não confere se o arquivo está dentro do projeto"; fail=1; }
+printf '%s\n' "$ex" | grep 'fileExists(' >/dev/null || { echo "$CORE: existingFile não confere se o arquivo existe"; fail=1; }
+printf '%s\n' "$ex" | grep 'hasPrefix(rootPath)' >/dev/null || { echo "$CORE: existingFile não confere se o arquivo está dentro do projeto"; fail=1; }
 # As duas origens (Claude e Codex) passam pela mesma validação antes do .ready.
 n=$(grep -c 'state = \.ready(' "$APP" || true)
 m=$(grep -c 'state = \.ready(ReviewDiscover\.proposal(' "$APP" || true)

@@ -18,7 +18,7 @@ steps() {
     [ "$n" -ge "$prev" ] || { echo "$src: passo '$label' (linha $n) fora de ordem"; fail=1; }
     prev=$n
   done
-  printf '%s\n' "$text" | grep -qiE 'corrija e envie' || { echo "$src: não manda corrigir e reenviar o check quando passed=false"; fail=1; }
+  printf '%s\n' "$text" | grep -iE 'corrija e envie' >/dev/null || { echo "$src: não manda corrigir e reenviar o check quando passed=false"; fail=1; }
 }
 
 # AGENTS.md gerado pelo código atual (seção de regras, até a próxima seção ##).
@@ -32,11 +32,11 @@ instr=$(printf '%s\n' "$init" | response 0 | sed -E 's/.*"instructions":"(([^"\\
 steps "Sources/vibedeck/MCPServer.swift (instruções do MCP)" "$instr"
 tools=$(printf '%s\n' "$init" | response 1)
 for t in rules_for submit_rule_check; do
-  printf '%s' "$tools" | grep -q "\"name\":\"$t\"" || { echo "Sources/vibedeck/MCPServer.swift: ferramenta $t sumiu do MCP"; fail=1; }
+  printf '%s' "$tools" | grep "\"name\":\"$t\"" >/dev/null || { echo "Sources/vibedeck/MCPServer.swift: ferramenta $t sumiu do MCP"; fail=1; }
 done
 
 # CLI: `rules for` e `rules check` existem e o check pede pass/fail/na.
 "$VD" help rules for >/dev/null 2>&1 || { echo "Sources/vibedeck/CLI.swift: 'vibedeck rules for' sumiu"; fail=1; }
-"$VD" help rules check 2>/dev/null | grep -qE 'pass.{1,3}fail.{1,3}na' || { echo "Sources/vibedeck/CLI.swift: 'vibedeck rules check' sumiu ou não explica pass/fail/na"; fail=1; }
+"$VD" help rules check 2>/dev/null | grep -E 'pass.{1,3}fail.{1,3}na' >/dev/null || { echo "Sources/vibedeck/CLI.swift: 'vibedeck rules check' sumiu ou não explica pass/fail/na"; fail=1; }
 
 exit $fail

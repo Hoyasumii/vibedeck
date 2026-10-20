@@ -1,0 +1,51 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "ai",
+  "body" : "Seção **Claude** no app para o usuário montar uma coleção curada de artefatos e docs da conta do claude.ai. Nada é importado automaticamente: a tela começa vazia e o usuário escolhe o que adicionar.\n\n## Comportamento\n- Item **Claude** na sidebar (junto de Links e Grafo), com contador.\n- Vazio: \"Nada do Claude ainda\" + botão **Adicionar do Claude**.\n- Adicionar: sheet com URL, tipo (Artefato / Doc), título e tags. ⌘V com link do Claude abre o sheet preenchido. Só aceita links do claude.ai.\n- Lista: tabela com selo de tipo, título, data e tags; filtro Todos / Artefatos / Docs; busca; duplo clique abre no navegador.\n- Remover tira só da coleção, nunca apaga nada na conta.\n\n## Limitações\n- Pela URL não dá para distinguir artefato de doc (ambos `claude.ai/.../artifact/...`), e o título não é legível sem login: o usuário escolhe o tipo e edita o título (pré-preenchido da URL).\n- Não há API pública para listar tudo da conta; listagem automática (via Claude Docs MCP numa sessão de IA) fica como evolução.\n\n## Implementação (seguindo o padrão de Links)\n- Core: `ClaudeItem` (id, title, url, kind, tags, addedAt), campo `claude` no `Project` (vibedeck.json), decoder tolerante, omitido quando vazio; schema `project.schema.json` + AgentsGuide; testes.\n- App: `ClaudeItemsView` no molde de `LinksView`, mutações via `mutateProject` com undo.\n- CLI `vibedeck claude list|add|remove` (--json) e MCP `list_claude_items` / `add_claude_item`.\n- README e `.vibedeck/guide.md`.\n\n## Decisões\n- Coleção por projeto, salva no vibedeck.json (decisão do usuário).\n- Item Claude na sidebar somente quando houver itens (decisão do usuário).\n- Acesso inicial pelo botão Adicionar do Claude na tela Links; colar um link do Claude também abre o formulário.",
+  "createdAt" : "2026-10-11T20:44:16Z",
+  "id" : "47103D93-5027-48E9-8950-A5F1CE53A470",
+  "promotedTopic" : "colecao-de-artefatos-e-docs-do-claude",
+  "readiness" : {
+    "checkedAt" : "2026-10-11T23:01:49Z",
+    "fingerprint" : "26ee16d6e0f768cb",
+    "viable" : true
+  },
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-11T20:44:22Z",
+      "id" : "97E096A2-000D-4657-B152-0FE64E0C8E6C",
+      "severity" : "must",
+      "text" : "A coleção do Claude nunca importa itens sozinha: só entra o que o usuário adiciona."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-11T20:44:22Z",
+      "id" : "B5B453DC-7961-43CF-B3C2-DFA18950E81D",
+      "severity" : "must",
+      "text" : "Remover um item da coleção não chama nenhuma API do Claude nem apaga nada na conta."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-11T20:44:22Z",
+      "id" : "0F77F1FD-8852-4A26-B860-8C363E445637",
+      "severity" : "must",
+      "text" : "Todo item tem tipo (artefato ou doc) visível na lista, e a lista filtra por tipo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-11T20:44:22Z",
+      "id" : "DCD7508B-3ADF-4776-93EF-EA4FD237CAD5",
+      "severity" : "must",
+      "text" : "Itens da coleção ficam disponíveis no CLI e no MCP, com --json na listagem."
+    }
+  ],
+  "status" : "done",
+  "tags" : [
+    "claude",
+    "interface",
+    "links"
+  ],
+  "title" : "Coleção de artefatos e docs do Claude",
+  "updatedAt" : "2026-10-12T03:09:18Z"
+}

@@ -4,15 +4,29 @@
 #   scripts/build-app.sh                 release build + DMG
 #   scripts/build-app.sh --install-cli   also symlinks the CLI into ~/.local/bin
 #   CONFIG=debug scripts/build-app.sh    debug build
+#   CONFIG=debug scripts/build-app.sh --no-dmg   local development, app only
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/env.sh
 
+INSTALL_CLI=false
+BUILD_DMG=true
+for arg in "$@"; do
+  case "$arg" in
+    --install-cli) INSTALL_CLI=true ;;
+    --no-dmg) BUILD_DMG=false ;;
+    --help|-h)
+      echo "Uso: CONFIG=release|debug scripts/build-app.sh [--no-dmg] [--install-cli]"
+      exit 0 ;;
+    *) echo "Opção desconhecida: $arg" >&2; exit 2 ;;
+  esac
+done
+
 CONFIG="${CONFIG:-release}"
 VERSION="$(grep -m1 'version: "' Sources/vibedeck/CLI.swift | sed -E 's/.*version: "([^"]+)".*/\1/')"
 echo "→ swift build -c $CONFIG ${SDKROOT:+(SDK: $(basename "$SDKROOT"))}"
-swift build -c "$CONFIG" --product VibeDeckApp
-swift build -c "$CONFIG" --product vibedeck
+# Build both executables in one plan, sharing dependency work and scheduling.
+swift build -c "$CONFIG"
 BIN="$(swift build -c "$CONFIG" --show-bin-path)"
 
 APP="build/VibeDeck.app"
@@ -51,6 +65,16 @@ PLIST
 
 codesign --force --deep --sign - "$APP" >/dev/null
 echo "✓ $APP"
+
+if [[ "$INSTALL_CLI" == true ]]; then
+  mkdir -p "$HOME/.local/bin"
+  ln -sf "$PWD/$APP/Contents/Helpers/vibedeck" "$HOME/.local/bin/vibedeck"
+  echo "✓ CLI: ~/.local/bin/vibedeck → $APP/Contents/Helpers/vibedeck"
+fi
+
+if [[ "$BUILD_DMG" == false ]]; then
+  exit 0
+fi
 
 DMG="build/VibeDeck-$VERSION.dmg"
 STAGE="$(mktemp -d)"
@@ -95,9 +119,3 @@ hdiutil detach -quiet "$MNT"
 rm -f "$DMG"
 hdiutil convert -quiet "$RW" -format UDZO -imagekey zlib-level=9 -o "$DMG"
 echo "✓ $DMG"
-
-if [[ "${1:-}" == "--install-cli" ]]; then
-  mkdir -p "$HOME/.local/bin"
-  ln -sf "$PWD/$APP/Contents/Helpers/vibedeck" "$HOME/.local/bin/vibedeck"
-  echo "✓ CLI: ~/.local/bin/vibedeck → $APP/Contents/Helpers/vibedeck"
-fi

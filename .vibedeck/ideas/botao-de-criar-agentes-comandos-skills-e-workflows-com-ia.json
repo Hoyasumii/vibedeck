@@ -1,0 +1,156 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "human",
+  "body" : "## Problema\n\nAgentes, comandos, skills e workflows só podem ser criados e editados à mão (MarkdownEditor) ou a partir de modelos pré-definidos. Não há como pedir a uma IA que crie um item novo ou ajuste um existente a partir de uma descrição em linguagem natural e ir refinando o resultado até ficar como o usuário quer.\n\n## Proposta\n\nComplementar a ideia \"Criar Agentes, Comandos, Skills e Workflows pré-definidos, editáveis por IA ou manualmente\" com duas ações de IA:\n\n1. **Editar com IA**: no detalhe de cada agente, comando, skill e workflow, um botão \"Editar com IA\". O usuário informa um prompt, a IA sugere a atualização e o usuário pode continuar refinando com novos prompts até ficar satisfeito.\n2. **Criar com IA**: na tela/lista de adicionar agentes, comandos, skills e workflows, um botão \"Criar com IA\". O usuário informa um prompt e a IA vai sugerindo o item, com refinamento iterativo.\n\nComportamento comum:\n- Os botões só aparecem quando há provedor de IA suportado (Claude Code ou Codex) na máquina, com o mesmo teste usado em DocView/DocGenerate.\n- Rodam via `AIReadOnlyOperation`: Claude restrito a Read/Glob/Grep e Codex com `workspaceWrites=false`. Nada de Edit/Write/Bash.\n- A IA nunca grava direto. O app mostra a proposta (conteúdo completo do item) e só o aceite do usuário grava.\n- Cada refinamento parte da proposta atual (o prompt montado no Core inclui o conteúdo atual da proposta) e não grava nada até o aceite.\n- A resposta da IA é JSON validado. Se o parse falhar, o app mostra erro claro em pt-BR (`VibeDeckError`) e não altera nem cria nada.\n- Propostas com nome ou conteúdo vazio após trim são descartadas. O tamanho do conteúdo é limitado antes de mostrar a proposta.\n- Há botão de cancelar e timeout, com uma operação por projeto por vez.\n- Editar com IA descarta a resposta se o item mudou ou deixou de estar selecionado durante a chamada.\n- Aceitar edição substitui o conteúdo do item, e aceitar criação cria o item novo. Cada aceite é um único passo de undo (⌘Z restaura o estado anterior).\n- Criar nunca sobrescreve item existente: usa `Slug.make` + `uniqueSlug`.\n- Itens aceitos são gravados com `AtomicFile.write` no formato atual de agentes/comandos/skills/workflows e aparecem ao vivo nas listas, sem recarregar.\n- A operação fica acessível também no CLI e no MCP, chamando a mesma operação do Core. O que for criado por IA é `author=ai` quando o formato tiver autoria.\n- A edição manual (MarkdownEditor) e o undo atuais continuam funcionando. A IA é complemento.\n\n## Escopo\n\n- Core (sem SwiftUI), com novo enum no estilo de `ReviewDiscover`/`RuleDiscover`: monta o prompt, valida o JSON e converte em proposta. Fica junto de `Sources/VibeDeckCore/Agents.swift`, `Commands.swift`, `Skills.swift` e `Workflows.swift`, que definem os formatos.\n- App: `Sources/VibeDeckApp/AgentView.swift`, `CommandView.swift`, `SkillView.swift` e `WorkflowView.swift` (botão \"Editar com IA\" e proposta). As listas/telas de adição de cada tipo recebem o botão \"Criar com IA\".\n- Execução de IA: `Sources/VibeDeckApp/AIReadOnlyOperation.swift`. Estado e undo em `ProjectModel.swift`. Referências de padrão: `DocGenerate.swift`, `DocView.swift`, `ReviewDiscover.swift` e `RuleDiscover.swift` (app).\n- CLI e MCP: `Sources/vibedeck/AICommands.swift` e o servidor MCP, com comando e ferramenta equivalentes.\n- Testes: `Tests/VibeDeckCoreTests/*Discover*Tests.swift` (ou similar), seguindo `ReviewDiscoverTests.swift` e `RuleDiscoverTests.swift`.\n- Documentação: README e `.vibedeck/guide.md` (e `AgentsGuide.swift`, se o guia embutido mudar), em pt-BR.\n\n## Critérios de aceite\n\n- Os botões \"Editar com IA\" e \"Criar com IA\" existem nos quatro tipos e só aparecem com provedor suportado.\n- Nenhuma chamada nova usa Edit/Write/Bash, e todas passam por `AIReadOnlyOperation.run`.\n- Gerar ou refinar uma proposta não altera nenhum arquivo em disco. Só o aceite grava.\n- É possível refinar a proposta em sequência, e o prompt do Core inclui a proposta atual.\n- Testes do Core cobrem: parse válido, JSON inválido (nada gravado, erro em pt-BR), campos vazios/só espaços, limite de tamanho e colisão de slug com item existente.\n- Aceitar gera um único registro de undo, e ⌘Z restaura o estado anterior.\n- Cancelar e timeout funcionam sem gravar. Só há uma operação por projeto por vez.\n- Editar descarta a resposta se o item mudou ou foi desselecionado durante a chamada.\n- Os itens aceitos aparecem ao vivo nas listas e são gravados com `AtomicFile.write`.\n- Há equivalente no CLI e no MCP sobre a mesma operação do Core, com `author=ai` quando aplicável.\n- Os textos visíveis estão em pt-BR, e README e `.vibedeck/guide.md` documentam criar e editar com IA.\n- A edição manual e o undo atuais seguem funcionando, e `swift test` passa.",
+  "createdAt" : "2026-10-12T03:01:06Z",
+  "id" : "6D30E29C-12FC-4320-8A72-ACFB72FB7E82",
+  "paths" : [
+    "Tests/VibeDeckCoreTests/*Discover*Tests.swift"
+  ],
+  "readiness" : {
+    "checkedAt" : "2026-10-13T17:21:15Z",
+    "fingerprint" : "63a519eb372a1496",
+    "viable" : true
+  },
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:17:32Z",
+      "details" : "Verificar em AgentView, CommandView, SkillView e WorkflowView que o botão existe e é condicionado ao mesmo teste de provedor usado em DocView/DocGenerate.",
+      "id" : "BF598BA5-CDC7-44CD-81C1-A847E9CA45F2",
+      "severity" : "must",
+      "text" : "Agentes, comandos, skills e workflows têm, no detalhe de cada item, um botão \"Editar com IA\" que só aparece quando há provedor de IA suportado (Claude Code ou Codex) na máquina."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:17:32Z",
+      "details" : "Verificar a presença do botão em cada uma das quatro listas/telas de adição e a condição de visibilidade.",
+      "id" : "1229CBB8-0630-4B9C-BD31-2C40B5981E66",
+      "severity" : "must",
+      "text" : "A tela/lista de adicionar agentes, comandos, skills e workflows tem um botão \"Criar com IA\" que só aparece quando há provedor de IA suportado."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:17:32Z",
+      "details" : "Verificar que nenhuma chamada nova usa Edit/Write/Bash e que passa por AIReadOnlyOperation.run.",
+      "id" : "EC6635C5-9BD5-4314-9DFC-F0C78963EC29",
+      "severity" : "must",
+      "text" : "Criar e editar com IA recebem um prompt do usuário e rodam via AIReadOnlyOperation, com Claude restrito a Read/Glob/Grep e Codex com workspaceWrites=false."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:17:32Z",
+      "details" : "Teste: gerar proposta e conferir que nenhum arquivo em disco mudou antes do aceite; mudar a proposta também não altera o disco.",
+      "id" : "A17A8FD3-AF01-4E8B-9C24-02BA1454ECAB",
+      "severity" : "must",
+      "text" : "A IA nunca grava direto: o app mostra a proposta (conteúdo completo do agente/comando/skill/workflow) e só o aceite do usuário grava o arquivo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:17:32Z",
+      "details" : "Verificar que a UI mantém a proposta atual e permite enviar novo prompt de ajuste; o prompt montado no Core inclui o conteúdo atual da proposta.",
+      "id" : "0E58B8D9-5943-49EB-BD77-C32A837D9132",
+      "severity" : "must",
+      "text" : "O usuário pode refinar a proposta com novos prompts em sequência (iterar), e cada refinamento parte da proposta atual, sem gravar nada até o aceite."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:17:32Z",
+      "details" : "Verificar via ProjectModel que há um único registro de undo por aceite e que ⌘Z restaura o estado anterior.",
+      "id" : "FD0CACE8-480E-4AE0-90D6-F67907BDAD68",
+      "severity" : "must",
+      "text" : "Aceitar uma proposta de edição substitui o conteúdo do item como um único passo de undo, e aceitar uma de criação cria o item novo como um único passo de undo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:17:32Z",
+      "details" : "Teste no Core com item de mesmo nome já existente.",
+      "id" : "A06E5A1C-A9DC-47A4-BA9F-ED523A85D9A3",
+      "severity" : "must",
+      "text" : "Criar com IA nunca sobrescreve item existente: se o nome/slug já existe, usa Slug.make + uniqueSlug."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:17:32Z",
+      "details" : "Verificar novo enum no Core (como ReviewDiscover/RuleDiscover) e testes de parse válido, JSON inválido, campos vazios e limites.",
+      "id" : "27499160-EEBF-4967-8496-3BFD7B49F4EF",
+      "severity" : "must",
+      "text" : "A lógica de montar o prompt, validar o JSON da IA e converter em proposta fica no Core (sem SwiftUI), com testes em Tests/VibeDeckCoreTests/*Discover*Tests.swift ou similar."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:17:32Z",
+      "details" : "Teste com resposta malformada: nada é gravado e o erro é VibeDeckError em pt-BR.",
+      "id" : "091D4BB7-B991-4F2E-ADE7-E1FB8E1943BA",
+      "severity" : "must",
+      "text" : "A resposta da IA é JSON validado; se o parse falhar, o app mostra erro claro em pt-BR e não altera nem cria nenhum item."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:17:32Z",
+      "details" : "Teste no Core com campos vazios/só espaços e conteúdo acima do limite.",
+      "id" : "879847D3-6152-4B11-B8F7-2226915105DA",
+      "severity" : "should",
+      "text" : "Propostas com nome vazio ou conteúdo vazio após trim são descartadas, e o tamanho do conteúdo é limitado antes de mostrar a proposta."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:17:32Z",
+      "details" : "Verificar estado de execução único por projeto e cancelamento sem gravar nada.",
+      "id" : "CF2613CF-ED8C-4D2B-9B9B-AEEE1D010247",
+      "severity" : "must",
+      "text" : "Criar e editar com IA têm botão de cancelar e timeout, e permitem uma operação por projeto por vez."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:17:32Z",
+      "details" : "Verificar comparação de identidade/versão do item antes de apresentar a proposta.",
+      "id" : "A71C362A-8EC7-41B1-8D41-68BED545AA2F",
+      "severity" : "must",
+      "text" : "Editar com IA descarta a resposta se o item mudou ou deixou de estar selecionado durante a chamada."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:17:32Z",
+      "details" : "Verificar que o Core usa AtomicFile.write e que o watcher atualiza a lista.",
+      "id" : "22B1DA2B-BCBD-4C98-8907-D11A54EC877C",
+      "severity" : "must",
+      "text" : "Itens aceitos via IA são gravados com AtomicFile.write no formato existente de agentes/comandos/skills/workflows e aparecem ao vivo nas listas sem recarregar."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:17:32Z",
+      "details" : "Verificar comando CLI e ferramenta MCP chamando a mesma operação do Core.",
+      "id" : "72801576-D68B-4804-A48A-56546267CA15",
+      "severity" : "should",
+      "text" : "Criar/editar com IA continua acessível por operação do Core, com equivalente no CLI e no MCP, e o que for criado por IA é author=ai quando o formato tiver autoria."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:17:32Z",
+      "details" : "Grep dos textos novos e conferência das seções no README e guide.",
+      "id" : "8F584E4A-39F2-4F64-A3C1-593251485BBA",
+      "severity" : "should",
+      "text" : "Os textos visíveis (botões, progresso, erros) estão em pt-BR e README e .vibedeck/guide.md documentam criar e editar com IA."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:17:32Z",
+      "details" : "Verificar que AgentView, CommandView, SkillView e WorkflowView mantêm o editor e o undo atuais.",
+      "id" : "4CCD1324-0EDE-4D36-8C07-8E6A5C37403F",
+      "severity" : "should",
+      "text" : "A edição manual (MarkdownEditor) de agentes, comandos, skills e workflows continua funcionando como hoje; a IA é um complemento, não substitui a edição direta."
+    }
+  ],
+  "status" : "done",
+  "tags" : [
+    "ia",
+    "interface",
+    "workflows",
+    "core",
+    "cli",
+    "mcp"
+  ],
+  "title" : "Botão de Criar Agentes, Comandos, Skills e Workflows com IA",
+  "updatedAt" : "2026-10-13T22:00:35Z"
+}

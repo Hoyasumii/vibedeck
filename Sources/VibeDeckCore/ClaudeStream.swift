@@ -86,6 +86,15 @@ public enum ClaudeLaunch {
         return arguments
     }
 
+    public static func arguments(mode: ClaudePermissionMode, settings: AIProviderSettings, resume sessionId: String?,
+                                 instructions: String = AIPromptPolicy.instructions) -> [String] {
+        var result = arguments(mode: mode, model: .automatic, effort: .automatic, resume: sessionId)
+        if let index = result.firstIndex(of: "--append-system-prompt") { result[index + 1] = instructions }
+        if let model = settings.model { result += ["--model", model] }
+        if let effort = settings.effort { result += ["--effort", effort] }
+        return result
+    }
+
     /// Arguments for a one-shot background `claude -p` job (rule test generation): nobody answers permission
     /// prompts, so edits go through and the tools the job needs are pre-allowed.
     public static func headlessArguments(prompt: String, model: ClaudeModel = .automatic, effort: ClaudeEffort = .automatic) -> [String] {
@@ -101,10 +110,18 @@ public enum ClaudeLaunch {
         if effort != .automatic { arguments += ["--effort", effort.rawValue] }
         return arguments
     }
+    public static func headlessArguments(prompt: String, settings: AIProviderSettings) -> [String] {
+        var result = headlessArguments(prompt: prompt)
+        if let model = settings.model { result += ["--model", model] }
+        if let effort = settings.effort { result += ["--effort", effort] }
+        return result
+    }
 }
 
 /// A question asked through Claude Code's AskUserQuestion tool.
 public struct ClaudeQuestion: Equatable, Sendable {
+    public var id: String { key ?? question }
+    public var key: String? = nil
     public struct Option: Equatable, Sendable {
         public var label: String
         public var description: String?
@@ -141,7 +158,7 @@ public struct ClaudePermissionRequest: Equatable, Sendable, Identifiable {
             let options = (q["options"]?.array ?? []).compactMap { o in
                 o["label"]?.string.map { ClaudeQuestion.Option(label: $0, description: o["description"]?.string) }
             }
-            return ClaudeQuestion(question: text, header: q["header"]?.string, options: options, multiSelect: q["multiSelect"]?.bool ?? false)
+            return ClaudeQuestion(key: q["id"]?.string, question: text, header: q["header"]?.string, options: options, multiSelect: q["multiSelect"]?.bool ?? false)
         }
     }
 }
@@ -157,6 +174,7 @@ public struct ClaudeResult: Equatable, Sendable {
     public var text: String?
     public var costUSD: Double?
     public var tokens: AITokenUsage = .init()
+    public var isInterrupted: Bool = false
 }
 
 /// One line of `claude -p --output-format stream-json`, reduced to what the panel shows.

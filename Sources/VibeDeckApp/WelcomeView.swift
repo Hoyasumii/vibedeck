@@ -3,6 +3,7 @@ import VibeDeckCore
 
 struct WelcomeView: View {
     @Binding var root: URL?
+    @State private var sshSheet = false
     @State private var pendingInit: URL?
     @State private var projectName = ""
     @State private var errorMessage: String?
@@ -20,15 +21,19 @@ struct WelcomeView: View {
                     .multilineTextAlignment(.center)
             }
 
-            Button {
+            LoggedButton {
                 if let url = FolderPicker.pick() { open(url) }
             } label: {
                 Label("Abrir pasta…", systemImage: "folder")
                     .padding(.horizontal, 12).padding(.vertical, 4)
-            }
+            }.loggedControl(control: "welcome_view.button_1", label: "Abrir pasta…")
             .buttonStyle(.glassProminent)
             .controlSize(.large)
             .keyboardShortcut(.defaultAction)
+
+            LoggedButton("Conectar via SSH…") { sshSheet = true }
+                .loggedControl(control: "welcome.ssh", label: "Conectar via SSH")
+                .buttonStyle(.glass)
 
             if !recents.urls.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
@@ -36,11 +41,11 @@ struct WelcomeView: View {
                     GlassEffectContainer(spacing: 4) {
                         VStack(spacing: 4) {
                             ForEach(recents.urls, id: \.self) { url in
-                                Button { open(url) } label: {
+                                LoggedButton { open(url) } label: {
                                     HStack {
                                         Image(systemName: "folder.fill").foregroundStyle(.tint)
                                         VStack(alignment: .leading) {
-                                            Text(url.lastPathComponent)
+                                            Text(RemoteWorkspace.existing(at: url)?.destination.title ?? url.lastPathComponent)
                                             Text(url.deletingLastPathComponent().path(percentEncoded: false))
                                                 .font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
                                         }
@@ -48,10 +53,10 @@ struct WelcomeView: View {
                                     }
                                     .padding(.horizontal, 12).padding(.vertical, 8)
                                     .contentShape(.rect)
-                                }
+                                }.loggedControl(control: "welcome_view.button_2", label: "Ativar controle")
                                 .buttonStyle(.plain)
                                 .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 12))
-                                .contextMenu { Button("Remover dos recentes") { recents.remove(url) } }
+                                .contextMenu { LoggedButton("Remover dos recentes") { recents.remove(url) }.loggedControl(control: "welcome_view.button_3", label: "Remover dos recentes") }
                             }
                         }
                     }
@@ -68,6 +73,7 @@ struct WelcomeView: View {
             open(url)
             return true
         }
+        .sheet(isPresented: $sshSheet) { SSHProjectSheet { root = $0 } }
         .sheet(item: $pendingInit) { url in
             InitProjectSheet(url: url, name: $projectName) {
                 do {
@@ -82,7 +88,7 @@ struct WelcomeView: View {
         // A folder that arrived through ⌘O / onOpenURL / the Dock but isn't a project yet: offer to initialize it.
         .onAppear { if let root { open(root) } }
         .alert("Erro", isPresented: .constant(errorMessage != nil)) {
-            Button("OK") { errorMessage = nil }
+            LoggedButton("OK") { errorMessage = nil }.loggedControl(control: "welcome_view.button_4", label: "OK")
         } message: { Text(errorMessage ?? "") }
     }
 
@@ -112,13 +118,13 @@ struct InitProjectSheet: View {
                 .font(.headline)
             Text("Criar **vibedeck.json** e a pasta **.vibedeck/** em\n\(url.path(percentEncoded: false))")
                 .foregroundStyle(.secondary)
-            TextField("Nome do projeto", text: $name)
+            LoggedTextField("Nome do projeto", text: $name).loggedField(control: "welcomeview.text_1", label: "Nome do projeto")
                 .textFieldStyle(.roundedBorder)
             HStack {
                 Spacer()
-                Button("Cancelar", role: .cancel) { dismiss() }
+                LoggedButton("Cancelar", role: .cancel) { dismiss() }.loggedControl(control: "welcome_view.button_5", label: "Cancelar")
                     .buttonStyle(.glass)
-                Button("Inicializar projeto", action: onCreate)
+                LoggedButton("Inicializar projeto", action: onCreate).loggedControl(control: "welcome_view.button_6", label: "Inicializar projeto")
                     .buttonStyle(.glassProminent)
                     .keyboardShortcut(.defaultAction)
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)

@@ -1,0 +1,122 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "human",
+  "body" : "## Problema\nNo painel **Links**, abrir um link (duplo clique ou \"Abrir\" no menu de contexto) chama `openURL` em `LinksView.open(_:)` (`Sources/VibeDeckApp/LinksView.swift:106`). Isso manda o usuário para o navegador externo e tira o foco do app, mesmo quando ele só quer consultar a página rapidamente.\n\n## Proposta\nAo abrir um link, mostrar a página num **visualizador interno** (WKWebView) num painel ao lado da tabela de links. O painel pode ser fechado. Ele não é um navegador: carrega só o necessário para a página aparecer corretamente (subrecursos, iframes, redirecionamento inicial). Cliques que levariam a outra página abrem no navegador padrão.\n\n## Escopo\n- `Sources/VibeDeckApp/LinksView.swift`: `open(_:)`, `primaryAction` e menu de contexto da tabela. Também o novo painel do visualizador, com estado do link exibido, WKWebView via `NSViewRepresentable` e `WKNavigationDelegate`/`WKUIDelegate`.\n- Referência de WKWebView já usada no app: `Sources/VibeDeckApp/GraphView.swift`.\n- `README.md` e `.vibedeck/guide.md`: documentação em pt-BR.\n- Fora do escopo: barra de endereço, histórico, navegação livre e persistência de cookies.\n\n## Critérios de aceite\n**Must**\n- Duplo clique (`primaryAction`) ou \"Abrir\" num link abre a URL num WKWebView dentro da LinksView, num painel ao lado da tabela, sem abrir o navegador externo. *Verificar:* `open(_:)` não chama `openURL`/`NSWorkspace` para http(s) e apenas define o link exibido no painel.\n- O painel tem um botão **Fechar** (rótulo e `.help` em pt-BR) que esconde o painel e devolve a largura total à tabela. *Verificar:* `LoggedButton \"Fechar\"`; ao clicar, o link exibido vira `nil` e o WKWebView é desmontado.\n- O painel só carrega URLs `http`/`https`. Outros esquemas (`file`, `javascript`, `data`, `vibedeck-*`) não são carregados. *Verificar:* checagem de `url.scheme` antes de `load(URLRequest)` e no `decidePolicyFor` do frame principal.\n- Clique em link dentro da página (`.linkActivated` no frame principal para outra URL) é cancelado, e a URL abre no navegador padrão. *Verificar:* `decidePolicyFor` retorna `.cancel` e chama `NSWorkspace.shared.open`. `window.open`/`target=_blank` seguem a mesma regra (`createWebViewWith` retorna `nil`).\n- Subrecursos, iframes e o redirecionamento HTTP inicial do frame principal são permitidos. *Verificar:* `decidePolicyFor` permite navegações que não são `.linkActivated`/`.formSubmitted` e as de subframes; um link que redireciona (ex.: http→https) carrega a página final.\n- Abrir e fechar o visualizador não altera arquivos do projeto nem registra passo de undo. *Verificar:* não chama `model.mutateProject`.\n- Os botões novos (Fechar, Abrir no navegador) usam `LoggedButton` com `loggedControl` de identificador estável (`links_view.…`). O log não guarda a URL do link.\n\n**Should**\n- Sem barra de endereço, campo de URL ou botões voltar/avançar (sem `TextField` de URL nem `goBack`/`goForward`).\n- O painel mostra o título do link, um indicador de carregamento (`isLoading`) e uma mensagem de erro em pt-BR em `didFail`/`didFailProvisionalNavigation`.\n- O app mantém **\"Abrir no navegador\"** no menu de contexto da tabela e como botão no painel, chamando `openURL`.\n- O WKWebView usa `config.websiteDataStore = .nonPersistent()`, sem compartilhar cookies ou dados com o resto do app.\n- `README.md` e `.vibedeck/guide.md` explicam, em pt-BR, que abrir um link no painel Links mostra a página num visualizador interno que pode ser fechado.",
+  "createdAt" : "2026-10-14T16:17:16Z",
+  "id" : "1BEBA1FF-F64E-4DA3-8159-6298B55DF18F",
+  "paths" : [
+    "Sources/VibeDeckApp/LinksView.swift"
+  ],
+  "promotedTopic" : "visualizador-de-links-para-links",
+  "readiness" : {
+    "checkedAt" : "2026-10-14T16:22:26Z",
+    "fingerprint" : "4c88450a51fa3f7e",
+    "viable" : true
+  },
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-14T16:19:18Z",
+      "details" : "Verificar: em LinksView.swift, open(_:) não chama openURL/NSWorkspace para http(s); define o link exibido no painel embutido.",
+      "id" : "1C1C5ABF-7227-4AA0-BCCE-CED05166C986",
+      "severity" : "must",
+      "text" : "Dar duplo clique (primaryAction) ou usar \"Abrir\" num link do painel Links abre a URL num WKWebView dentro da LinksView, num painel ao lado da tabela, sem abrir o navegador externo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-14T16:19:18Z",
+      "details" : "Verificar: botão LoggedButton \"Fechar\" no painel; ao clicar, o estado do link exibido vira nil e o WKWebView é desmontado.",
+      "id" : "E3F62314-FE97-4AC7-A461-A60E65C2B3F4",
+      "severity" : "must",
+      "text" : "O painel do visualizador tem um botão Fechar com rótulo/.help em pt-BR que esconde o painel e devolve a tabela à largura total."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-14T16:19:18Z",
+      "details" : "Verificar: checagem de url.scheme antes de load(URLRequest) e no decidePolicyFor do frame principal.",
+      "id" : "E91D194A-1CFB-4441-BEDD-318E633FB803",
+      "severity" : "must",
+      "text" : "O visualizador só carrega URLs com esquema http ou https; outros esquemas (file, javascript, data, vibedeck-*) não são carregados no painel."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-14T16:19:18Z",
+      "details" : "Verificar: WKNavigationDelegate.decidePolicyFor retorna .cancel para .linkActivated com URL diferente da carregada e chama NSWorkspace.shared.open; o mesmo vale para window.open/target=_blank (createWebViewWith retorna nil).",
+      "id" : "6A9A61C1-F15B-4BFE-8900-8D5B52538BB3",
+      "severity" : "must",
+      "text" : "Cliques em links dentro da página (navigationType .linkActivated no frame principal para outra URL) não navegam no painel: são cancelados e a URL abre no navegador padrão."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-14T16:19:18Z",
+      "details" : "Verificar: decidePolicyFor permite navegações que não são .linkActivated/.formSubmitted e as de subframes; abrir um link que redireciona (ex.: http→https) carrega a página final.",
+      "id" : "255D84F4-0E6F-42A5-B397-354A19F9DF68",
+      "severity" : "must",
+      "text" : "Recursos e redirecionamentos necessários para a página carregar (subrecursos, iframes, redirecionamento HTTP inicial do frame principal) são permitidos."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-14T16:19:18Z",
+      "details" : "Verificar: a view do visualizador não contém TextField de URL nem chamadas goBack/goForward.",
+      "id" : "9CE5DAE3-2DED-4AF0-B155-3260BEAF848B",
+      "severity" : "should",
+      "text" : "O painel não tem barra de endereço, campo de URL nem botões voltar/avançar."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-14T16:19:18Z",
+      "details" : "Verificar: estados isLoading e didFail/didFailProvisionalNavigation tratados com texto em pt-BR.",
+      "id" : "2E01463A-F12B-4069-AD00-44C06D0033F6",
+      "severity" : "should",
+      "text" : "O painel mostra o título do link, um indicador de carregamento enquanto a página carrega e uma mensagem de erro em pt-BR se o carregamento falhar."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-14T16:19:18Z",
+      "details" : "Verificar: menu de contexto da tabela e o painel têm LoggedButton \"Abrir no navegador\" que chama openURL.",
+      "id" : "0D90AD99-DA31-4FCE-B5DF-B7CF0FDD3D7B",
+      "severity" : "should",
+      "text" : "O painel mantém a ação \"Abrir no navegador\" (menu de contexto e botão no painel) para abrir o link externamente."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-14T16:19:18Z",
+      "details" : "Verificar: abrir/fechar não chama model.mutateProject.",
+      "id" : "7505B03D-8545-4D43-B08E-1014B01C6FFF",
+      "severity" : "must",
+      "text" : "Abrir e fechar o visualizador não altera nenhum arquivo do projeto nem registra passo de undo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-14T16:19:18Z",
+      "details" : "Verificar: config.websiteDataStore = .nonPersistent() no makeNSView do visualizador.",
+      "id" : "96C88E4A-25DC-4896-8452-96210D42138B",
+      "severity" : "should",
+      "text" : "O WKWebView do visualizador usa websiteDataStore não persistente, sem compartilhar cookies ou dados com o restante do app."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-14T16:19:18Z",
+      "details" : "Verificar: loggedControl(control: \"links_view.…\") e nenhum context com a URL.",
+      "id" : "3783446F-91A8-4821-9340-F48095D556EB",
+      "severity" : "must",
+      "text" : "Os botões novos (Fechar, Abrir no navegador) usam LoggedButton com loggedControl de identificador estável, e o log não guarda a URL do link."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-14T16:19:18Z",
+      "id" : "326DEF11-9A8D-4031-97BB-5478952A06C7",
+      "severity" : "should",
+      "text" : "README e .vibedeck/guide.md descrevem, em pt-BR, que abrir um link no painel Links o mostra num visualizador interno que pode ser fechado."
+    }
+  ],
+  "status" : "done",
+  "tags" : [
+    "links",
+    "interface",
+    "swiftui",
+    "ui"
+  ],
+  "title" : "Visualizador de Links para Links",
+  "updatedAt" : "2026-10-14T17:21:30Z"
+}

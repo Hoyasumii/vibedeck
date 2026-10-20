@@ -8,11 +8,11 @@ struct RuleExecutionControls: View {
 
     var body: some View {
         Menu {
-            Button("Executar sem IA") { model.startRuleExecution(topic: topic) }
-            if session.provider.isInstalled {
-                Button("Executar com IA (\(session.provider.title))") {
+            LoggedButton("Executar sem IA") { model.startRuleExecution(topic: topic) }.loggedControl(control: "rule_execution_view.button_1", label: "Executar sem IA")
+            if RemoteExecution.available(session.provider, root: model.store.root) {
+                LoggedButton("Executar com IA (\(session.provider.title))") {
                     model.startRuleExecution(topic: topic, withAI: true, provider: session.provider)
-                }
+                }.loggedControl(control: "rule_execution_view.button_2", label: "Ativar controle")
             }
         } label: {
             Label("Executar regras", systemImage: "play")
@@ -46,7 +46,14 @@ struct RuleExecutionPanel: View {
                     Text(execution.withAI ? "Scripts → IA · \(execution.provider.title)" : "Somente scripts").font(.headline)
                     Spacer()
                     Text("\(execution.completed)/\(execution.steps.count)").monospacedDigit()
-                    if execution.active { ProgressView().controlSize(.mini) }
+                    if execution.active {
+                        ProgressView().controlSize(.mini)
+                        LoggedButton("Cancelar", role: .cancel) { execution.cancel() }
+                            .loggedControl(control: "rule_execution_view.cancel", label: "Cancelar")
+                            .controlSize(.small)
+                            .disabled(execution.cancelled)
+                            .help("Encerra os scripts em andamento e não inicia os da fila")
+                    }
                 }
                 ProgressView(value: execution.progress)
                     .accessibilityLabel("Progresso das regras")
@@ -107,6 +114,7 @@ struct RuleExecutionPanel: View {
         return seconds < 60 ? "\(seconds)s" : "\(seconds / 60)min \(seconds % 60)s"
     }
     private func status(_ step: RuleExecutionModel.Step) -> String {
+        if step.skipped { return "Não executado" }
         if step.error != nil { return "Erro" }
         if let result = step.result {
             switch result.verdict { case .pass: return "Aprovada"; case .fail: return "Reprovada"; case .na: return "Não aplicável" }
@@ -114,6 +122,7 @@ struct RuleExecutionPanel: View {
         return step.started == nil ? "Aguardando" : "Executando"
     }
     private func symbol(_ step: RuleExecutionModel.Step) -> String {
+        if step.skipped { return "slash.circle" }
         if step.error != nil { return "exclamationmark.triangle" }
         if let result = step.result {
             switch result.verdict { case .pass: return "checkmark.circle.fill"; case .fail: return "xmark.circle.fill"; case .na: return "minus.circle" }

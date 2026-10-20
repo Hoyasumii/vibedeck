@@ -8,8 +8,37 @@ struct VibeDeckCLI: AsyncParsableCommand {
         commandName: "vibedeck",
         abstract: "Gerencia projetos VibeDeck (links, docs, revisões, regras e ideias) a partir do terminal.",
         version: "0.2.0",
-        subcommands: [Graph.self, AI.self, Init.self, Status.self, Stack.self, Patterns.self, Links.self, Docs.self, Review.self, Rules.self, Ideas.self, Agents.self, Commands.self, Skills.self, Workflows.self, Runs.self, Tag.self, Hook.self, Usage.self, Cloud.self, MCPCommand.self]
+        subcommands: [Reorganize.self, ItemGroups.self, Kits.self, Graph.self, AI.self, Init.self, Status.self, Stack.self, Patterns.self, Links.self, Claude.self, Docs.self, Review.self, Rules.self, Ideas.self, Agents.self, Commands.self, Skills.self, Workflows.self, Runs.self, Tag.self, Hook.self, Usage.self, Cloud.self, Logs.self, MCPCommand.self]
     )
+
+    /// Same as ArgumentParser's default, plus logging of failed commands. Parse errors (typos) and
+    /// deliberate exits (ExitCode, help) aren't failures and stay out of the log.
+    static func main() async {
+        VDLog.configure(component: .cli, version: configuration.version)
+        let command: ParsableCommand
+        do { command = try parseAsRoot() } catch { exit(withError: error) }
+        let started = Date.now
+        do {
+            var command = command
+            if var asyncCommand = command as? AsyncParsableCommand { try await asyncCommand.run() } else { try command.run() }
+            VDLog.info("cli.command_completed", "Comando executado", context: ["command": commandPath(command), "ms": String(Int(Date.now.timeIntervalSince(started) * 1000))])
+            VDLog.flush()
+        } catch {
+            // `vibedeck help <x>` (HelpCommand) throws ArgumentParser's (internal) CommandError wrapping a help request: not a failure.
+            if !(error is ExitCode), !(error is CleanExit), String(describing: type(of: error)) != "CommandError" {
+                VDLog.log(error is VibeDeckError ? .warning : .error, "cli.command_failed",
+                          "Falha no comando",
+                          context: ["command": commandPath(command), "errorType": String(describing: type(of: error))])
+            }
+            VDLog.flush()
+            exit(withError: error)
+        }
+    }
+
+    /// `vibedeck.Ideas.Show` -> "ideas show".
+    private static func commandPath(_ command: ParsableCommand) -> String {
+        String(reflecting: type(of: command)).split(separator: ".").dropFirst().joined(separator: " ").lowercased()
+    }
 }
 
 struct RootOptions: ParsableArguments {
@@ -22,8 +51,40 @@ struct RootOptions: ParsableArguments {
 
     func store() throws -> ProjectStore {
         let store = try ProjectStore.locate(from: startURL)
+        VDLog.setProject(store.root)
         try? store.refreshAgentsGuideIfNeeded()
         return store
+    }
+}
+
+struct Kits: ParsableCommand {
+    static let configuration = CommandConfiguration(abstract: "Kits pré-definidos de agentes, comandos, skills e workflows.", subcommands: [List.self, Add.self])
+
+    struct Add: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Adiciona a seleção explícita do catálogo; exige selecionar todas as dependências.")
+        @OptionGroup var options: RootOptions
+        @Argument(help: "Ids de kits completos ou de itens (consulte kits list).") var items: [String] = []
+        @Flag(help: "Marca os itens como criados por IA.") var ai = false
+        @Flag(help: "Saída em JSON.") var json = false
+        func run() throws {
+            let added = try options.store().addKitItems(items, author: ai ? .ai : .human)
+            if json { try printJSON(added) }
+            else { for item in added { print("\(item.kind.title): \(item.slug)") } }
+        }
+    }
+
+    struct List: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Consulta os conteúdos e as dependências do catálogo, sem adicionar itens.")
+        @Flag(help: "Saída em JSON.") var json = false
+        func run() throws {
+            if json { try printJSON(KitCatalog.kits) }
+            else {
+                for kit in KitCatalog.kits {
+                    print("\(kit.id) · \(kit.title) — \(kit.summary)")
+                    for item in kit.items { print("  \(item.id) · \(item.kind.title): \(item.title)") }
+                }
+            }
+        }
     }
 }
 
@@ -115,7 +176,7 @@ struct Status: ParsableCommand {
         if !project.stack.isEmpty { print("Stack: " + project.stack.map(\.name).joined(separator: ", ")) }
         if !project.patterns.isEmpty { print("Padrões: " + project.patterns.map(\.name).joined(separator: ", ")) }
         print("\nLinks: \(project.links.count)  Docs: \(docs.count)  Grupos de revisão: \(groups.count)")
-        for (slug, group) in groups {
+        for (slug, group, _) in groups {
             print("  • \(group.title) [\(slug)] — \(group.openCount) aberto(s) de \(group.items.count)")
         }
         let ruleCount = topics.reduce(0) { $0 + $1.topic.rules.count }
@@ -420,6 +481,52 @@ struct Links: ParsableCommand {
     }
 }
 
+// MARK: - Claude collection
+
+extension ClaudeItemKind: ExpressibleByArgument {}
+
+struct Claude: ParsableCommand {
+    static let configuration = CommandConfiguration(abstract: "Coleção de artefatos e docs do Claude deste projeto.", subcommands: [List.self, Add.self, Remove.self], defaultSubcommand: List.self)
+
+    struct List: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Flag(help: "Saída JSON.") var json = false
+        @Option(help: "Filtrar por artifact ou doc.") var kind: ClaudeItemKind?
+
+        func run() throws {
+            let items = try options.store().loadProject().claude.filter { kind == nil || $0.kind == kind }
+            if json { return try printJSON(items) }
+            for item in items {
+                print("\(item.id.uuidString.prefix(8))  [\(item.kind.title)] \(item.title)  \(item.url)  \(item.addedAt.formatted())\(hashtags(item.tags))")
+            }
+        }
+    }
+
+    struct Add: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Argument var url: String
+        @Option(help: "Tipo escolhido pelo usuário: artifact ou doc.") var kind: ClaudeItemKind
+        @Option var title: String?
+        @Option(parsing: .upToNextOption) var tags: [String] = []
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws {
+            let item = try options.store().addClaudeItem(url: url, kind: kind, title: title, tags: tags)
+            if json { return try printJSON(item) }
+            print(item.id.uuidString)
+        }
+    }
+
+    struct Remove: ParsableCommand {
+        @OptionGroup var options: RootOptions
+        @Argument(help: "Id, prefixo (pelo menos 4 caracteres) ou título.") var id: String
+
+        func run() throws {
+            try options.store().removeClaudeItem(id)
+        }
+    }
+}
+
 // MARK: - docs
 
 struct Docs: ParsableCommand {
@@ -427,7 +534,9 @@ struct Docs: ParsableCommand {
 
     struct List: ParsableCommand {
         @OptionGroup var options: RootOptions
+        @Flag(help: "Saída JSON com o grupo.") var json = false
         func run() throws {
+            if json { return try printJSON(options.store().listDocs().map { GroupedRecord(slug: $0.slug, value: $0) }) }
             for doc in try options.store().listDocs() { print("\(doc.slug)\t\(doc.title)\(hashtags(doc.tags))") }
         }
     }
@@ -442,10 +551,11 @@ struct Docs: ParsableCommand {
         @OptionGroup var options: RootOptions
         @Argument var title: String
         @Option var body: String = ""
+        @Option(help: "Caminho completo grupo/slug.") var reference: String?
         @Flag var ai = false
         func run() throws {
             let store = try options.store()
-            print(try ai ? store.createGeneratedDoc(title: title, body: body) : store.createDoc(title: title, body: body))
+            print(try ai ? store.createGeneratedDoc(title: title, body: body, reference: reference) : store.createDoc(title: title, body: body, reference: reference))
         }
     }
 
@@ -475,8 +585,10 @@ struct Review: ParsableCommand {
 
     struct Groups: ParsableCommand {
         @OptionGroup var options: RootOptions
+        @Flag(help: "Saída JSON com o grupo de diretório.") var json = false
         func run() throws {
-            for (slug, g) in try options.store().listGroups() { print("\(slug)\t\(g.title)\t\(g.openCount)/\(g.items.count)\(hashtags(g.tags))") }
+            if json { return try printJSON(options.store().listGroups().map { GroupedRecord(slug: $0.slug, value: $0.group) }) }
+            for (slug, g, _) in try options.store().listGroups() { print("\(slug)\t\(g.title)\t\(g.openCount)/\(g.items.count)\(hashtags(g.tags))") }
         }
     }
 
@@ -828,8 +940,8 @@ struct Ideas: ParsableCommand {
 
         func run() throws {
             let ideas = try options.store().listIdeas().filter { status == nil || $0.idea.status == status }
-            if json { return try printJSON(ideas.map(\.idea)) }
-            for (slug, idea) in ideas {
+            if json { return try printJSON(ideas.map { GroupedRecord(slug: $0.slug, value: $0.idea) }) }
+            for (slug, idea, _) in ideas {
                 let tags = idea.tags.isEmpty ? "" : "  #" + idea.tags.joined(separator: " #")
                 print("\(slug)\t[\(idea.status.rawValue)] \(idea.title)  (\(idea.rules.count) regra(s))\(tags)")
             }
@@ -855,12 +967,13 @@ struct Ideas: ParsableCommand {
     struct New: ParsableCommand {
         @OptionGroup var options: RootOptions
         @Argument var title: String
+        @Option(help: "Caminho completo grupo/slug.") var reference: String?
         @Option var body: String?
         @Option(parsing: .upToNextOption) var tags: [String] = []
         @Flag(help: "Marca a ideia como criada por IA.") var ai = false
 
         func run() throws {
-            print(try options.store().createIdea(title: title, body: body, tags: tags, author: ai ? .ai : .human).slug)
+            print(try options.store().createIdea(title: title, body: body, tags: tags, author: ai ? .ai : .human, reference: reference).slug)
         }
     }
 
@@ -1231,8 +1344,8 @@ struct Skills: ParsableCommand {
 
         func run() throws {
             let skills = try options.store().listSkills()
-            if json { return try printJSON(skills.map(\.skill)) }
-            for (slug, s) in skills {
+            if json { return try printJSON(skills.map { GroupedRecord(slug: $0.slug, value: $0.skill) }) }
+            for (slug, s, _) in skills {
                 let tags = s.tags.isEmpty ? "" : "  #" + s.tags.joined(separator: " #")
                 print("\(slug)\t\(s.title)  [\(s.model ?? "herdado")]  → \(s.nextSteps.count) passo(s)\(tags)")
             }
@@ -1259,6 +1372,7 @@ struct Skills: ParsableCommand {
     struct New: ParsableCommand {
         @OptionGroup var options: RootOptions
         @Argument var title: String
+        @Option(help: "Caminho completo grupo/slug.") var reference: String?
         @Option var model: String?
         @Option(help: "Quando usar a skill (é o que a dispara).") var summary: String?
         @Option var prompt: String = ""
@@ -1268,7 +1382,7 @@ struct Skills: ParsableCommand {
 
         func run() throws {
             print(try options.store().createSkill(
-                title: title, summary: summary, model: model, tools: tools, prompt: prompt, tags: tags, author: ai ? .ai : .human
+                title: title, summary: summary, model: model, tools: tools, prompt: prompt, tags: tags, author: ai ? .ai : .human, reference: reference
             ).slug)
         }
     }
@@ -2075,5 +2189,74 @@ struct Cloud: ParsableCommand {
                 throw ExitCode.failure
             }
         }
+    }
+}
+
+// MARK: - logs
+
+extension LogLevel: ExpressibleByArgument {}
+
+struct Logs: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Logs de erros, falhas e crashes do app, do CLI e do MCP (ficam fora do projeto, em Application Support).",
+        subcommands: [List.self, Report.self, Crashes.self, Path.self],
+        defaultSubcommand: List.self
+    )
+
+    struct FilterOptions: ParsableArguments {
+        @OptionGroup var root: RootOptions
+        @Option(help: "Período: 30m, 24h, 7d.") var since = "24h"
+        @Option(help: "Nível mínimo: debug, info, warning, error ou crash.") var level: LogLevel = .warning
+        @Option(parsing: .upToNextOption, help: "Componentes: app, cli, mcp, core, rules, ai, hook.") var component: [String] = []
+        @Flag(help: "Inclui todos os projetos (padrão: só o projeto atual, se houver).") var allProjects = false
+        @Option(help: "Texto a procurar no evento, na mensagem ou no contexto.") var search: String?
+        @Option(help: "Id de correlação da ação.") var action: String?
+        @Option(help: "Máximo de entradas.") var limit = 100
+
+        func filter() throws -> LogFilter {
+            let project = allProjects ? nil : (try? ProjectStore.locate(from: root.startURL))?.root.standardizedFileURL.path
+            return LogFilter(since: try LogFilter.parseSince(since), minLevel: level, components: try LogFilter.parseComponents(component),
+                             project: project, search: search, action: action, limit: limit)
+        }
+    }
+
+    struct List: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Lista as entradas mais recentes primeiro.")
+        @OptionGroup var options: FilterOptions
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws {
+            let entries = LogStore.default.entries(try options.filter())
+            if json { return try printJSON(entries) }
+            if entries.isEmpty { return print("Nenhuma entrada no período.") }
+            entries.forEach { print($0.line) }
+        }
+    }
+
+    struct Report: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Relatório em texto, do mais antigo ao mais novo, para colar numa issue.")
+        @OptionGroup var options: FilterOptions
+
+        func run() throws {
+            print(LogStore.default.report(try options.filter(), header: "Relatório de diagnóstico do VibeDeck \(VibeDeckCLI.configuration.version)"), terminator: "")
+        }
+    }
+
+    struct Crashes: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Crashes e encerramentos inesperados do app registrados.")
+        @Option(help: "Período: 30m, 24h, 7d.") var since = "14d"
+        @Flag(help: "Saída JSON.") var json = false
+
+        func run() throws {
+            let entries = LogStore.default.entries(LogFilter(since: try LogFilter.parseSince(since), minLevel: .crash))
+            if json { return try printJSON(entries) }
+            if entries.isEmpty { return print("Nenhum crash registrado no período.") }
+            entries.forEach { print($0.line) }
+        }
+    }
+
+    struct Path: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Mostra a pasta dos logs.")
+        func run() { print(LogStore.default.dir.path) }
     }
 }

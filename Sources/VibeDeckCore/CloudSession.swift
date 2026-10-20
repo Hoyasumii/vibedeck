@@ -23,12 +23,15 @@ enum Git {
         process.standardOutput = out
         process.standardError = err
         process.standardInput = FileHandle.nullDevice
-        do { try process.run() } catch { return Output(stdout: "", stderr: error.localizedDescription, status: -1) }
+        do {
+            try RemoteExecution.configure(process, root: root, program: "git", environment: ["GIT_TERMINAL_PROMPT": "0"])
+            try process.run()
+        } catch { return Output(stdout: "", stderr: error.localizedDescription, status: -1) }
         // Read stderr concurrently so a chatty command can't fill its pipe and deadlock.
         nonisolated(unsafe) var errData = Data()
         let group = DispatchGroup()
         group.enter()
-        DispatchQueue.global().async { errData = err.fileHandleForReading.readDataToEndOfFile(); group.leave() }
+        Thread.detachNewThread { errData = err.fileHandleForReading.readDataToEndOfFile(); group.leave() }
         let outData = out.fileHandleForReading.readDataToEndOfFile()
         group.wait()
         process.waitUntilExit()
@@ -134,8 +137,11 @@ public struct CloudSync: Equatable, Sendable, Encodable {
 public enum CloudSession {
     /// Fetches the default branch from origin and compares it with the local one.
     public static func check(root: URL) -> CloudSync {
-        guard Git.run(["rev-parse", "--is-inside-work-tree"], in: root).ok else {
-            return CloudSync(branch: "main", remoteURL: nil, problem: .notARepo)
+        let repository = Git.run(["rev-parse", "--is-inside-work-tree"], in: root)
+        guard repository.ok else {
+            let problem: CloudSync.Problem = RemoteWorkspace.existing(at: root) != nil && repository.status != 128
+                ? .fetchFailed(repository.stderr) : .notARepo
+            return CloudSync(branch: "main", remoteURL: nil, problem: problem)
         }
         let remote = Git.run(["remote", "get-url", "origin"], in: root)
         let remoteURL = remote.ok ? remote.stdout.trimmingCharacters(in: .whitespacesAndNewlines) : nil
@@ -158,7 +164,7 @@ public enum CloudSession {
         let sync = check(root: root)
         if sync.blocked { throw VibeDeckError.cloudNotSynced(sync) }
         if !sync.dirty.isEmpty, !allowDirty { throw VibeDeckError.cloudDirty(sync) }
-        guard let executable = provider.executable else { throw VibeDeckError.cloudSessionFailed("\(provider.title) não está instalado.") }
+        guard let executable = RemoteExecution.executable(provider, root: root) else { throw VibeDeckError.cloudSessionFailed("\(provider.title) não está instalado.") }
         let cloudEnvironment = environment ?? (try? ProjectStore(root: root).loadProject().codexCloudEnvironment)
         if provider == .codex, cloudEnvironment?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false {
             throw VibeDeckError.cloudSessionFailed("Configure o ambiente do Codex Cloud (--env) antes de criar a sessão.")
@@ -190,14 +196,24 @@ public enum CloudSession {
                 found.signal()
             }
         }
-        do { try process.run() } catch { throw VibeDeckError.cloudSessionFailed(error.localizedDescription) }
+        do {
+            try RemoteExecution.configure(process, root: root, program: provider.rawValue)
+            try process.run()
+        } catch {
+            VDLog.error(error, event: "cloud.launch_failed", project: root, context: ["provider": provider.rawValue])
+            throw VibeDeckError.cloudSessionFailed(error.localizedDescription)
+        }
         _ = found.wait(timeout: .now() + timeout)
         pipe.fileHandleForReading.readabilityHandler = nil
         if process.isRunning { process.terminate() }
         process.waitUntilExit()
         let output = collected.withLock { String(decoding: $0, as: UTF8.self) }.trimmingCharacters(in: .whitespacesAndNewlines)
         let url = parseSessionURL(output, provider: provider)
-        if url == nil, process.terminationStatus != 0 || output.isEmpty { throw VibeDeckError.cloudSessionFailed(output) }
+        if url == nil, process.terminationStatus != 0 || output.isEmpty {
+            VDLog.error("cloud.session_failed", "Sessão na nuvem não foi criada", project: root,
+                        context: ["provider": provider.rawValue, "status": String(process.terminationStatus), "outputBytes": String(output.utf8.count)])
+            throw VibeDeckError.cloudSessionFailed(output)
+        }
         return (sync, url, output)
     }
 

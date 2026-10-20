@@ -1,0 +1,13 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "ai",
+  "body" : "Propor uma etapa opcional de refinamento para ideias com descrição ausente: registrar problema, público, resultado esperado e critérios de aceite antes de avaliar viabilidade. Nova Interface já traz rascunhos de requisitos; Tela Inicial do Aplicativo e Suporte a Idiomas têm apenas títulos. Preservar conteúdos existentes e estados; qualquer complemento seria apresentado para aceite, sem promoção.",
+  "createdAt" : "2026-10-14T01:27:11Z",
+  "id" : "245B6E21-B686-4737-B3D1-5A26993F0F25",
+  "rules" : [
+
+  ],
+  "status" : "new",
+  "title" : "Refinar ideias com descrição incompleta",
+  "updatedAt" : "2026-10-14T01:27:11Z"
+}

@@ -1,13 +1,17 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import WebKit
 import VibeDeckCore
 
 struct LinksView: View {
+    @Environment(\.logProject) private var logProject
     @Environment(ProjectModel.self) private var model
     @Environment(\.undoManager) private var undo
     @Environment(\.openURL) private var openURL
     @State private var selection = Set<ProjectLink.ID>()
+    @State private var viewing: ProjectLink?
     @State private var editing: ProjectLink?
+    @State private var claudeEditing: ClaudeItem?
     @State private var search = ""
 
     private var links: [ProjectLink] {
@@ -20,47 +24,63 @@ struct LinksView: View {
     }
 
     var body: some View {
-        Group {
-            if model.project.links.isEmpty {
-                ContentUnavailableView {
-                    Label("Sem links", systemImage: "link")
-                } description: {
-                    Text("Adicione com + ou cole uma URL (⌘V).")
-                } actions: {
-                    Button("Adicionar link") { editing = ProjectLink(title: "", url: "") }.buttonStyle(.glass)
+        HSplitView {
+            Group {
+                if model.project.links.isEmpty {
+                    ContentUnavailableView {
+                        Label("Sem links", systemImage: "link")
+                    } description: {
+                        Text("Adicione com + ou cole uma URL (⌘V).")
+                    } actions: {
+                        LoggedButton("Adicionar link") { editing = ProjectLink(title: "", url: "") }.loggedControl(control: "links_view.button_1", label: "Adicionar link").buttonStyle(.glass)
+                    }
+                } else {
+                    Table(links, selection: $selection.logging(control: "links_view.selection_11", label: "Seleção", project: logProject)) {
+                        TableColumn("Título") { link in
+                            Text(link.title).fontWeight(.medium)
+                        }
+                        TableColumn("URL") { link in
+                            Text(link.url).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                        }
+                        TableColumn("Tags") { link in
+                            TagChips(tags: link.tags)
+                        }
+                        .width(min: 80, ideal: 160)
+                    }
+                    .contextMenu(forSelectionType: ProjectLink.ID.self) { ids in
+                        if let id = ids.first, let link = model.project.links.first(where: { $0.id == id }) {
+                            LoggedButton("Abrir") { open(link) }.loggedControl(control: "links_view.button_2", label: "Abrir")
+                            LoggedButton("Abrir no navegador") {
+                                if let url = URL(string: link.url) { openURL(url) }
+                            }.loggedControl(control: "links_view.open_in_browser", label: "Abrir no navegador")
+                            LoggedButton("Copiar URL") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(link.url, forType: .string) }.loggedControl(control: "links_view.button_3", label: "Copiar URL")
+                            LoggedButton("Editar…") { editing = link }.loggedControl(control: "links_view.button_4", label: "Editar…")
+                            Divider()
+                        }
+                        LoggedButton("Remover", role: .destructive) { remove(ids) }.loggedControl(control: "links_view.button_5", label: "Remover")
+                    } primaryAction: { ids in
+                        ids.compactMap { id in model.project.links.first { $0.id == id } }.forEach(open)
+                    }
+                    .onDeleteCommand { remove(selection) }
                 }
-            } else {
-                Table(links, selection: $selection) {
-                    TableColumn("Título") { link in
-                        Text(link.title).fontWeight(.medium)
-                    }
-                    TableColumn("URL") { link in
-                        Text(link.url).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
-                    }
-                    TableColumn("Tags") { link in
-                        TagChips(tags: link.tags)
-                    }
-                    .width(min: 80, ideal: 160)
-                }
-                .contextMenu(forSelectionType: ProjectLink.ID.self) { ids in
-                    if let id = ids.first, let link = model.project.links.first(where: { $0.id == id }) {
-                        Button("Abrir") { open(link) }
-                        Button("Copiar URL") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(link.url, forType: .string) }
-                        Button("Editar…") { editing = link }
-                        Divider()
-                    }
-                    Button("Remover", role: .destructive) { remove(ids) }
-                } primaryAction: { ids in
-                    ids.compactMap { id in model.project.links.first { $0.id == id } }.forEach(open)
-                }
-                .onDeleteCommand { remove(selection) }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            if let viewing {
+                LinkViewerPanel(link: viewing) { self.viewing = nil }
+                    .id(viewing)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .navigationTitle("Links")
         .searchable(text: $search, placement: .toolbar, prompt: "Filtrar links")
         .toolbar {
             ToolbarItem {
-                Button { editing = ProjectLink(title: "", url: "") } label: { Label("Novo link", systemImage: "plus") }
+                LoggedButton {
+                    claudeEditing = ClaudeItem(title: "", url: "", kind: .artifact)
+                } label: { Label("Adicionar do Claude", systemImage: "square.stack.badge.plus") }.loggedControl(control: "links_view.button_6", label: "Adicionar do Claude")
+            }
+            ToolbarItem {
+                LoggedButton { editing = ProjectLink(title: "", url: "") } label: { Label("Novo link", systemImage: "plus") }.loggedControl(control: "links_view.button_7", label: "Novo link")
             }
         }
         .onPasteCommand(of: [.url, .plainText]) { providers in
@@ -69,9 +89,18 @@ struct LinksView: View {
                     guard let text = (string as? String)?.trimmingCharacters(in: .whitespacesAndNewlines),
                           let url = URL(string: text), url.scheme?.hasPrefix("http") == true else { return }
                     Task { @MainActor in
-                        add(ProjectLink(title: url.host() ?? text, url: text))
+                        if ClaudeItem.accepts(text) {
+                            claudeEditing = ClaudeItem(title: ClaudeItem.suggestedTitle(for: text), url: text, kind: .artifact)
+                        } else {
+                            add(ProjectLink(title: url.host() ?? text, url: text))
+                        }
                     }
                 }
+            }
+        }
+        .sheet(item: $claudeEditing) { item in
+            ClaudeItemEditor(item: item, isNew: true) { saved in
+                model.mutateProject("Adicionar do Claude", undo: undo) { $0.claude.append(saved) }
             }
         }
         .sheet(item: $editing) { link in
@@ -88,7 +117,7 @@ struct LinksView: View {
     }
 
     private func open(_ link: ProjectLink) {
-        if let url = URL(string: link.url) { openURL(url) }
+        viewing = link
     }
 
     private func add(_ link: ProjectLink) {
@@ -102,7 +131,154 @@ struct LinksView: View {
     }
 }
 
+
+private struct LinkViewerPanel: View {
+    @Environment(\.openURL) private var openURL
+    let link: ProjectLink
+    let close: () -> Void
+    @State private var isLoading = true
+    @State private var failed = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text(link.title).font(.headline).lineLimit(1)
+                Spacer()
+                LoggedButton("Abrir no navegador") {
+                    if let url = URL(string: link.url) { openURL(url) }
+                }
+                .loggedControl(control: "links_view.viewer_open_in_browser", label: "Abrir no navegador")
+                .help("Abrir no navegador padrão")
+                LoggedButton("Fechar", action: close)
+                    .loggedControl(control: "links_view.viewer_close", label: "Fechar")
+                    .help("Fechar visualizador de links")
+            }
+            .padding()
+            Divider()
+            ZStack {
+                if let url = URL(string: link.url), LinkViewerNavigation.permits(url) {
+                    LinkWebView(url: url, isLoading: $isLoading, failed: $failed)
+                    if failed {
+                        ContentUnavailableView("Não foi possível carregar a página", systemImage: "exclamationmark.triangle",
+                                               description: Text("Tente abrir o link no navegador."))
+                    } else if isLoading {
+                        ProgressView("Carregando página…").padding().background(.regularMaterial, in: .rect(cornerRadius: 8))
+                    }
+                } else {
+                    ContentUnavailableView("Link não compatível", systemImage: "link.badge.plus",
+                                           description: Text("O visualizador aceita apenas URLs http e https."))
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+}
+
+/// The original request and its redirects stay embedded; page navigation leaves the viewer.
+enum LinkViewerNavigation {
+    enum Decision: Equatable { case allow, cancel, external }
+
+    static func permits(_ url: URL) -> Bool {
+        ["http", "https"].contains(url.scheme?.lowercased() ?? "")
+    }
+
+    static func decision(url: URL?, currentURL: URL?, type: WKNavigationType,
+                         isMainFrame: Bool?, opensWindow: Bool = false) -> Decision {
+        guard let url else { return .cancel }
+        if opensWindow || isMainFrame == nil {
+            return permits(url) ? .external : .cancel
+        }
+        // Frames are part of rendering the page; only top-level navigation leaves the viewer.
+        if isMainFrame == false { return .allow }
+        guard permits(url) else { return .cancel }
+        if type == .formSubmitted || (type == .linkActivated && url != currentURL) { return .external }
+        return .allow
+    }
+}
+
+private struct LinkWebView: NSViewRepresentable {
+    let url: URL
+    @Binding var isLoading: Bool
+    @Binding var failed: Bool
+
+    func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
+
+    func makeNSView(context: Context) -> WKWebView {
+        let config = WKWebViewConfiguration()
+        config.websiteDataStore = .nonPersistent()
+        let view = WKWebView(frame: .zero, configuration: config)
+        view.navigationDelegate = context.coordinator
+        view.uiDelegate = context.coordinator
+        return view
+    }
+
+    func updateNSView(_ view: WKWebView, context: Context) {
+        context.coordinator.parent = self
+        guard LinkViewerNavigation.permits(url), context.coordinator.loaded != url else { return }
+        context.coordinator.loaded = url
+        view.load(URLRequest(url: url))
+    }
+
+    static func dismantleNSView(_ view: WKWebView, coordinator: Coordinator) {
+        view.navigationDelegate = nil
+        view.uiDelegate = nil
+        view.stopLoading()
+    }
+
+    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
+        var parent: LinkWebView
+        var loaded: URL?
+        init(parent: LinkWebView) { self.parent = parent }
+
+        func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction) async -> WKNavigationActionPolicy {
+            switch LinkViewerNavigation.decision(url: action.request.url, currentURL: webView.url ?? loaded,
+                                                  type: action.navigationType, isMainFrame: action.targetFrame?.isMainFrame) {
+            case .allow: return .allow
+            case .cancel: return .cancel
+            case .external:
+                if let url = action.request.url { NSWorkspace.shared.open(url) }
+                return .cancel
+            }
+        }
+
+        func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
+                     for action: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
+            if LinkViewerNavigation.decision(url: action.request.url, currentURL: webView.url ?? loaded,
+                                             type: action.navigationType, isMainFrame: action.targetFrame?.isMainFrame,
+                                             opensWindow: true) == .external, let url = action.request.url {
+                NSWorkspace.shared.open(url)
+            }
+            return nil
+        }
+
+        func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+            parent.failed = false
+            parent.isLoading = true
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            parent.isLoading = false
+        }
+
+        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { fail(error) }
+        func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { fail(error) }
+
+        func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+            parent.isLoading = false
+            parent.failed = true
+        }
+
+        private func fail(_ error: Error) {
+            // Cancelling a navigation to open it externally is not a page-load failure.
+            guard (error as NSError).code != NSURLErrorCancelled else { return }
+            parent.isLoading = false
+            parent.failed = true
+        }
+    }
+}
+
 struct TagChips: View {
+    @Environment(\.logProject) private var logProject
     let tags: [String]
     /// When set, chips are clickable (e.g. to filter by that tag).
     var onTap: ((String) -> Void)? = nil
@@ -115,7 +291,7 @@ struct TagChips: View {
                         .font(.caption)
                         .padding(.horizontal, 7).padding(.vertical, 2)
                         .glassEffect(onTap == nil ? .regular : .regular.interactive(), in: .capsule)
-                        .onTapGesture { onTap?(tag) }
+                        .onTapGesture { VDLog.withAction(control: "links_view.tap_15", label: "Selecionar", project: logProject) { onTap?(tag) } }
                         .help(onTap == nil ? "" : "Filtrar por #\(tag)")
                 }
             }
@@ -125,13 +301,14 @@ struct TagChips: View {
 
 /// Comma-separated tag editor in a glass capsule; commits on submit/blur.
 struct TagsField: View {
+    @Environment(\.logProject) private var logProject
     let tags: [String]
     let onCommit: ([String]) -> Void
 
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: "number").foregroundStyle(.secondary)
-            CommitTextField("tags, separadas, por vírgula", value: tags.joined(separator: ", ")) { text in
+            CommitTextField(control: "linksview.field_1", "tags, separadas, por vírgula", value: tags.joined(separator: ", ")) { text in
                 onCommit(Tags.parse(text))
             }
             .textFieldStyle(.plain)
@@ -151,6 +328,7 @@ enum Tags {
 /// Creating a link confirms with "Criar"; editing one writes each field (and an undo step) on Return
 /// or when it loses focus, like the rest of the app.
 private struct LinkEditor: View {
+    @Environment(\.logProject) private var logProject
     @State var link: ProjectLink
     let isNew: Bool
     let onSave: (ProjectLink) -> Void
@@ -162,9 +340,9 @@ private struct LinkEditor: View {
 
     var body: some View {
         Form {
-            TextField("URL", text: $link.url).onSubmit(commit)
-            TextField("Título", text: $link.title).onSubmit(commit)
-            TextField("Tags (separadas por vírgula)", text: $tagsText).onSubmit(commit)
+            LoggedTextField("URL", text: $link.url, onCommit: commit).loggedField(control: "linksview.text_1", label: "URL")
+            LoggedTextField("Título", text: $link.title, onCommit: commit).loggedField(control: "linksview.text_2", label: "Título")
+            LoggedTextField("Tags (separadas por vírgula)", text: $tagsText, onCommit: commit).loggedField(control: "linksview.text_3", label: "Tags (separadas por vírgula)")
         }
         .focused($focused)
         .formStyle(.grouped)
@@ -176,14 +354,14 @@ private struct LinkEditor: View {
         .onChange(of: focused) { _, isFocused in if !isFocused { commit() } }
         .toolbar {
             if isNew {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { LoggedButton("Cancelar") { dismiss() }.loggedControl(control: "links_view.button_8", label: "Cancelar") }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Criar") { onSave(normalized); dismiss() }
+                    LoggedButton("Criar") { onSave(normalized); dismiss() }.loggedControl(control: "links_view.button_9", label: "Criar")
                         .disabled(link.url.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             } else {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Concluído") { commit(); dismiss() }
+                    LoggedButton("Concluído") { commit(); dismiss() }.loggedControl(control: "links_view.button_10", label: "Concluído")
                 }
             }
         }

@@ -2,6 +2,8 @@ import SwiftUI
 import VibeDeckCore
 
 struct ProjectWindow: View {
+    @Environment(\.logProject) private var providerRoot
+    @Environment(\.logProject) private var logProject
     @Environment(\.undoManager) private var undo
     @State private var model: ProjectModel
     @State private var claude: AISession
@@ -10,6 +12,7 @@ struct ProjectWindow: View {
     /// Open tabs; `selection` always mirrors `tabs[activeTab]`.
     @State private var tabs: [SidebarItem] = [.links]
     @State private var activeTab = 0
+    @State private var reconciledMoveRevision = 0
     /// Sidebar sections whose children are shown. Toggled by the chevron, independent of selection.
     @State private var expanded = Set<SidebarSection>()
     @State private var newName: NewNamePrompt?
@@ -64,6 +67,11 @@ struct ProjectWindow: View {
         }
     }
 
+    private var resolvedSelection: SidebarItem? {
+        guard let selection else { return nil }
+        return reconciledMoveRevision == model.moveRevision ? selection : model.latestPathMoves[selection] ?? selection
+    }
+
     private var selectionKey: String { "selection.\(model.project.id.uuidString)" }
     private var tabsKey: String { "tabs.\(model.project.id.uuidString)" }
     private var activeTabKey: String { "activeTab.\(model.project.id.uuidString)" }
@@ -95,10 +103,13 @@ struct ProjectWindow: View {
             }
             claude.requestedPage = nil
         }
+        .background(LoggingWindowContext(root: model.store.root).allowsHitTesting(false))
+        .environment(\.logProject, model.store.root)
         .environment(model)
         .environment(claude)
+        .focusedSceneValue(\.logProjectRoot, model.store.root)
         .focusedSceneValue(\.claudeSession, claude)
-        .focusedSceneValue(\.closeActiveTab, tabs.count > 1 ? { closeTab(activeTab) } : nil)
+        .focusedSceneValue(\.closeActiveTab, tabs.count > 1 ? CloseTabAction(tab: activeTab) { closeTab(activeTab) } : nil)
         .task {
             model.startWatching()
             restoreState()
@@ -127,6 +138,7 @@ struct ProjectWindow: View {
         .onChange(of: expanded) { _, new in
             UserDefaults.standard.set(new.map(\.rawValue), forKey: expandedKey)
         }
+        .onChange(of: model.moveRevision) { _, _ in reconcileMovedTabs() }
         .onChange(of: tabs.map(exists)) { pruneTabs() }
         .onDisappear {
             model.stopWatching()
@@ -148,7 +160,7 @@ struct ProjectWindow: View {
             }
         }
         .alert("Erro", isPresented: Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })) {
-            Button("OK") { model.errorMessage = nil }
+            LoggedButton("OK") { model.errorMessage = nil }.loggedControl(control: "project_window.button_1", label: "OK")
         } message: { Text(model.errorMessage ?? "") }
     }
 
@@ -165,13 +177,13 @@ struct ProjectWindow: View {
                     HStack {
                         Image(systemName: "magnifyingglass")
                             .foregroundStyle(.secondary)
-                        TextField("Filtrar sidebar (#tag)", text: $sidebarSearch)
+                        LoggedTextField("Filtrar sidebar (#tag)", text: $sidebarSearch).loggedField(control: "projectwindow.text_1", label: "Filtrar sidebar (#tag)")
                             .textFieldStyle(.plain)
                             .accessibilityLabel("Filtrar sidebar por texto e tag")
                         if !sidebarSearch.isEmpty {
-                            Button { sidebarSearch = "" } label: {
+                            LoggedButton { sidebarSearch = "" } label: {
                                 Image(systemName: "xmark.circle.fill")
-                            }
+                            }.loggedControl(control: "project_window.button_2", label: "Limpar filtro")
                             .buttonStyle(.plain)
                             .help("Limpar filtro")
                             .accessibilityLabel("Limpar filtro")
@@ -185,7 +197,7 @@ struct ProjectWindow: View {
     }
 
     private var sidebarList: some View {
-        List(selection: $selection) {
+        List(selection: $selection.logging(control: "project_window.selection_26", label: "Seleção", project: logProject)) {
             Section {
                 Label("Stack", systemImage: "square.stack.3d.up")
                     .badge(model.project.stack.count)
@@ -199,10 +211,16 @@ struct ProjectWindow: View {
                     .badge(model.project.links.count)
                     .tag(SidebarItem.links)
                     .contextMenu { openInNewTabButton(.links) }
+                if !model.project.claude.isEmpty {
+                    Label("Claude", systemImage: "square.stack")
+                        .badge(model.project.claude.count)
+                        .tag(SidebarItem.claudeItems)
+                        .contextMenu { openInNewTabButton(.claudeItems) }
+                }
                 Label("Grafo", systemImage: "point.3.connected.trianglepath.dotted")
                     .tag(SidebarItem.graph)
                     .contextMenu { openInNewTabButton(.graph) }
-                if !AIProvider.installed.isEmpty {
+                if !AIProvider.installed(in: providerRoot).isEmpty {
                     Label("IA", systemImage: "sparkles")
                         .tag(SidebarItem.claude)
                         .contextMenu { openInNewTabButton(.claude) }
@@ -212,7 +230,7 @@ struct ProjectWindow: View {
                     .badge(claude.terminals.count)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
-                    .onTapGesture { claude.openTerminal() }
+                    .onTapGesture { VDLog.withAction(control: "project_window.tap_28", label: "Selecionar", project: logProject) { claude.openTerminal() } }
                     .help("Abrir um terminal novo em outra aba (⌃`)")
             }
 
@@ -242,15 +260,16 @@ struct ProjectWindow: View {
 
     private var sidebarFooter: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if !AIProvider.installed.isEmpty { AIUsageView() }
+            if let workspace = RemoteWorkspace.existing(at: model.store.root) { RemoteProjectBar(workspace: workspace) }
+            if !AIProvider.installed(in: providerRoot).isEmpty { AIUsageView() }
             HStack {
                 Image(systemName: "folder")
-                Text(model.store.root.path(percentEncoded: false))
+                Text(RemoteWorkspace.existing(at: model.store.root)?.destination.title ?? model.store.root.path(percentEncoded: false))
                     .lineLimit(1).truncationMode(.head)
             }
             .font(.caption)
             .foregroundStyle(.secondary)
-            .onTapGesture { NSWorkspace.shared.activateFileViewerSelecting([model.store.manifestURL]) }
+            .onTapGesture { VDLog.withAction(control: "project_window.tap_29", label: "Selecionar", project: logProject) { NSWorkspace.shared.activateFileViewerSelecting([model.store.manifestURL]) } }
             .help("Mostrar vibedeck.json no Finder")
         }
         .padding(10)
@@ -258,12 +277,17 @@ struct ProjectWindow: View {
     }
 
     private func openInNewTabButton(_ item: SidebarItem) -> some View {
-        Button("Abrir em Nova Aba") { openInNewTab(item) }
+        LoggedButton("Abrir em Nova Aba") { openInNewTab(item) }.loggedControl(control: "project_window.button_3", label: "Abrir em Nova Aba")
     }
 
     @ViewBuilder
     private func children(of section: SidebarSection) -> some View {
         let visible = Set(model.sidebarRows(for: section, search: sidebarSearch).map(\.id))
+        if let concept = section.groupedConcept {
+            GroupTreeView(concept: concept, rows: model.sidebarRows(for: section, search: sidebarSearch), filtering: !sidebarSearch.isEmpty, onOpen: { selection = $0 }, onOpenInNewTab: openInNewTab)
+                // The tree's buttons own navigation; the enclosing List row has no selection tag.
+                .selectionDisabled(true)
+        } else {
         switch section {
         case .docs:
             ForEach(model.docs.filter { visible.contains(.doc($0.slug)) }) { doc in
@@ -273,11 +297,11 @@ struct ProjectWindow: View {
                     .contextMenu {
                         openInNewTabButton(.doc(doc.slug))
                         Divider()
-                        Button("Mostrar no Finder") { NSWorkspace.shared.activateFileViewerSelecting([model.store.docURL(doc.slug)]) }
-                        Button("Mover para o Lixo", role: .destructive) {
+                        LoggedButton("Mostrar no Finder") { NSWorkspace.shared.activateFileViewerSelecting([model.store.docURL(doc.slug)]) }.loggedControl(control: "project_window.button_4", label: "Mostrar no Finder")
+                        LoggedButton("Mover para o Lixo", role: .destructive) {
                             if selection == .doc(doc.slug) { selection = .section(.docs) }
                             model.deleteDoc(doc.slug)
-                        }
+                        }.loggedControl(control: "project_window.button_5", label: "Mover para o Lixo")
                     }
             }
         case .groups:
@@ -289,11 +313,11 @@ struct ProjectWindow: View {
                     .contextMenu {
                         openInNewTabButton(.group(entry.slug))
                         Divider()
-                        Button("Mostrar no Finder") { NSWorkspace.shared.activateFileViewerSelecting([model.store.groupURL(entry.slug)]) }
-                        Button("Mover para o Lixo", role: .destructive) {
+                        LoggedButton("Mostrar no Finder") { NSWorkspace.shared.activateFileViewerSelecting([model.store.groupURL(entry.slug)]) }.loggedControl(control: "project_window.button_6", label: "Mostrar no Finder")
+                        LoggedButton("Mover para o Lixo", role: .destructive) {
                             if selection == .group(entry.slug) { selection = .section(.groups) }
                             model.deleteGroup(entry.slug)
-                        }
+                        }.loggedControl(control: "project_window.button_7", label: "Mover para o Lixo")
                     }
             }
         case .topics:
@@ -305,11 +329,11 @@ struct ProjectWindow: View {
                     .contextMenu {
                         openInNewTabButton(.topic(entry.slug))
                         Divider()
-                        Button("Mostrar no Finder") { NSWorkspace.shared.activateFileViewerSelecting([model.store.topicURL(entry.slug)]) }
-                        Button("Mover para o Lixo", role: .destructive) {
+                        LoggedButton("Mostrar no Finder") { NSWorkspace.shared.activateFileViewerSelecting([model.store.topicURL(entry.slug)]) }.loggedControl(control: "project_window.button_8", label: "Mostrar no Finder")
+                        LoggedButton("Mover para o Lixo", role: .destructive) {
                             if selection == .topic(entry.slug) { selection = .section(.topics) }
                             model.deleteTopic(entry.slug)
-                        }
+                        }.loggedControl(control: "project_window.button_9", label: "Mover para o Lixo")
                     }
             }
         case .ideas:
@@ -323,19 +347,19 @@ struct ProjectWindow: View {
                         Divider()
                         Menu("Status") {
                             ForEach(IdeaStatus.allCases, id: \.self) { status in
-                                Button(status.label) { model.mutateIdea(entry.slug, "Alterar status", undo: undo) { $0.status = status } }
+                                LoggedButton(status.label) { model.mutateIdea(entry.slug, "Alterar status", undo: undo) { $0.status = status } }.loggedControl(control: "project_window.button_10", label: "Ativar controle")
                             }
                         }
-                        if !AIProvider.installed.isEmpty {
-                            Button("Perguntar à IA sobre esta ideia") {
+                        if !AIProvider.installed(in: providerRoot).isEmpty {
+                            LoggedButton("Perguntar à IA sobre esta ideia") {
                                 claude.ask("Leia a ideia \"\(entry.value.title)\" (get_idea com \"\(entry.slug)\") e me ajude a refiná-la: aponte lacunas, riscos e regras que ela deveria ter. Se precisar de decisões minhas, me pergunte.")
-                            }
+                            }.loggedControl(control: "project_window.button_11", label: "Perguntar à IA sobre esta ideia")
                         }
-                        Button("Mostrar no Finder") { NSWorkspace.shared.activateFileViewerSelecting([model.store.ideaURL(entry.slug)]) }
-                        Button("Mover para o Lixo", role: .destructive) {
+                        LoggedButton("Mostrar no Finder") { NSWorkspace.shared.activateFileViewerSelecting([model.store.ideaURL(entry.slug)]) }.loggedControl(control: "project_window.button_12", label: "Mostrar no Finder")
+                        LoggedButton("Mover para o Lixo", role: .destructive) {
                             if selection == .idea(entry.slug) { selection = .section(.ideas) }
                             model.deleteIdea(entry.slug)
-                        }
+                        }.loggedControl(control: "project_window.button_13", label: "Mover para o Lixo")
                     }
             }
         case .agents:
@@ -346,11 +370,11 @@ struct ProjectWindow: View {
                     .contextMenu {
                         openInNewTabButton(.agent(entry.slug))
                         Divider()
-                        Button("Mostrar no Finder") { NSWorkspace.shared.activateFileViewerSelecting([model.store.agentURL(entry.slug)]) }
-                        Button("Mover para o Lixo", role: .destructive) {
+                        LoggedButton("Mostrar no Finder") { NSWorkspace.shared.activateFileViewerSelecting([model.store.agentURL(entry.slug)]) }.loggedControl(control: "project_window.button_14", label: "Mostrar no Finder")
+                        LoggedButton("Mover para o Lixo", role: .destructive) {
                             if selection == .agent(entry.slug) { selection = .section(.agents) }
                             model.deleteAgent(entry.slug)
-                        }
+                        }.loggedControl(control: "project_window.button_15", label: "Mover para o Lixo")
                     }
             }
         case .commands:
@@ -361,11 +385,11 @@ struct ProjectWindow: View {
                     .contextMenu {
                         openInNewTabButton(.command(entry.slug))
                         Divider()
-                        Button("Mostrar no Finder") { NSWorkspace.shared.activateFileViewerSelecting([model.store.commandURL(entry.slug)]) }
-                        Button("Mover para o Lixo", role: .destructive) {
+                        LoggedButton("Mostrar no Finder") { NSWorkspace.shared.activateFileViewerSelecting([model.store.commandURL(entry.slug)]) }.loggedControl(control: "project_window.button_16", label: "Mostrar no Finder")
+                        LoggedButton("Mover para o Lixo", role: .destructive) {
                             if selection == .command(entry.slug) { selection = .section(.commands) }
                             model.deleteCommand(entry.slug)
-                        }
+                        }.loggedControl(control: "project_window.button_17", label: "Mover para o Lixo")
                     }
             }
         case .skills:
@@ -376,11 +400,11 @@ struct ProjectWindow: View {
                     .contextMenu {
                         openInNewTabButton(.skill(entry.slug))
                         Divider()
-                        Button("Mostrar no Finder") { NSWorkspace.shared.activateFileViewerSelecting([model.store.skillURL(entry.slug)]) }
-                        Button("Mover para o Lixo", role: .destructive) {
+                        LoggedButton("Mostrar no Finder") { NSWorkspace.shared.activateFileViewerSelecting([model.store.skillURL(entry.slug)]) }.loggedControl(control: "project_window.button_18", label: "Mostrar no Finder")
+                        LoggedButton("Mover para o Lixo", role: .destructive) {
                             if selection == .skill(entry.slug) { selection = .section(.skills) }
                             model.deleteSkill(entry.slug)
-                        }
+                        }.loggedControl(control: "project_window.button_19", label: "Mover para o Lixo")
                     }
             }
         case .workflows:
@@ -391,13 +415,14 @@ struct ProjectWindow: View {
                     .contextMenu {
                         openInNewTabButton(.workflow(entry.slug))
                         Divider()
-                        Button("Mostrar no Finder") { NSWorkspace.shared.activateFileViewerSelecting([model.store.workflowURL(entry.slug)]) }
-                        Button("Mover para o Lixo", role: .destructive) {
+                        LoggedButton("Mostrar no Finder") { NSWorkspace.shared.activateFileViewerSelecting([model.store.workflowURL(entry.slug)]) }.loggedControl(control: "project_window.button_20", label: "Mostrar no Finder")
+                        LoggedButton("Mover para o Lixo", role: .destructive) {
                             if selection == .workflow(entry.slug) { selection = .section(.workflows) }
                             model.deleteWorkflow(entry.slug)
-                        }
+                        }.loggedControl(control: "project_window.button_21", label: "Mover para o Lixo")
                     }
             }
+        }
         }
     }
 
@@ -410,7 +435,7 @@ struct ProjectWindow: View {
             }
             detailContent
                 .transition(.opacity)
-                .id(selection)
+                .id(model.contentIdentity(for: resolvedSelection))
                 .animation(.easeInOut(duration: 0.18), value: selection)
         }
         // No separate toolbar strip: the title area takes the same tone as the sidebars.
@@ -464,8 +489,16 @@ struct ProjectWindow: View {
         return model.exists(item)
     }
 
+    private func reconcileMovedTabs() {
+        guard reconciledMoveRevision != model.moveRevision else { return }
+        reconciledMoveRevision = model.moveRevision
+        tabs = tabs.map { model.latestPathMoves[$0] ?? $0 }
+        if let current = selection { selection = model.latestPathMoves[current] ?? current }
+    }
+
     /// Closes tabs whose item was deleted (from the app or on disk) or whose shell exited.
     private func pruneTabs() {
+        reconcileMovedTabs()
         let current = tabs[activeTab]
         let kept = tabs.filter(exists)
         guard kept.count != tabs.count else { return }
@@ -481,13 +514,15 @@ struct ProjectWindow: View {
 
     @ViewBuilder
     private var detailContent: some View {
-        switch selection {
+        switch resolvedSelection {
         case .stack:
             StackView()
         case .patterns:
             PatternsView { selection = $0 }
         case .links, .none:
             LinksView()
+        case .claudeItems:
+            ClaudeItemsView()
         case .graph:
             GraphView()
         case .claude:
@@ -550,6 +585,8 @@ struct ProjectWindow: View {
 
 /// A sidebar section shown as a selectable page row, with a create button and an accordion chevron.
 private struct SectionSidebarRow: View {
+    @Environment(\.logProject) private var providerRoot
+    @Environment(\.logProject) private var logProject
     let section: SidebarSection
     let count: Int
     let expanded: Bool
@@ -563,18 +600,18 @@ private struct SectionSidebarRow: View {
             if !expanded, count > 0 {
                 Text("\(count)").foregroundStyle(.secondary).monospacedDigit()
             }
-            Button(action: onAdd) { Image(systemName: "plus") }
+            LoggedButton(action: onAdd) { Image(systemName: "plus") }.loggedControl(control: "project_window.button_22", label: "Ativar controle")
                 .buttonStyle(.borderless)
                 .help("Adicionar")
             // A button, so clicking it toggles the accordion without selecting the row (no page change).
-            Button(action: onToggle) {
+            LoggedButton(action: onToggle) {
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.tertiary)
                     .rotationEffect(.degrees(expanded ? 90 : 0))
                     .frame(width: 16, height: 16)
                     .contentShape(Rectangle())
-            }
+            }.loggedControl(control: "project_window.button_23", label: "Ativar controle")
             .buttonStyle(.borderless)
             .help(expanded ? "Recolher" : "Expandir")
         }
@@ -582,6 +619,8 @@ private struct SectionSidebarRow: View {
 }
 
 struct NamePromptSheet: View {
+    @Environment(\.logProject) private var providerRoot
+    @Environment(\.logProject) private var logProject
     let title: String
     let placeholder: String
     let onSubmit: (String) -> Void
@@ -591,13 +630,13 @@ struct NamePromptSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(title).font(.headline)
-            TextField(placeholder, text: $name)
+            LoggedTextField(placeholder, text: $name, onCommit: submit).loggedField(control: "projectwindow.text_2", label: "Confirmar campo")
                 .textFieldStyle(.roundedBorder)
-                .onSubmit(submit)
+
             HStack {
                 Spacer()
-                Button("Cancelar", role: .cancel) { dismiss() }.buttonStyle(.glass)
-                Button("Criar", action: submit)
+                LoggedButton("Cancelar", role: .cancel) { dismiss() }.loggedControl(control: "project_window.button_24", label: "Cancelar").buttonStyle(.glass)
+                LoggedButton("Criar", action: submit).loggedControl(control: "project_window.button_25", label: "Criar")
                     .buttonStyle(.glassProminent)
                     .keyboardShortcut(.defaultAction)
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)

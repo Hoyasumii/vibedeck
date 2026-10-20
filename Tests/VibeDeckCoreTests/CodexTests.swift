@@ -123,9 +123,9 @@ import Testing
         let (workflow, _) = try store.createWorkflow(title: "Review flow")
         _ = try store.addWorkflowStep(to: workflow, kind: .agent, target: agent)
         let (ref, _, _) = try store.startRun(workflow, input: "feature", provider: .codex)
-        let fallback = try store.runProviderSettings(ref, availableModels: ["codex-model"], fallback: "codex-model")
-        #expect(fallback.settings.model == "codex-model")
-        #expect(fallback.warning != nil)
+        #expect(throws: AIIntegrationError.self) {
+            try store.runProviderSettings(ref, availableModels: ["codex-model"], fallback: "codex-model")
+        }
         _ = try store.updateAgent(agent) { $0.providerSettings = ["codex": .init(model: "codex-model", effort: "high")] }
         let configured = try store.runProviderSettings(ref, availableModels: ["codex-model"], fallback: nil)
         #expect(configured.settings.effort == "high")

@@ -134,6 +134,7 @@ public struct WorkflowRun: Codable, Equatable, Identifiable, Sendable {
     /// Why the run is waiting, finished or stopped.
     public var reason: String?
     public var cycle: Int
+    public var checkpoint: WorkflowStepCheckpoint?
     public var history: [WorkflowRunEntry]
     public var questions: [WorkflowQuestion]
     public var createdAt: Date
@@ -149,6 +150,7 @@ public struct WorkflowRun: Codable, Equatable, Identifiable, Sendable {
         self.current = start
         self.reason = start == nil ? "o workflow não tem etapas" : nil
         self.cycle = 1
+        self.checkpoint = nil
         self.history = []
         self.questions = []
         self.createdAt = now
@@ -156,7 +158,7 @@ public struct WorkflowRun: Codable, Equatable, Identifiable, Sendable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case schema = "$schema", id, workflow, provider, input, status, current, reason, cycle, history, questions, createdAt, updatedAt
+        case schema = "$schema", id, workflow, provider, input, status, current, reason, cycle, checkpoint, history, questions, createdAt, updatedAt
     }
 
     public init(from decoder: Decoder) throws {
@@ -170,6 +172,7 @@ public struct WorkflowRun: Codable, Equatable, Identifiable, Sendable {
         current = try c.decodeIfPresent(String.self, forKey: .current)
         reason = try c.decodeIfPresent(String.self, forKey: .reason)
         cycle = try c.decodeIfPresent(Int.self, forKey: .cycle) ?? 1
+        checkpoint = try c.decodeIfPresent(WorkflowStepCheckpoint.self, forKey: .checkpoint)
         history = try c.decodeIfPresent([WorkflowRunEntry].self, forKey: .history) ?? []
         questions = try c.decodeIfPresent([WorkflowQuestion].self, forKey: .questions) ?? []
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? .now
@@ -187,6 +190,7 @@ public struct WorkflowRun: Codable, Equatable, Identifiable, Sendable {
         try c.encodeIfPresent(current, forKey: .current)
         try c.encodeIfPresent(reason, forKey: .reason)
         try c.encode(cycle, forKey: .cycle)
+        try c.encodeIfPresent(checkpoint, forKey: .checkpoint)
         if !history.isEmpty { try c.encode(history, forKey: .history) }
         if !questions.isEmpty { try c.encode(questions, forKey: .questions) }
         try c.encode(createdAt, forKey: .createdAt)
@@ -263,6 +267,7 @@ public enum WorkflowRunEngine {
         }
         if run.isFinished, !run.history.isEmpty { run.cycle += 1 }
         run.current = first
+        run.checkpoint = nil
         run.status = run.openQuestions.isEmpty ? .running : .waiting
         run.reason = nil
         run.updatedAt = now

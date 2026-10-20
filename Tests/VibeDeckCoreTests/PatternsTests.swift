@@ -9,6 +9,68 @@ private func tempStore() throws -> ProjectStore {
 }
 
 @Suite struct PatternsTests {
+    private let newCategories = [
+        "bdd": "practices", "design-by-contract": "practices",
+        "modular-monolith": "architecture", "event-driven": "architecture",
+        "value-object": "domain", "domain-service": "domain",
+        "composite": "design", "proxy": "design",
+    ]
+
+    @Test func expandedCatalogHasTheExpectedTemplates() throws {
+        let existingIds = [
+            "tdd", "solid", "dependency-injection", "functional-core", "clean-code",
+            "hexagonal", "clean-architecture", "layered", "mvvm", "mvc",
+            "ddd", "cqrs", "event-sourcing", "repository", "strategy", "observer",
+            "factory", "builder", "adapter", "decorator", "facade", "command", "state", "singleton",
+        ]
+        #expect(PatternCatalog.all.count == 32)
+        #expect(Set(PatternCatalog.all.map(\.id)) == Set(existingIds + Array(newCategories.keys)))
+        for template in PatternCatalog.all {
+            #expect(Slug.make(template.id) == template.id)
+            #expect(!template.name.trimmed.isEmpty)
+            #expect(!template.summary.trimmed.isEmpty)
+            #expect(PatternCategory.all.contains(template.category))
+        }
+        for (id, category) in newCategories {
+            let template = try #require(PatternCatalog.find(id))
+            #expect(template.category == category)
+        }
+    }
+
+    @Test func everyCatalogReferenceResolvesUnambiguously() {
+        for template in PatternCatalog.all {
+            for reference in [template.id, template.name] + template.aliases {
+                let matches = PatternCatalog.all.filter { $0.matches(exactly: reference) }
+                #expect(matches.map(\.id) == [template.id])
+                #expect(PatternCatalog.find(reference)?.id == template.id)
+            }
+        }
+    }
+
+    @Test func newRulesHaveConcreteVerificationDetails() throws {
+        for id in newCategories.keys {
+            let template = try #require(PatternCatalog.find(id))
+            for rule in template.rules {
+                let details = try #require(rule.details)
+                #expect(details.hasPrefix("Verificar:"))
+                #expect(!String(details.dropFirst("Verificar:".count)).trimmed.isEmpty)
+            }
+        }
+    }
+
+    @Test func everyCatalogTemplateCreatesItsEnforcedTopic() throws {
+        let store = try tempStore()
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let added = try store.addPatterns(PatternCatalog.all.map(\.id), author: .ai)
+        #expect(added.count == PatternCatalog.all.count)
+        for template in PatternCatalog.all {
+            let pattern = try #require(added.first { $0.id == template.id })
+            let topic = try #require(store.patternTopic(pattern)).topic
+            #expect(topic.sourcePattern == template.id)
+            #expect(topic.rules.count == template.rules.count)
+        }
+    }
+
     @Test func emptyPatternsAreOmitted() throws {
         let store = try tempStore()
         #expect(try !String(contentsOf: store.manifestURL, encoding: .utf8).contains("\"patterns\""))

@@ -1,3 +1,6 @@
+#if canImport(VibeDeckCore)
+import VibeDeckCore
+#endif
 import AppKit
 import SwiftUI
 
@@ -5,17 +8,35 @@ import SwiftUI
 /// native undo. Each doc gets its own UndoManager, kept alive across autosaves and doc switches.
 /// With `importFiles`, dropped or pasted files are handed over and the returned markdown is inserted.
 struct MarkdownEditor: NSViewRepresentable {
+    #if canImport(VibeDeckCore)
+    @Environment(\.logProject) private var logProject
+    #endif
     @Binding var text: String
     let undoManager: UndoManager
     var autoFocus = true
     /// Docs/ideas opt into live rendering; prompts retain source editing.
     var baseURL: URL?
+    var reference: String? = nil
+    private var resourceBaseURL: URL? {
+        guard let baseURL, let reference else { return baseURL }
+        let group = reference.split(separator: "/").dropLast().joined(separator: "/")
+        return group.isEmpty ? baseURL : baseURL.appending(path: group, directoryHint: .isDirectory)
+    }
     var importFiles: (([URL]) -> [String])?
     var importImage: ((Data) -> String?)?
     /// Text to insert at the cursor (e.g. links from the "Anexar" button); a new id inserts again.
     var insertion: MarkdownInsertion?
+    var onEditingAction: ((String) -> Void)?
+
+    func editingAction(_ action: @escaping (String) -> Void) -> Self {
+        var copy = self; copy.onEditingAction = action; return copy
+    }
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    static func dismantleNSView(_ view: NSScrollView, coordinator: Coordinator) {
+        coordinator.confirmEditing()
+    }
 
     func makeNSView(context: Context) -> NSScrollView {
         let textView = AttachmentTextView.markdownView()
@@ -29,7 +50,7 @@ struct MarkdownEditor: NSViewRepresentable {
         scrollView.documentView = textView
         textView.importFiles = importFiles
         textView.importImage = importImage
-        textView.onWidthChange = { [weak coordinator = context.coordinator] in coordinator?.render() }
+        textView.onWidthChange = { [weak coordinator = context.coordinator] in coordinator?.renderAfterLayout() }
         context.coordinator.lastInsertion = insertion?.id
         textView.delegate = context.coordinator
         context.coordinator.textView = textView
@@ -84,6 +105,7 @@ struct MarkdownEditor: NSViewRepresentable {
     @MainActor
     final class Coordinator: NSObject, NSTextViewDelegate {
         var parent: MarkdownEditor
+        var editingAction: String?
         var lastInsertion: UUID?
         weak var textView: AttachmentTextView?
         private var activeRange = NSRange(location: 0, length: 0)
@@ -92,14 +114,38 @@ struct MarkdownEditor: NSViewRepresentable {
         private var imageTasks: [URL: Task<Void, Never>] = [:]
         private var failedImages: Set<URL> = []
 
+        private var renderScheduled = false
+        private var renderedImageWidth: CGFloat = 0
+
+        /// Width changes arrive inside AppKit's layout pass. The width only sizes images, so without images there
+        /// is nothing to redo: re-rendering anyway changes the content height, which toggles the scroller and
+        /// the width again (an endless loop that first aborts the window, then freezes the app).
+        func renderAfterLayout() {
+            guard !renderScheduled, let textView, let storage = textView.textStorage else { return }
+            guard abs(Self.imageWidth(textView) - renderedImageWidth) > 1 else { return }
+            var hasImages = false
+            storage.enumerateAttribute(MarkdownHighlighter.imageKey, in: NSRange(location: 0, length: storage.length)) { value, _, stop in
+                if value != nil { hasImages = true; stop.pointee = true }
+            }
+            guard hasImages else { renderedImageWidth = Self.imageWidth(textView); return }
+            renderScheduled = true
+            DispatchQueue.main.async { [weak self] in
+                self?.renderScheduled = false
+                self?.render()
+            }
+        }
+
+        private static func imageWidth(_ textView: NSTextView) -> CGFloat { max(40, textView.bounds.width - 66) }
+
         func render(_ range: NSRange? = nil) {
             guard let textView, let storage = textView.textStorage else { return }
+            renderedImageWidth = Self.imageWidth(textView)
             let manager = parent.undoManager
             manager.disableUndoRegistration()
             storage.beginEditing()
             MarkdownHighlighter.apply(to: storage, selection: textView.selectedRange(), range: range,
-                                      baseURL: parent.baseURL, rendered: parent.baseURL != nil,
-                                      imageWidth: max(40, textView.bounds.width - 66)) { [weak self] url in
+                                      baseURL: parent.resourceBaseURL, rendered: parent.baseURL != nil,
+                                      imageWidth: Self.imageWidth(textView)) { [weak self] url in
                 if let image = MarkdownImageLoader.cached(url) { return image }
                 guard let self, self.imageTasks[url] == nil, !self.failedImages.contains(url) else { return nil }
                 self.imageTasks[url] = Task { [weak self] in
@@ -171,9 +217,30 @@ struct MarkdownEditor: NSViewRepresentable {
 
         func undoManager(for view: NSTextView) -> UndoManager? { parent.undoManager }
 
+        func textDidEndEditing(_ notification: Notification) { confirmEditing() }
+
+        func confirmEditing() {
+            guard let id = editingAction else { return }
+            editingAction = nil
+            #if canImport(VibeDeckCore)
+            VDLog.withAction(control: "markdown_editor.content", label: "Editor de Markdown", project: parent.logProject, id: id) {}
+            #endif
+        }
+
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
-            if parent.text != textView.string { parent.text = textView.string }
+            if parent.text != textView.string {
+                #if canImport(VibeDeckCore)
+                let id = VDLog.actionID ?? editingAction ?? UUID().uuidString
+                editingAction = id
+                parent.onEditingAction?(id)
+                VDLog.$actionID.withValue(id) {
+                    VDLog.$projectRoot.withValue(parent.logProject) { parent.text = textView.string }
+                }
+                #else
+                parent.text = textView.string
+                #endif
+            }
             scheduleRender()
         }
 
@@ -396,7 +463,16 @@ enum MarkdownHighlighter {
             let whole = absolute(m.range), label = absolute(m.range(at: 2))
             guard !inCode(whole) else { return }
             let destination = (string as NSString).substring(with: m.range(at: 3))
-            guard let url = URL(string: destination, relativeTo: baseURL)?.absoluteURL else { return }
+            var resolvedDestination = destination
+            if let baseURL, destination.range(of: #"^(?:\.\./)+attachments/"#, options: .regularExpression) != nil {
+                var concept = baseURL
+                while !["docs", "ideas"].contains(concept.lastPathComponent), concept.path != "/" { concept.deleteLastPathComponent() }
+                if concept.path != "/" {
+                    let name = destination.components(separatedBy: "attachments/").dropFirst().joined(separator: "attachments/")
+                    resolvedDestination = concept.deletingLastPathComponent().appending(path: "attachments/" + name).absoluteString
+                }
+            }
+            guard let url = URL(string: resolvedDestination, relativeTo: baseURL)?.absoluteURL else { return }
             storage.addAttributes([.foregroundColor: NSColor.linkColor, .underlineStyle: NSUnderlineStyle.single.rawValue], range: label)
             if rendered, NSIntersectionRange(active, whole).length == 0 {
                 storage.addAttribute(.link, value: url, range: label)

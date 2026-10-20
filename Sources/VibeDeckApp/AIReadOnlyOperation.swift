@@ -12,7 +12,12 @@ import VibeDeckCore
 
     static func run<T>(root: URL, provider: AIProvider, operation: String, prompt: String, schema: String,
                        request: ((String, AIProviderSettings) async throws -> Data)? = nil,
+                       recover: (Error) -> Bool = { _ in true },
                        parse: (Data) throws -> T) async throws -> T {
+        let started = Date.now
+        VDLog.info("ai.request_started", "Chamada de IA iniciada", project: root, component: .ai, context: ["provider": provider.rawValue, "operation": operation])
+        defer { VDLog.info("ai.request_finished", "Chamada de IA encerrada", project: root, component: .ai,
+                           context: ["provider": provider.rawValue, "operation": operation, "ms": String(Int(Date.now.timeIntervalSince(started) * 1000))]) }
         let taskID = UUID().uuidString
         let settings = settings(provider)
         var nextPrompt = prompt
@@ -36,7 +41,7 @@ import VibeDeckCore
                     }
                     usage.tokens = runner.tokens; usage.model = runner.model ?? settings.model
                 } else {
-                    guard let executable = provider.executable else { throw VibeDeckError.discoverFailed("Claude não está instalado.") }
+                    guard let executable = RemoteExecution.executable(provider, root: root) else { throw VibeDeckError.discoverFailed("Claude não está instalado.") }
                     let data = try await ReviewDiscoverRunner.run(executable: executable, root: root, input: nextPrompt,
                                                                  schema: schema, settings: settings)
                     let envelope = String(decoding: data, as: UTF8.self).split(whereSeparator: \.isNewline).reversed()
@@ -50,6 +55,7 @@ import VibeDeckCore
                     else { reply = Data((envelope["result"]?.string ?? "").utf8) }
                 }
             } catch {
+                VDLog.error(error, event: "ai.request_failed", project: root, component: .ai)
                 usage.finish(error is CancellationError ? "cancelled" : "failed")
                 try? AIUsageStore(root: root).save(usage)
                 throw error
@@ -63,6 +69,7 @@ import VibeDeckCore
                 throw CancellationError()
             } catch {
                 usage.finish("invalid-answer"); try AIUsageStore(root: root).save(usage)
+                guard recover(error) else { throw error }
                 guard attempt == 1 else { throw VibeDeckError.discoverFailed(AIPromptPolicy.incomplete) }
                 nextPrompt = AIPromptPolicy.recovery(prompt, diagnosis: error.localizedDescription)
                 continue

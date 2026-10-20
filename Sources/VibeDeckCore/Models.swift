@@ -25,6 +25,7 @@ public struct Project: Codable, Equatable, Sendable {
     public var name: String
     public var description: String?
     public var links: [Link]
+    public var claude: [ClaudeItem]
     /// The project's highlighted technologies (Skill Icons ids), in display order.
     public var stack: [StackItem]
     /// Code patterns the AI must follow (TDD, hexagonal…), in display order; each one is enforced by its rule topic.
@@ -39,6 +40,7 @@ public struct Project: Codable, Equatable, Sendable {
         self.name = name
         self.description = description
         self.links = []
+        self.claude = []
         self.stack = []
         self.patterns = []
         self.codexCloudEnvironment = nil
@@ -46,7 +48,7 @@ public struct Project: Codable, Equatable, Sendable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case schema = "$schema", version, id, name, description, links, stack, patterns, codexCloudEnvironment, reviewKinds
+        case schema = "$schema", version, id, name, description, links, claude, stack, patterns, codexCloudEnvironment, reviewKinds
     }
 
     public init(from decoder: Decoder) throws {
@@ -57,6 +59,7 @@ public struct Project: Codable, Equatable, Sendable {
         name = try c.decode(String.self, forKey: .name)
         description = try c.decodeIfPresent(String.self, forKey: .description)
         links = try c.decodeIfPresent([Link].self, forKey: .links) ?? []
+        claude = try c.decodeIfPresent([ClaudeItem].self, forKey: .claude) ?? []
         stack = try c.decodeIfPresent([StackItem].self, forKey: .stack) ?? []
         patterns = try c.decodeIfPresent([ProjectPattern].self, forKey: .patterns) ?? []
         codexCloudEnvironment = try c.decodeIfPresent(String.self, forKey: .codexCloudEnvironment)
@@ -72,6 +75,7 @@ public struct Project: Codable, Equatable, Sendable {
         try c.encode(name, forKey: .name)
         try c.encodeIfPresent(description, forKey: .description)
         try c.encode(links, forKey: .links)
+        if !claude.isEmpty { try c.encode(claude, forKey: .claude) }
         if !stack.isEmpty { try c.encode(stack, forKey: .stack) }
         if !patterns.isEmpty { try c.encode(patterns, forKey: .patterns) }
         try c.encodeIfPresent(codexCloudEnvironment, forKey: .codexCloudEnvironment)
@@ -302,17 +306,25 @@ public struct ReviewGroup: Codable, Equatable, Identifiable, Sendable {
 
 // MARK: - Docs
 
-public struct DocInfo: Equatable, Hashable, Identifiable, Sendable {
+public struct DocInfo: Equatable, Hashable, Identifiable, Codable, Sendable {
     public var slug: String
     public var title: String
     public var tags: [String] = []
     public var modified: Date
     public var id: String { slug }
+    public var group: String { ProjectStore.groupPath(of: slug) }
 }
 
 // MARK: - JSON
 
 public enum VDJSON {
+    /// Reference updates retain unknown JSON fields rather than round-tripping through a narrower model.
+    public static func encodeObject(_ object: Any) throws -> Data {
+        var data = try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
+        data.append(0x0A)
+        return data
+    }
+
     /// Single-line output for agents (`rules_for`): indentation is pure token cost there. Files use `encoder`.
     public static let compactEncoder: JSONEncoder = {
         let e = JSONEncoder()

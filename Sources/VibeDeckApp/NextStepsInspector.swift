@@ -83,15 +83,15 @@ struct NextStepsInspector: View {
                         }
                         Spacer()
                         if title(step) != nil {
-                            Button { open(item(step.ref, step.kind)) } label: { Image(systemName: "arrow.right.circle") }
+                            LoggedButton { open(item(step.ref, step.kind)) } label: { Image(systemName: "arrow.right.circle") }.loggedControl(control: "next_steps_inspector.button_1", label: "Ativar controle")
                                 .buttonStyle(.borderless)
                                 .help(noun(step.kind).open)
                         }
                     }
                     .contextMenu {
-                        Button("Remover", role: .destructive) {
+                        LoggedButton("Remover", role: .destructive) {
                             mutate("Remover próximo passo") { $0.remove(at: index) }
-                        }
+                        }.loggedControl(control: "next_steps_inspector.button_2", label: "Remover")
                     }
                 }
                 .onMove { from, to in
@@ -112,21 +112,21 @@ struct NextStepsInspector: View {
                 if !agents.isEmpty {
                     Section("Agentes") {
                         ForEach(agents) { c in
-                            Button(c.title) { mutate("Adicionar próximo passo") { $0.append(c.step) } }
+                            LoggedButton(c.title) { mutate("Adicionar próximo passo") { $0.append(c.step) } }.loggedControl(control: "next_steps_inspector.button_3", label: "Ativar controle")
                         }
                     }
                 }
                 if !commands.isEmpty {
                     Section("Comandos") {
                         ForEach(commands) { c in
-                            Button(c.title) { mutate("Adicionar próximo passo") { $0.append(c.step) } }
+                            LoggedButton(c.title) { mutate("Adicionar próximo passo") { $0.append(c.step) } }.loggedControl(control: "next_steps_inspector.button_4", label: "Ativar controle")
                         }
                     }
                 }
                 if !skills.isEmpty {
                     Section("Skills") {
                         ForEach(skills) { c in
-                            Button(c.title) { mutate("Adicionar próximo passo") { $0.append(c.step) } }
+                            LoggedButton(c.title) { mutate("Adicionar próximo passo") { $0.append(c.step) } }.loggedControl(control: "next_steps_inspector.button_5", label: "Ativar controle")
                         }
                     }
                 }

@@ -1,0 +1,13 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "ai",
+  "body" : "Propor uma triagem dos itens open antes de Resolver: para notas, registrar hipótese e forma de confirmação; para correções, explicitar resultado esperado; mostrar prioridade e evidências disponíveis na proposta. A dúvida sobre salvamento precisa de reprodução, a exposição de prioridade tem um pedido definido e a verificação de Stack e Padrões precisa de evidência de compartilhamento com a IA. Preservar os estados e os registros encerrados.",
+  "createdAt" : "2026-10-14T01:27:11Z",
+  "id" : "076E5A2D-21A5-46FE-86EB-43EFE1E8C177",
+  "rules" : [
+
+  ],
+  "status" : "new",
+  "title" : "Triar revisões abertas antes do plano de resolução",
+  "updatedAt" : "2026-10-14T01:27:11Z"
+}

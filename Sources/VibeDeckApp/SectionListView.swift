@@ -4,6 +4,8 @@ import VibeDeckCore
 /// List page for a sidebar section (Docs, Revisões, Regras, Ideias, Agentes): its children in a table,
 /// filterable by free text and by tags (`#tag` tokens or the tag bar).
 struct SectionListView: View {
+    @Environment(\.logProject) private var providerRoot
+    @Environment(\.logProject) private var logProject
     let section: SidebarSection
     let onOpen: (SidebarItem) -> Void
     let onOpenInNewTab: (SidebarItem) -> Void
@@ -11,7 +13,7 @@ struct SectionListView: View {
     @Environment(AISession.self) private var session
     @Environment(ProjectModel.self) private var model
     @Environment(\.undoManager) private var undo
-    @State private var selection = Set<SidebarItem>()
+    @LoggedSelection(control: "section_list_view.selection_18", label: "Seleção") private var selection = Set<SidebarItem>()
     @State private var search = ""
     @State private var tokens: [TagToken] = []
     @State private var editingTags: SectionRow?
@@ -62,15 +64,24 @@ struct SectionListView: View {
             Text("#\(token.tag)")
         }
         .toolbar {
+            if [.topics, .docs, .ideas, .groups].contains(section), !AIProvider.installed(in: providerRoot).isEmpty {
+                ToolbarItem { ReorganizeButton() }
+            }
+            if [.agents, .commands, .skills, .workflows].contains(section) {
+                ToolbarItem { KitCatalogButton() }
+                ToolbarItem {
+                    CreateWithAIButton(kind: section == .agents ? .agent : section == .commands ? .command : section == .skills ? .skill : .workflow)
+                }
+            }
             // Importing reads the provider's own files, so it only shows for installed providers.
-            if [.agents, .commands, .skills].contains(section), !AIProvider.installed.isEmpty {
+            if [.agents, .commands, .skills].contains(section), !AIProvider.installed(in: providerRoot).isEmpty {
                 ToolbarItem {
                     Menu("Importar", systemImage: "square.and.arrow.down") {
-                        ForEach(AIProvider.installed, id: \.self) { provider in
-                            Button("Importar de " + provider.title) {
+                        ForEach(AIProvider.installed(in: providerRoot), id: \.self) { provider in
+                            LoggedButton("Importar de " + provider.title) {
                                 Task {
                                     do {
-                                        guard provider.isInstalled else { return }
+                                        guard RemoteExecution.available(provider, root: model.store.root) else { return }
                                         let result: AIImportResult
                                         switch section {
                                         case .agents: result = try model.store.importAgents(provider: provider)
@@ -82,12 +93,12 @@ struct SectionListView: View {
                                         if !result.warnings.isEmpty { model.errorMessage = result.warnings.joined(separator: "\n") }
                                     } catch { model.errorMessage = error.localizedDescription }
                                 }
-                            }
+                            }.loggedControl(control: "section_list_view.button_1", label: "Importar de ")
                         }
                     }
                 }
             }
-            if section == .docs, !AIProvider.installed.isEmpty {
+            if section == .docs, !AIProvider.installed(in: providerRoot).isEmpty {
                 ToolbarItemGroup {
                     Button {
                         model.docGenerator.start(store: model.store, provider: session.provider)
@@ -98,25 +109,25 @@ struct SectionListView: View {
                     .disabled(model.docGenerator.isActive)
                     if model.docGenerator.isActive {
                         if model.docGenerator.isRunning { ProgressView().controlSize(.small) }
-                        Button(model.docGenerator.isRunning ? "Cancelar geração" : "Revisar proposta") {
+                        LoggedButton(model.docGenerator.isRunning ? "Cancelar geração" : "Revisar proposta") {
                             if model.docGenerator.isRunning { model.docGenerator.cancel() }
                             else { showingDocGeneration = true }
-                        }
+                        }.loggedControl(control: "section_list_view.button_3", label: "Ativar controle")
                     }
                 }
             }
             if section == .topics {
                 ToolbarItemGroup {
-                    if !AIProvider.installed.isEmpty { generateMenu.disabled(model.ruleExecution?.active == true) }
+                    if !AIProvider.installed(in: providerRoot).isEmpty { generateMenu.disabled(model.ruleExecution?.active == true) }
                     RuleExecutionControls()
                 }
             }
             ToolbarItem {
-                Button(action: onAdd) { Label("Novo", systemImage: "plus") }
+                LoggedButton(action: onAdd) { Label("Novo", systemImage: "plus") }.loggedControl(control: "section_list_view.button_4", label: "Novo")
             }
         }
         .alert("Importação concluída", isPresented: Binding(get: { importedCount != nil }, set: { if !$0 { importedCount = nil } })) {
-            Button("OK") { importedCount = nil }
+            LoggedButton("OK") { importedCount = nil }.loggedControl(control: "section_list_view.button_5", label: "OK")
         } message: {
             let count = importedCount ?? 0
             switch section {
@@ -148,7 +159,7 @@ struct SectionListView: View {
         if model.isGeneratingTests {
             let jobs = model.generatingTests.values
             Menu {
-                Button("Cancelar geração", role: .destructive) { model.cancelTestGeneration() }
+                LoggedButton("Cancelar geração", role: .destructive) { model.cancelTestGeneration() }.loggedControl(control: "section_list_view.button_6", label: "Cancelar geração")
             } label: {
                 Label {
                     Text("Gerando \(jobs.filter { !$0.isActive }.count)/\(jobs.count)…")
@@ -161,13 +172,13 @@ struct SectionListView: View {
         } else {
             let pending = count(.pending)
             Menu {
-                ForEach(AIProvider.installed, id: \.self) { provider in
+                ForEach(AIProvider.installed(in: providerRoot), id: \.self) { provider in
                     Menu(provider.title) {
-                        Button("Só as que faltam (\(count(.missing)))") { model.generateAllTests(.missing, provider: provider) }
+                        LoggedButton("Só as que faltam (\(count(.missing)))") { model.generateAllTests(.missing, provider: provider) }.loggedControl(control: "section_list_view.button_7", label: "Ativar controle")
                             .disabled(count(.missing) == 0)
-                        Button("Só as desatualizadas (\(count(.stale)))") { model.generateAllTests(.stale, provider: provider) }
+                        LoggedButton("Só as desatualizadas (\(count(.stale)))") { model.generateAllTests(.stale, provider: provider) }.loggedControl(control: "section_list_view.button_8", label: "Ativar controle")
                             .disabled(count(.stale) == 0)
-                        Button("Regenerar todas (\(count(.all)))") { model.generateAllTests(.all, provider: provider) }
+                        LoggedButton("Regenerar todas (\(count(.all)))") { model.generateAllTests(.all, provider: provider) }.loggedControl(control: "section_list_view.button_9", label: "Ativar controle")
                             .disabled(count(.all) == 0)
                     }
                 }
@@ -197,11 +208,13 @@ struct SectionListView: View {
 
     @ViewBuilder
     private var content: some View {
-        if allRows.isEmpty {
+        if let concept = section.groupedConcept {
+            List { GroupTreeView(concept: concept, rows: rows, filtering: !search.isEmpty || !tokens.isEmpty, onOpen: onOpen, onOpenInNewTab: onOpenInNewTab) }
+        } else if allRows.isEmpty {
             ContentUnavailableView {
                 Label(section.emptyMessage, systemImage: section.symbol)
             } actions: {
-                Button("Adicionar", action: onAdd).buttonStyle(.glass)
+                LoggedButton("Adicionar", action: onAdd).loggedControl(control: "section_list_view.button_10", label: "Adicionar").buttonStyle(.glass)
             }
             .frame(maxHeight: .infinity)
         } else if rows.isEmpty {
@@ -239,15 +252,15 @@ struct SectionListView: View {
         }
         .contextMenu(forSelectionType: SidebarItem.self) { ids in
             if ids.count == 1, let id = ids.first, let row = allRows.first(where: { $0.id == id }) {
-                Button("Abrir") { onOpen(id) }
-                Button("Abrir em Nova Aba") { onOpenInNewTab(id) }
-                Button("Editar tags…") { editingTags = row }
+                LoggedButton("Abrir") { onOpen(id) }.loggedControl(control: "section_list_view.button_11", label: "Abrir")
+                LoggedButton("Abrir em Nova Aba") { onOpenInNewTab(id) }.loggedControl(control: "section_list_view.button_12", label: "Abrir em Nova Aba")
+                LoggedButton("Editar tags…") { editingTags = row }.loggedControl(control: "section_list_view.button_13", label: "Editar tags…")
                 if let url = model.fileURL(for: id) {
-                    Button("Mostrar no Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+                    LoggedButton("Mostrar no Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }.loggedControl(control: "section_list_view.button_14", label: "Mostrar no Finder")
                 }
                 Divider()
             }
-            Button("Mover para o Lixo", role: .destructive) { remove(ids) }
+            LoggedButton("Mover para o Lixo", role: .destructive) { remove(ids) }.loggedControl(control: "section_list_view.button_15", label: "Mover para o Lixo")
         } primaryAction: { ids in
             if let id = ids.first { onOpen(id) }
         }
@@ -259,9 +272,9 @@ struct SectionListView: View {
             HStack(spacing: 6) {
                 ForEach(allTags, id: \.self) { tag in
                     let on = tokens.contains { $0.tag == tag }
-                    Button { toggle(tag) } label: {
+                    LoggedButton { toggle(tag) } label: {
                         Text("#\(tag)").font(.callout)
-                    }
+                    }.loggedControl(control: "section_list_view.button_16", label: "Ativar controle")
                     .buttonStyle(.glass)
                     .tint(on ? .accentColor : nil)
                     .controlSize(.small)
@@ -286,7 +299,9 @@ struct SectionListView: View {
     }
 }
 
-private struct TagsEditor: View {
+struct TagsEditor: View {
+    @Environment(\.logProject) private var providerRoot
+    @Environment(\.logProject) private var logProject
     let title: String
     let tags: [String]
     let onSave: ([String]) -> Void
@@ -297,9 +312,9 @@ private struct TagsEditor: View {
 
     var body: some View {
         Form {
-            TextField("Tags (separadas por vírgula)", text: $text)
+            LoggedTextField("Tags (separadas por vírgula)", text: $text, onCommit: commit).loggedField(control: "sectionlistview.text_1", label: "Tags (separadas por vírgula)")
                 .focused($focused)
-                .onSubmit(commit)
+
         }
         .formStyle(.grouped)
         .navigationTitle(title)
@@ -308,7 +323,7 @@ private struct TagsEditor: View {
         .onChange(of: focused) { _, isFocused in if !isFocused { commit() } }
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("Concluído") { commit(); dismiss() }
+                LoggedButton("Concluído") { commit(); dismiss() }.loggedControl(control: "section_list_view.button_17", label: "Concluído")
             }
         }
     }

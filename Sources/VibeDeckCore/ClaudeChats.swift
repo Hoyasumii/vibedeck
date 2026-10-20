@@ -57,6 +57,7 @@ public struct ClaudeChat: Codable, Equatable, Identifiable, Sendable {
     public var title: String
     public var provider: AIProvider
     public var sessionId: String?
+    public var pendingPlan: String? = nil
     public var createdAt: Date
     public var updatedAt: Date
     public var messages: [ClaudeChatMessage]
@@ -72,7 +73,7 @@ public struct ClaudeChat: Codable, Equatable, Identifiable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, title, provider, sessionId, createdAt, updatedAt, messages
+        case id, title, provider, sessionId, pendingPlan, createdAt, updatedAt, messages
     }
 
     public init(from decoder: Decoder) throws {
@@ -81,6 +82,7 @@ public struct ClaudeChat: Codable, Equatable, Identifiable, Sendable {
         id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
         provider = try c.decodeIfPresent(AIProvider.self, forKey: .provider) ?? .claude
         sessionId = try c.decodeIfPresent(String.self, forKey: .sessionId)
+        pendingPlan = try c.decodeIfPresent(String.self, forKey: .pendingPlan)
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? .now
         updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
         messages = try c.decodeIfPresent([ClaudeChatMessage].self, forKey: .messages) ?? []

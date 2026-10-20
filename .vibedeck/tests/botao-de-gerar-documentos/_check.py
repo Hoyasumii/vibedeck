@@ -103,7 +103,7 @@ def proposal():
 
 tests = []
 if RULE == '90397722':
-    need(SL, r'if section == \.docs, !AIProvider.installed.isEmpty \{\s*ToolbarItemGroup \{\s*Button \{\s*model.docGenerator.start.*?Label\("Gerar documentos"', 'Botão deve ficar condicionado a Docs e provedor instalado')
+    need(SL, r'if section == \.docs, !AIProvider\.installed(?:\(in: providerRoot\))?\.isEmpty \{\s*ToolbarItemGroup \{\s*Button \{\s*model.docGenerator.start.*?Label\("Gerar documentos"', 'Botão deve ficar condicionado a Docs e provedor instalado')
     need(CORE + 'AIProvider.swift', r'case claude, codex', 'Provedores suportados devem ser Claude e Codex')
     need(CORE + 'AIProvider.swift', r'installed: \[AIProvider\] \{ allCases.filter\(\\.isInstalled\) \}', 'Disponibilidade deve filtrar provedores instalados')
 elif RULE in {'83D8DA0A', '81D69362'}:

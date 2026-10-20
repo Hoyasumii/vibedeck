@@ -1,0 +1,137 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "human",
+  "body" : "# Botão de Resolver em Revisões\n\n## Problema\nHoje o usuário precisa tratar cada item de revisão manualmente. Não há como pedir à IA que resolva um item específico ou um grupo inteiro de revisões, nem um fluxo seguro em que a IA tire dúvidas, proponha um plano e só então altere arquivos.\n\n## Proposta\nAdicionar um botão **Resolver** em cada item de revisão e no cabeçalho do grupo (em `ReviewGroupView`). Ele só aparece quando há provedor de IA suportado (Claude Code ou Codex) na máquina. É a mesma checagem usada pelo Descubra e por Gerar documentos. A funcionalidade existe só no app, sem CLI nem MCP.\n\nFluxo:\n1. **Pergunta e plano (somente leitura):** a IA roda só com Read/Grep/Glob, via `AIReadOnlyOperation` (Codex com `workspaceWrites=false`). Ela responde um JSON validado com perguntas e plano. Se tiver dúvidas, o app mostra as perguntas, o usuário responde cada uma na tela, e só depois o plano final é gerado.\n2. **Aceite:** o usuário vê o plano e o aceita explicitamente. Sem aceite, nenhum arquivo do projeto muda e o status do item permanece o mesmo.\n3. **Execução:** depois do aceite, a IA pode escrever (Edit/Write/Bash no Claude Code; `workspaceWrites=true` no Codex). A escrita fica restrita ao projeto aberto e ao plano aceito.\n4. **Check e conclusão:** a IA marca o item como `done` somente depois do check aprovado (`ensureVerified`). Mudanças de status passam por `ProjectModel`/`ProjectStore` com `author=ai` e registram undo.\n\nAlcance: um item específico, ou o grupo inteiro. No grupo, só entram itens `open` ou `in_progress`; `done` e `wontfix` nunca são enviados à IA nem alterados. Os itens do grupo são tratados um de cada vez, cada um com seu próprio check. A falha de um item não impede os seguintes nem reverte os já concluídos.\n\nRegras de segurança e robustez:\n- Resolver nunca apaga nem marca `wontfix` um item. Se não conseguir resolver, o item continua `open` ou `in_progress` e o usuário vê a explicação.\n- Só uma execução de Resolver por projeto por vez, com indicador de progresso e botão **Cancelar** em pt-BR. Cancelar encerra o processo da IA e não marca nenhum item como `done`.\n- Se o item mudou, foi apagado ou deixou de estar selecionado durante a fase de plano, a resposta é descartada sem alterar nada.\n- Se o JSON da fase de plano for inválido, o app mostra erro claro em pt-BR e não altera arquivo nem status.\n- Todo texto visível ao usuário fica em pt-BR.\n\n## Escopo\n- `Sources/VibeDeckApp/ReviewGroupView.swift`: botões Resolver (item e cabeçalho do grupo), perguntas, plano, aceite, progresso e cancelamento.\n- `Sources/VibeDeckApp/ReviewDiscover.swift`: referência de como o app dispara a IA hoje. Reaproveitar o padrão, sem duplicar.\n- `Sources/VibeDeckApp/AIReadOnlyOperation.swift`: fase de plano somente leitura.\n- `Sources/VibeDeckCore/ReviewDiscover.swift`: referência. Criar ao lado dele um arquivo novo no Core, sem SwiftUI, que monta o prompt, valida o JSON da IA e converte em perguntas e plano. Ele também filtra os itens `open`/`in_progress`.\n- `Tests/VibeDeckCoreTests/ReviewDiscoverTests.swift`: referência. Adicionar testes no mesmo diretório para o novo arquivo do Core.\n- `ProjectModel`/`ProjectStore`: mudanças de status e undo.\n- `README.md` e `.vibedeck/guide.md`: documentação em pt-BR.\n\n## Critérios de aceite\n- Os botões Resolver aparecem em cada item e no cabeçalho do grupo, e só com provedor de IA suportado.\n- O grupo considera apenas itens `open` e `in_progress`. Teste no Core: um grupo com os quatro status gera contexto/plano só com `open` e `in_progress`.\n- A chamada do plano não inclui Edit/Write/Bash em `allowedTools`, e no Codex usa `workspaceWrites=false`.\n- Sem aceite do plano, `git status` não muda e o status do item permanece.\n- Se a IA tiver dúvidas, as perguntas aparecem e o plano final só é gerado depois de respondidas.\n- Os testes do Core cobrem JSON válido, inválido (entrada malformada) e campos vazios.\n- A permissão de escrita só é concedida após o aceite e com o diretório do projeto como raiz.\n- Nenhum caminho de falha remove o item ou grava `wontfix`.\n- Há guard de uma execução por projeto, com progresso e Cancelar. Cancelar termina o processo e não marca nada como `done`.\n- Teste com grupo de 3 itens em que o do meio falha no check: os outros são tentados e o concluído não é revertido.\n- A resposta é descartada se o item mudou durante o plano.\n- Mudanças de status usam `ProjectModel`/`ProjectStore` com `author=ai` e registram undo, sem escrever JSON à mão.\n- Buscar \"Resolver\" em `README.md` e `.vibedeck/guide.md` encontra a documentação do fluxo pergunta, plano, aceite, execução e check.\n- `swift test` passa.",
+  "createdAt" : "2026-10-12T02:56:02Z",
+  "id" : "E90F1BF5-490B-4125-9071-E88B9FD54512",
+  "paths" : [
+    "Sources/VibeDeckApp/ReviewGroupView.swift",
+    "Sources/VibeDeckApp/ReviewDiscover.swift",
+    "Sources/VibeDeckCore/ReviewDiscover.swift",
+    "Sources/VibeDeckApp/AIReadOnlyOperation.swift",
+    "Tests/VibeDeckCoreTests/ReviewDiscoverTests.swift"
+  ],
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:45:37Z",
+      "details" : "Verificar em ReviewGroupView.swift que os botões são condicionados à mesma checagem de provedor usada pelo Descubra e por Gerar documentos.",
+      "id" : "F339628C-8789-4331-8AF1-AE3D46A78378",
+      "severity" : "must",
+      "text" : "O botão Resolver aparece em cada item de revisão e no cabeçalho do grupo, e só quando há provedor de IA suportado (Claude Code ou Codex) na máquina."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:45:37Z",
+      "details" : "Teste unitário no Core: grupo com os quatro status gera contexto/plano apenas com open e in_progress.",
+      "id" : "03F0B66D-99A1-4CA0-9071-46D345C25688",
+      "severity" : "must",
+      "text" : "Resolver em um grupo considera somente itens com status open ou in_progress; itens done e wontfix nunca são enviados à IA nem alterados."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:45:37Z",
+      "details" : "Verificar que a chamada do plano não inclui Edit/Write/Bash em allowedTools.",
+      "id" : "6FC5A415-DAD6-44EA-857B-96828F3981D5",
+      "severity" : "must",
+      "text" : "A fase de plano roda só com ferramentas de leitura (Read/Grep/Glob) via AIReadOnlyOperation; no Codex, workspaceWrites=false."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:45:37Z",
+      "details" : "Teste/inspeção: sem o aceite, git status não muda e o status do item permanece o mesmo.",
+      "id" : "74CD0CB1-7E58-46D2-BAD9-09F4C11A2760",
+      "severity" : "must",
+      "text" : "Nenhum arquivo do projeto é alterado antes de o usuário aceitar explicitamente o plano mostrado."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:45:37Z",
+      "details" : "A resposta da IA da fase de plano é JSON validado com campos de perguntas e plano; o usuário pode responder cada pergunta na tela.",
+      "id" : "D09734DE-FF58-4F4A-8083-25FF8A4FFD1F",
+      "severity" : "must",
+      "text" : "Se a IA tiver dúvidas, o app mostra as perguntas ao usuário e só gera o plano final depois de recebê-las respondidas."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:45:37Z",
+      "details" : "Arquivo no Core ao lado de ReviewDiscover, com testes em Tests/VibeDeckCoreTests cobrindo JSON válido, inválido e campos vazios.",
+      "id" : "74C1BBB4-ED00-43FB-BEF1-A6F7A7AF06BB",
+      "severity" : "must",
+      "text" : "A lógica de montar o prompt, validar o JSON da IA e converter em plano/perguntas fica no Core, sem depender de SwiftUI, com testes."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:45:37Z",
+      "details" : "Teste de parse com entrada malformada.",
+      "id" : "6DCB59B4-E2D9-41FA-BF15-A1846EA21BCD",
+      "severity" : "must",
+      "text" : "Se o JSON da fase de plano for inválido, o app mostra erro claro em pt-BR e não altera nenhum arquivo nem o status do item."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:45:37Z",
+      "details" : "Verificar que a permissão de escrita só é concedida após o aceite e com o diretório do projeto como raiz.",
+      "id" : "AA3E97A3-47DB-45C6-ACDB-5D1AF9A84676",
+      "severity" : "must",
+      "text" : "Ao aceitar o plano, a execução permite escrita (Edit/Write/Bash no Claude Code; workspaceWrites=true no Codex) restrita ao projeto aberto e ao plano aceito."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:45:37Z",
+      "details" : "Inspecionar o fluxo de falha: nenhum caminho remove o item ou grava wontfix.",
+      "id" : "138C69DB-F22B-4D56-B05C-5866CAFD7836",
+      "severity" : "must",
+      "text" : "Resolver nunca apaga nem marca wontfix um item de revisão; se não conseguir resolver, o item continua in_progress ou open com a explicação exibida ao usuário."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:45:37Z",
+      "details" : "Verificar o guard por projeto e o término do processo ao cancelar.",
+      "id" : "BC690B47-5ED6-4EED-923A-F5DED749936C",
+      "severity" : "must",
+      "text" : "Cada projeto permite uma execução de Resolver por vez, com indicador de progresso e botão Cancelar em pt-BR; cancelar encerra o processo da IA e não marca nenhum item como done."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:45:37Z",
+      "details" : "Teste com um grupo de 3 itens em que o do meio falha no check.",
+      "id" : "E5B540BC-1C5F-4804-B7C9-6CD2BE72EBD7",
+      "severity" : "should",
+      "text" : "No Resolver de grupo, os itens são tratados um de cada vez e cada item passa por seu próprio check antes de ir a done; falha em um item não impede os seguintes de serem tentados nem reverte os já concluídos."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:45:37Z",
+      "details" : "Comparar o estado do item no início e na volta da chamada.",
+      "id" : "904A82DB-0D24-4435-B3F7-B46C5D28C966",
+      "severity" : "should",
+      "text" : "Se o item mudou, foi apagado ou deixou de estar selecionado durante a fase de plano, a resposta é descartada sem alterar nada."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:45:37Z",
+      "details" : "Verificar que a mudança de status usa ProjectModel/ProjectStore e não escreve JSON à mão.",
+      "id" : "8DE0DAA6-5A80-49DC-B040-8FB496A0BBE5",
+      "severity" : "should",
+      "text" : "Alterações nos arquivos de dados do projeto feitas durante o Resolver passam por operações do Core (ProjectStore) com author=ai, e cada mudança de status registra undo no app."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:45:37Z",
+      "details" : "Buscar 'Resolver' em README.md e .vibedeck/guide.md.",
+      "id" : "60E080FD-86C0-4AF1-A1E1-1B103220005A",
+      "severity" : "should",
+      "text" : "README e .vibedeck/guide.md documentam, em pt-BR, o botão Resolver, o fluxo pergunta, plano, aceite, execução e check."
+    }
+  ],
+  "status" : "done",
+  "tags" : [
+    "revisoes",
+    "ia",
+    "interface",
+    "core"
+  ],
+  "title" : "Botão de Resolver em Revisões",
+  "updatedAt" : "2026-10-13T21:40:33Z"
+}

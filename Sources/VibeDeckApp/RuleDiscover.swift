@@ -1,22 +1,28 @@
 import SwiftUI
 import VibeDeckCore
 
-/// Runs the rules "Descubra" for a topic or an idea: first a read-only call proposing globs and tags, then an
-/// interview (rounds of questions) that drafts rules, and last a rewritten description (with, for ideas, the
-/// viability verdict). Each answer only becomes a proposal; the view applies what the user accepts.
+/// Runs the rules "Descubra" for a topic or an idea: an optional opening context, a read-only call proposing globs,
+/// an interview (rounds of questions) that drafts rules, and last a rewritten description with suggested tags.
+/// "Verificar" is separate: only the viability verdict of an idea. Each answer only becomes a proposal; the view
+/// applies what the user accepts.
 @Observable @MainActor
 final class RuleDiscoverRunner {
     enum State: Equatable {
         case idle
+        /// Waiting for the optional opening context.
+        case intro
         case running(String)
         case failed(String)
         case scope(RuleDiscoverScope)
         case questions([RuleDiscover.Question])
         case drafts(RuleDiscoverDrafts)
-        case description(RuleDiscoverDescription)
+        case details(RuleDiscoverDetails)
+        case verdict(RuleDiscoverVerdict)
     }
 
     var state: State = .idle
+    /// Opening context the user typed (empty = none); goes into every prompt of this Descubra.
+    private(set) var context = ""
     /// Questions answered so far in this interview.
     private(set) var history: [RuleDiscover.Exchange] = []
     private(set) var round = 0
@@ -27,16 +33,32 @@ final class RuleDiscoverRunner {
     var isRunning: Bool { if case .running = state { true } else { false } }
     var isActive: Bool { state != .idle }
 
-    /// Phase 1: globs and tags.
-    func start(_ subject: RuleDiscover.Subject, vocabulary: [String], topics: [RuleDiscover.KnownTopic], store: ProjectStore, provider: AIProvider) {
+    /// Opens the sheet on the optional context prompt.
+    func begin() {
+        context = ""
         history = []
         round = 0
-        let prompt = RuleDiscover.scopePrompt(subject, vocabulary: vocabulary, topics: topics)
-        run(subject, message: "Procurando globs e tags no código…", provider: provider, store: store,
+        state = .intro
+    }
+
+    /// The subject as the prompts see it: with the opening context.
+    private func withContext(_ subject: RuleDiscover.Subject) -> RuleDiscover.Subject {
+        var subject = subject
+        subject.context = context.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : context
+        return subject
+    }
+
+    /// Phase 1: globs. `context` is the opening text (may be empty).
+    func start(_ subject: RuleDiscover.Subject, context: String, topics: [RuleDiscover.KnownTopic], store: ProjectStore, provider: AIProvider) {
+        self.context = context
+        history = []
+        round = 0
+        let prompt = RuleDiscover.scopePrompt(withContext(subject), topics: topics)
+        run(subject, message: "Procurando globs no código…", provider: provider, store: store,
             prompt: prompt, schema: RuleDiscover.scopeSchema) { data in
             let answer = try JSONDecoder().decode(RuleDiscover.ScopeAnswer.self, from: data)
-            guard (answer.paths + answer.tags).allSatisfy({ !$0.reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) else { throw VibeDeckError.discoverInvalidAnswer }
-            return .scope(RuleDiscover.scope(answer, subject: subject, vocabulary: vocabulary, files: RuleDiscover.projectFiles(root: store.root)))
+            guard answer.paths.allSatisfy({ !$0.reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) else { throw VibeDeckError.discoverInvalidAnswer }
+            return .scope(RuleDiscover.scope(answer, subject: subject, vocabulary: [], files: RuleDiscover.projectFiles(root: store.root)))
         }
     }
 
@@ -49,7 +71,7 @@ final class RuleDiscoverRunner {
         }
         round += 1
         let finish = finish || round > RuleDiscover.maxRounds
-        let prompt = RuleDiscover.interviewPrompt(subject, topics: topics, history: history, finish: finish)
+        let prompt = RuleDiscover.interviewPrompt(withContext(subject), topics: topics, history: history, finish: finish)
         run(subject, message: finish ? "Gerando regras…" : "Preparando perguntas…", provider: provider, store: store,
             prompt: prompt, schema: RuleDiscover.interviewSchema) { data in
             let answer = try JSONDecoder().decode(RuleDiscover.InterviewAnswer.self, from: data)
@@ -59,26 +81,32 @@ final class RuleDiscoverRunner {
         }
     }
 
-    /// Phase 3: the description rewritten with what was gathered (and the idea's viability). Alone, it's "Verificar".
-    func describe(_ subject: RuleDiscover.Subject, topics: [RuleDiscover.KnownTopic], store: ProjectStore, provider: AIProvider) {
-        let prompt = RuleDiscover.descriptionPrompt(subject, topics: topics, history: history)
-        run(subject, message: subject.kind == .idea ? "Atualizando a descrição e avaliando a ideia…" : "Atualizando a descrição…",
-            provider: provider, store: store, prompt: prompt, schema: RuleDiscover.descriptionSchema) { data in
-            let answer = try JSONDecoder().decode(RuleDiscover.DescriptionAnswer.self, from: data)
-            return .description(RuleDiscover.description(answer, subject: subject))
+    /// Phase 3: the description rewritten and tags suggested with what was gathered.
+    func describe(_ subject: RuleDiscover.Subject, vocabulary: [String], topics: [RuleDiscover.KnownTopic], store: ProjectStore, provider: AIProvider) {
+        let prompt = RuleDiscover.detailsPrompt(withContext(subject), vocabulary: vocabulary, topics: topics, history: history)
+        run(subject, message: "Escrevendo a descrição e sugerindo tags…", provider: provider, store: store,
+            prompt: prompt, schema: RuleDiscover.detailsSchema) { data in
+            let answer = try JSONDecoder().decode(RuleDiscover.DetailsAnswer.self, from: data)
+            guard answer.tags.allSatisfy({ !$0.reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) else { throw VibeDeckError.discoverInvalidAnswer }
+            return .details(RuleDiscover.details(answer, subject: subject, vocabulary: vocabulary))
         }
     }
 
-    /// Only the description/viability phase, without the scope and interview.
+    /// "Verificar": only the viability verdict of an idea, without scope, interview or description.
     func assess(_ subject: RuleDiscover.Subject, topics: [RuleDiscover.KnownTopic], store: ProjectStore, provider: AIProvider) {
+        context = ""
         history = []
         round = 0
-        describe(subject, topics: topics, store: store, provider: provider)
+        let prompt = RuleDiscover.verdictPrompt(subject, topics: topics)
+        run(subject, message: "Avaliando a ideia…", provider: provider, store: store,
+            prompt: prompt, schema: RuleDiscover.verdictSchema) { data in
+            .verdict(RuleDiscover.verdict(try JSONDecoder().decode(RuleDiscover.VerdictAnswer.self, from: data), subject: subject))
+        }
     }
 
     private func run(_ subject: RuleDiscover.Subject, message: String, provider: AIProvider, store: ProjectStore,
                      prompt: String, schema: String, parse: @escaping (Data) throws -> State) {
-        guard provider.isInstalled else { state = .failed("\(provider.title) não está instalado."); return }
+        guard RemoteExecution.available(provider, root: store.root) else { state = .failed("\(provider.title) não está instalado."); return }
         task?.cancel()
         snapshot = subject
         state = .running(message)
@@ -87,8 +115,7 @@ final class RuleDiscoverRunner {
                 let next = try await AIReadOnlyOperation.run(root: store.root, provider: provider, operation: "Descubra regras",
                                                              prompt: prompt, schema: schema, parse: parse)
                 guard !Task.isCancelled else { return }
-                snapshot = nil
-                state = next
+                complete(next, for: subject)
             } catch is CancellationError {
             } catch {
                 guard !Task.isCancelled else { return }
@@ -96,6 +123,12 @@ final class RuleDiscoverRunner {
                 state = .failed(error.localizedDescription)
             }
         }
+    }
+
+    /// Keeps the assessed content until acceptance, so a completed verdict cannot be applied to later edits.
+    func complete(_ next: State, for subject: RuleDiscover.Subject) {
+        if case .verdict = next { snapshot = subject } else { snapshot = nil }
+        state = next
     }
 
     /// Stops the call (the process is terminated) and closes the Descubra.
@@ -108,7 +141,7 @@ final class RuleDiscoverRunner {
 
     /// The topic or idea was edited while the call ran: the answer would be based on stale data.
     func subjectChanged(_ subject: RuleDiscover.Subject) {
-        guard isRunning, let snapshot, snapshot != subject else { return }
+        guard let snapshot, !snapshot.hasSameContent(as: subject) else { return }
         task?.cancel()
         task = nil
         self.snapshot = nil
@@ -120,42 +153,55 @@ final class RuleDiscoverRunner {
 /// `apply*` closures write one undoable change each. `assessOnly` makes it the idea's "Verificar": just the
 /// description/viability phase.
 struct RuleDiscoverButton: View {
+    @Environment(\.logProject) private var logProject
     var assessOnly = false
+    var implementation = false
+    var onImplement: (() -> Void)? = nil
+    var subjectReady = false
     let subject: RuleDiscover.Subject
     /// Fresh subject after an accept (the interview starts from what was just applied).
     let current: () -> RuleDiscover.Subject
     let vocabulary: [String]
     let topics: [RuleDiscover.KnownTopic]
     let store: ProjectStore
-    let applyScope: (RuleDiscoverScope, Set<String>, Set<String>) -> Void
+    let applyScope: (RuleDiscoverScope, Set<String>) -> Void
     let applyRules: (RuleDiscoverDrafts, Set<UUID>) -> Void
-    /// The proposal and whether the new text was accepted (false keeps the current one).
-    let applyDescription: (RuleDiscoverDescription, Bool) -> Void
+    /// The proposal, whether the new description was accepted (false keeps the current one) and the chosen tags.
+    let applyDetails: (RuleDiscoverDetails, Bool, Set<String>) -> Void
+    /// "Verificar" result (only when `assessOnly`).
+    let applyVerdict: (RuleDiscoverVerdict) -> Void
     @Environment(AISession.self) private var session
     @State private var runner = RuleDiscoverRunner()
 
     var body: some View {
-        Button {
-            if assessOnly {
-                runner.assess(subject, topics: topics, store: store, provider: session.provider)
+        LoggedButton {
+            if implementation, onImplement != nil, subjectReady {
+                onImplement?()
+            } else if assessOnly {
+                runner.assess(current(), topics: topics, store: store, provider: session.provider)
             } else {
-                runner.start(subject, vocabulary: vocabulary, topics: topics, store: store, provider: session.provider)
+                runner.begin()
             }
         } label: {
-            if assessOnly {
+            if implementation {
+                Label("Implementar", systemImage: "hammer")
+            } else if assessOnly {
                 Label("Verificar", systemImage: "checkmark.circle.badge.questionmark")
             } else {
                 Label("Descubra", systemImage: "sparkles")
             }
-        }
+        }.loggedControl(control: "rule_discover.button_1", label: "Verificar")
         .disabled(runner.isActive)
         .help(assessOnly
-              ? "Pede à IA (só leitura) para revisar a descrição e dizer se a ideia já dá para implementar."
-              : "Pede à IA (só leitura) globs e tags, uma entrevista para gerar regras e, por fim, a descrição atualizada. Nada é gravado sem aceite.")
+              ? "Pede à IA (só leitura) para dizer se a ideia já dá para implementar."
+              : "Pede à IA (só leitura) globs, uma entrevista para gerar regras e, por fim, a descrição e as tags. Você pode dar um contexto inicial. Nada é gravado sem aceite.")
         .sheet(isPresented: Binding(get: { runner.isActive }, set: { if !$0 { runner.cancel() } })) {
             RuleDiscoverSheet(runner: runner, subject: subject.kind,
-                              applyScope: { scope, paths, tags, next in
-                                  applyScope(scope, paths, tags)
+                              start: { context in
+                                  runner.start(current(), context: context, topics: topics, store: store, provider: session.provider)
+                              },
+                              applyScope: { scope, paths, next in
+                                  applyScope(scope, paths)
                                   if next { interview() } else { runner.cancel() }
                               },
                               interview: interview,
@@ -167,9 +213,16 @@ struct RuleDiscoverButton: View {
                                   describe()
                               },
                               describe: describe,
-                              applyDescription: { proposal, accepted in
-                                  applyDescription(proposal, accepted)
+                              applyDetails: { proposal, accepted, tags in
+                                  applyDetails(proposal, accepted, tags)
                                   runner.cancel()
+                              },
+                              applyVerdict: { verdict in
+                                  runner.subjectChanged(current())
+                                  guard case .verdict = runner.state else { return }
+                                  applyVerdict(verdict)
+                                  runner.cancel()
+                                  if implementation, verdict.viable { onImplement?() }
                               })
         }
         .onChange(of: subject) { _, new in runner.subjectChanged(new) }
@@ -181,20 +234,24 @@ struct RuleDiscoverButton: View {
     }
 
     private func describe() {
-        runner.describe(current(), topics: topics, store: store, provider: session.provider)
+        runner.describe(current(), vocabulary: vocabulary, topics: topics, store: store, provider: session.provider)
     }
 }
 
 private struct RuleDiscoverSheet: View {
+    @Environment(\.logProject) private var logProject
     let runner: RuleDiscoverRunner
     let subject: RuleDiscover.Subject.Kind
-    let applyScope: (RuleDiscoverScope, Set<String>, Set<String>, Bool) -> Void
+    let start: (String) -> Void
+    let applyScope: (RuleDiscoverScope, Set<String>, Bool) -> Void
     let interview: () -> Void
     let answer: ([String], Bool) -> Void
     let applyRules: (RuleDiscoverDrafts, Set<UUID>) -> Void
     let describe: () -> Void
-    let applyDescription: (RuleDiscoverDescription, Bool) -> Void
+    let applyDetails: (RuleDiscoverDetails, Bool, Set<String>) -> Void
+    let applyVerdict: (RuleDiscoverVerdict) -> Void
 
+    @State private var context = ""
     @State private var paths: Set<String> = []
     @State private var tags: Set<String> = []
     @State private var answers: [String] = []
@@ -209,7 +266,7 @@ private struct RuleDiscoverSheet: View {
                     Text("Rodada \(runner.round) de \(RuleDiscover.maxRounds)").font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button("Cancelar", role: .cancel) { runner.cancel() }
+                LoggedButton("Cancelar", role: .cancel) { runner.cancel() }.loggedControl(control: "rule_discover.button_2", label: "Cancelar")
                     .keyboardShortcut(.cancelAction)
                 actions
             }
@@ -225,6 +282,8 @@ private struct RuleDiscoverSheet: View {
         switch runner.state {
         case .idle:
             Spacer()
+        case .intro:
+            introForm
         case .running(let message):
             VStack(spacing: 10) {
                 ProgressView()
@@ -243,37 +302,45 @@ private struct RuleDiscoverSheet: View {
             questionsForm(questions)
         case .drafts(let drafts):
             draftsForm(drafts)
-        case .description(let proposal):
-            descriptionForm(proposal)
+        case .details(let proposal):
+            detailsForm(proposal)
+        case .verdict(let verdict):
+            verdictForm(verdict)
         }
     }
 
     @ViewBuilder
     private var actions: some View {
         switch runner.state {
+        case .intro:
+            LoggedButton("Começar") { start(context) }.loggedControl(control: "rule_discover.button_3", label: "Começar")
+                .keyboardShortcut(.defaultAction)
         case .scope(let scope):
-            Button("Só aplicar") { applyScope(scope, paths, tags, false) }
-                .disabled(paths.isEmpty && tags.isEmpty)
-            Button(paths.isEmpty && tags.isEmpty ? "Gerar regras" : "Aplicar e gerar regras") { applyScope(scope, paths, tags, true) }
+            LoggedButton("Só aplicar") { applyScope(scope, paths, false) }.loggedControl(control: "rule_discover.button_4", label: "Só aplicar")
+                .disabled(paths.isEmpty)
+            LoggedButton(paths.isEmpty ? "Gerar regras" : "Aplicar e gerar regras") { applyScope(scope, paths, true) }.loggedControl(control: "rule_discover.button_5", label: "Ativar controle")
                 .keyboardShortcut(.defaultAction)
         case .questions:
-            Button("Gerar com o que já tenho") { answer(answers, true) }
-            Button("Responder") { answer(answers, false) }
+            LoggedButton("Gerar com o que já tenho") { answer(answers, true) }.loggedControl(control: "rule_discover.button_6", label: "Gerar com o que já tenho")
+            LoggedButton("Responder") { answer(answers, false) }.loggedControl(control: "rule_discover.button_7", label: "Responder")
                 .keyboardShortcut(.defaultAction)
         case .drafts(let drafts):
-            Button("Pular para a descrição") { describe() }
-            Button(subject == .idea ? "Adicionar ao rascunho" : "Adicionar regras") { applyRules(drafts, rules) }
+            LoggedButton("Pular para descrição e tags") { describe() }.loggedControl(control: "rule_discover.button_8", label: "Pular para descrição e tags")
+            LoggedButton(subject == .idea ? "Adicionar ao rascunho" : "Adicionar regras") { applyRules(drafts, rules) }.loggedControl(control: "rule_discover.button_9", label: "Ativar controle")
                 .keyboardShortcut(.defaultAction)
                 .disabled(rules.isEmpty)
-        case .description(let proposal):
+        case .details(let proposal):
             if proposal.suggested == nil {
-                Button(subject == .idea ? "Salvar avaliação" : "Fechar") { applyDescription(proposal, false) }
+                LoggedButton(tags.isEmpty ? "Fechar" : "Adicionar tags") { applyDetails(proposal, false, tags) }.loggedControl(control: "rule_discover.button_10", label: "Ativar controle")
                     .keyboardShortcut(.defaultAction)
             } else {
-                Button("Manter a atual") { applyDescription(proposal, false) }
-                Button("Usar nova descrição") { applyDescription(proposal, true) }
+                LoggedButton("Manter a atual") { applyDetails(proposal, false, tags) }.loggedControl(control: "rule_discover.button_11", label: "Manter a atual")
+                LoggedButton("Usar nova descrição") { applyDetails(proposal, true, tags) }.loggedControl(control: "rule_discover.button_12", label: "Usar nova descrição")
                     .keyboardShortcut(.defaultAction)
             }
+        case .verdict(let verdict):
+            LoggedButton("Salvar avaliação") { applyVerdict(verdict) }.loggedControl(control: "rule_discover.button_13", label: "Salvar avaliação")
+                .keyboardShortcut(.defaultAction)
         case .idle, .running, .failed:
             EmptyView()
         }
@@ -281,13 +348,13 @@ private struct RuleDiscoverSheet: View {
 
     private func scopeForm(_ scope: RuleDiscoverScope) -> some View {
         Form {
-            if scope.isEmpty {
-                Text("A IA não encontrou globs nem tags novos.").foregroundStyle(.secondary)
+            if scope.paths.isEmpty {
+                Text("A IA não encontrou globs novos.").foregroundStyle(.secondary)
             }
             if !scope.paths.isEmpty {
                 Section {
                     ForEach(scope.paths) { path in
-                        Toggle(isOn: member(path.glob, in: $paths)) {
+                        Toggle(isOn: member(path.glob, in: $paths).logging(control: "rule_discover.selection_14", label: "Alternar", project: logProject)) {
                             Text(path.glob).font(.body.monospaced())
                             Text("Casa \(path.matches) arquivo(s)").font(.caption).foregroundStyle(.secondary)
                             if let reason = path.reason { Text(reason).font(.caption) }
@@ -297,17 +364,6 @@ private struct RuleDiscoverSheet: View {
                     Text("Globs")
                 } footer: {
                     Text("Só adiciona; os globs atuais continuam.").font(.caption).foregroundStyle(.secondary)
-                }
-            }
-            if !scope.tags.isEmpty {
-                Section("Tags") {
-                    ForEach(scope.tags) { tag in
-                        Toggle(isOn: member(tag.tag, in: $tags)) {
-                            Text("#\(tag.tag)")
-                            if tag.isNew { Text("Tag nova: ainda não existe no projeto").font(.caption).foregroundStyle(.orange) }
-                            if let reason = tag.reason { Text(reason).font(.caption) }
-                        }
-                    }
                 }
             }
             discarded(scope.discarded)
@@ -320,7 +376,7 @@ private struct RuleDiscoverSheet: View {
             ForEach(questions) { question in
                 Section(question.text) {
                     if !question.options.isEmpty {
-                        Picker("Opções", selection: answerBinding(question.id)) {
+                        Picker("Opções", selection: answerBinding(question.id).logging(control: "rule_discover.selection_15", label: "Opções", project: logProject)) {
                             Text("—").tag("")
                             ForEach(question.options, id: \.self) { Text($0).tag($0) }
                             let typed = answerBinding(question.id).wrappedValue
@@ -329,7 +385,7 @@ private struct RuleDiscoverSheet: View {
                         .pickerStyle(.radioGroup)
                         .labelsHidden()
                     }
-                    TextField(question.options.isEmpty ? "Resposta" : "Ou escreva outra resposta", text: answerBinding(question.id), axis: .vertical)
+                    LoggedTextField(question.options.isEmpty ? "Resposta" : "Ou escreva outra resposta", text: answerBinding(question.id), axis: .vertical).loggedField(control: "rulediscover.text_1", label: "Confirmar campo")
                         .lineLimit(1...4)
                 }
             }
@@ -344,7 +400,7 @@ private struct RuleDiscoverSheet: View {
             }
             Section {
                 ForEach(drafts.rules) { draft in
-                    Toggle(isOn: member(draft.id, in: $rules)) {
+                    Toggle(isOn: member(draft.id, in: $rules).logging(control: "rule_discover.selection_16", label: "Alternar", project: logProject)) {
                         HStack(spacing: 4) {
                             Image(systemName: draft.severity.symbol)
                                 .foregroundStyle(draft.severity == .must ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary))
@@ -368,33 +424,36 @@ private struct RuleDiscoverSheet: View {
         .formStyle(.grouped)
     }
 
-    private func descriptionForm(_ proposal: RuleDiscoverDescription) -> some View {
+    private var introForm: some View {
         Form {
-            if subject == .idea {
-                Section("Viabilidade") {
-                    if proposal.viable {
-                        Label("Dá para implementar", systemImage: "checkmark.seal").foregroundStyle(.green)
-                    } else {
-                        Label("Ainda não dá para implementar", systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
-                        ForEach(proposal.missing, id: \.self) { Text("• \($0)").font(.callout) }
-                    }
-                }
+            Section {
+                TextEditor(text: $context)
+                    .font(.body)
+                    .frame(minHeight: 200)
+            } header: {
+                Text("Contexto inicial (opcional)")
+            } footer: {
+                Text("Conte o que você quer fazer, restrições e decisões já tomadas. A IA usa isto além do título e da descrição; deixe em branco para seguir só com eles.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
+        }
+        .formStyle(.grouped)
+    }
+
+    private func detailsForm(_ proposal: RuleDiscoverDetails) -> some View {
+        Form {
             if let suggested = proposal.suggested {
                 Section {
                     ScrollView {
                         Text(suggested).font(.callout.monospaced()).textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .frame(height: 180)
+                    .frame(height: 160)
                     if let reason = proposal.reason { Text(reason).font(.caption) }
                 } header: {
                     Text("Descrição nova")
                 } footer: {
-                    Text(subject == .idea
-                         ? "Substitui a atual (⌘Z desfaz). A IA avaliou a ideia com este texto: manter a atual não conta como viável."
-                         : "Substitui a atual (⌘Z desfaz).")
-                        .font(.caption).foregroundStyle(.secondary)
+                    Text("Substitui a atual (⌘Z desfaz).").font(.caption).foregroundStyle(.secondary)
                 }
                 if let current = proposal.current {
                     Section("Descrição atual") {
@@ -402,11 +461,42 @@ private struct RuleDiscoverSheet: View {
                             Text(current).font(.callout.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        .frame(height: 100)
+                        .frame(height: 80)
                     }
                 }
             } else {
                 Text("A IA manteve a descrição atual.").foregroundStyle(.secondary)
+            }
+            if !proposal.tags.isEmpty {
+                Section {
+                    ForEach(proposal.tags) { tag in
+                        Toggle(isOn: member(tag.tag, in: $tags).logging(control: "rule_discover.selection_17", label: "Alternar", project: logProject)) {
+                            Text("#\(tag.tag)")
+                            if tag.isNew { Text("Tag nova: ainda não existe no projeto").font(.caption).foregroundStyle(.orange) }
+                            if let reason = tag.reason { Text(reason).font(.caption) }
+                        }
+                    }
+                } header: {
+                    Text("Tags")
+                } footer: {
+                    Text("Só adiciona; as tags atuais continuam.").font(.caption).foregroundStyle(.secondary)
+                }
+            } else {
+                Text("A IA não sugeriu tags novas.").foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    private func verdictForm(_ verdict: RuleDiscoverVerdict) -> some View {
+        Form {
+            Section("Viabilidade") {
+                if verdict.viable {
+                    Label("Dá para implementar", systemImage: "checkmark.seal").foregroundStyle(.green)
+                } else {
+                    Label("Ainda não dá para implementar", systemImage: "exclamationmark.triangle").foregroundStyle(.orange)
+                    ForEach(Array(verdict.missing.enumerated()), id: \.offset) { Text("• \($0.element)").font(.callout) }
+                }
             }
         }
         .formStyle(.grouped)
@@ -416,22 +506,23 @@ private struct RuleDiscoverSheet: View {
     private func discarded(_ list: [String]) -> some View {
         if !list.isEmpty {
             Section("Descartado") {
-                ForEach(list, id: \.self) { Text($0).font(.callout).foregroundStyle(.secondary) }
+                ForEach(Array(list.enumerated()), id: \.offset) { Text($0.element).font(.callout).foregroundStyle(.secondary) }
             }
         }
     }
 
-    /// Starting selection of each proposal: catalogued tags, every glob, rules not flagged.
+    /// Starting selection of each proposal: every glob, rules not flagged, catalogued tags.
     private func reset(for state: RuleDiscoverRunner.State) {
         switch state {
         case .scope(let scope):
             paths = Set(scope.paths.map(\.glob))
-            tags = scope.defaultTags
         case .questions(let questions):
             answers = Array(repeating: "", count: questions.count)
         case .drafts(let drafts):
             rules = drafts.defaultRules
-        case .idle, .running, .failed, .description:
+        case .details(let details):
+            tags = details.defaultTags
+        case .idle, .intro, .running, .failed, .verdict:
             break
         }
     }

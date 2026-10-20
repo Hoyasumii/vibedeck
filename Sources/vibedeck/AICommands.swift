@@ -4,7 +4,7 @@ import VibeDeckCore
 
 struct AI: ParsableCommand {
     static let configuration = CommandConfiguration(commandName: "ai", abstract: "Documentação, contexto e consumo local de IA.",
-        subcommands: [Guide.self, Context.self, Catalog.self, Usage.self])
+        subcommands: [Guide.self, Context.self, Catalog.self, Usage.self, ItemPrompt.self, ItemApply.self])
     struct Guide: ParsableCommand {
         static let configuration = CommandConfiguration(abstract: "Índice do guia; leia uma seção por vez.")
         @Option(help: "Número da seção no índice.") var section: Int?
@@ -58,6 +58,32 @@ struct AI: ParsableCommand {
             for r in records {
                 print("\(r.operation) · \(r.provider.title) · \(r.model ?? "modelo não informado") · tarefa \(r.taskID) · tentativa \(r.attempt) · entrada \(r.tokens.input.map(String.init) ?? "não informada") · saída \(r.tokens.output.map(String.init) ?? "não informada") · \(r.status)")
             }
+        }
+    }
+    struct ItemPrompt: ParsableCommand {
+        static let configuration = CommandConfiguration(commandName: "item-prompt",
+            abstract: "Prompt e schema para criar/editar agente, comando, skill ou workflow com IA (não grava).")
+        @OptionGroup var options: RootOptions
+        @Argument(help: "agent, command, skill ou workflow.") var kind: String
+        @Option(help: "O que a IA deve criar ou mudar.") var request: String
+        @Option(help: "Item existente a editar (omita para criar).") var item: String?
+        func run() throws {
+            guard let kind = ItemDiscover.Kind(rawValue: kind) else { throw ValidationError("Tipo inválido: use agent, command, skill ou workflow.") }
+            let out = try options.store().itemAIPrompt(kind, request: request, item: item)
+            try printJSON(["prompt": out.prompt, "schema": out.schema])
+        }
+    }
+    struct ItemApply: ParsableCommand {
+        static let configuration = CommandConfiguration(commandName: "item-apply",
+            abstract: "Valida o JSON da IA e cria (author=ai) ou substitui o item; erro em pt-BR sem gravar.")
+        @OptionGroup var options: RootOptions
+        @Argument(help: "agent, command, skill ou workflow.") var kind: String
+        @Option(help: "Arquivo com o JSON da proposta (ou - para a entrada padrão).") var file: String
+        @Option(help: "Item existente a substituir (omita para criar).") var item: String?
+        func run() throws {
+            guard let kind = ItemDiscover.Kind(rawValue: kind) else { throw ValidationError("Tipo inválido: use agent, command, skill ou workflow.") }
+            let data = file == "-" ? FileHandle.standardInput.readDataToEndOfFile() : try Data(contentsOf: URL(fileURLWithPath: file))
+            print(try options.store().itemAIApply(kind, json: data, item: item))
         }
     }
 }

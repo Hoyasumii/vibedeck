@@ -19,6 +19,14 @@
       ],
       "title" : "Design System",
       "url" : "https://claude.ai/artifact/DNxAfvZGkEYiTaRqZDDQAq"
+    },
+    {
+      "id" : "64057329-8389-4018-A24F-AE4514C9971D",
+      "tags" : [
+        "ia"
+      ],
+      "title" : "Laya",
+      "url" : "https://github.com/NandhaKishorM/laya"
     }
   ],
   "name" : "vibedeck",

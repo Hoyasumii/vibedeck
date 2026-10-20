@@ -1,0 +1,63 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-11T23:01:54Z",
+  "description" : "Regras vindas da ideia \"Coleção de artefatos e docs do Claude\".",
+  "id" : "FF96A941-C0D9-4FB5-9583-4E7512E65A8B",
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-11T20:44:22Z",
+      "id" : "97E096A2-000D-4657-B152-0FE64E0C8E6C",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/97e096a2.sh",
+        "generatedAt" : "2026-10-14T14:11:40Z",
+        "mode" : "script",
+        "ruleHash" : "af6e34799b05c529"
+      },
+      "text" : "A coleção do Claude nunca importa itens sozinha: só entra o que o usuário adiciona."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-11T20:44:22Z",
+      "id" : "B5B453DC-7961-43CF-B3C2-DFA18950E81D",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/b5b453dc.sh",
+        "generatedAt" : "2026-10-14T14:11:40Z",
+        "mode" : "script",
+        "ruleHash" : "bbabba54c4ce6d27"
+      },
+      "text" : "Remover um item da coleção não chama nenhuma API do Claude nem apaga nada na conta."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-11T20:44:22Z",
+      "id" : "0F77F1FD-8852-4A26-B860-8C363E445637",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/0f77f1fd.sh",
+        "generatedAt" : "2026-10-14T14:11:40Z",
+        "mode" : "script",
+        "ruleHash" : "8a19bbb08c0f9829"
+      },
+      "text" : "Todo item tem tipo (artefato ou doc) visível na lista, e a lista filtra por tipo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-11T20:44:22Z",
+      "id" : "DCD7508B-3ADF-4776-93EF-EA4FD237CAD5",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/dcd7508b.sh",
+        "generatedAt" : "2026-10-14T14:11:40Z",
+        "mode" : "script",
+        "ruleHash" : "60f0e2e6769bb9d2"
+      },
+      "text" : "Itens da coleção ficam disponíveis no CLI e no MCP, com --json na listagem."
+    }
+  ],
+  "sourceIdea" : "47103D93-5027-48E9-8950-A5F1CE53A470",
+  "title" : "Coleção de artefatos e docs do Claude"
+}

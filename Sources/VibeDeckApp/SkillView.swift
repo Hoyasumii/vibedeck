@@ -3,11 +3,13 @@ import VibeDeckCore
 
 /// Same page as `AgentView`, for a skill: `SKILL.md`-like instructions (triggered by the description) plus its flow.
 struct SkillView: View {
+    @Environment(\.logProject) private var providerRoot
     let slug: String
     let open: (SidebarItem) -> Void
     @Environment(ProjectModel.self) private var model
     @Environment(\.undoManager) private var undo
     @State private var showFlow = true
+    @State private var editingAction: String?
     @State private var text = ""
     @State private var savedText = ""
     @State private var loaded = false
@@ -19,7 +21,7 @@ struct SkillView: View {
         VStack(spacing: 0) {
             header
             Divider()
-            MarkdownEditor(text: $text, undoManager: model.undoManager(forDoc: "skill:\(slug)"), autoFocus: false)
+            MarkdownEditor(text: $text, undoManager: model.undoManager(forDoc: "skill:\(slug)"), autoFocus: false).editingAction { editingAction = $0 }
                 .overlay(alignment: .topLeading) {
                     if text.isEmpty {
                         Text("Instruções da skill em markdown: o que a IA deve fazer quando a skill for usada.")
@@ -38,12 +40,14 @@ struct SkillView: View {
         .navigationTitle(skill.title)
         .navigationSubtitle("\(skill.model ?? "modelo herdado") · \(skill.nextSteps.count) próximo(s) passo(s)")
         .toolbar {
+            ToolbarItem { KitCatalogButton() }
+            ToolbarItem { EditWithAIButton(kind: .skill, slug: slug) }
             ToolbarItem {
-                Button { copyFlow() } label: { Label("Copiar fluxo (JSON)", systemImage: "curlybraces") }
+                LoggedButton { copyFlow() } label: { Label("Copiar fluxo (JSON)", systemImage: "curlybraces") }.loggedControl(control: "skill_view.button_1", label: "Copiar fluxo (JSON)")
                     .help("Copia o JSON do fluxo (instruções + próximos passos) para orquestrar a IA")
             }
             ToolbarItem {
-                Button { showFlow.toggle() } label: { Label("Fluxo", systemImage: "arrow.triangle.branch") }
+                LoggedButton { showFlow.toggle() } label: { Label("Fluxo", systemImage: "arrow.triangle.branch") }.loggedControl(control: "skill_view.button_2", label: "Fluxo")
                     .keyboardShortcut("i", modifiers: [.command, .option])
                     .help("Mostrar/ocultar o fluxo (⌥⌘I)")
             }
@@ -60,21 +64,21 @@ struct SkillView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 10) {
-            CommitTextField("Skill", value: skill.title) { title in
+            CommitTextField(control: "skillview.field_1", "Skill", value: skill.title) { title in
                 guard !title.isEmpty else { return }
                 model.mutateSkill(slug, "Renomear skill", undo: undo) { $0.title = title }
             }
             .font(.title2.weight(.semibold))
             .textFieldStyle(.plain)
 
-            CommitTextField("Descrição (quando usar a skill — é o que a dispara)", value: skill.summary ?? "") { value in
+            CommitTextField(control: "skillview.field_2", "Descrição (quando usar a skill — é o que a dispara)", value: skill.summary ?? "") { value in
                 model.mutateSkill(slug, "Alterar descrição", undo: undo) { $0.summary = value.isEmpty ? nil : value }
             }
             .textFieldStyle(.plain)
             .foregroundStyle(.secondary)
 
             // Hidden, not disabled, when no AI provider is installed.
-            if !AIProvider.installed.isEmpty {
+            if !AIProvider.installed(in: providerRoot).isEmpty {
                 AIProviderSettingsView(settings: skill.providerSettings) { provider, settings in
                     model.mutateSkill(slug, "Configurar provedor", undo: undo) {
                         var all = $0.providerSettings ?? [:]; all[provider] = settings; $0.providerSettings = all
@@ -84,7 +88,7 @@ struct SkillView: View {
 
             // A single HStack (not ViewThatFits): see IdeaView.
             HStack(spacing: 12) {
-                CommitTextField("Modelo (ex.: sonnet, opus)", value: skill.model ?? "") { value in
+                CommitTextField(control: "skillview.field_3", "Modelo (ex.: sonnet, opus)", value: skill.model ?? "") { value in
                     model.mutateSkill(slug, "Alterar modelo", undo: undo) { $0.model = value.isEmpty ? nil : value }
                 }
                 .textFieldStyle(.roundedBorder)
@@ -130,9 +134,11 @@ struct SkillView: View {
     }
 
     private func save() {
-        let prompt = text
-        model.mutateSkill(slug, "Editar instruções", undo: nil) { $0.prompt = prompt }
-        savedText = prompt
+        VDLog.$actionID.withValue(VDLog.actionID ?? editingAction) {
+            let prompt = text
+            model.mutateSkill(slug, "Editar instruções", undo: nil) { $0.prompt = prompt }
+            savedText = prompt
+        }
     }
 
     private func flush() {

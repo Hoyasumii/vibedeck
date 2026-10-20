@@ -33,6 +33,7 @@ enum StackCategory {
 /// The project's highlighted technologies: what someone opening the project sees first, and what the AI
 /// reads (list_stack / `vibedeck stack`) before implementing anything.
 struct StackView: View {
+    @Environment(\.logProject) private var logProject
     @Environment(ProjectModel.self) private var model
     @Environment(\.undoManager) private var undo
     @State private var selection = Set<StackItem.ID>()
@@ -63,7 +64,7 @@ struct StackView: View {
                 } description: {
                     Text("Marque as tecnologias de destaque do projeto. Elas aparecem aqui, no README.md e para a IA antes de implementar.")
                 } actions: {
-                    Button("Escolher tecnologias") { picking = true }.buttonStyle(.glass)
+                    LoggedButton("Escolher tecnologias") { picking = true }.loggedControl(control: "stack_view.button_1", label: "Escolher tecnologias").buttonStyle(.glass)
                 }
             } else {
                 ScrollView {
@@ -79,7 +80,7 @@ struct StackView: View {
                     .padding(20)
                 }
                 .contentShape(Rectangle())
-                .onTapGesture { selection.removeAll() }
+                .onTapGesture { VDLog.withAction(control: "stack_view.tap_15", label: "Selecionar", project: logProject) { selection.removeAll() } }
                 .onDeleteCommand { remove(selection) }
             }
         }
@@ -87,14 +88,14 @@ struct StackView: View {
         .searchable(text: $search, placement: .toolbar, prompt: "Filtrar stack (texto ou #tag)")
         .toolbar {
             ToolbarItem {
-                Button(action: copyBadge) {
+                LoggedButton(action: copyBadge) {
                     Label(copied ? "Copiado" : "Copiar badge", systemImage: copied ? "checkmark" : "doc.on.doc")
-                }
+                }.loggedControl(control: "stack_view.button_2", label: "Escolher tecnologias")
                 .help("Copiar o badge da stack (Markdown) para colar num README")
                 .disabled(model.project.stack.isEmpty)
             }
             ToolbarItem {
-                Button { picking = true } label: { Label("Escolher tecnologias", systemImage: "plus") }
+                LoggedButton { picking = true } label: { Label("Escolher tecnologias", systemImage: "plus") }.loggedControl(control: "stack_view.button_3", label: "Escolher tecnologias")
             }
         }
         .sheet(isPresented: $picking) {
@@ -140,14 +141,14 @@ struct StackView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassEffect(selected ? .regular.tint(.accentColor.opacity(0.35)).interactive() : .regular.interactive(), in: .rect(cornerRadius: 12))
         .contentShape(Rectangle())
-        .onTapGesture {
+        .onTapGesture { VDLog.withAction(control: "stack_view.tap_16", label: "Selecionar", project: logProject) {
             if NSEvent.modifierFlags.contains(.command) {
                 if selected { selection.remove(item.id) } else { selection.insert(item.id) }
             } else {
                 selection = [item.id]
             }
-        }
-        .onTapGesture(count: 2) { editingNote = item }
+        } }
+        .onTapGesture(count: 2) { VDLog.withAction(control: "stack_view.tap_17", label: "Selecionar", project: logProject) { editingNote = item } }
         .draggable(item.icon)
         .dropDestination(for: String.self) { ids, _ in
             guard let dragged = ids.first, dragged != item.icon else { return false }
@@ -156,11 +157,11 @@ struct StackView: View {
         }
         .help(item.note ?? item.name)
         .contextMenu {
-            Button("Editar nota…") { editingNote = item }
-            Button("Mover para o início") { move(item.icon, to: 0) }
-            Button("Mover para o fim") { move(item.icon, to: model.project.stack.count) }
+            LoggedButton("Editar nota…") { editingNote = item }.loggedControl(control: "stack_view.button_4", label: "Editar nota…")
+            LoggedButton("Mover para o início") { move(item.icon, to: 0) }.loggedControl(control: "stack_view.button_5", label: "Mover para o início")
+            LoggedButton("Mover para o fim") { move(item.icon, to: model.project.stack.count) }.loggedControl(control: "stack_view.button_6", label: "Mover para o fim")
             Divider()
-            Button("Remover", role: .destructive) { remove(selected ? selection : [item.id]) }
+            LoggedButton("Remover", role: .destructive) { remove(selected ? selection : [item.id]) }.loggedControl(control: "stack_view.button_7", label: "Remover")
         }
     }
 
@@ -209,6 +210,7 @@ struct StackView: View {
 /// Searchable grid of the whole Skill Icons catalog; toggling marks a draft that is applied on "Concluir"
 /// as a single undo step.
 private struct StackPicker: View {
+    @Environment(\.logProject) private var logProject
     let current: [StackItem]
     let onDone: ([StackItem]) -> Void
     @Environment(\.dismiss) private var dismiss
@@ -233,7 +235,7 @@ private struct StackPicker: View {
             VStack(spacing: 10) {
                 HStack(spacing: 6) {
                     Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                    TextField("Procurar por nome ou alias (ex.: postgres, k8s, Next.js)", text: $search)
+                    LoggedTextField("Procurar por nome ou alias (ex.: postgres, k8s, Next.js)", text: $search).loggedField(control: "stackview.text_1", label: "Procurar por nome ou alias (ex.: postgres, k8s, Next.js)")
                         .textFieldStyle(.plain)
                 }
                 .padding(.horizontal, 10).padding(.vertical, 6)
@@ -257,8 +259,8 @@ private struct StackPicker: View {
                 Text("\(picked.count) selecionada(s) · ícones do Skill Icons")
                     .font(.caption).foregroundStyle(.secondary)
                 Spacer()
-                Button("Cancelar") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Concluir") { apply(); dismiss() }
+                LoggedButton("Cancelar") { dismiss() }.loggedControl(control: "stack_view.button_8", label: "Cancelar").keyboardShortcut(.cancelAction)
+                LoggedButton("Concluir") { apply(); dismiss() }.loggedControl(control: "stack_view.button_9", label: "Concluir")
                     .keyboardShortcut(.defaultAction)
                     .buttonStyle(.glassProminent)
             }
@@ -277,7 +279,7 @@ private struct StackPicker: View {
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("Tentar de novo") { Task { await cache.loadCatalog(force: true) } }
+                    LoggedButton("Tentar de novo") { Task { await cache.loadCatalog(force: true) } }.loggedControl(control: "stack_view.button_10", label: "Tentar de novo")
                 }
             } else {
                 ProgressView("Carregando ícones…").frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -296,7 +298,7 @@ private struct StackPicker: View {
 
     private func cell(_ icon: SkillIcon) -> some View {
         let isPicked = picked.contains(icon.id)
-        return Button {
+        return LoggedButton {
             if isPicked { picked.removeAll { $0 == icon.id } } else { picked.append(icon.id) }
         } label: {
             VStack(spacing: 6) {
@@ -315,16 +317,16 @@ private struct StackPicker: View {
             .frame(maxWidth: .infinity)
             .background(isPicked ? Color.accentColor.opacity(0.15) : .clear, in: .rect(cornerRadius: 10))
             .contentShape(Rectangle())
-        }
+        }.loggedControl(control: "stack_view.button_11", label: "Ativar controle")
         .buttonStyle(.plain)
         .help(([icon.id] + icon.aliases).joined(separator: ", "))
     }
 
     private func chip(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        LoggedButton(action: action) {
             Text(title).font(.caption)
                 .padding(.horizontal, 9).padding(.vertical, 3)
-        }
+        }.loggedControl(control: "stack_view.button_12", label: "Ativar controle")
         .buttonStyle(.plain)
         .glassEffect(selected ? .regular.tint(.accentColor.opacity(0.4)).interactive() : .regular.interactive(), in: .capsule)
     }
@@ -340,6 +342,7 @@ private struct StackPicker: View {
 }
 
 private struct StackNoteEditor: View {
+    @Environment(\.logProject) private var logProject
     let item: StackItem
     let onSave: (String) -> Void
     let onTags: ([String]) -> Void
@@ -356,10 +359,10 @@ private struct StackNoteEditor: View {
             } label: {
                 SkillIconImage(id: item.icon, size: 24)
             }
-            TextField("Nota de uso (ex.: Swift 6, strict concurrency)", text: $note, axis: .vertical)
+            LoggedTextField("Nota de uso (ex.: Swift 6, strict concurrency)", text: $note, axis: .vertical, onCommit: commit).loggedField(control: "stackview.text_2", label: "Nota de uso (ex.: Swift 6, strict concurrency)")
                 .lineLimit(2...5)
                 .focused($focused)
-                .onSubmit(commit)
+
             Text("A IA recebe essa nota junto com a stack.").font(.caption).foregroundStyle(.secondary)
             // Live value: the sheet's `item` is a snapshot, the tags are committed one undo step at a time.
             TagsField(tags: model.project.stack.first { $0.id == item.id }?.tags ?? item.tags, onCommit: onTags)
@@ -369,7 +372,7 @@ private struct StackNoteEditor: View {
         .onAppear { note = item.note ?? ""; saved = note }
         .onChange(of: focused) { _, isFocused in if !isFocused { commit() } }
         .toolbar {
-            ToolbarItem(placement: .confirmationAction) { Button("Concluído") { commit(); dismiss() } }
+            ToolbarItem(placement: .confirmationAction) { LoggedButton("Concluído") { commit(); dismiss() }.loggedControl(control: "stack_view.button_13", label: "Concluído") }
         }
     }
 

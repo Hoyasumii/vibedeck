@@ -4,6 +4,7 @@ import VibeDeckCore
 struct DocView: View {
     let slug: String
     @Environment(ProjectModel.self) private var model
+    @State private var editingAction: String?
     @State private var text = ""
     @State private var savedText = ""
     @State private var loaded = false
@@ -61,14 +62,16 @@ struct DocView: View {
             text: $text,
             undoManager: model.undoManager(forDoc: slug),
             baseURL: model.store.docsDir,
+            reference: slug,
             importFiles: { model.importAttachments($0, owner: slug) },
             importImage: { model.importAttachment(data: $0, name: "colagem-\(Date.now.formatted(.iso8601)).png", owner: slug) },
-            insertion: insertion
+            insertion: insertion,
+            onEditingAction: { editingAction = $0 }
         )
     }
 
     private var preview: some View {
-        MarkdownPreview(text: text, baseURL: model.store.docsDir)
+        MarkdownPreview(text: ProjectStore.markdownForGroupedRecord(text, reference: slug), baseURL: model.store.docURL(slug).deletingLastPathComponent())
     }
 
     /// Files from the "Anexar" button go in through the editor (so ⌘Z undoes them): at the cursor, or
@@ -96,9 +99,11 @@ struct DocView: View {
     }
 
     private func save() {
-        guard conflict == nil else { return }
-        model.saveDoc(slug, text: text)
-        savedText = text
+        VDLog.$actionID.withValue(VDLog.actionID ?? editingAction) {
+            guard conflict == nil else { return }
+            model.saveDoc(slug, text: text)
+            savedText = text
+        }
     }
 
     private func flush() {
@@ -126,8 +131,8 @@ private struct ConflictBanner: View {
             Image(systemName: "exclamationmark.arrow.triangle.2.circlepath")
             Text("Este documento foi alterado fora do app enquanto você editava.")
             Spacer()
-            Button("Recarregar do disco", action: reload).buttonStyle(.glass)
-            Button("Manter minha versão", action: keep).buttonStyle(.glassProminent)
+            LoggedButton("Recarregar do disco", action: reload).loggedControl(control: "doc_view.button_1", label: "Recarregar do disco").buttonStyle(.glass)
+            LoggedButton("Manter minha versão", action: keep).loggedControl(control: "doc_view.button_2", label: "Manter minha versão").buttonStyle(.glassProminent)
         }
         .padding(12)
         .glassEffect(.regular.tint(.orange.opacity(0.25)), in: .rect(cornerRadius: 14))

@@ -11,7 +11,7 @@ fail=0
 applies() {
   [ -z "${VIBEDECK_FILES:-}" ] && return 0
   local re="$SCOPE"; [ -n "${1:-}" ] && re="$re|$1"
-  printf '%s\n' "$VIBEDECK_FILES" | grep -Eq "$re" || exit 77
+  printf '%s\n' "$VIBEDECK_FILES" | grep -E "$re" >/dev/null || exit 77
 }
 
 # need <arquivo> <regex ERE> <motivo>: falha se o padrão não aparece no arquivo.
@@ -43,12 +43,12 @@ run_tests() {
     grep -qE "func ${name}\(" "$TESTS" || { echo "$TESTS: teste '${name}' não existe mais (${spec})"; exit 1; }
     args+=(--filter "${spec}")
   done
-  swift build --target VibeDeckCoreTests >/dev/null 2>&1 || { swift build --target VibeDeckCoreTests 2>&1 | tail -20; exit 1; }
+  swift build --build-tests >/dev/null 2>&1 || { swift build --build-tests 2>&1 | tail -20; exit 1; }
   local out
   if ! out=$(swift test --skip-build "${args[@]}" 2>&1); then
     printf '%s\n' "$out" | tail -40; exit 1
   fi
-  printf '%s\n' "$out" | grep -q "Test run with [1-9][0-9]* test" || { echo "nenhum teste rodou para: $*"; printf '%s\n' "$out" | tail -10; exit 1; }
+  printf '%s\n' "$out" | grep "Test run with [1-9][0-9]* test" >/dev/null || { echo "nenhum teste rodou para: $*"; printf '%s\n' "$out" | tail -10; exit 1; }
 }
 
 finish() { [ $fail -eq 0 ] || exit 1; }

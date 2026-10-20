@@ -2,11 +2,13 @@ import SwiftUI
 import VibeDeckCore
 
 struct AgentView: View {
+    @Environment(\.logProject) private var providerRoot
     let slug: String
     let open: (SidebarItem) -> Void
     @Environment(ProjectModel.self) private var model
     @Environment(\.undoManager) private var undo
     @State private var showFlow = true
+    @State private var editingAction: String?
     @State private var text = ""
     @State private var savedText = ""
     @State private var loaded = false
@@ -18,7 +20,7 @@ struct AgentView: View {
         VStack(spacing: 0) {
             header
             Divider()
-            MarkdownEditor(text: $text, undoManager: model.undoManager(forDoc: "agent:\(slug)"), autoFocus: false)
+            MarkdownEditor(text: $text, undoManager: model.undoManager(forDoc: "agent:\(slug)"), autoFocus: false).editingAction { editingAction = $0 }
                 .overlay(alignment: .topLeading) {
                     if text.isEmpty {
                         Text("Prompt do agente em markdown: papel, regras, formato da resposta…")
@@ -35,12 +37,14 @@ struct AgentView: View {
         .navigationTitle(agent.title)
         .navigationSubtitle("\(agent.model ?? "modelo herdado") · \(agent.nextSteps.count) próximo(s) passo(s)")
         .toolbar {
+            ToolbarItem { KitCatalogButton() }
+            ToolbarItem { EditWithAIButton(kind: .agent, slug: slug) }
             ToolbarItem {
-                Button { copyFlow() } label: { Label("Copiar fluxo (JSON)", systemImage: "curlybraces") }
+                LoggedButton { copyFlow() } label: { Label("Copiar fluxo (JSON)", systemImage: "curlybraces") }.loggedControl(control: "agent_view.button_1", label: "Copiar fluxo (JSON)")
                     .help("Copia o JSON do fluxo (prompt + próximos passos) para orquestrar a IA")
             }
             ToolbarItem {
-                Button { showFlow.toggle() } label: { Label("Fluxo", systemImage: "arrow.triangle.branch") }
+                LoggedButton { showFlow.toggle() } label: { Label("Fluxo", systemImage: "arrow.triangle.branch") }.loggedControl(control: "agent_view.button_2", label: "Fluxo")
                     .keyboardShortcut("i", modifiers: [.command, .option])
                     .help("Mostrar/ocultar o fluxo (⌥⌘I)")
             }
@@ -57,7 +61,7 @@ struct AgentView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 10) {
-            CommitTextField("Agente", value: agent.title) { title in
+            CommitTextField(control: "agentview.field_1", "Agente", value: agent.title) { title in
                 guard !title.isEmpty else { return }
                 model.mutateAgent(slug, "Renomear agente", undo: undo) { $0.title = title }
             }
@@ -65,7 +69,7 @@ struct AgentView: View {
             .textFieldStyle(.plain)
 
             // Hidden, not disabled, when no AI provider is installed.
-            if !AIProvider.installed.isEmpty {
+            if !AIProvider.installed(in: providerRoot).isEmpty {
                 AIProviderSettingsView(settings: agent.providerSettings) { provider, settings in
                     model.mutateAgent(slug, "Configurar provedor", undo: undo) {
                         var all = $0.providerSettings ?? [:]; all[provider] = settings; $0.providerSettings = all
@@ -75,7 +79,7 @@ struct AgentView: View {
 
             // A single HStack (not ViewThatFits): see IdeaView.
             HStack(spacing: 12) {
-                CommitTextField("Modelo (ex.: sonnet, opus)", value: agent.model ?? "") { value in
+                CommitTextField(control: "agentview.field_2", "Modelo (ex.: sonnet, opus)", value: agent.model ?? "") { value in
                     model.mutateAgent(slug, "Alterar modelo", undo: undo) { $0.model = value.isEmpty ? nil : value }
                 }
                 .textFieldStyle(.roundedBorder)
@@ -128,9 +132,11 @@ struct AgentView: View {
     }
 
     private func save() {
-        let prompt = text
-        model.mutateAgent(slug, "Editar prompt", undo: nil) { $0.prompt = prompt }
-        savedText = prompt
+        VDLog.$actionID.withValue(VDLog.actionID ?? editingAction) {
+            let prompt = text
+            model.mutateAgent(slug, "Editar prompt", undo: nil) { $0.prompt = prompt }
+            savedText = prompt
+        }
     }
 
     private func flush() {

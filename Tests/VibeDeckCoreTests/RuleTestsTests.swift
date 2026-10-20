@@ -29,6 +29,13 @@ private final class StubRunner: @unchecked Sendable {
     }
 }
 
+private final class UnsafeOutputs: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _values = ["", ""]
+    var values: [String] { lock.withLock { _values } }
+    func set(_ index: Int, _ value: String) { lock.withLock { _values[index] = value } }
+}
+
 @Suite struct RuleTestsTests {
     @Test func hashAndState() {
         var rule = Rule(text: "Sem minWidth", details: "no root")
@@ -136,7 +143,7 @@ private final class StubRunner: @unchecked Sendable {
             verifyManual: true,
             runner: stub.runner
         )
-        #expect(stub.ran == ["ok", "skip"])
+        #expect(Set(stub.ran) == ["ok", "skip"] && stub.ran.count == 2, "scripts rodam em paralelo: a ordem de execução pode variar")
         #expect(stub.files == ["Sources/A.swift"])
         #expect(check.passed)
         #expect(check.warnings == ["sem teste"])
@@ -236,6 +243,74 @@ private final class StubRunner: @unchecked Sendable {
         let result = ShellRunner.run("sleep 5", in: FileManager.default.temporaryDirectory, timeout: 0.5)
         #expect(result.status == ShellRunner.timedOutStatus)
         #expect(result.output.contains("Tempo esgotado"))
+    }
+
+    @Test func shellRunnerIsCancellable() {
+        let cancellation = ShellCancellation()
+        DispatchQueue.global().asyncAfter(deadline: .now() + 0.5) { cancellation.cancel() }
+        let start = Date.now
+        let result = ShellRunner.run("echo começou; sleep 30", in: FileManager.default.temporaryDirectory, cancellation: cancellation)
+        #expect(Date.now.timeIntervalSince(start) < 5)
+        #expect(result.status == ShellRunner.cancelledStatus)
+        #expect(result.output.contains("começou"))
+        #expect(ShellRunner.run("echo nunca", in: FileManager.default.temporaryDirectory, cancellation: cancellation).status == ShellRunner.cancelledStatus)
+    }
+
+    @Test func concurrentShellOutputsStaySeparate() {
+        let outputs = UnsafeOutputs()
+        DispatchQueue.concurrentPerform(iterations: 2) { index in
+            let mark = index == 0 ? "A" : "B"
+            outputs.set(index, ShellRunner.run("echo \(mark); sleep 1; echo \(mark)", in: FileManager.default.temporaryDirectory).output)
+        }
+        #expect(outputs.values[0] == "A\nA")
+        #expect(outputs.values[1] == "B\nB")
+    }
+
+    @Test func buildToolDetectionCoversEcosystems() {
+        let cases = [
+            "./gradlew test": "gradle", "mvn -q verify": "maven", "dotnet test Foo.sln": "dotnet",
+            "composer test": "composer", "swift test --filter X": "swift", "cargo test": "cargo",
+            "go test ./...": "go", "make check": "make",
+        ]
+        for (command, key) in cases { #expect(BuildToolLock.keys(in: command) == [key], "\(command)") }
+        #expect(Set(cases.values).count == cases.count)
+        for command in ["npm test", "pnpm test", "yarn lint", "npx tsc"] { #expect(BuildToolLock.keys(in: command) == ["node"]) }
+        #expect(BuildToolLock.keys(in: "grep -q swift Package.swift\n# swift test roda no CI").isEmpty)
+        #expect(BuildToolLock.keys(command: "swift test --filter X", root: FileManager.default.temporaryDirectory) == ["swift"])
+    }
+
+    @Test func buildToolDetectionFollowsWrapperScriptsWithoutLooping() throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "build-tools-\(UUID())")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let rules = root.appending(path: ".vibedeck/tests/x")
+        let scripts = root.appending(path: "scripts")
+        try FileManager.default.createDirectory(at: rules, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: scripts, withIntermediateDirectories: true)
+        try "exec bash scripts/build.sh\n".write(to: rules.appending(path: "rule.sh"), atomically: true, encoding: .utf8)
+        try "source scripts/helper.sh\n".write(to: scripts.appending(path: "build.sh"), atomically: true, encoding: .utf8)
+        try "source scripts/build.sh\nswift test\n".write(to: scripts.appending(path: "helper.sh"), atomically: true, encoding: .utf8)
+        #expect(BuildToolLock.keys(command: "bash '.vibedeck/tests/x/rule.sh'", root: root) == ["swift"])
+    }
+
+    @Test func buildToolDetectionFollowsPythonArgumentsAndRejectsExternalPaths() throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "python-build-tools-\(UUID())")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let scripts = root.appending(path: "scripts")
+        try FileManager.default.createDirectory(at: scripts, withIntermediateDirectories: true)
+        try "python3 scripts/check.py\n".write(to: scripts.appending(path: "rule.sh"), atomically: true, encoding: .utf8)
+        try "# swift build\nhelper = 'nested.py'\n".write(to: scripts.appending(path: "check.py"), atomically: true, encoding: .utf8)
+        try "import subprocess\nsubprocess.run(['swift',\n 'test', '--filter', 'X'])\n# cycle\nwrapper = 'rule.sh'\n".write(to: scripts.appending(path: "nested.py"), atomically: true, encoding: .utf8)
+        #expect(BuildToolLock.keys(command: "bash scripts/rule.sh", root: root) == ["swift"])
+        #expect(BuildToolLock.keys(in: #"subprocess.run(["/usr/bin/swift", "build"])"#) == ["swift"])
+        #expect(BuildToolLock.keys(in: #"subprocess.run(['xcrun', 'swiftc', 'main.swift'])"#) == ["swift"])
+        #expect(BuildToolLock.keys(in: "# subprocess.run(['swift', 'test'])").isEmpty)
+
+        let external = root.deletingLastPathComponent().appending(path: "external-\(UUID()).py")
+        defer { try? FileManager.default.removeItem(at: external) }
+        try "swift test\n".write(to: external, atomically: true, encoding: .utf8)
+        try FileManager.default.createSymbolicLink(at: scripts.appending(path: "outside.py"), withDestinationURL: external)
+        #expect(BuildToolLock.keys(command: "python3 \(external.path)", root: root).isEmpty)
+        #expect(BuildToolLock.keys(command: "python3 scripts/outside.py", root: root).isEmpty)
     }
 
     @Test func promptListsOnlyPendingRules() throws {

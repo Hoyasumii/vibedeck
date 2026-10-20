@@ -5,6 +5,7 @@ import VibeDeckCore
 /// Going to the next step is a straight arrow; skipping ahead runs on the right, going back (loops) on the left,
 /// and "Fim" shows where the run ends when no transition applies. Hovering a step highlights where it can go.
 struct WorkflowDiagram: View {
+    @Environment(\.logProject) private var logProject
     let steps: [WorkflowStep]
     let title: (WorkflowStep) -> String?
     let open: (WorkflowStep) -> Void
@@ -19,6 +20,7 @@ struct WorkflowDiagram: View {
 
 /// The drawing itself, at its natural size (see `WorkflowDiagramLayout`).
 struct WorkflowDiagramCanvas: View {
+    @Environment(\.logProject) private var logProject
     let steps: [WorkflowStep]
     let title: (WorkflowStep) -> String?
     let open: (WorkflowStep) -> Void
@@ -109,7 +111,7 @@ struct WorkflowDiagramCanvas: View {
         .onHover { inside in
             if inside { focus = index } else if focus == index { focus = nil }
         }
-        .onTapGesture(count: 2) { if name != nil { open(step) } }
+        .onTapGesture(count: 2) { VDLog.withAction(control: "workflow_diagram.tap_1", label: "Selecionar", project: logProject) { if name != nil { open(step) } } }
         .help(name == nil ? step.ref : "Duplo clique abre \(name ?? step.ref)")
     }
 

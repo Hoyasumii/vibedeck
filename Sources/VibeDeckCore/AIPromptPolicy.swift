@@ -76,11 +76,14 @@ public enum AIContextError: LocalizedError {
 }
 
 enum AILocalStore {
-    static func directory(root: URL) -> URL {
+    static func machineDirectory(_ component: String) -> URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? FileManager.default.homeDirectoryForCurrentUser.appending(path: ".local/share")
+        return base.appending(path: "VibeDeck/" + component)
+    }
+    static func directory(root: URL) -> URL {
         let key = PortableSHA256.hash(Data(root.standardizedFileURL.resolvingSymlinksInPath().path.utf8))
             .map { String(format: "%02x", $0) }.joined()
-        return base.appending(path: "VibeDeck/ai/\(key)")
+        return machineDirectory("ai/\(key)")
     }
 }

@@ -1,0 +1,13 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "ai",
+  "body" : "Propor um mapa de responsabilidades entre tópicos e documentos: indicar onde ficam contratos técnicos de persistência e undo, comportamentos de navegação e explicações do produto. Apresentar sobreposições para revisão humana antes de sugerir consolidação de regras individuais. Preservar IDs, testes, escopos e vínculos.",
+  "createdAt" : "2026-10-14T01:27:11Z",
+  "id" : "289CF2AF-055F-47F4-A255-B9694DA95DBF",
+  "rules" : [
+
+  ],
+  "status" : "new",
+  "title" : "Mapear responsabilidades dos tópicos de interface",
+  "updatedAt" : "2026-10-14T01:27:11Z"
+}

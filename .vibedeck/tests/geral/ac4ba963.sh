@@ -4,6 +4,7 @@ set -euo pipefail
 cd "${VIBEDECK_ROOT:-.}"
 python3 -I - <<'PY'
 import json, subprocess, sys
+from pathlib import Path
 
 def sh(*a):
     return subprocess.run(a, capture_output=True, text=True)
@@ -26,7 +27,16 @@ def objs(txt):
         pass
     return out
 
-names = set(sh("git", "diff", "--name-only", "HEAD", "--", ".vibedeck").stdout.split())
+# A identidade acompanha o objeto mesmo quando ele muda para uma subpasta.
+# Checks históricos não contam como cópias atuais de itens preservados.
+current = {}
+for path in Path(".vibedeck").rglob("*.json"):
+    if path.parts[1] in ("checks", "tests"):
+        continue
+    for identifier, author in objs(path.read_text()).items():
+        current.setdefault(identifier, set()).add(author)
+
+names = set(filter(None, sh("git", "diff", "--no-renames", "--name-only", "-z", "HEAD", "--", ".vibedeck").stdout.split("\0")))
 bad = 0
 for f in sorted(names):
     if not f.endswith(".json") or f.startswith(".vibedeck/checks/") or "/tests/" in f:
@@ -37,9 +47,9 @@ for f in sorted(names):
     except FileNotFoundError:
         new = {}
     for i, a in old.items():
-        if a == "human" and i not in new:
+        if a == "human" and i not in current:
             print(f"{f}: objeto human {i} foi removido"); bad += 1
-        elif a == "human" and new[i] != "human":
+        elif a == "human" and current[i] != {"human"}:
             print(f"{f}: objeto {i} deixou de ser author=human"); bad += 1
     # Objetos novos podem ser de humano (criados pela UI); aqui só garantimos que o campo existe e é válido.
     for i, a in new.items():

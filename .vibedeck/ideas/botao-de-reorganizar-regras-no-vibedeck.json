@@ -1,0 +1,169 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "human",
+  "body" : "## Problema\n\nCom o tempo, o projeto acumula regras (tópicos), documentos, ideias e itens de revisão que se contradizem, se repetem, estão no lugar errado ou poderiam ficar em um subdiretório/tópico mais específico. Hoje a organização é toda manual, e o fluxo do projeto não é revisado como um todo.\n\n## Proposta\n\nUm botão **Reorganizar** que usa IA (somente leitura) para analisar regras, documentos, ideias e itens de revisão e devolver uma **proposta de ações**. O usuário aceita tudo ou ação por ação; nada é gravado antes do aceite.\n\nTipos de ação:\n- **Conflito**: itens que se contradizem. A IA não decide: a proposta mostra os itens em conflito e o usuário escolhe qual manter. Sem escolha explícita, nada muda.\n- **Mesclar repetidos**: mantém um item e incorpora ao mantido as tags, globs e regras do removido, sem perda de informação.\n- **Mover**: item em lugar errado vai para outro diretório. Preserva id/slug e referências (links, nextSteps, ideias promovidas, itens de revisão).\n- **Criar tópico/subpasta**: agrupa itens específicos num diretório dentro do atual. Usa `Slug.make` + `uniqueSlug` e nunca sobrescreve item existente.\n- **Melhorias de fluxo**: sugestões para aperfeiçoar o fluxo do projeto como um todo, também como ações aceitáveis.\n\nCada ação identifica conceito e slug do item afetado e traz justificativa curta citando os itens envolvidos.\n\nFluxo e segurança:\n- Roda via `AIReadOnlyOperation` (Claude Code: `allowedTools` só Read/Glob/Grep; Codex: `workspaceWrites=false`).\n- A resposta da IA é JSON validado. Se o parse falhar, o app mostra erro claro em pt-BR e não altera arquivo.\n- Itens e referências que não existem no projeto são descartados antes de mostrar a proposta.\n- Tem botão de cancelar e timeout, uma execução por projeto por vez, e descarta a resposta se o projeto mudou durante a chamada.\n- O botão só aparece quando há provedor de IA suportado (Claude Code ou Codex).\n- Nunca altera checks existentes nem o status de itens de revisão `done`/`wontfix`. Não promove nem despromove ideias: ideias não promovidas seguem sem regras ativas.\n- Aceitar (tudo ou por ação) é um único passo de undo e aparece ao vivo nas listas, sem recarregar.\n- Disponível também no CLI e no MCP; itens criados vêm com `author=ai`.\n- O log usa `LoggedButton` com `loggedControl` estável e não guarda conteúdo de itens nem do prompt.\n\n## Escopo\n\n- Core (novo, sem SwiftUI): `Sources/VibeDeckCore/ReorganizeDiscover.swift`, seguindo `ReviewDiscover.swift` e `RuleDiscover.swift`. Monta o prompt, valida o JSON e converte em propostas.\n- Core: `Sources/VibeDeckCore/ProjectStore.swift`, com operações de mover/mesclar/criar tópico via `AtomicFile.write`, preservando referências.\n- App: `Sources/VibeDeckApp/AIReadOnlyOperation.swift` (execução somente leitura), `Sources/VibeDeckApp/DocGenerate.swift` (referência de padrão de botão/proposta/aceite) e `Sources/VibeDeckApp/SectionListView.swift` (onde o botão aparece). A tela da proposta pode ser nova, no estilo de `DocGenerate`.\n- CLI e MCP: `Sources/VibeDeckCore/CLI.swift` e `Sources/VibeDeckCore/MCPServer.swift`. Confirmar os caminhos reais antes de editar.\n- Testes: `Tests/VibeDeckCoreTests/ReorganizeDiscoverTests.swift`.\n- Docs: `README.md`, `.vibedeck/guide.md` e o texto em `Sources/VibeDeckCore/AgentsGuide.swift`. Todo texto visível em pt-BR.\n\n## Critérios de aceite\n\n- Nenhuma escrita do `ProjectStore` ocorre antes do aceite.\n- Teste do Core com uma proposta contendo os quatro conceitos (regras, documentos, ideias, revisões), cada ação com conceito e slug.\n- Ação de conflito só é aplicada com escolha explícita do usuário.\n- Teste de mesclagem compara a união de tags, globs e regras antes e depois.\n- Teste que move um item e resolve as referências depois (links, nextSteps, ideias promovidas, revisões).\n- Teste com slug inexistente sendo descartado da proposta.\n- JSON inválido gera erro em pt-BR e nenhum arquivo é alterado.\n- `allowedTools` restrito a Read/Glob/Grep no Claude Code; `workspaceWrites=false` no Codex.\n- Cancelar, timeout, execução única por projeto e descarte por mudança do projeto funcionam.\n- Aceite é um único passo de undo e atualiza as listas ao vivo.\n- Checks existentes e itens de revisão `done`/`wontfix` ficam intactos, e nenhuma ideia é promovida ou despromovida.\n- Funciona no app, no CLI e no MCP, com `author=ai` nos itens criados.\n- O botão só aparece com provedor de IA suportado e usa `LoggedButton` sem conteúdo no log.\n- README, guia e `AgentsGuide.swift` documentam o Reorganizar, e `swift test` passa.",
+  "createdAt" : "2026-10-12T02:59:13Z",
+  "id" : "42EC5BE9-9737-4908-8CAF-303FA793627F",
+  "paths" : [
+    "Sources/VibeDeckCore/*Discover.swift",
+    "Sources/VibeDeckCore/ProjectStore.swift",
+    "Sources/VibeDeckApp/AIReadOnlyOperation.swift",
+    "Sources/VibeDeckApp/DocGenerate.swift",
+    "Sources/VibeDeckApp/SectionListView.swift",
+    "Tests/VibeDeckCoreTests/*Discover*Tests.swift"
+  ],
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:32:45Z",
+      "details" : "Verificar que nenhuma operação de escrita do ProjectStore é chamada antes do aceite.",
+      "id" : "07C8B220-4630-48B5-82BA-5ABD2B1A9132",
+      "severity" : "must",
+      "text" : "O Reorganizar nunca grava direto: mostra uma proposta de ações e o usuário aceita (tudo ou por ação) antes de qualquer escrita."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:32:45Z",
+      "details" : "Conferir allowedTools restrito a Read, Glob e Grep no Claude Code.",
+      "id" : "E208ACCB-A3DB-4A47-811F-A2DF355E1EBB",
+      "severity" : "must",
+      "text" : "A análise do Reorganizar roda só com ferramentas de leitura (Read/Grep/Glob) via AIReadOnlyOperation; no Codex, com workspaceWrites=false."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:32:45Z",
+      "id" : "7E4BA7E1-EF8E-4155-A4E3-D528120C1CC5",
+      "severity" : "must",
+      "text" : "O botão Reorganizar só aparece quando há provedor de IA suportado (Claude Code ou Codex) na máquina."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:32:45Z",
+      "details" : "Arquivo novo em Sources/VibeDeckCore seguindo *Discover.swift, com um *DiscoverTests.swift correspondente.",
+      "id" : "B7AEA3ED-7803-43AA-8ABB-D0DC105EDAB3",
+      "severity" : "must",
+      "text" : "A lógica de montar o prompt, validar o JSON da IA e converter em propostas fica no Core, sem depender de SwiftUI, com teste em Tests/VibeDeckCoreTests."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:32:45Z",
+      "id" : "D573FBE2-C287-4B9B-80A1-BEA5DA78E3CD",
+      "severity" : "must",
+      "text" : "A resposta da IA é JSON validado; se o parse falhar, o app mostra erro claro em pt-BR e não altera nenhum arquivo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:32:45Z",
+      "details" : "Teste do Core com uma proposta contendo os quatro conceitos.",
+      "id" : "51D114D8-C6F3-459E-8EB2-11914A5808F4",
+      "severity" : "must",
+      "text" : "O Reorganizar cobre regras (tópicos), documentos, ideias e itens de revisão, e cada ação da proposta identifica o conceito e o slug do item afetado."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:32:45Z",
+      "details" : "A ação de conflito só é aplicada com escolha explícita; sem escolha, nada muda.",
+      "id" : "33A3F850-9288-4BD9-B8F4-8A836684737E",
+      "severity" : "must",
+      "text" : "Itens que se contradizem nunca são resolvidos pela IA: a proposta apresenta os itens em conflito e o usuário escolhe qual manter."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:32:45Z",
+      "details" : "Teste do Core comparando a união antes/depois.",
+      "id" : "D43063A1-C850-493A-BE0E-835316C91EE8",
+      "severity" : "should",
+      "text" : "Ao mesclar repetidos, tags, globs e regras do item removido são incorporados ao mantido, sem perda de informação."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:32:45Z",
+      "id" : "3F41E324-1534-426E-B075-3A274E6C6CF3",
+      "severity" : "must",
+      "text" : "A proposta de mover item para outro diretório ou criar tópico/subpasta só usa operações do ProjectStore com AtomicFile.write e Slug.make + uniqueSlug, sem sobrescrever item existente."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:32:45Z",
+      "details" : "Teste do Core que move um item e resolve as referências depois.",
+      "id" : "45A6AF2C-7C83-4C48-8208-5ADBA72130FD",
+      "severity" : "must",
+      "text" : "Mover um item preserva seu id/slug e suas referências: links, nextSteps, ideias promovidas e itens de revisão que o apontam continuam resolvendo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:32:45Z",
+      "id" : "13C22AAE-C62D-47BE-AA24-2E8F4C7CAA88",
+      "severity" : "must",
+      "text" : "O Reorganizar nunca altera checks existentes nem o status de itens de revisão done/wontfix."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:32:45Z",
+      "id" : "AA163971-F7AC-46DE-A74A-1DBFD5128DD8",
+      "severity" : "must",
+      "text" : "Ideias não promovidas continuam sem regras ativas após o Reorganizar; ele não promove nem despromove ideias."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:32:45Z",
+      "details" : "Teste com slug inexistente sendo descartado.",
+      "id" : "3D85F37D-DF13-4D56-A7AF-F5CBD0DD9B52",
+      "severity" : "must",
+      "text" : "Itens e referências sugeridos pela IA precisam existir no projeto; o resto é descartado antes de mostrar a proposta."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:32:45Z",
+      "id" : "C984E06A-7676-487E-8682-9550CEA28EE2",
+      "severity" : "must",
+      "text" : "O Reorganizar tem botão de cancelar e timeout, permite uma execução por projeto por vez e descarta a resposta se o projeto mudou durante a chamada."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:32:45Z",
+      "id" : "86D3D5A0-3574-4421-A397-53B68052CA12",
+      "severity" : "should",
+      "text" : "Cada ação da proposta traz justificativa curta citando os itens envolvidos."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:32:45Z",
+      "id" : "10703FDC-C43E-4F53-A880-1CCA3BE4F896",
+      "severity" : "must",
+      "text" : "Aceitar a proposta do Reorganizar (tudo ou por ação) é um único passo de undo e aparece ao vivo nas listas, sem recarregar."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:32:45Z",
+      "id" : "7C1407F1-E6CA-495D-A99D-FF6330B7A380",
+      "severity" : "should",
+      "text" : "O Reorganizar fica disponível no app, no CLI e no MCP, e itens que ele cria vêm com author=ai."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:32:45Z",
+      "id" : "6701D42B-5866-4660-8501-A70C4246CB39",
+      "severity" : "must",
+      "text" : "O botão usa LoggedButton com loggedControl estável, e o log não guarda conteúdo de itens nem do prompt."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T18:32:45Z",
+      "id" : "1D535C60-C576-4D17-AB14-8A6686091966",
+      "severity" : "should",
+      "text" : "README e .vibedeck/guide.md (e o texto em AgentsGuide.swift) documentam o Reorganizar, e todo texto visível ao usuário está em pt-BR."
+    }
+  ],
+  "status" : "done",
+  "tags" : [
+    "ia",
+    "regras",
+    "core",
+    "interface",
+    "cli",
+    "mcp"
+  ],
+  "title" : "Botão de Reorganizar no VibeDeck",
+  "updatedAt" : "2026-10-14T00:13:20Z"
+}

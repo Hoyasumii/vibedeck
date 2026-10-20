@@ -13,6 +13,23 @@
       "status" : "open",
       "title" : "Verificar Stack e Padrões",
       "updatedAt" : "2026-10-09T15:54:54Z"
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T22:48:24Z",
+      "details" : "Oito templates adicionados; 24 anteriores preservados integralmente. swift test: 269 Core e 50 app aprovados. CLI e MCP: catálogo completo e oito buscas por id aprovados. PatternPicker deriva categorias e templates. graphify update executado. Check bed699ef aprovado: 99 regras, sem warnings ou manuais pendentes.",
+      "id" : "51C54845-446C-420B-8A00-6EB8C1947B44",
+      "kind" : "fix",
+      "priority" : "normal",
+      "rules" : [
+        "aumentar-o-catalogo-de-padroes"
+      ],
+      "status" : "done",
+      "target" : {
+        "file" : "Sources/VibeDeckCore/Patterns.swift"
+      },
+      "title" : "Ampliar catálogo com oito padrões",
+      "updatedAt" : "2026-10-13T22:54:09Z"
     }
   ],
   "title" : "Conceitos"

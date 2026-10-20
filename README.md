@@ -12,7 +12,7 @@ agrupados por tema, **regras** que a IA precisa cumprir antes de dar uma tarefa 
 
 ```
 <repo>/
-  vibedeck.json              # declara o projeto (nome, links, stack, padrões, reviewKinds)
+  vibedeck.json              # declara o projeto (nome, links, coleção Claude, stack, padrões, reviewKinds)
   .vibedeck/
     AGENTS.md                # guia inicial compacto para IA (gerado)
     guide.md                 # referência completa, consultada por seção (gerada)
@@ -29,6 +29,39 @@ agrupados por tema, **regras** que a IA precisa cumprir antes de dar uma tarefa 
     checks/*.json            # verificações de regras registradas pelos agentes
     attachments/             # arquivos anexados a docs e ideias (arrastar, colar ou "Anexar")
 ```
+
+## Visualizador de Links
+
+No painel **Links**, dar duplo clique ou escolher **Abrir** no menu de contexto mostra a página
+num visualizador interno ao lado da tabela. **Fechar** esconde o painel e devolve a largura à tabela.
+O visualizador aceita apenas HTTP/HTTPS, permite os recursos e redirecionamentos da página e abre
+links para outras páginas no navegador padrão. **Abrir no navegador** continua disponível no menu
+e no painel. Não há barra de endereço ou histórico; cookies e dados de navegação são temporários.
+Abrir e fechar o painel não altera arquivos do projeto nem cria passos de undo.
+
+## Coleção do Claude
+
+A coleção reúne artefatos e docs escolhidos pelo usuário em cada projeto, no campo `claude` do
+`vibedeck.json`. A sidebar mostra **Claude** e o contador quando há pelo menos um item; após remover o último,
+a seção fica oculta. A coleção não depende de ter um provedor de IA instalado.
+
+Na tela **Links**, o botão **Adicionar do Claude** permite adicionar o primeiro item mesmo com a sidebar
+oculta. Colar uma URL do Claude nessa tela também abre o formulário. **Adicionar do Claude** abre um formulário com URL, tipo, título e tags. Só são aceitas URLs do `claude.ai`.
+O título começa com o último trecho da URL e pode ser editado; o usuário escolhe **Artefato** ou **Doc**,
+pois a URL não distingue os tipos. Colar um link (⌘V) abre o formulário e aguarda a confirmação.
+A tabela mostra tipo, título, data e tags, com busca (também por `#tag`) e filtro Todos / Artefatos / Docs.
+Duplo clique abre no navegador. Editar ou remover registra undo; remover tira apenas da coleção local.
+Não há importação automática nem chamadas à API do Claude.
+
+```sh
+vibedeck claude list --json
+vibedeck claude list --kind artifact --json
+vibedeck claude add https://claude.ai/public/artifacts/<id> --kind doc --title "Meu doc" --tags referência
+vibedeck claude remove <id-ou-prefixo>
+```
+
+MCP: `list_claude_items` (filtro opcional `kind`) e `add_claude_item` (`url`, `kind`, `title`, `tags`).
+O tipo é obrigatório na adição; tags seguem os mesmos formatos das demais ferramentas do MCP.
 
 ## Stack
 
@@ -61,7 +94,9 @@ No MCP, a stack tem as tools `list_stack`, `search_stack_icons`, `add_stack` (au
 **Padrões** (logo abaixo da Stack na sidebar) diz como o código deve ser escrito, para a IA ser consistente e não
 gerar código espaguete: TDD, SOLID, injeção de dependência, núcleo funcional, Clean Code, arquitetura hexagonal,
 Clean Architecture, camadas, MVVM, MVC, DDD, CQRS, Event Sourcing e Repository vêm prontos no catálogo, com regras
-em pt-BR; dá para criar padrões próprios (nome, resumo e uma regra por linha). Cada padrão aceita uma nota
+em pt-BR. O catálogo tem 32 padrões, incluindo desenvolvimento orientado a comportamento, design por contrato,
+monólito modular, arquitetura orientada a eventos, objeto de valor, serviço de domínio, composição e representante;
+dá para criar padrões próprios (nome, resumo e uma regra por linha). Cada padrão aceita uma nota
 ("hexagonal só no Core") e um escopo em globs (vazio = projeto inteiro).
 
 Os padrões ficam em `vibedeck.json` (`patterns`), e cada um cria um tópico de regras `.vibedeck/rules/padrao-<nome>.json`
@@ -104,6 +139,16 @@ resource `vibedeck://patterns`.
   duração e estimativa baseada no histórico local da máquina. Falhas de IA ou regras alteradas durante
   a execução impedem salvar um check incompleto; uma verificação completa fica no histórico, mesmo
   quando contém regras reprovadas. Os scripts não são executados novamente ao salvar.
+- **Scripts em paralelo:** os scripts de regras rodam vários ao mesmo tempo, no app, no CLI (`rules check`,
+  `rules test`) e no MCP (`submit_rule_check`), com a mesma execução do Core. O limite padrão é o número de
+  núcleos da máquina; no app, ele é ajustado em **Configurações** (⌘,) → "Scripts ao mesmo tempo" (de 1 ao
+  número de núcleos, guardado só nesta máquina, nunca no projeto). O CLI e o MCP sempre usam o padrão. Scripts
+  que chamam a mesma ferramenta de build (swift/xcodebuild, npm/npx/yarn/pnpm, cargo, go, gradle, mvn, dotnet,
+  composer, make) rodam um por vez, porque dividem diretórios de build e travas; a detecção lê o arquivo do
+  script em `.vibedeck/tests` (e os `source` da mesma pasta). Os resultados saem na ordem das regras. No app,
+  **Cancelar** encerra os scripts em andamento e não inicia os da fila; uma regra `must` reprovada também
+  interrompe a fila. Execução cancelada ou interrompida não chama a IA nem grava check. O check do CLI/MCP
+  roda todos os scripts, mesmo após uma falha `must`, para responder toda regra.
 - Item de revisão ligado a regras (campo `rules` ou `target.file` casando um tópico) não vai para
   `done` via CLI/MCP sem check aprovado para o item (`vibedeck review set --force` para humanos).
 - **Hook Stop** (`vibedeck hook install`, ou `--scope project` para versionar em `.claude/settings.json`;
@@ -117,14 +162,23 @@ resource `vibedeck://patterns`.
   cada um com a justificativa. Nada muda até você aceitar: arquivos inexistentes e tópicos desconhecidos são
   descartados, trocar um campo já preenchido começa desmarcado, tópicos só são adicionados e o aceite é um
   único ⌘Z.
-- **Descubra nas regras** (na barra do tópico de regras e da ideia, com Claude ou Codex instalado): a IA, só com
-  leitura, propõe **globs** e **tags**; depois faz uma **entrevista** (até 4 perguntas por rodada, 3 rodadas, com
-  "Gerar com o que já tenho") e sugere regras `must`/`should`. Globs catch-all (`**`, `*`, `**/*`) ou que não
-  casam nenhum arquivo são descartados, tags novas começam desmarcadas, regras que duplicam ou conflitam com as
-  existentes vêm sinalizadas e desmarcadas, e nada é removido. Na ideia as regras entram como rascunho e os globs
-  ficam em `paths`. Por fim a IA reescreve a **descrição** com o que foi reunido (na ideia: Problema, Proposta,
-  Escopo e Critérios de aceite; no tópico: quando ele se aplica), mostrada antes/depois para aceitar ou manter a
-  atual. Cada aceite é um único ⌘Z; editar o tópico/ideia durante a chamada descarta a resposta.
+- **Resolver** (só no app, sem CLI nem MCP; botão em cada item aberto e **Resolver grupo** no cabeçalho, com
+  Claude ou Codex instalado): fluxo **pergunta → plano → aceite → execução → check**. Primeiro a IA lê o código
+  (Read/Grep/Glob; no Codex sem escrita) e devolve, em JSON validado, perguntas e um plano; você responde na tela
+  e aceita o plano. Sem aceite nenhum arquivo nem status muda. Depois do aceite a IA pode escrever no projeto
+  aberto, um item por vez; cada item roda seu próprio check e só vai a `done` com `ensureVerified` aprovado
+  (um único ⌘Z desfaz). No grupo entram só itens `open` e `in_progress`; uma falha não impede os seguintes nem
+  reverte os concluídos. Resolver nunca apaga nem marca `wontfix`: se não conseguir, o item fica como estava e
+  você vê o motivo. Uma execução por projeto, com progresso e **Cancelar** (encerra a IA e não marca nada).
+- **Descubra nas regras** (na barra do tópico de regras e da ideia, com Claude ou Codex instalado): você pode dar um
+  **contexto inicial** (opcional) sobre o que quer fazer; ele entra em todos os prompts, além do título e da
+  descrição. A IA, só com leitura, propõe **globs**; depois faz uma **entrevista** (até 4 perguntas por rodada, 3
+  rodadas, com "Gerar com o que já tenho") e sugere regras `must`/`should`. Globs catch-all (`**`, `*`, `**/*`) ou
+  que não casam nenhum arquivo são descartados, regras que duplicam ou conflitam com as existentes vêm sinalizadas
+  e desmarcadas, e nada é removido. Na ideia as regras entram como rascunho e os globs ficam em `paths`. Por fim a
+  IA reescreve a **descrição** (na ideia: Problema, Proposta, Escopo e Critérios de aceite; no tópico: quando ele
+  se aplica), mostrada antes/depois para aceitar ou manter a atual, e sugere **tags** (as novas começam
+  desmarcadas). Cada aceite é um único ⌘Z; editar o tópico/ideia durante a chamada descarta a resposta.
 - **Markdown de documentos e ideias**: Editar formata o próprio campo de texto, mantendo o markdown original.
   A sintaxe fica esmaecida fora da linha/bloco do cursor, e imagens anexadas aparecem no editor. Dividir e Ler
   continuam disponíveis, com fundo herdado da janela; ⌘E alterna edição/leitura e ⌘Z/⇧⌘Z desfaz/refaz.
@@ -132,15 +186,36 @@ resource `vibedeck://patterns`.
   de regras real com essas regras e globs (se o tópico já existe, os globs são somados; globs que não casam mais
   nenhum arquivo são avisados antes). Apagar esse tópico (no app, no Finder ou com `vibedeck ideas unpromote`)
   despromove a ideia: o vínculo some, "Aprovada" volta para "Explorando" e as regras rascunho ficam.
-- **Implementar ideia**: na etapa da descrição a IA também diz se a ideia é **viável** (dá para implementar sem
+- **Implementar ideia**: o botão "Verificar" pede à IA (sem reescrever nada) o veredito se a ideia é **viável** (dá para implementar sem
   decisões em aberto) ou o que falta; o veredito fica em `readiness`. O botão "Implementar" só habilita com regras e
   veredito viável e atual: qualquer mudança em título, texto, globs ou regras o invalida, e "Verificar" refaz só essa
   avaliação. Ao clicar, as regras são promovidas/sincronizadas (a ideia fica "Aprovada") e a IA recebe no chat o
   pedido de implementar seguindo as regras e o check.
+  Ao clicar em "Salvar avaliação", um veredito viável em ideia com regras marca o status como `approved`, junto com o `readiness` em um único passo de desfazer. Isso não é promoção: `promotedTopic` continua vazio, nenhum tópico é criado e as regras continuam rascunho. Ideias fechadas ou já promovidas mantêm o status; vereditos não viáveis não alteram o status. Rodar Descubra/Verificar sem salvar não aprova a ideia.
+  "Copiar prompt" leva esse pedido para a área de transferência, usando o tópico promovido ou as regras
+  rascunho, sem promover a ideia. Está disponível mesmo sem provedor de IA e confirma com "Copiado".
 - **Agentes**: nome, modelo e prompt (markdown) de agentes do VibeDeck. Os **próximos passos** apontam para
   outros agentes, comandos ou skills do VibeDeck e formam um fluxo; `vibedeck agents flow <agente>`
   (ou o botão "Copiar fluxo") gera o JSON que orquestra a IA. "Importar do Claude Code" traz os `.md` de
   `.claude/agents` (projeto e usuário); "Importar de Codex" traz `.codex/agents/*.toml`.
+- **Criar e editar com IA**: com Claude Code ou Codex instalado, as listas de Agentes, Comandos, Skills e Workflows
+  têm **Criar com IA** e o detalhe de cada item tem **Editar com IA**. Você descreve o que quer, a IA (somente leitura:
+  Read/Glob/Grep no Claude, `workspaceWrites=false` no Codex) devolve a proposta completa em JSON validado e você refina com
+  novos pedidos quantas vezes quiser. Nada é gravado antes do aceite, que é um único passo de undo (⌘Z). Há botão de
+  cancelar, timeout de 240 s e uma operação por projeto por vez; editar descarta a resposta se o item mudou durante a
+  chamada. Criar nunca sobrescreve (slug único) e grava com `author: ai`. No CLI/MCP, a IA que chama usa
+  `vibedeck ai item-prompt <tipo> --request "…" [--item <ref>]` (MCP `item_ai_prompt`) para obter prompt e schema e
+  `vibedeck ai item-apply <tipo> --file proposta.json [--item <ref>]` (MCP `item_ai_apply`) para validar e gravar.
+- **Kits pré-definidos**: o botão nas listas e páginas de Agentes, Comandos, Skills e Workflows abre os kits
+  **Manutenção de sistema** e **Desenvolvimento de novas ferramentas**. Confira os conteúdos, selecione itens
+  ou um kit inteiro e confirme em **Adicionar selecionados**. Workflows exigem selecionar também seus agentes,
+  comandos e skills; as dependências faltantes aparecem antes de confirmar. Nada é criado só por abrir o catálogo.
+  Cada adição cria cópias comuns em `.vibedeck/`, editáveis manualmente ou por IA, sem sobrescrever itens existentes.
+  Repetir a adição gera slugs distintos e remapeia as referências para as novas cópias. O conjunto aparece ao vivo
+  e pode ser desfeito/refeito em um único passo (⌘Z / ⇧⌘Z), preservando os itens que já existiam.
+  CLI: `vibedeck kits list --json`, `vibedeck kits add manutencao --ai --json` ou
+  `vibedeck kits add manutencao:agent manutencao:command`. MCP: `ai_catalog(kind: "kits")` e
+  `add_kit(items: ["manutencao"])` (author=ai). Os ids de kits completos selecionam explicitamente todos seus itens.
 - **Comandos**: o mesmo fluxo dos agentes, no formato dos slash commands — prompt (markdown, com `$ARGUMENTS`),
   descrição, argumentos, modelo e próximos passos. Um agente pode ter um comando como próximo passo e vice-versa;
   `vibedeck commands flow <comando>` gera o JSON do fluxo. "Importar do Claude Code" traz os `.md` de
@@ -161,8 +236,8 @@ resource `vibedeck://patterns`.
   direita e "Fim" tracejado onde nenhuma transição vale; passar o mouse numa etapa destaca para onde ela pode ir, e
   o duplo clique abre o agente/comando/skill.
 - **Execuções**: "Executar" pede a entrada e cria a execução em `.vibedeck/runs/<workflow>/<entrada>/`.
-  Claude usa o chat como orquestrador e um subagente por etapa; no Codex, o VibeDeck controla a execução
-  e abre uma thread com contexto limpo por etapa. Ambos usam o mesmo motor de vereditos, condições,
+  No app, Claude e Codex usam o motor do VibeDeck para controlar a execução;
+  cada etapa abre uma sessão com contexto limpo. Ambos usam o mesmo motor de vereditos, condições,
   perguntas e limites de visitas. O provedor fica gravado na execução; continuar mantém esse provedor.
   As perguntas das etapas aparecem no painel e suas respostas são registradas antes da retomada.
   `vibedeck workflows flow <workflow>` continua gerando o JSON do workflow sem estado.
@@ -215,9 +290,14 @@ Requer macOS 26+ e Xcode 27 (SDK do macOS 27):
 
 ```sh
 scripts/build-app.sh --install-cli   # build/VibeDeck.app + build/VibeDeck-<versão>.dmg + ~/.local/bin/vibedeck
+CONFIG=debug scripts/build-app.sh --no-dmg # desenvolvimento local: app e CLI, sem gerar instalador
 open build/VibeDeck.app              # ou: open -a build/VibeDeck.app <pasta-do-projeto>
 swift test                           # testes do Core
 ```
+
+O script compila app e CLI em uma única chamada ao SwiftPM, reutilizando o cache em `.build`.
+O modo padrão continua sendo release com DMG; `--no-dmg` pula apenas a geração do instalador
+e pode ser combinado com `--install-cli` em qualquer ordem.
 
 > Sem o Xcode (só Command Line Tools), o SDK 27 não compila SwiftUI: `@State` virou macro e o
 > plugin `SwiftUIMacros` só vem no Xcode. Nesse caso `scripts/env.sh` cai para o SDK 26.x e os
@@ -339,6 +419,45 @@ resets informados pela conta. `codex_usage` oferece os mesmos dados pelo MCP; co
 fornecem limites mostram essa indisponibilidade. O menu de integrações instala MCP e hooks;
 hooks novos do Codex precisam ser aprovados com `/hooks` no terminal do Codex.
 
+## Logs e diagnóstico
+
+O app, o CLI e o MCP registram erros, falhas e crashes em `~/Library/Application Support/VibeDeck/logs/`, um
+arquivo JSON Lines por dia (fora do projeto e do git, mantido por 14 dias). Só entram nomes, ids, códigos e
+tamanhos, nunca o conteúdo de prompts, docs ou ideias. Se o app fechar de forma inesperada, ele avisa na próxima
+abertura e associa o relatório de crash do macOS. Para ver os logs no app, use **Ajuda › Diagnóstico…**, que tem
+filtros e o botão "Copiar Relatório".
+
+```sh
+vibedeck logs [--since 24h] [--level warning] [--component mcp] [--all-projects] [--json]
+vibedeck logs report                         # texto para colar numa issue
+vibedeck logs crashes                        # crashes do app
+vibedeck logs path                           # pasta dos logs
+```
+
+Agentes leem os mesmos dados pelos resources MCP `vibedeck://logs` e `vibedeck://logs/crashes`.
+
+
+As interações do app são ações `ui.*` de nível Info: botões, menus, atalhos, seleções e confirmação de
+campos (Return ou perda de foco, sem uma entrada por tecla). Cada ação tem um id em `context.action`,
+um controle estável em `context.control` e seu rótulo em `context.label`. Gravações `store.*`, chamadas
+`ai.*` e checks `rules.*` carregam a mesma correlação. As gravações incluem arquivo relativo e nome do undo;
+mudanças externas têm `origin=external`. CLI e MCP registram nome da operação e duração em ms.
+
+Em **Ajuda › Diagnóstico…**, escolha **Info** e use **Id da ação** ou **Filtrar esta ação** no detalhe
+para ver a ação e suas reações. A busca também procura no contexto.
+
+```sh
+vibedeck logs --level info --since 5m --component app --json
+vibedeck logs --level info --action ID --json
+vibedeck logs --level info --component cli mcp --since 24h --json
+```
+
+No MCP, `read_logs` aceita `level` (padrão `info`), `since`, `components`, `action` e `limit`.
+Exemplo: `{"level":"info","since":"5m","components":["app"],"action":"ID"}`.
+Os resources `vibedeck://logs` e `vibedeck://logs/crashes` mantêm os filtros de aviso/crash.
+Os logs seguem fora do projeto, em Application Support, como JSON Lines por dia com `O_APPEND`;
+nunca incluem conteúdo de campos, prompts, documentos ou argumentos de ferramentas.
+
 ## Worker (schemas)
 
 ```sh
@@ -385,3 +504,75 @@ Validação: `scripts/test-ai-efficiency.sh` testa economia do contexto inicial 
 cenários redundantes), integridade das referências, contratos, recuperação e contagem. Isso mede o que
 VibeDeck controla; redução real de tokens e qualidade de cada modelo exigem comparação de tarefas reais
 com o mesmo modelo e estado inicial, incluindo recuperações. Não há promessa de economia fixa por tarefa.
+
+### Paridade entre Claude e Codex
+
+Os dois provedores compartilham o contrato de sessões, eventos e workflows. Cada etapa usa uma sessão limpa. O motor do VibeDeck controla transições, perguntas e limites; uma saída concluída é salva em `checkpoint` antes de avaliar condições. Retomar uma execução interrompida preserva a etapa atual, histórico e respostas. Saídas parciais são referências para conferir o estado antes de continuar.
+
+No Codex, **Planejar** usa somente leitura e apresenta planos completos (`<proposed_plan>`) com ações de aprovar, pedir mudanças e rejeitar. O plano pendente sobrevive ao fechamento da conversa. **Editar projeto** permite escrita no workspace; comandos e acessos adicionais seguem as aprovações do Codex. O controle de aprovação automática é próprio do Codex. Opções sem equivalência, como dois modos com a mesma política, não aparecem duplicadas.
+
+Modelos e esforços explícitos indisponíveis interrompem a operação. A precedência é configuração do recurso, escolha da sessão e padrão do provedor; não há substituição automática. Comandos, agentes e skills registrados no VibeDeck são expandidos e sugeridos nos dois provedores.
+
+| Recursos | Claude | Codex | Evidência automatizada |
+| --- | --- | --- | --- |
+| Chat, eventos e interrupção | Transporte Claude | Transporte app-server | `AIParityTests`, `ClaudeStreamTests`, `CodexTests` |
+| Planejamento | Aprovação nativa | Aprovação pelo VibeDeck | `AIParityTests`, persistência de plano |
+| Workflows e perguntas | Motor VibeDeck | Motor VibeDeck | `AIParityTests`, `WorkflowRunsTests` |
+| Descubra, documentos, grafo e verificação | Leitura restrita | Leitura restrita | `AIRecoveryTests`, `DocGenerateTests`, `GraphRunnerTests`, `RuleDiscoverTests`, `CodexReadToolsTests` |
+| Geração de testes | Escrita autorizada | Escrita autorizada | `AIRecoveryTests`, validação de registros |
+| Importação, CLI/MCP e hooks | Formatos nativos | Formatos nativos | `CodexTests`, `WorkflowsTests`, `StopGateTests`, contrato MCP |
+| Nuvem | Serviço Claude | Serviço Codex com ambiente explícito | `CloudSessionTests`; lançamento remoto requer conta configurada |
+| Consumo | Tokens/custo informados | Tokens/limites informados | `AIEfficiencyTests`, `ClaudeUsageTests`, `CodexTests` |
+| Coleção de artefatos do Claude | Links do Claude | Recurso exclusivo do Claude | `ClaudeItemsTests`, `ClaudeCollectionTests` |
+
+Smoke tests reais: `VIBEDECK_AI_PARITY_SMOKE=1 swift test --filter AIParityTests.liveProviderSmokeWhenRequested` faz uma chamada curta em somente leitura por provedor. `VIBEDECK_CODEX_SMOKE=1 swift test --filter CodexTests.liveCodexSmokeWhenRequested` também verifica o catálogo e uma chamada MCP real. Esses testes exigem CLIs instalados, autenticação e rede; as demais verificações não consomem IA. O catálogo de capacidades descreve a integração; erros de versão, autenticação ou conta são apresentados pelo adaptador, sem mudar de provedor.
+
+### Grupos de itens
+
+Ideias, documentos, temas de revisão e skills podem ser organizados em diretórios aninhados, sem migração dos projetos planos. Use o caminho completo `a/b/slug` como referência; slugs repetidos em grupos diferentes coexistem, e referências simples ambíguas são recusadas. As skills organizam apenas os JSON do VibeDeck, preservando os arquivos importados dos provedores. Regras usam um campo opcional `group` dentro de seu tópico, com IDs e checks preservados.
+
+No app, a sidebar e as listas mostram a árvore, incluindo grupos vazios. O menu permite criar itens/subgrupos, renomear, mover e apagar; arrastar também move. Mover é um único passo de desfazer, atualiza referências e acompanha a seleção pelo ID. Apagar grupos com itens exige confirmação explícita, inclusive para autoria humana.
+
+```sh
+vibedeck ideas new "Plano" --reference produto/mobile/plano
+vibedeck docs new "Guia" --reference produto/mobile/guia
+vibedeck groups create ideas produto/web
+vibedeck groups move-item ideas produto/mobile/plano produto/web
+vibedeck groups rename ideas produto/web desktop
+vibedeck groups list ideas --json
+vibedeck groups remove ideas produto/desktop --confirmed
+vibedeck groups move-rule <id> interface/layout
+```
+
+As listagens JSON incluem `slug` e `group`. No MCP, use `item_groups` (ações `list`, `create`, `move`, `rename`, `move_item`, `delete`) (`confirmed: true` para apagar grupos não vazios). Criações aceitam `reference`; regras usam `move_rule_to_group` e `rename_rule_group`. Caminhos inseguros e destinos existentes são recusados sem sobrescrever arquivos. Anexos continuam resolvendo após movimentos.
+
+O botão **Implementar** reavalia ideias com avaliação ausente ou desatualizada e só inicia a implementação após salvar um resultado positivo para o conteúdo atual.
+
+### Reorganizar o projeto
+
+O botão **Reorganizar** nas listas de Regras, Docs, Ideias e Revisões analisa os quatro conceitos com
+Claude Code ou Codex somente leitura. A proposta mostra conflitos, mesclagens, movimentos, criação de
+tópicos/subpastas e melhorias de fluxo. Nada muda antes do aceite; o lote aceito tem um único undo/redo.
+Conflitos exigem escolher qual manter: os demais são arquivados em `.vibedeck/archive/reorganize/`.
+Ideias promovidas, tópicos vinculados e revisões encerradas não podem ser arquivados. Mesclagens
+preservam conteúdo, tags, globs e regras; campos incompatíveis bloqueiam o lote. Melhorias criam ideias
+com `author=ai`, sem promover regras. Tópicos novos também registram `author` (`human` ou `ai`);
+ausência do campo em projetos antigos significa `human`. Tópicos aceitam caminhos aninhados.
+Cancelar, timeout de 180 segundos por chamada e mudanças no projeto invalidam a análise. Checks históricos permanecem intactos.
+CLI: `vibedeck reorganize prompt`, `analyze --provider claude|codex`, `validate --file resposta.json --fingerprint HASH`
+e `apply --file proposta.json --acceptance aceite.json`. O aceite contém `selected` (IDs das ações)
+e `conflicts` (ID da ação → chave concept/slug#itemID do item mantido). Sem escolha, conflitos ficam pendentes.
+MCP: `reorganize_prompt`, `reorganize_analyze`, `reorganize_validate` e `reorganize_apply`;
+proposta e aceite são strings JSON. Analisar e validar nunca aplicam ações automaticamente.
+
+### Projetos remotos via SSH
+
+Na tela inicial, **Conectar via SSH…** permite escolher um alias de `~/.ssh/config` ou informar servidor, porta e usuário. A conexão usa OpenSSH, chaves/agente SSH ou senha; guardar a senha no Chaves do macOS é opcional. Confirme a impressão digital do servidor na primeira conexão. Uma mudança da chave conhecida bloqueia o acesso até verificar a identidade.
+
+Navegue pelas pastas ou digite um caminho. Uma pasta sem `vibedeck.json` só é inicializada depois de confirmar **Inicializar projeto**. O servidor precisa oferecer SSH e os utilitários de arquivos do sistema; não precisa ter VibeDeck instalado.
+
+Os dados de `vibedeck.json`, `.vibedeck/` e o README ficam em um cache local por servidor, porta, usuário e diretório. Cada edição confirmada fica no disco, inclusive exclusões e alterações feitas com undo. O app compara o cache com a última versão confirmada no servidor, recupera pendências ao reabrir offline e tenta reconectar automaticamente, com intervalos crescentes de até 60 segundos. O painel SSH oferece reconexão manual e entrada de senha.
+
+A sincronização verifica a versão remota antes do envio e confirma a gravação antes de retirar a pendência. Conflitos permitem inspecionar e preservar a versão local ou remota; **Decidir depois** preserva ambas. Um arquivo editado offline e apagado no servidor é recriado com a edição local, desde que não tenha um conflito já registrado.
+
+O terminal abre no servidor e no diretório do projeto. Scripts de regras, chat, Descubra, gerações e workflows também executam remotamente. **Claude Code ou Codex deve estar instalado e autenticado no servidor**; a instalação no Mac não substitui esse requisito. O app não instala nem troca provedores automaticamente. Use **Terminal SSH** para autenticar o provedor. Novas ações de IA e regras aguardam sincronização e resolução dos conflitos; o terminal continua disponível.

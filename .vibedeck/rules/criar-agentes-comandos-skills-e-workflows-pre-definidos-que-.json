@@ -1,0 +1,151 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-13T17:20:36Z",
+  "description" : "Regras vindas da ideia \"Criar Agentes, Comandos, Skills e Workflows pré-definidos, que podem ser selecionados pelo usuário, e eles podem ser editáveis por IA, ou manualmente\".",
+  "id" : "9A504161-6DC1-46A9-ADD1-6AC2733A16A0",
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:11:31Z",
+      "details" : "Verificar que o tipo do catálogo está em Sources/VibeDeckCore e que o target não importa SwiftUI/AppKit.",
+      "id" : "133B62CD-0226-4845-9E53-4F502A05CA08",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/133b62cd.sh",
+        "generatedAt" : "2026-10-14T14:12:49Z",
+        "mode" : "script",
+        "ruleHash" : "2a8a546a43b2f641"
+      },
+      "text" : "O catálogo de kits pré-definidos (agentes, comandos, skills e workflows) fica no Core, sem depender de SwiftUI."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:11:31Z",
+      "details" : "Verificar que a adição não escreve arquivos direto e reutiliza as operações existentes de ProjectStore.swift.",
+      "id" : "A21B5419-49D4-4F31-9BEC-DEA037FB9F2F",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/a21b5419.sh",
+        "generatedAt" : "2026-10-14T14:12:49Z",
+        "mode" : "script",
+        "ruleHash" : "06cb58a06789d7f1"
+      },
+      "text" : "Adicionar um item do catálogo ao projeto passa por uma operação do ProjectStore (createAgent/createCommand/createSkill/createWorkflow) e grava via AtomicFile.write."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:11:31Z",
+      "details" : "Teste: abrir o catálogo e confirmar que nenhum item é criado até o usuário confirmar a seleção.",
+      "id" : "D4DD944D-5DC9-4EEA-9139-DEE9F8968FEF",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/d4dd944d.sh",
+        "generatedAt" : "2026-10-14T14:12:49Z",
+        "mode" : "script",
+        "ruleHash" : "ecc141353c5b5566"
+      },
+      "text" : "O usuário escolhe quais itens pré-definidos adicionar; nada é adicionado sem seleção explícita."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:11:31Z",
+      "details" : "Teste no Core: adicionar o mesmo item duas vezes gera dois itens com slugs distintos e preserva o conteúdo do primeiro.",
+      "id" : "4D89A4DA-FD25-4B06-8C32-504434336A75",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/4d89a4da.sh",
+        "generatedAt" : "2026-10-14T14:12:49Z",
+        "mode" : "script",
+        "ruleHash" : "944d800ae0f60067"
+      },
+      "text" : "Adicionar um item do catálogo nunca sobrescreve nem apaga item existente; se o slug já existe, usa Slug.make + uniqueSlug."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:11:31Z",
+      "details" : "Teste: após adicionar, editar o corpo pelo store e pelo editor; a edição persiste e o catálogo não a reverte.",
+      "id" : "953B1E7E-82E7-4157-AD7D-2F0576EF05AC",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/953b1e7e.sh",
+        "generatedAt" : "2026-10-14T14:12:50Z",
+        "mode" : "script",
+        "ruleHash" : "74232e85324cd039"
+      },
+      "text" : "Itens adicionados do catálogo são ordinários: editáveis manualmente e por IA como qualquer agente, comando, skill ou workflow, sem vínculo que bloqueie edição."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:11:31Z",
+      "details" : "Verificar que os JSON/markdown gerados validam no schema atual e são lidos por ProjectStore sem tratamento especial.",
+      "id" : "384B5C03-96A1-47DA-B363-30B8EF61E50C",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/384b5c03.sh",
+        "generatedAt" : "2026-10-14T14:12:50Z",
+        "mode" : "script",
+        "ruleHash" : "ae76257ca82ee2dc"
+      },
+      "text" : "Itens adicionados a partir do catálogo ficam em arquivos do repo, no mesmo formato dos itens criados à mão."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:11:31Z",
+      "details" : "Teste: adicionar um kit completo e validar que todos os alvos resolvem por slug; adicionar um item isolado não deixa referência pendente.",
+      "id" : "103B84BC-17CD-4929-839E-BE0B82B976D8",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/103b84bc.sh",
+        "generatedAt" : "2026-10-14T14:12:50Z",
+        "mode" : "script",
+        "ruleHash" : "794102c24009ec19"
+      },
+      "text" : "Referências entre itens do catálogo (nextSteps de comandos/skills, passos e transições de workflows) só apontam para itens que estão no kit adicionado ou já existem no projeto."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:11:31Z",
+      "details" : "Teste unitário conta os itens por tipo em cada kit.",
+      "id" : "2621DABD-5DC8-44DE-943C-A601518D7929",
+      "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/2621dabd.sh",
+        "generatedAt" : "2026-10-14T14:12:50Z",
+        "mode" : "script",
+        "ruleHash" : "96437c3ab14ca18b"
+      },
+      "text" : "O catálogo traz um kit para manutenção de sistema e um kit para desenvolvimento de novas ferramentas, cada um com pelo menos um agente, um comando, uma skill e um workflow."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:11:31Z",
+      "details" : "Teste: nenhum texto do catálogo contém 'Sources/VibeDeck' nem nomes de arquivos do VibeDeck; revisão manual do texto.",
+      "id" : "BBA08717-71D1-4963-B090-6E869319B8D2",
+      "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/bba08717.sh",
+        "generatedAt" : "2026-10-14T14:12:50Z",
+        "mode" : "script",
+        "ruleHash" : "ffb02fd273170de0"
+      },
+      "text" : "Os conteúdos pré-definidos instruem seguir os padrões do projeto (regras e tópicos do VibeDeck, fluxo de revisão e check) e evitar código espaguete, sem referenciar caminhos ou nomes específicos deste repositório."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-13T17:11:31Z",
+      "details" : "Teste/manual: adicionar kit com vários itens e desfazer com ⌘Z remove todos de uma vez.",
+      "id" : "8A34AE9E-0913-41BD-8441-4B7E1652275B",
+      "severity" : "should",
+      "test" : {
+        "command" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/8a34ae9e.sh",
+        "generatedAt" : "2026-10-14T14:12:50Z",
+        "mode" : "script",
+        "ruleHash" : "4ee24c6455bd1c8f"
+      },
+      "text" : "Adicionar item do catálogo aceita um único passo de undo no app e aparece ao vivo na lista da seção, sem recarregar."
+    }
+  ],
+  "sourceIdea" : "A64488F7-96B0-4437-8610-F98D6981550A",
+  "title" : "Criar Agentes, Comandos, Skills e Workflows pré-definidos, que podem ser selecionados pelo usuário, e eles podem ser editáveis por IA, ou manualmente"
+}

@@ -63,5 +63,6 @@ Leia só a seção necessária: `vibedeck ai guide --section <n>`, MCP `ai_guide
 13: Execuções de workflows
 14: Tags
 15: Sessões na nuvem
-16: Regras gerais para agentes
-17: Comandos úteis
+16: Logs
+17: Regras gerais para agentes
+18: Comandos úteis

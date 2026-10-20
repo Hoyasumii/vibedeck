@@ -1,0 +1,106 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-14T14:11:54.449Z",
+  "failures" : [
+
+  ],
+  "files" : [
+    ".vibedeck/rules/colecao-de-artefatos-e-docs-do-claude.json",
+    ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/0f77f1fd.sh",
+    ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/97e096a2.sh",
+    ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/_lib.sh",
+    ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/b5b453dc.sh",
+    ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/dcd7508b.sh"
+  ],
+  "id" : "56C8B12C-3183-40D2-BA1C-61A226CF06B7",
+  "passed" : true,
+  "pending" : [
+    "README atualizado quando muda algo documentado",
+    "O catálogo de kits pré-definidos (agentes, comandos, skills e workflows) fica no Core, sem depender de SwiftUI.",
+    "Adicionar um item do catálogo ao projeto passa por uma operação do ProjectStore (createAgent/createCommand/createSkill/createWorkflow) e grava via AtomicFile.write.",
+    "O usuário escolhe quais itens pré-definidos adicionar; nada é adicionado sem seleção explícita.",
+    "Adicionar um item do catálogo nunca sobrescreve nem apaga item existente; se o slug já existe, usa Slug.make + uniqueSlug.",
+    "Itens adicionados do catálogo são ordinários: editáveis manualmente e por IA como qualquer agente, comando, skill ou workflow, sem vínculo que bloqueie edição.",
+    "Itens adicionados a partir do catálogo ficam em arquivos do repo, no mesmo formato dos itens criados à mão.",
+    "Referências entre itens do catálogo (nextSteps de comandos/skills, passos e transições de workflows) só apontam para itens que estão no kit adicionado ou já existem no projeto.",
+    "O catálogo traz um kit para manutenção de sistema e um kit para desenvolvimento de novas ferramentas, cada um com pelo menos um agente, um comando, uma skill e um workflow.",
+    "Os conteúdos pré-definidos instruem seguir os padrões do projeto (regras e tópicos do VibeDeck, fluxo de revisão e check) e evitar código espaguete, sem referenciar caminhos ou nomes específicos deste repositório.",
+    "Adicionar item do catálogo aceita um único passo de undo no app e aparece ao vivo na lista da seção, sem recarregar."
+  ],
+  "results" : [
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/9d6f362b.sh (exit 0)\n(sem saída)",
+      "ruleId" : "9D6F362B-9F0E-4661-97B3-6158B160D478",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/9f92a765.sh (exit 0)\n(sem saída)",
+      "ruleId" : "9F92A765-76E7-4EA0-A66A-78AE12EE4C8F",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/ac4ba963.sh (exit 0)\n(sem saída)",
+      "ruleId" : "AC4BA963-CDEE-419C-B057-9140643E115D",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/geral/0e5aec71.sh (exit 77)\n(sem saída)",
+      "ruleId" : "0E5AEC71-405E-4113-AB27-615313AB2B5F",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/97e096a2.sh (exit 77)\n(sem saída)",
+      "ruleId" : "97E096A2-000D-4657-B152-0FE64E0C8E6C",
+      "source" : "script",
+      "topic" : "colecao-de-artefatos-e-docs-do-claude",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/b5b453dc.sh (exit 77)\n(sem saída)",
+      "ruleId" : "B5B453DC-7961-43CF-B3C2-DFA18950E81D",
+      "source" : "script",
+      "topic" : "colecao-de-artefatos-e-docs-do-claude",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/0f77f1fd.sh (exit 77)\n(sem saída)",
+      "ruleId" : "0F77F1FD-8852-4A26-B860-8C363E445637",
+      "source" : "script",
+      "topic" : "colecao-de-artefatos-e-docs-do-claude",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/dcd7508b.sh (exit 77)\n(sem saída)",
+      "ruleId" : "DCD7508B-3ADF-4776-93EF-EA4FD237CAD5",
+      "source" : "script",
+      "topic" : "colecao-de-artefatos-e-docs-do-claude",
+      "verdict" : "na"
+    }
+  ],
+  "task" : "Scripts de teste das regras da coleção do Claude",
+  "topics" : [
+    "geral",
+    "colecao-de-artefatos-e-docs-do-claude",
+    "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-"
+  ],
+  "warnings" : [
+
+  ]
+}

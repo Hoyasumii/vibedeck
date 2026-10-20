@@ -1,9 +1,11 @@
+import VibeDeckCore
 import AppKit
 import MarkdownUI
 import SwiftUI
 
 /// Rendered markdown of a doc or idea. Relative links/images (`../attachments/…`) resolve against `baseURL`.
 struct MarkdownPreview: View {
+    @Environment(\.logProject) private var logProject
     let text: String
     let baseURL: URL
 
@@ -56,6 +58,7 @@ private struct MarkdownImageProvider: ImageProvider {
 }
 
 private struct MarkdownImage: View {
+    @Environment(\.logProject) private var logProject
     let url: URL?
     @State private var image: NSImage?
     @State private var failed = false
@@ -100,10 +103,11 @@ enum MarkdownViewMode: String, CaseIterable {
 
 /// Toolbar segmented picker for `MarkdownViewMode`; pair it with `markdownModeShortcut` on the content.
 struct MarkdownModePicker: View {
+    @Environment(\.logProject) private var logProject
     @Binding var mode: MarkdownViewMode
 
     var body: some View {
-        Picker("Modo", selection: $mode) {
+        Picker("Modo", selection: $mode.logging(control: "markdown_preview.selection_3", label: "Modo", project: logProject)) {
             ForEach(MarkdownViewMode.allCases, id: \.self) { m in
                 Label(m.label, systemImage: m.symbol).tag(m)
             }
@@ -117,7 +121,7 @@ extension View {
     /// ⌘E toggles between editing and reading.
     func markdownModeShortcut(_ mode: Binding<MarkdownViewMode>) -> some View {
         background {
-            Button("") { mode.wrappedValue = mode.wrappedValue == .read ? .edit : .read }
+            LoggedButton("") { mode.wrappedValue = mode.wrappedValue == .read ? .edit : .read }.loggedControl(control: "markdown_preview.button_1", label: "")
                 .keyboardShortcut("e")
                 .hidden()
         }
@@ -126,11 +130,12 @@ extension View {
 
 /// Toolbar button that picks files to attach; `onPick` copies them and returns the markdown to insert.
 struct AttachButton: View {
+    @Environment(\.logProject) private var logProject
     let onPick: ([URL]) -> Void
     @State private var picking = false
 
     var body: some View {
-        Button { picking = true } label: { Label("Anexar", systemImage: "paperclip") }
+        LoggedButton { picking = true } label: { Label("Anexar", systemImage: "paperclip") }.loggedControl(control: "markdown_preview.button_2", label: "Anexar")
             .help("Anexar arquivos (copiados para .vibedeck/attachments). Também dá para arrastar ou colar no texto.")
             .fileImporter(isPresented: $picking, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
                 if case .success(let urls) = result, !urls.isEmpty { onPick(urls) }

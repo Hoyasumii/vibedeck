@@ -26,7 +26,7 @@ struct ClaudeUsageView: View {
                     .foregroundStyle(.secondary)
                     .help("O uso aparece depois da próxima resposta do Claude Code")
             } else if let cli = Self.cliPath {
-                Button {
+                LoggedButton {
                     do {
                         try ClaudeCode.installStatusLine(executable: cli)
                         reload()
@@ -35,7 +35,7 @@ struct ClaudeUsageView: View {
                     }
                 } label: {
                     Label("Mostrar limites do Claude Code", systemImage: "gauge.with.dots.needle.33percent")
-                }
+                }.loggedControl(control: "claude_usage_view.button_1", label: "Mostrar limites do Claude Code")
                 .buttonStyle(.borderless)
                 .help("Liga a statusline do Claude Code (~/.claude/settings.json) ao VibeDeck; uma statusline existente continua aparecendo")
             }
@@ -48,7 +48,7 @@ struct ClaudeUsageView: View {
             }
         }
         .alert("Erro", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
-            Button("OK") { errorMessage = nil }
+            LoggedButton("OK") { errorMessage = nil }.loggedControl(control: "claude_usage_view.button_2", label: "OK")
         } message: { Text(errorMessage ?? "") }
     }
 

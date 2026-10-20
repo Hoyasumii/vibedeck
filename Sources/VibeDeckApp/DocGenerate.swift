@@ -23,8 +23,14 @@ final class DocGenerateRunner {
 
     func start(store: ProjectStore, provider: AIProvider, available: (AIProvider) -> Bool = { $0.isInstalled },
                request: ((String, AIProviderSettings) async throws -> Data)? = nil) {
+        if VDLog.actionID == nil {
+            VDLog.withAction(control: LogControls.docsGenerate, label: "Gerar documentos", project: store.root) {
+                start(store: store, provider: provider, available: available, request: request)
+            }
+            return
+        }
         guard !isActive else { return }
-        guard available(provider) else {
+        guard RemoteWorkspace.existing(at: store.root) != nil || available(provider) else {
             state = .failed("\(provider.title) não está instalado. Selecione um provedor disponível no painel IA.")
             return
         }
@@ -54,10 +60,12 @@ final class DocGenerateRunner {
 }
 
 struct DocGenerateSheet: View {
+    @Environment(\.logProject) private var logProject
     let runner: DocGenerateRunner
     let model: ProjectModel
     let undo: UndoManager?
     @Environment(\.dismiss) private var dismiss
+    @State private var destinationGroup = String()
     @State private var documents: [DocGenerate.Document] = []
     @State private var selected: Set<UUID> = []
     @State private var preview: UUID?
@@ -84,22 +92,23 @@ struct DocGenerateSheet: View {
                         VStack(alignment: .leading, spacing: 20) {
                             Text("Revise os documentos. Editar ou descartar aqui não altera arquivos.")
                                 .foregroundStyle(.secondary)
+                            ItemGroupDestinationPicker(concept: .docs, selection: $destinationGroup)
                             ForEach($documents) { $document in
                                 VStack(alignment: .leading, spacing: 8) {
                                     HStack {
                                         Toggle("Aceitar", isOn: Binding(get: { selected.contains(document.id) }, set: {
                                             if $0 { selected.insert(document.id) } else { selected.remove(document.id) }
-                                        }))
+                                        }).logging(control: LogControls.docGenerateSelection, label: "Aceitar", project: logProject))
                                         Spacer()
-                                        Button(preview == document.id ? "Editar" : "Pré-visualizar") {
+                                        LoggedButton(preview == document.id ? "Editar" : "Pré-visualizar") {
                                             preview = preview == document.id ? nil : document.id
-                                        }
-                                        Button("Descartar", role: .destructive) {
+                                        }.loggedControl(control: LogControls.docGenerateButton1, label: LogControls.docGenerateLabel1)
+                                        LoggedButton("Descartar", role: .destructive) {
                                             selected.remove(document.id)
                                             documents.removeAll { $0.id == document.id }
-                                        }
+                                        }.loggedControl(control: LogControls.docGenerateButton2, label: LogControls.docGenerateLabel2)
                                     }
-                                    TextField("Título", text: $document.title)
+                                    LoggedTextField("Título", text: $document.title).loggedField(control: LogControls.docGenerateTitle, label: "Título")
                                     if preview == document.id {
                                         MarkdownPreview(text: "# \(document.title)\n\n\(document.content)", baseURL: model.store.docsDir)
                                             .frame(height: 240)
@@ -121,12 +130,12 @@ struct DocGenerateSheet: View {
             if let saveError { Text(saveError).foregroundStyle(.red).padding(.horizontal) }
             HStack {
                 Spacer()
-                Button(runner.isRunning ? "Cancelar geração" : "Cancelar", role: .cancel) { close() }
+                LoggedButton(runner.isRunning ? "Cancelar geração" : "Cancelar", role: .cancel) { close() }.loggedControl(control: LogControls.docGenerateButton3, label: LogControls.docGenerateLabel3)
                     .keyboardShortcut(.cancelAction)
                 if case .ready = runner.state {
-                    Button("Aceitar selecionados") { accept(documents.filter { selected.contains($0.id) }) }
+                    LoggedButton("Aceitar selecionados") { accept(documents.filter { selected.contains($0.id) }) }.loggedControl(control: LogControls.docGenerateButton4, label: LogControls.docGenerateLabel4)
                         .disabled(validSelected.isEmpty)
-                    Button("Aceitar todos") { accept(documents) }
+                    LoggedButton("Aceitar todos") { accept(documents) }.loggedControl(control: LogControls.docGenerateButton5, label: LogControls.docGenerateLabel5)
                         .disabled(DocGenerate.validated(documents).isEmpty)
                         .keyboardShortcut(.defaultAction)
                 }
@@ -150,6 +159,8 @@ struct DocGenerateSheet: View {
         selected = Set(proposal.map(\.id))
     }
     private func accept(_ chosen: [DocGenerate.Document]) {
+        var chosen = chosen
+        for i in chosen.indices { chosen[i].group = destinationGroup }
         if model.acceptGeneratedDocs(chosen, undo: undo) { close() }
         else { saveError = model.errorMessage }
     }

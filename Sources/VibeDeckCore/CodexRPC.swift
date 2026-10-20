@@ -30,7 +30,7 @@ public enum CodexRPCError: LocalizedError, Sendable {
 
     public func start(root: URL, executable: URL? = CodexCode.executable, arguments: [String] = ["app-server", "--stdio"]) async throws {
         if process != nil { return }
-        guard let executable else { throw CodexRPCError.unavailable }
+        guard let executable = (RemoteWorkspace.existing(at: root) != nil ? RemoteExecution.executable(.codex, root: root) : executable) else { throw CodexRPCError.unavailable }
         let childPath = await Task.detached { ClaudeCode.childPATH() }.value
         try Task.checkCancellation()
         let p = Process(), stdin = Pipe(), stdout = Pipe(), stderr = Pipe()
@@ -42,15 +42,16 @@ public enum CodexRPCError: LocalizedError, Sendable {
         p.terminationHandler = { [weak self] ended in
             Task { @MainActor in self?.ended(ended) }
         }
+        try RemoteExecution.configure(p, root: root, program: "codex")
         try p.run()
         process = p; input = stdin.fileHandleForWriting; stderrTail = ""
         readers = [
-            Task.detached { [weak self] in
+            VDLog.detached { [weak self] in
                 for await line in ClaudeStream.lines(from: stdout.fileHandleForReading) {
                     await self?.receive(line)
                 }
             },
-            Task.detached { [weak self] in
+            VDLog.detached { [weak self] in
                 for await line in ClaudeStream.lines(from: stderr.fileHandleForReading) { await self?.appendError(line) }
             }
         ]
@@ -108,6 +109,10 @@ public enum CodexRPCError: LocalizedError, Sendable {
     private func ended(_ p: Process) {
         guard p === process else { return }
         let detail = stderrTail.trimmingCharacters(in: .whitespacesAndNewlines)
+        if p.terminationStatus != 0 || !pending.isEmpty {
+            VDLog.error("codex.disconnected", "O Codex encerrou a conexão", project: p.currentDirectoryURL, component: .ai,
+                        context: ["status": String(p.terminationStatus), "pending": String(pending.count), "stderr": String(detail.suffix(300))])
+        }
         for id in Array(pending.keys) { finish(id, result: .failure(CodexRPCError.server(detail.isEmpty ? "Conexão encerrada (\(p.terminationStatus))." : detail))) }
         stop()
         onDisconnect?(detail.isEmpty ? "Codex encerrou a conexão (\(p.terminationStatus))." : detail)
@@ -124,7 +129,7 @@ public enum CodexRPCError: LocalizedError, Sendable {
 
 public enum CodexProtocol {
     public static func threadParameters(root: URL, mode: ClaudePermissionMode, model: String? = nil, autoReview: Bool = false) -> [String: JSONValue] {
-        var params: [String: JSONValue] = ["cwd": .string(root.path), "approvalPolicy": .string("on-request"), "sandbox": .string(mode == .plan ? "read-only" : "workspace-write")]
+        var params: [String: JSONValue] = ["cwd": .string(RemoteExecution.path(for: root)), "approvalPolicy": .string("on-request"), "sandbox": .string(mode == .plan ? "read-only" : "workspace-write")]
         params["approvalsReviewer"] = .string(autoReview ? "auto_review" : "user")
         if let model, !model.isEmpty { params["model"] = .string(model) }
         return params
@@ -159,11 +164,39 @@ public enum CodexProtocol {
         }
         return ClaudePermissionRequest(requestId: key(id), toolName: name, input: input, description: params["reason"]?.string, suggestions: [])
     }
+    public static func decisions(method: String, params: JSONValue) -> [AIPermissionDecision] {
+        var result: [AIPermissionDecision] = [.allowOnce, .allowSession, .deny]
+        if method == "item/commandExecution/requestApproval", params["proposedExecpolicyAmendment"]?.array?.isEmpty == false { result.insert(.allowAlways, at: 2) }
+        if let offered = params["availableDecisions"]?.array {
+            result = result.filter { decision in
+                switch decision {
+                case .allowOnce: offered.contains(.string("accept"))
+                case .allowSession: offered.contains(.string("acceptForSession"))
+                case .deny: offered.contains(.string("decline")) || offered.contains(.string("cancel"))
+                case .allowAlways: offered.contains { $0["acceptWithExecpolicyAmendment"] != nil }
+                }
+            }
+        }
+        return result
+    }
+    public static func approval(method: String, params: JSONValue, decision: AIPermissionDecision) throws -> JSONValue {
+        guard decisions(method: method, params: params).contains(decision) else { throw CodexRPCError.invalidResponse }
+        if method == "item/permissions/requestApproval" {
+            return .object(["permissions": decision == .deny ? .object([:]) : params["permissions"] ?? .object([:]),
+                            "scope": .string(decision == .allowSession ? "session" : "turn")])
+        }
+        if decision == .allowAlways, let amendment = params["proposedExecpolicyAmendment"] {
+            return .object(["decision": .object(["acceptWithExecpolicyAmendment": .object(["execpolicy_amendment": amendment])])])
+        }
+        let denial = params["availableDecisions"]?.array.map { $0.contains(.string("decline")) ? "decline" : "cancel" } ?? "decline"
+        return .object(["decision": .string(decision == .deny ? denial : decision == .allowSession ? "acceptForSession" : "accept")])
+    }
+
     public static func answer(params: JSONValue, answers: [String: [String]]) -> JSONValue {
         var result: [String: JSONValue] = [:]
         for q in params["questions"]?.array ?? [] {
             if let id = q["id"]?.string, let text = q["question"]?.string {
-                result[id] = .object(["answers": .array((answers[text] ?? []).map(JSONValue.string))])
+                result[id] = .object(["answers": .array((answers[id] ?? answers[text] ?? []).map(JSONValue.string))])
             }
         }
         return .object(["answers": .object(result)])
@@ -186,7 +219,7 @@ public enum CodexProtocol {
             return .toolResult(toolUseId: item["id"]?.string ?? "", content: output, isError: item["status"]?.string == "failed" || (item["exitCode"]?.number ?? 0) != 0)
         case "turn/completed":
             let turn = params["turn"] ?? .null
-            return .result(ClaudeResult(isError: turn["status"]?.string == "failed", text: turn["error"]?["message"]?.string, costUSD: nil))
+            return .result(ClaudeResult(isError: turn["status"]?.string == "failed", text: turn["error"]?["message"]?.string, costUSD: nil, isInterrupted: turn["status"]?.string == "interrupted"))
         default: return .ignored
         }
     }

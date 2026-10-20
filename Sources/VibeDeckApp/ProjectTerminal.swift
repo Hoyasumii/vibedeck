@@ -2,6 +2,7 @@ import AppKit
 import Observation
 import SwiftTerm
 import SwiftUI
+import VibeDeckCore
 
 /// One interactive terminal of the project: the user's login shell in a pty, rooted at the project folder.
 /// Each lives in its own tab. The view is created once and reused, so switching tabs never kills the shell;
@@ -33,7 +34,13 @@ final class ProjectTerminal {
         if let path = ProcessInfo.processInfo.environment["PATH"] { environment.append("PATH=\(path)") }
         environment.append("TERM_PROGRAM=VibeDeck")
         // A leading "-" in argv[0] makes it a login shell, which loads the user's PATH and aliases.
-        view.startProcess(executable: shell, args: [], environment: environment, execName: "-" + (shell as NSString).lastPathComponent, currentDirectory: root.path)
+        if let workspace = RemoteWorkspace.existing(at: root) {
+            let connection = SSHConnection(workspace.destination)
+            let command = connection.inDirectory("exec \"${SHELL:-/bin/sh}\" -l")
+            view.startProcess(executable: "/usr/bin/ssh", args: connection.commandArguments(command, terminal: true), environment: environment, execName: "ssh", currentDirectory: root.path)
+        } else {
+            view.startProcess(executable: shell, args: [], environment: environment, execName: "-" + (shell as NSString).lastPathComponent, currentDirectory: root.path)
+        }
         isRunning = true
         watchExit(of: view.process.shellPid)
     }

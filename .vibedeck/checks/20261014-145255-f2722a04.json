@@ -1,0 +1,755 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-14T14:52:55.853Z",
+  "failures" : [
+    "Check exige resposta para toda regra aplicável"
+  ],
+  "files" : [
+    "Tests/VibeDeckCoreTests/RuleExecutionTests.swift",
+    "Tests/VibeDeckCoreTests/RuleScriptAuditTests.swift",
+    "scripts/test-rule-helpers.py"
+  ],
+  "id" : "F2722A04-8F14-4E8E-8820-B987FDFC7600",
+  "passed" : false,
+  "pending" : [
+    "Comportamento novo no Core vem com teste",
+    "README atualizado quando muda algo documentado",
+    "Rodar todos os scripts de regras do próprio projeto em paralelo dá os mesmos vereditos que rodar um por vez."
+  ],
+  "results" : [
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/build-scripts-e-ci/b6b91f0e.sh (exit 77)\n(sem saída)",
+      "ruleId" : "B6B91F0E-F8CD-43C8-85A8-333C324684C7",
+      "source" : "script",
+      "topic" : "build-scripts-e-ci",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/build-scripts-e-ci/10f1fcb3.sh (exit 77)\n(sem saída)",
+      "ruleId" : "10F1FCB3-C0AB-4119-8CF9-85162FBCE622",
+      "source" : "script",
+      "topic" : "build-scripts-e-ci",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/build-scripts-e-ci/a111c3ed.sh (exit 77)\n(sem saída)",
+      "ruleId" : "A111C3ED-0A9C-4368-83DE-7C91B1697406",
+      "source" : "script",
+      "topic" : "build-scripts-e-ci",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/build-scripts-e-ci/b7d9e63a.sh (exit 77)\n(sem saída)",
+      "ruleId" : "B7D9E63A-D446-47D8-8E57-151F9E4E1AC4",
+      "source" : "script",
+      "topic" : "build-scripts-e-ci",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/build-scripts-e-ci/99c049ac.sh (exit 77)\n(sem saída)",
+      "ruleId" : "99C049AC-A1D3-4B87-AF5E-2C3135E5549E",
+      "source" : "script",
+      "topic" : "build-scripts-e-ci",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/5fa116b6.sh (exit 77)\n(sem saída)",
+      "ruleId" : "5FA116B6-6FBE-45F9-8C5D-29E7548F6C2F",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/857149e6.sh (exit 77)\n(sem saída)",
+      "ruleId" : "857149E6-8C34-46A8-9C30-439EBE78309D",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/99bf0d79.sh (exit 77)\n(sem saída)",
+      "ruleId" : "99BF0D79-2F65-419A-87DA-0B4F37E4FEF5",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/5ed22d96.sh (exit 77)\n(sem saída)",
+      "ruleId" : "5ED22D96-FE5F-4683-8611-E3D264113B67",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/c6d79b9c.sh (exit 77)\n(sem saída)",
+      "ruleId" : "C6D79B9C-1F50-4AE3-8CD1-8CAE5C4F6B6F",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/57ada275.sh (exit 77)\n(sem saída)",
+      "ruleId" : "57ADA275-8A0F-42BA-9E14-BA3B34AB8235",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/4133c155.sh (exit 77)\n(sem saída)",
+      "ruleId" : "4133C155-F789-428E-9ED5-5EAC37C19700",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/b0277971.sh (exit 77)\n(sem saída)",
+      "ruleId" : "B0277971-459D-4CCB-9E9D-5990F1574F5B",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/7f7c6b09.sh (exit 77)\n(sem saída)",
+      "ruleId" : "7F7C6B09-EBCB-4CA0-BAAF-6B18D36F15C1",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 124,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/bc028be5.sh (exit 124)\nTempo esgotado (120 s).",
+      "ruleId" : "BC028BE5-D7E0-4DA3-BB5C-E8A628EBFA8A",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/64e65b59.sh (exit 0)\n✔ Test reviewItemGate() passed after 0.042 seconds.\n✔ Suite RulesTests passed after 0.042 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.042 seconds.",
+      "ruleId" : "64E65B59-8D5B-40DE-B381-CAF2B1BDC785",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/8d874a06.sh (exit 0)\n✔ Test applicableTopics() passed after 0.014 seconds.\n✔ Suite RulesTests passed after 0.014 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.014 seconds.",
+      "ruleId" : "8D874A06-515D-41B5-A094-DC8B83BB40B6",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/35d8d7c3.sh (exit 0)\n✔ Test ideasAndPromotion() passed after 0.017 seconds.\n✔ Suite RulesTests passed after 0.017 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.018 seconds.",
+      "ruleId" : "35D8D7C3-1224-45CC-8A80-66D0B6291C33",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/64334d9c.sh (exit 0)\n✔ Test globs() passed after 0.001 seconds.\n✔ Suite RulesTests passed after 0.001 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.001 seconds.",
+      "ruleId" : "64334D9C-327B-4811-B088-8B785EF4E0FE",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/ea5e6f7d.sh (exit 77)\n(sem saída)",
+      "ruleId" : "EA5E6F7D-1587-4FC5-87D9-51CE6F130C7B",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/97510532.sh (exit 0)\n✔ Test run with 282 tests in 35 suites passed after 4.075 seconds.\n✔ Test run with 53 tests in 11 suites passed after 0.925 seconds.",
+      "ruleId" : "97510532-2FCF-44BD-9D01-75086E554EB9",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/dfe3361b.sh (exit 77)\n(sem saída)",
+      "ruleId" : "DFE3361B-6AFE-4ED3-A741-4FC0818D197D",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/b659fd25.sh (exit 0)\n✔ Test unpromote() passed after 0.024 seconds.\n✔ Suite RulesTests passed after 0.025 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.025 seconds.",
+      "ruleId" : "B659FD25-792B-4C0E-BD08-6082ACFCC80A",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/core-e-formato-de-dados/a2b13b15.sh (exit 0)\n✔ Test unpromote() passed after 0.023 seconds.\n✔ Suite RulesTests passed after 0.024 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.024 seconds.",
+      "ruleId" : "A2B13B15-C59E-4189-8905-3A309C89DF28",
+      "source" : "script",
+      "topic" : "core-e-formato-de-dados",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/9d6f362b.sh (exit 0)\n(sem saída)",
+      "ruleId" : "9D6F362B-9F0E-4661-97B3-6158B160D478",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/geral/9f92a765.sh (exit 77)\n(sem saída)",
+      "ruleId" : "9F92A765-76E7-4EA0-A66A-78AE12EE4C8F",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/ac4ba963.sh (exit 0)\n(sem saída)",
+      "ruleId" : "AC4BA963-CDEE-419C-B057-9140643E115D",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/geral/0e5aec71.sh (exit 77)\n(sem saída)",
+      "ruleId" : "0E5AEC71-405E-4113-AB27-615313AB2B5F",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/2f64266b.sh (exit 0)\n◇ Test run started.\n↳ Testing Library Version: 2084\n↳ Target Platform: arm64e-apple-macos14.0\n◇ Suite AIEfficiencyTests started.\n◇ Test contextPagesAreLosslessImmutableAndConfined() started.\n◇ Test workflowKeepsOldDecisionsAndFullOutputs() started.\n◇ Test mentionedChatIsRecoverableAndFullModeRemainsAvailable() started.\n✔ Test workflowKeepsOldDecisionsAndFullOutputs() passed after 0.014 seconds.\n✔ Test mentionedChatIsRecoverableAndFullModeRemainsAvailable() passed after 0.025 seconds.\n✔ Test contextPagesAreLosslessImmutableAndConfined() passed after 0.054 seconds.\n✔ Suite AIEfficiencyTests passed after 0.054 seconds.\n✔ Test run with 3 tests in 1 suite passed after 0.054 seconds.",
+      "ruleId" : "2F64266B-FD73-4B70-B293-D9317C7228A1",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/f12aa1dd.sh (exit 0)\n(sem saída)",
+      "ruleId" : "F12AA1DD-0FFB-48F8-912D-236E271AA842",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/3301bc0e.sh (exit 0)\n(sem saída)",
+      "ruleId" : "3301BC0E-BBC5-4E4F-9609-CA119DD2C8F3",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/64f3eca8.sh (exit 0)\n↳ Target Platform: arm64e-apple-macos14.0\n◇ Suite AIRecoveryTests started.\n◇ Test persistentFailureStopsAndTransportErrorsDoNotRetry(provider:) started.\n◇ Test invalidAnswerGetsOneRecoveryWithoutChangingSettings(provider:) started.\n◇ Test case passing 1 argument provider → .codex to persistentFailureStopsAndTransportErrorsDoNotRetry(provider:) started.\n◇ Test case passing 1 argument provider → .claude to persistentFailureStopsAndTransportErrorsDoNotRetry(provider:) started.\n◇ Test case passing 1 argument provider → .codex to invalidAnswerGetsOneRecoveryWithoutChangingSettings(provider:) started.\n◇ Test case passing 1 argument provider → .claude to invalidAnswerGetsOneRecoveryWithoutChangingSettings(provider:) started.\n✔ Test invalidAnswerGetsOneRecoveryWithoutChangingSettings(provider:) with 2 test cases passed after 0.013 seconds.\n✔ Test persistentFailureStopsAndTransportErrorsDoNotRetry(provider:) with 2 test cases passed after 0.015 seconds.\n✔ Suite AIRecoveryTests passed after 0.015 seconds.\n✔ Test run with 2 tests in 1 suite passed after 0.015 seconds.",
+      "ruleId" : "64F3ECA8-2A3F-400C-8D41-5853009B7F91",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/fc9a5733.sh (exit 0)\n[Computing dependencies]\n[Provisioning 1 / 31]\n[1 / 21] SwiftTerm\nBuild complete! (0,65 seg)\n◇ Test run started.\n↳ Testing Library Version: 2084\n↳ Target Platform: arm64e-apple-macos14.0\n◇ Suite AIEfficiencyTests started.\n◇ Test usageSeparatesMissingZeroCacheAndCumulativeCounts() started.\n✔ Test usageSeparatesMissingZeroCacheAndCumulativeCounts() passed after 0.004 seconds.\n✔ Suite AIEfficiencyTests passed after 0.004 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.004 seconds.",
+      "ruleId" : "FC9A5733-DC0E-4606-BB85-A3CC7592A4BC",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/6088cc95.sh (exit 0)\n◇ Test compactRulesForKeepsEveryRuleAndResolvesItsIds() started.\n◇ Test ruleCheckSummaryKeepsEveryVerdictAndPointsToTheFullCheck() started.\n◇ Test guideReducesInitialContextWithoutLosingDocumentation() started.\n◇ Test sharedPolicyAppearsOnceInTheGuide() started.\n◇ Test catalogPaginatesWithoutSendingUserPrompts() started.\n✔ Test ruleCheckSummaryKeepsEveryVerdictAndPointsToTheFullCheck() passed after 0.002 seconds.\n✔ Test sharedPolicyAppearsOnceInTheGuide() passed after 0.002 seconds.\n✔ Test catalogPaginatesWithoutSendingUserPrompts() passed after 0.009 seconds.\n✔ Test guideReducesInitialContextWithoutLosingDocumentation() passed after 0.035 seconds.\n✔ Test compactRulesForKeepsEveryRuleAndResolvesItsIds() passed after 0.079 seconds.\n✔ Suite AIEfficiencyTests passed after 0.079 seconds.\n✔ Test run with 5 tests in 1 suite passed after 0.079 seconds.\ninstructions: 2803 -> 988 (65% menor)\ntools: 42434 -> 29700 (31% menor)\nrules_for: 17018 -> 17860 (-4% menor)",
+      "ruleId" : "6088CC95-37DF-4923-ACD6-B12FCCA307EC",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/7974ee31.sh (exit 0)\n[Computing dependencies]\n[Provisioning 2 / 31]\n[2 / 55] VibeDeck_VibeDeckCore\nBuild complete! (0,65 seg)\n◇ Test run started.\n↳ Testing Library Version: 2084\n↳ Target Platform: arm64e-apple-macos14.0\n◇ Suite AIRecoveryTests started.\n◇ Test generationChecksOnlySelectedRulesAndRejectsChangedRequirements() started.\n✔ Test generationChecksOnlySelectedRulesAndRejectsChangedRequirements() passed after 0.013 seconds.\n✔ Suite AIRecoveryTests passed after 0.013 seconds.\n✔ Test run with 1 test in 1 suite passed after 0.013 seconds.",
+      "ruleId" : "7974EE31-FD02-492A-8258-C2F15D594E77",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/eficiencia-de-ia/ee39f0e7.sh (exit 0)\n(sem saída)",
+      "ruleId" : "EE39F0E7-7C01-4142-A7CD-6234BF40C8F4",
+      "source" : "script",
+      "topic" : "eficiencia-de-ia",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/97e096a2.sh (exit 0)\n(sem saída)",
+      "ruleId" : "97E096A2-000D-4657-B152-0FE64E0C8E6C",
+      "source" : "script",
+      "topic" : "colecao-de-artefatos-e-docs-do-claude",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/b5b453dc.sh (exit 0)\n(sem saída)",
+      "ruleId" : "B5B453DC-7961-43CF-B3C2-DFA18950E81D",
+      "source" : "script",
+      "topic" : "colecao-de-artefatos-e-docs-do-claude",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/0f77f1fd.sh (exit 0)\n(sem saída)",
+      "ruleId" : "0F77F1FD-8852-4A26-B860-8C363E445637",
+      "source" : "script",
+      "topic" : "colecao-de-artefatos-e-docs-do-claude",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/dcd7508b.sh (exit 0)\n(sem saída)",
+      "ruleId" : "DCD7508B-3ADF-4776-93EF-EA4FD237CAD5",
+      "source" : "script",
+      "topic" : "colecao-de-artefatos-e-docs-do-claude",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/89c65e91.sh (exit 0)\n(sem saída)",
+      "ruleId" : "89C65E91-9135-4B44-ACF8-9CDDD14C687C",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/b61bcf40.sh (exit 0)\n(sem saída)",
+      "ruleId" : "B61BCF40-3FBD-43F9-ADA3-81711BDF0CFF",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/36586250.sh (exit 0)\n(sem saída)",
+      "ruleId" : "36586250-BE02-409B-8E2C-35D8579F78CE",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/b25e182d.sh (exit 0)\n(sem saída)",
+      "ruleId" : "B25E182D-21CA-4B63-AF31-18B0364F736C",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/5a0ebace.sh (exit 0)\n(sem saída)",
+      "ruleId" : "5A0EBACE-93C8-4C24-A1E8-CE1DAD08788C",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/61da0448.sh (exit 0)\n(sem saída)",
+      "ruleId" : "61DA0448-28C7-4429-B5E0-F75BE713EC6E",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/493fe647.sh (exit 0)\n(sem saída)",
+      "ruleId" : "493FE647-7C2C-466A-A734-9833580EF36F",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/fb6c9696.sh (exit 0)\n(sem saída)",
+      "ruleId" : "FB6C9696-E0F4-4BEA-9C3F-FA6C5FEFC7BB",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/93b728c6.sh (exit 0)\n(sem saída)",
+      "ruleId" : "93B728C6-E853-4599-BA59-34E03FC156A6",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/8271a947.sh (exit 0)\n(sem saída)",
+      "ruleId" : "8271A947-C56C-4CEF-90C4-5DC581095D6C",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/99b49ef4.sh (exit 0)\n(sem saída)",
+      "ruleId" : "99B49EF4-3A88-4EA6-ADFC-6AEF6F26046B",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/d02043ae.sh (exit 0)\n(sem saída)",
+      "ruleId" : "D02043AE-AB25-4919-9C9B-C22F8656125E",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/89216809.sh (exit 0)\n(sem saída)",
+      "ruleId" : "89216809-7C07-49A2-A261-FC0D50698535",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/1c3dd797.sh (exit 0)\n(sem saída)",
+      "ruleId" : "1C3DD797-741E-49F0-BABE-E43EA737B481",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/82ca1706.sh (exit 0)\n(sem saída)",
+      "ruleId" : "82CA1706-CEC8-4F8D-AB54-4095D8F6AC66",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/e5238fe1.sh (exit 0)\n(sem saída)",
+      "ruleId" : "E5238FE1-768D-4019-86A8-FF85B40F399B",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/d19df641.sh (exit 0)\n(sem saída)",
+      "ruleId" : "D19DF641-2603-41FE-B54F-06BFC13B0594",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/fbc8b973.sh (exit 0)\n(sem saída)",
+      "ruleId" : "FBC8B973-A970-43CE-BADF-0040EC02E4B8",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/7ba6b94e.sh (exit 0)\n(sem saída)",
+      "ruleId" : "7BA6B94E-F37B-4A07-8B5B-E51B2AB60C90",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/67bafb60.sh (exit 0)\n(sem saída)",
+      "ruleId" : "67BAFB60-BC65-41B2-A4FF-9390164B8406",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/2cfc3383.sh (exit 0)\n(sem saída)",
+      "ruleId" : "2CFC3383-E11A-4FA5-ACE2-534A6769C5B1",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/e8609b07.sh (exit 0)\n(sem saída)",
+      "ruleId" : "E8609B07-A10E-47AC-A3F8-FD4BABE30845",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/5c335d69.sh (exit 0)\n(sem saída)",
+      "ruleId" : "5C335D69-B345-44F4-AC82-46846231FD2B",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/fad870a7.sh (exit 0)\n(sem saída)",
+      "ruleId" : "FAD870A7-625F-44E4-8ACE-5720D1C6D3C4",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/56f1f672.sh (exit 0)\n(sem saída)",
+      "ruleId" : "56F1F672-35FD-4C97-AA44-C21386C8B49C",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/ef9078d6.sh (exit 0)\n(sem saída)",
+      "ruleId" : "EF9078D6-9ABB-4DED-8648-AE5D8361888B",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/a4eb973b.sh (exit 0)\n(sem saída)",
+      "ruleId" : "A4EB973B-803C-460B-9DBF-645F2A8FAEEF",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/d3a234d9.sh (exit 0)\n(sem saída)",
+      "ruleId" : "D3A234D9-CEB4-4302-8C3D-14AF8E156963",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/1541b031.sh (exit 0)\n(sem saída)",
+      "ruleId" : "1541B031-56EF-4C19-A654-1560DA748D3C",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/58b4cfeb.sh (exit 0)\n(sem saída)",
+      "ruleId" : "58B4CFEB-B523-45F2-B308-263B1B2E580B",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/c9b7039c.sh (exit 0)\n(sem saída)",
+      "ruleId" : "C9B7039C-54EF-41ED-BC14-5B61A83DD2D5",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/2eba639d.sh (exit 0)\n(sem saída)",
+      "ruleId" : "2EBA639D-57AF-4B67-8F91-C78A555185F7",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/87fc9655.sh (exit 0)\n(sem saída)",
+      "ruleId" : "87FC9655-20A6-48C8-97A8-3AE46526FFFE",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/118eefdb.sh (exit 0)\n(sem saída)",
+      "ruleId" : "118EEFDB-EB87-4EC9-9F46-8478FE0FF601",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/3b6122fa.sh (exit 0)\n(sem saída)",
+      "ruleId" : "3B6122FA-9635-47A3-95EC-F33E09094144",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/f897f2ca.sh (exit 0)\n(sem saída)",
+      "ruleId" : "F897F2CA-2BC3-4F21-A5DC-17984E6CAB50",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/fda4d667.sh (exit 0)\n(sem saída)",
+      "ruleId" : "FDA4D667-CA4C-43F0-BB31-A91C6B25E0B4",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/6b9f65b7.sh (exit 0)\n(sem saída)",
+      "ruleId" : "6B9F65B7-72B8-494D-9989-F8DCDF7576FC",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/ef1b4914.sh (exit 0)\n(sem saída)",
+      "ruleId" : "EF1B4914-3AD4-44D6-A123-45754C6FB186",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/be94a4c8.sh (exit 0)\n(sem saída)",
+      "ruleId" : "BE94A4C8-96F1-460B-8772-8567A3FC063A",
+      "source" : "script",
+      "topic" : "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/133b62cd.sh (exit 77)\n(sem saída)",
+      "ruleId" : "133B62CD-0226-4845-9E53-4F502A05CA08",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/a21b5419.sh (exit 77)\n(sem saída)",
+      "ruleId" : "A21B5419-49D4-4F31-9BEC-DEA037FB9F2F",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/d4dd944d.sh (exit 77)\n(sem saída)",
+      "ruleId" : "D4DD944D-5DC9-4EEA-9139-DEE9F8968FEF",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/4d89a4da.sh (exit 77)\n(sem saída)",
+      "ruleId" : "4D89A4DA-FD25-4B06-8C32-504434336A75",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/953b1e7e.sh (exit 77)\n(sem saída)",
+      "ruleId" : "953B1E7E-82E7-4157-AD7D-2F0576EF05AC",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/384b5c03.sh (exit 77)\n(sem saída)",
+      "ruleId" : "384B5C03-96A1-47DA-B363-30B8EF61E50C",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/103b84bc.sh (exit 77)\n(sem saída)",
+      "ruleId" : "103B84BC-17CD-4929-839E-BE0B82B976D8",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/2621dabd.sh (exit 77)\n(sem saída)",
+      "ruleId" : "2621DABD-5DC8-44DE-943C-A601518D7929",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/bba08717.sh (exit 77)\n(sem saída)",
+      "ruleId" : "BBA08717-71D1-4963-B090-6E869319B8D2",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/8a34ae9e.sh (exit 77)\n(sem saída)",
+      "ruleId" : "8A34AE9E-0913-41BD-8441-4B7E1652275B",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    }
+  ],
+  "task" : "Verificação solicitada pelo hook dos três arquivos pendentes; sessão atual apenas avaliou interface e tentou abrir referência visual.",
+  "topics" : [
+    "build-scripts-e-ci",
+    "core-e-formato-de-dados",
+    "geral",
+    "eficiencia-de-ia",
+    "colecao-de-artefatos-e-docs-do-claude",
+    "aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t",
+    "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-"
+  ],
+  "warnings" : [
+
+  ]
+}

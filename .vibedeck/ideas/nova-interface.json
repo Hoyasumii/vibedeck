@@ -1,8 +1,13 @@
 {
   "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
   "author" : "human",
+  "body" : "## Problema\n\nA interface atual do VibeDeck (`Sources/VibeDeckApp`) não segue o protótipo de design feito no Claude. Os valores visuais estão espalhados pelas views: há 242 ocorrências de cor, padding, spacing, cornerRadius, tamanho de fonte ou animação com valor literal, em 35 arquivos (por exemplo `ClaudeChatPage.swift`, `StackView.swift`, `WorkflowView.swift`, `RulesView.swift`, `PatternsView.swift`). Também falta uma fonte única de tokens e uma forma objetiva de verificar se uma tela segue o protótipo. Os links do protótipo no claude.ai não abrem para a IA nem para scripts, e o repo não tem cópia local dele.\n\n## Proposta\n\nA nova interface deve seguir o protótipo, que são os dois artefatos listados em `vibedeck.json` (links):\n\n- **Logo e Interface Multiplataforma**: https://claude.ai/artifact/M9YGSGjtpf3mkMVd4TP1hr#artboard-e259634e05c3. Daqui vêm as **telas** e o **logo**.\n- **Design System**: https://claude.ai/artifact/DNxAfvZGkEYiTaRqZDDQAq. Daqui vêm os **tokens e componentes**.\n\nDecisões do usuário:\n\n- Todas as partes do protótipo devem ser seguidas à risca: telas, tokens, componentes, espaços, painel de IA e logo.\n- **O protótipo prevalece** sobre as regras atuais de `interface-do-app` quando houver conflito, como \"Visual nativo do macOS 26\", \"Sem faixa de toolbar separada\" e \"Limites de coluna só via navigationSplitViewColumnWidth / inspectorColumnWidth\". As regras conflitantes serão revistas.\n- A conformidade se verifica com tokens. Os tokens do protótipo (cores, espaçamentos, raios, tipografia e animações) são exportados para um único arquivo Swift, `Sources/VibeDeckApp/DesignTokens.swift`. Um script de regra checa que as views usam só esses tokens.\n- **A troca é feita de uma vez**: a interface antiga é removida, sem flag nem convivência.\n- **Só macOS 26**: \"multiplataforma\" no nome do artefato não traz iOS nem iPadOS para esta ideia.\n- `scripts/make-icon.swift` passa a gerar o ícone a partir do logo do protótipo.\n- A interface deve ser fluida, com muitas animações e transições, e respeitar \"Reduzir movimento\".\n- **Antes da implementação**, o artefato de design deve ser atualizado com as funcionalidades atuais, ou seja, as Regras e as Ideias já implementadas.\n\n## Escopo\n\n- **Tokens**: novo `Sources/VibeDeckApp/DesignTokens.swift` com grupos para cor, espaçamento, raio, fonte e animação. Animações com variante para `accessibilityReduceMotion`.\n- **Views**: todas as views de `Sources/VibeDeckApp/**/*.swift` (`ProjectWindow.swift`, `SectionListView.swift`, `TabBar.swift`, `WelcomeView.swift`, `IdeaView.swift`, `DocView.swift`, `RulesView.swift`, `ReviewGroupView.swift`, `ClaudeChatPage.swift`, `ClaudeChatList.swift`, `WorkflowView.swift`, `WorkflowDiagram.swift`, `StackView.swift`, `PatternsView.swift`, `LinksView.swift`, `GraphView.swift`, `AppSettingsView.swift`, `AIProviderSettingsView.swift`, `RuleExecutionView.swift`, `NextStepsInspector.swift`, entre outras) passam a usar só tokens. Views antigas que ficarem sem uso são apagadas.\n- **Ícone**: `scripts/make-icon.swift` gera o `.icns` com o logo do protótipo, usando as cores do Design System. O fundo do DMG continua sendo gerado por script (`scripts/make-dmg-background.swift`, `scripts/build-app.sh`).\n- **Referência local**: um doc em `.vibedeck/docs`, criado via CLI/MCP, com capturas das telas do \"Logo e Interface Multiplataforma\" e a tabela de tokens do \"Design System\".\n- **Verificação**: um script de regra em `.vibedeck/tests/<tópico-desta-ideia>/` faz grep dos literais proibidos fora de `DesignTokens.swift`.\n- **Fora do escopo**: plataformas iOS e iPadOS. `Package.swift` continua com `platforms: [.macOS(.v26)]`.\n\n## Critérios de aceite\n\n- [must] O artefato de design foi atualizado com as Regras e as Ideias antes da implementação.\n- [must] `Sources/VibeDeckApp/DesignTokens.swift` existe e declara grupos de cor, espaçamento, raio, fonte e animação. Nenhum outro arquivo de `Sources/VibeDeckApp` declara tokens de design.\n- [must] Fora de `DesignTokens.swift` não aparece `Color(red:`, `Color(hue:`, `Color(white:`, `Color(\"…\")` nem `Color(nsColor:)` direto.\n- [must] Fora de `DesignTokens.swift` não aparece `.padding(<número>`, `spacing: <número>`, `cornerRadius: <número>` nem `.system(size: <número>`.\n- [must] Fora de `DesignTokens.swift` não aparece `duration: <número>` nem `.spring(` com parâmetros literais. Também não há `withAnimation` com duração literal.\n- [must] O script de tokens está em `.vibedeck/tests` como regra de script do tópico desta ideia. `vibedeck rules for Sources/VibeDeckApp/ProjectWindow.swift --json` lista esse script e `vibedeck rules check` passa com ele.\n- [must] Nenhuma chave de UserDefaults, `@AppStorage` ou condição do tipo legacy/oldUI/useNewInterface mostra a interface antiga.\n- [must] Rodar `scripts/make-icon.swift` produz o `.icns` com o logo do protótipo, nas cores do Design System. O ícone e o fundo do DMG continuam sendo gerados por script.\n- [must] `Package.swift` continua só com `.macOS` e não há `os(iOS)` em `Sources/VibeDeckApp`.\n- [should] A interface é fluida, com muitas animações e transições.\n- [should] Com \"Reduzir movimento\" ligado, as transições viram troca sem movimento: animação nula ou `.opacity` via `@Environment(\\.accessibilityReduceMotion)`.\n- [should] Há um doc em `.vibedeck/docs` com as telas e a tabela de tokens, e os valores de `DesignTokens.swift` batem com essa tabela.\n- As regras de `interface-do-app` que não conflitam com o protótipo continuam valendo: edição direta com undo, atalhos documentados, contrato das abas, sidebar filtrável e texto em pt-BR.\n- `swift test` passa e o README e o `.vibedeck/guide.md` são atualizados se algo documentado da interface mudar.",
   "createdAt" : "2026-10-07T23:35:31Z",
   "id" : "18B88C52-22E1-4368-882C-6655E15F0167",
+  "paths" : [
+    "Sources/VibeDeckApp/**/*.swift",
+    "scripts/make-icon.swift"
+  ],
   "rules" : [
     {
       "author" : "human",
@@ -19,12 +24,97 @@
       "id" : "AEFA8D33-8D49-4E34-A921-6902DFB0426D",
       "severity" : "should",
       "text" : "Interface Fluída"
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-15T00:31:27Z",
+      "details" : "Verificar: o arquivo existe e declara grupos para cor, espaçamento, raio, fonte e animação; nenhum outro arquivo de Sources/VibeDeckApp declara tokens de design.",
+      "id" : "809F3B3E-4CCC-4229-898F-35D49AF05C41",
+      "severity" : "must",
+      "text" : "Os tokens do protótipo (cores, espaçamentos, raios, tipografia e animações) ficam num único arquivo Swift do app, Sources/VibeDeckApp/DesignTokens.swift."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-15T00:31:27Z",
+      "details" : "Verificar: script em .vibedeck/tests faz grep desses padrões em Sources/VibeDeckApp/**/*.swift, excluindo DesignTokens.swift, e falha se encontrar algum.",
+      "id" : "43AD735F-3E71-4F1B-ADDC-0666B399892D",
+      "severity" : "must",
+      "text" : "Fora de DesignTokens.swift, as views não usam cor literal: nada de Color(red:/hue:/white:), Color(\"…\") nem Color(nsColor:) direto."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-15T00:31:27Z",
+      "details" : "Verificar: o mesmo script faz grep de .padding(<número>, spacing: <número>, cornerRadius: <número> e .system(size: <número> fora de DesignTokens.swift e falha se encontrar algum.",
+      "id" : "94B6EA7E-0812-4634-955E-6AC2B453EB80",
+      "severity" : "must",
+      "text" : "Fora de DesignTokens.swift, as views não usam valores numéricos literais em padding, spacing, cornerRadius, frame de raio ou .font(.system(size:))."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-15T00:31:27Z",
+      "details" : "Verificar: o script de tokens faz grep de duration: <número> e .spring( com parâmetros literais fora de DesignTokens.swift.",
+      "id" : "63C08FCB-F59C-41B0-A2C9-F28BEE087230",
+      "severity" : "must",
+      "text" : "Animações e transições usam só curvas e durações declaradas em DesignTokens.swift; não há .animation(.easeInOut(duration: <número>)) nem withAnimation com duração literal nas views."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-15T00:31:27Z",
+      "details" : "Verificar: os tokens de animação ou as views leem @Environment(\\.accessibilityReduceMotion) e devolvem animação nula ou .opacity quando true.",
+      "id" : "0E5C94D8-A58E-49B8-905D-C3B3C9C5E0A9",
+      "severity" : "should",
+      "text" : "As animações da nova interface respeitam accessibilityReduceMotion: com Reduzir movimento ligado, as transições viram troca sem movimento."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-15T00:31:27Z",
+      "details" : "Verificar: vibedeck rules for Sources/VibeDeckApp/ProjectWindow.swift --json lista a regra de script, e vibedeck rules check passa com ela.",
+      "id" : "FD1E4E1B-0CAE-4575-AE52-65B5C961A7BE",
+      "severity" : "must",
+      "text" : "O script que checa o uso dos tokens fica em .vibedeck/tests como regra de script do tópico desta ideia e passa no rules check."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-15T00:31:27Z",
+      "details" : "Verificar: existe um doc em .vibedeck/docs com as telas e a tabela de tokens, e os valores de DesignTokens.swift batem com essa tabela.",
+      "id" : "349396F6-41E8-4E66-8D3A-C8489ECB9E1F",
+      "severity" : "should",
+      "text" : "Uma cópia local do protótipo (capturas das telas do 'Logo e Interface Multiplataforma' e tokens do 'Design System') fica no repo, num doc ou anexo de .vibedeck, para servir de referência aos agentes."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-15T00:31:27Z",
+      "details" : "Verificar: grep em Sources/VibeDeckApp não encontra chave de UserDefaults, @AppStorage ou condição do tipo legacy/oldUI/useNewInterface; views antigas sem uso são apagadas.",
+      "id" : "82FFBEBD-91C6-4EA7-B9B3-3DC3DCB0329B",
+      "severity" : "must",
+      "text" : "A nova interface substitui a antiga de uma vez: não há flag, preferência ou caminho de código que mostre a interface antiga."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-15T00:31:27Z",
+      "details" : "Verificar: rodar scripts/make-icon.swift produz o .icns com o logo do protótipo; as cores do logo vêm dos mesmos valores do Design System.",
+      "id" : "A095EAD8-13D0-4667-9C6B-8ED19CC5845B",
+      "severity" : "must",
+      "text" : "scripts/make-icon.swift gera o ícone do app a partir do logo do protótipo, e o ícone e o fundo do DMG continuam sendo gerados por script."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-15T00:31:27Z",
+      "details" : "Verificar: platforms no Package.swift continua só com .macOS; grep de os(iOS) em Sources/VibeDeckApp não acha nada.",
+      "id" : "6F1FF42D-A329-4A0F-A74F-1D81A2872E52",
+      "severity" : "must",
+      "text" : "A nova interface é só para macOS 26: o Package.swift não ganha plataformas iOS ou iPadOS e o app não usa #if os(iOS)."
     }
   ],
   "status" : "new",
   "tags" : [
-    "ui"
+    "ui",
+    "interface",
+    "swiftui",
+    "regras",
+    "build",
+    "claude"
   ],
   "title" : "Nova Interface",
-  "updatedAt" : "2026-10-08T03:23:44Z"
+  "updatedAt" : "2026-10-15T00:32:10Z"
 }

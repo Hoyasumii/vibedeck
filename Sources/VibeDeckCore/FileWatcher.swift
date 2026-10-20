@@ -49,7 +49,7 @@ public final class FileWatcher: @unchecked Sendable {
     private func dispatch(_ urls: [URL]) {
         let rootPath = root.path
         let relevant = urls.filter { url in
-            let p = url.standardizedFileURL.resolvingSymlinksInPath().path
+            let p = ProjectStore(root: root).canonicalURL(url).path
             return p == rootPath + "/" + ProjectStore.manifestName
                 || p.hasPrefix(rootPath + "/" + ProjectStore.dataDirName + "/")
         }

@@ -1,8 +1,10 @@
+import VibeDeckCore
 import AppKit
 import SwiftUI
 
 /// Horizontal strip of open tabs above the detail column. Shown only when more than one tab is open.
 struct TabBar: View {
+    @Environment(\.logProject) private var logProject
     let tabs: [SidebarItem]
     let active: Int
     let onSelect: (Int) -> Void
@@ -49,6 +51,7 @@ struct TabBar: View {
 }
 
 private struct TabButton: View {
+    @Environment(\.logProject) private var logProject
     let title: String
     let symbol: String
     let isActive: Bool
@@ -69,9 +72,9 @@ private struct TabButton: View {
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(maxWidth: 180, alignment: .leading)
-            Button(action: onClose) {
+            LoggedButton(action: onClose) {
                 Image(systemName: "xmark").font(.caption2.weight(.bold))
-            }
+            }.loggedControl(control: "tab_bar.button_1", label: "Ativar controle")
             .buttonStyle(.borderless)
             .help("Fechar aba")
             .opacity(isActive || hovering ? 1 : 0)
@@ -82,7 +85,7 @@ private struct TabButton: View {
         .padding(.vertical, 5)
         .background(background, in: .capsule)
         .contentShape(.capsule)
-        .onTapGesture(perform: onSelect)
+        .onTapGesture { VDLog.withAction(control: "tabs.select", label: title, project: logProject, onSelect) }
         .onHover { inside in
             hovering = inside
             inside ? installMiddleClickMonitor() : removeMiddleClickMonitor()

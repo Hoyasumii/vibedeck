@@ -2,6 +2,12 @@ import Foundation
 
 // MARK: - Skills
 
+// Grouping concerns only VibeDeck JSON records, loaded recursively through its CLI/MCP by both
+// Claude and Codex. It does not export or move native SKILL.md files. Claude's native layout is
+// .claude/skills/<name>/SKILL.md; Codex imports its own discovered skills through skills/list.
+// sourcePath remains the original provider file, so supporting resources remain discoverable.
+// This separation is the user's explicit scope decision; native provider nesting is not assumed.
+
 /// A file per skill in `.vibedeck/skills/`: instructions the AI loads when the task matches its description
 /// (like a Claude Code skill's `SKILL.md`), plus the next steps that chain it into a flow, exactly like agents.
 public struct Skill: Codable, Equatable, Identifiable, Sendable {

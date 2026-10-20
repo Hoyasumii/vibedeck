@@ -2,6 +2,8 @@ import SwiftUI
 import VibeDeckCore
 
 struct RuleTopicView: View {
+    @Environment(\.logProject) private var providerRoot
+    @Environment(\.logProject) private var logProject
     let slug: String
     @Environment(ProjectModel.self) private var model
     @Environment(AISession.self) private var claude
@@ -37,18 +39,18 @@ struct RuleTopicView: View {
         .navigationSubtitle("\(topic.rules.count) regra(s) · \(topic.isGlobal ? "vale para toda tarefa" : "\(topic.paths.count) escopo(s)")")
         .toolbar {
             ToolbarItemGroup {
-                if !AIProvider.installed.isEmpty { discoverButton; testsMenu }
+                if !AIProvider.installed(in: providerRoot).isEmpty { discoverButton; testsMenu }
                 RuleExecutionControls(topic: slug)
             }
             ToolbarItem {
-                Button { showChecks.toggle() } label: { Label("Verificações", systemImage: "checkmark.seal") }
+                LoggedButton { showChecks.toggle() } label: { Label("Verificações", systemImage: "checkmark.seal") }.loggedControl(control: "rules_view.button_1", label: "Verificações")
                     .keyboardShortcut("i", modifiers: [.command, .option])
                     .help("Mostrar/ocultar verificações (⌥⌘I)")
             }
         }
     }
 
-    /// "Descubra": globs, tags and an interview that drafts rules; each accept is one undo step.
+    /// "Descubra": globs, an interview that drafts rules, then description and tags; each accept is one undo step.
     private var discoverButton: some View {
         RuleDiscoverButton(
             subject: .init(topic: topic),
@@ -56,16 +58,16 @@ struct RuleTopicView: View {
             vocabulary: model.tagVocabulary,
             topics: model.knownTopics(excluding: slug),
             store: model.store,
-            applyScope: { scope, paths, tags in
-                model.mutateTopic(slug, "Descubra: globs e tags", undo: undo) { scope.apply(paths: paths, tags: tags, to: &$0.paths, tags: &$0.tags) }
+            applyScope: { scope, paths in
+                model.mutateTopic(slug, "Descubra: globs", undo: undo) { scope.apply(paths: paths, tags: [], to: &$0.paths, tags: &$0.tags) }
             },
             applyRules: { drafts, chosen in
                 model.mutateTopic(slug, "Descubra: regras", undo: undo) { drafts.apply(chosen, to: &$0.rules) }
             },
-            applyDescription: { proposal, accepted in
-                guard accepted else { return }
-                model.mutateTopic(slug, "Descubra: descrição", undo: undo) { proposal.apply(to: &$0.description) }
-            }
+            applyDetails: { proposal, accepted, tags in
+                model.mutateTopic(slug, "Descubra: descrição e tags", undo: undo) { proposal.apply(acceptDescription: accepted, tags: tags, description: &$0.description, tags: &$0.tags) }
+            },
+            applyVerdict: { _ in }
         )
         .id(slug)
     }
@@ -86,9 +88,9 @@ struct RuleTopicView: View {
 
     private var chatTestsMenu: some View {
         Menu {
-            Button("Só as pendentes (\(pendingTests))") { generateTests(onlyPending: true) }
+            LoggedButton("Só as pendentes (\(pendingTests))") { generateTests(onlyPending: true) }.loggedControl(control: "rules_view.button_2", label: "Ativar controle")
                 .disabled(pendingTests == 0)
-            Button("Regenerar todas") { generateTests(onlyPending: false) }
+            LoggedButton("Regenerar todas") { generateTests(onlyPending: false) }.loggedControl(control: "rules_view.button_3", label: "Regenerar todas")
         } label: {
             Label(hasAnyTest ? "Atualizar testes" : "Gerar testes", systemImage: "hammer")
         } primaryAction: {
@@ -108,13 +110,17 @@ struct RuleTopicView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
-                CommitTextField("Tópico", value: topic.title) { title in
+                CommitTextField(control: "rulesview.field_1", "Tópico", value: topic.title) { title in
                     guard !title.isEmpty else { return }
                     model.mutateTopic(slug, "Renomear tópico", undo: undo) { $0.title = title }
                 }
                 .font(.title2.weight(.semibold))
                 .textFieldStyle(.plain)
-                CommitTextField("Quando este tópico se aplica…", value: topic.description ?? "") { text in
+                if topic.author == .ai {
+                    Label("Criado por IA", systemImage: "sparkles")
+                        .font(.caption).foregroundStyle(.purple)
+                }
+                CommitTextField(control: "rulesview.field_2", "Quando este tópico se aplica…", value: topic.description ?? "") { text in
                     model.mutateTopic(slug, "Editar descrição", undo: undo) { $0.description = text.isEmpty ? nil : text }
                 }
                 .textFieldStyle(.plain)
@@ -125,7 +131,7 @@ struct RuleTopicView: View {
                 Image(systemName: topic.isGlobal ? "globe" : "scope")
                     .foregroundStyle(.secondary)
                     .help(topic.isGlobal ? "Sem escopo: vale para toda tarefa" : "Vale quando um arquivo alterado casa um destes globs")
-                CommitTextField("Escopo: globs separados por vírgula (vazio = vale para tudo)", value: topic.paths.joined(separator: ", ")) { text in
+                CommitTextField(control: "rulesview.field_3", "Escopo: globs separados por vírgula (vazio = vale para tudo)", value: topic.paths.joined(separator: ", ")) { text in
                     let paths = text.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
                     model.mutateTopic(slug, "Editar escopo", undo: undo) { $0.paths = paths }
                 }
@@ -157,6 +163,8 @@ struct RuleTopicView: View {
 // MARK: - Rule list (shared by topics and ideas)
 
 struct RuleListEditor: View {
+    @Environment(\.logProject) private var providerRoot
+    @Environment(\.logProject) private var logProject
     let rules: [Rule]
     let emptyTitle: String
     let emptyHint: String
@@ -165,6 +173,11 @@ struct RuleListEditor: View {
     var testRuns: [UUID: RuleTestOutcome] = [:]
     let mutate: (String, @escaping (inout [Rule]) -> Void) -> Void
 
+    private struct MovingRuleGroup: Identifiable { var path: String; var id: String { path } }
+    @State private var movingRuleGroup: MovingRuleGroup?
+    @State private var groupError: String?
+    @State private var movingRule: Rule?
+    @State private var collapsedRuleGroups = Set<String>()
     @State private var newText = ""
     @State private var newSeverity: RuleSeverity = .must
     @FocusState private var quickAddFocused: Bool
@@ -180,18 +193,78 @@ struct RuleListEditor: View {
                 .frame(maxHeight: .infinity)
             } else {
                 List {
-                    ForEach(rules) { rule in
-                        RuleRow(rule: rule, lastRun: testRuns[rule.id]) { action, change in update(rule.id, action, change) }
-                            .contextMenu { contextMenu(for: rule) }
-                    }
-                    .onMove { from, to in mutate("Reordenar regras") { $0.move(fromOffsets: from, toOffset: to) } }
-                    .onDelete { offsets in mutate("Remover regra") { $0.remove(atOffsets: offsets) } }
+                    ruleBranch("")
+
                 }
                 .listStyle(.inset)
                 .scrollContentBackground(.hidden)
             }
         }
         .safeAreaInset(edge: .bottom) { quickAdd }
+        .sheet(item: $movingRule) { rule in
+            NamePromptSheet(title: "Mover regra para grupo", placeholder: "Grupo/subgrupo") { name in
+                let storePath = name
+                guard let group = try? ProjectStore(root: URL(fileURLWithPath: "/")).normalizedGroupPath(storePath, allowRoot: true) else { return }
+                update(rule.id, "Mover regra") { $0.group = group.isEmpty ? nil : group }
+            }
+        }
+        .sheet(item: $movingRuleGroup) { p in
+            NamePromptSheet(title: "Mover ou renomear grupo de regras", placeholder: "Novo caminho grupo/subgrupo") { destination in
+                do {
+                    let store = ProjectStore(root: logProject ?? URL(fileURLWithPath: "/"))
+                    let updated = try store.ruleGroupRenamed(rules, from: p.path, to: destination)
+                    mutate("Mover grupo de regras") { $0 = updated }
+                } catch { groupError = error.localizedDescription }
+            }
+        }
+        .alert("Grupo inválido", isPresented: Binding(get: { groupError != nil }, set: { if !$0 { groupError = nil } })) {
+            LoggedButton("OK") { groupError = nil }.loggedControl(control: "rules_view.group_error", label: "OK")
+        } message: { Text(groupError ?? "") }
+
+    }
+
+    private var ruleGroups: [String] {
+        var result = Set<String>()
+        for rule in rules {
+            let parts = (rule.group ?? "").split(separator: "/")
+            for count in 1...max(1, parts.count) where count <= parts.count { result.insert(parts.prefix(count).joined(separator: "/")) }
+        }
+        return result.sorted()
+    }
+
+    private func ruleBranch(_ parent: String) -> AnyView {
+        AnyView(Group {
+            ForEach(ruleGroups.filter { ProjectStore.groupPath(of: $0) == parent }, id: \.self) { group in
+                DisclosureGroup(isExpanded: Binding(get: { !collapsedRuleGroups.contains(group) }, set: { if $0 { collapsedRuleGroups.remove(group) } else { collapsedRuleGroups.insert(group) } })) {
+                    ruleBranch(group)
+                } label: { Label(String(group.split(separator: "/").last ?? ""), systemImage: "folder") }
+                .contextMenu {
+                    LoggedButton("Mover ou renomear grupo…") { movingRuleGroup = .init(path: group) }.loggedControl(control: "rules_view.move_rule_group", label: "Mover grupo de regras")
+                }
+                .dropDestination(for: String.self) { ids, _ in
+                    guard ids.count == 1, let id = UUID(uuidString: ids[0]), rules.contains(where: { $0.id == id }) else { return false }
+                    update(id, "Mover regra") { $0.group = group }; return true
+                }
+            }
+            ForEach(rules.filter { ($0.group ?? "") == parent }) { rule in
+                RuleRow(rule: rule, lastRun: testRuns[rule.id]) { action, change in update(rule.id, action, change) }
+                    .draggable(rule.id.uuidString)
+                    .contextMenu { contextMenu(for: rule) }
+            }
+            .onMove { from, to in
+                mutate("Reordenar regras") { rules in
+                    var subset = rules.filter { ($0.group ?? "") == parent }
+                    subset.move(fromOffsets: from, toOffset: to)
+                    var iterator = subset.makeIterator()
+                    for i in rules.indices where (rules[i].group ?? "") == parent { rules[i] = iterator.next()! }
+                }
+            }
+            .onDelete { offsets in
+                let subset = rules.filter { ($0.group ?? "") == parent }
+                let ids = Set(offsets.map { subset[$0].id })
+                mutate("Remover regra") { $0.removeAll { ids.contains($0.id) } }
+            }
+        })
     }
 
     private func update(_ id: Rule.ID, _ action: String, _ change: @escaping (inout Rule) -> Void) {
@@ -203,30 +276,37 @@ struct RuleListEditor: View {
 
     @ViewBuilder
     private func contextMenu(for rule: Rule) -> some View {
-        Picker("Severidade", selection: Binding(get: { rule.severity }, set: { s in update(rule.id, "Alterar severidade") { $0.severity = s } })) {
+        Picker("Severidade", selection: Binding(get: { rule.severity }, set: { s in update(rule.id, "Alterar severidade") { $0.severity = s } }).logging(control: "rules_view.selection_11", label: "Severidade", project: logProject)) {
             ForEach(RuleSeverity.allCases, id: \.self) { Text($0.label).tag($0) }
         }
-        Button("Copiar id") {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(rule.id.uuidString, forType: .string)
-        }
-        if let command = rule.test?.command {
-            Button("Copiar comando do teste") {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(command, forType: .string)
+        Menu("Mover para") {
+            LoggedButton("Raiz") { update(rule.id, "Mover regra") { $0.group = nil } }.loggedControl(control: "rules_view.move_root", label: "Mover regra para raiz")
+            ForEach(ruleGroups, id: \.self) { group in
+                LoggedButton(group) { update(rule.id, "Mover regra") { $0.group = group } }.loggedControl(control: "rules_view.move_existing_group", label: "Mover regra para grupo")
             }
         }
+        LoggedButton("Mover para grupo…") { movingRule = rule }.loggedControl(control: "rules_view.move_group", label: "Mover para grupo")
+        LoggedButton("Copiar id") {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(rule.id.uuidString, forType: .string)
+        }.loggedControl(control: "rules_view.button_4", label: "Copiar id")
+        if let command = rule.test?.command {
+            LoggedButton("Copiar comando do teste") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(command, forType: .string)
+            }.loggedControl(control: "rules_view.button_5", label: "Copiar comando do teste")
+        }
         if rule.test != nil {
-            Button("Remover teste") { update(rule.id, "Remover teste") { $0.test = nil } }
+            LoggedButton("Remover teste") { update(rule.id, "Remover teste") { $0.test = nil } }.loggedControl(control: "rules_view.button_6", label: "Remover teste")
         }
         Divider()
-        Button("Remover", role: .destructive) { mutate("Remover regra") { $0.removeAll { $0.id == rule.id } } }
+        LoggedButton("Remover", role: .destructive) { mutate("Remover regra") { $0.removeAll { $0.id == rule.id } } }.loggedControl(control: "rules_view.button_7", label: "Remover")
     }
 
     private var quickAdd: some View {
         HStack(spacing: 8) {
             Menu {
-                Picker("Severidade", selection: $newSeverity) {
+                Picker("Severidade", selection: $newSeverity.logging(control: "rules_view.selection_12", label: "Severidade", project: logProject)) {
                     ForEach(RuleSeverity.allCases, id: \.self) { Label($0.label, systemImage: $0.symbol).tag($0) }
                 }
                 .pickerStyle(.inline)
@@ -238,12 +318,12 @@ struct RuleListEditor: View {
             .fixedSize()
             .help(newSeverity.label)
 
-            TextField("Nova regra…", text: $newText)
+            LoggedTextField("Nova regra…", text: $newText, onCommit: add).loggedField(control: "rulesview.text_1", label: "Nova regra…")
                 .textFieldStyle(.plain)
                 .focused($quickAddFocused)
-                .onSubmit(add)
 
-            Button(action: add) { Image(systemName: "plus") }
+
+            LoggedButton(action: add) { Image(systemName: "plus") }.loggedControl(control: "rules_view.button_8", label: "Ativar controle")
                 .buttonStyle(.glassProminent)
                 .disabled(newText.trimmingCharacters(in: .whitespaces).isEmpty)
         }
@@ -254,7 +334,7 @@ struct RuleListEditor: View {
         .padding(.bottom, 14)
         .background {
             if quickAddShortcut {
-                Button("") { quickAddFocused = true }.keyboardShortcut("n", modifiers: [.command, .shift]).hidden()
+                LoggedButton("") { quickAddFocused = true }.loggedControl(control: "rules_view.button_9", label: "").keyboardShortcut("n", modifiers: [.command, .shift]).hidden()
             }
         }
     }
@@ -273,31 +353,33 @@ extension RuleSeverity {
 }
 
 struct RuleRow: View {
+    @Environment(\.logProject) private var providerRoot
+    @Environment(\.logProject) private var logProject
     let rule: Rule
     var lastRun: RuleTestOutcome?
     let update: (String, @escaping (inout Rule) -> Void) -> Void
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            Button {
+            LoggedButton {
                 update("Alterar severidade") { $0.severity = $0.severity == .must ? .should : .must }
             } label: {
                 Image(systemName: rule.severity.symbol)
                     .foregroundStyle(rule.severity == .must ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary))
                     .font(.title3)
-            }
+            }.loggedControl(control: "rules_view.button_10", label: "Ativar controle")
             .buttonStyle(.plain)
             .help("\(rule.severity.label) — clique para alternar")
 
             VStack(alignment: .leading, spacing: 3) {
-                CommitTextField("Regra", value: rule.text) { v in
+                CommitTextField(control: "rulesview.field_4", "Regra", value: rule.text) { v in
                     guard !v.isEmpty else { return }
                     update("Editar regra") { $0.text = v }
                 }
                 .textFieldStyle(.plain)
                 .font(.body.weight(.medium))
 
-                CommitTextField("Como verificar (opcional)…", value: rule.details ?? "", axis: .vertical) { v in
+                CommitTextField(control: "rulesview.field_5", "Como verificar (opcional)…", value: rule.details ?? "", axis: .vertical) { v in
                     update("Editar detalhes") { $0.details = v.isEmpty ? nil : v }
                 }
                 .textFieldStyle(.plain)
@@ -325,6 +407,8 @@ struct RuleRow: View {
 
 /// How the rule is verified (script / manual / stale) and, for scripts, the last run in this session.
 private struct TestChip: View {
+    @Environment(\.logProject) private var providerRoot
+    @Environment(\.logProject) private var logProject
     let rule: Rule
     let lastRun: RuleTestOutcome?
 
@@ -396,6 +480,8 @@ extension RuleVerdict {
 // MARK: - Checks
 
 struct ChecksList: View {
+    @Environment(\.logProject) private var providerRoot
+    @Environment(\.logProject) private var logProject
     let slug: String
     let checks: [RuleCheck]
     let rules: [Rule]
@@ -424,6 +510,8 @@ struct ChecksList: View {
 }
 
 struct CheckLabel: View {
+    @Environment(\.logProject) private var providerRoot
+    @Environment(\.logProject) private var logProject
     let check: RuleCheck
 
     var body: some View {
@@ -445,6 +533,8 @@ struct CheckLabel: View {
 }
 
 private struct ResultRow: View {
+    @Environment(\.logProject) private var providerRoot
+    @Environment(\.logProject) private var logProject
     let result: RuleResult
     let text: String?
 
