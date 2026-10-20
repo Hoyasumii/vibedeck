@@ -66,3 +66,4 @@ Leia só a seção necessária: `vibedeck ai guide --section <n>`, MCP `ai_guide
 16: Logs
 17: Regras gerais para agentes
 18: Comandos úteis
+19: Projetos SSH

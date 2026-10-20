@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(CryptoKit)
+import CryptoKit
+#endif
 
 /// All remote data is cached with a durable last-confirmed snapshot. The difference between
 /// that snapshot and the working files IS the pending journal, including durable deletions.
@@ -13,8 +16,12 @@ public final class RemoteWorkspace: @unchecked Sendable {
     }
     public protocol Transport: Sendable {
         func snapshot() throws -> Snapshot
+        /// `known` is the last confirmed remote snapshot; transports may reuse unchanged files from it.
+        func snapshot(reusing known: Snapshot) throws -> Snapshot
         func replace(_ path: String, expected: Data?, with data: Data?) throws
     }
+    /// Only the top level of graphify-out is project data; its cache and dated history can reach gigabytes.
+    public static let graphFileLimit = ProjectGraph.maxBytes
     private struct State: Codable { var destination: SSHDestination; var base: Snapshot; var conflicts: [String: Conflict]? = nil }
     public let root: URL
     public let destination: SSHDestination
@@ -65,7 +72,8 @@ public final class RemoteWorkspace: @unchecked Sendable {
     public static func validPath(_ path: String) -> Bool {
         let parts = path.split(separator: "/", omittingEmptySubsequences: true)
         return !path.hasPrefix("/") && !path.contains("\0") && !parts.contains("..") && !parts.contains(".") &&
-            (path == "vibedeck.json" || path == "README.md" || path == ".vibedeck/" || path.hasPrefix(".vibedeck/") || path.hasPrefix("graphify-out/"))
+            (path == "vibedeck.json" || path == "README.md" || path == ".vibedeck/" || path.hasPrefix(".vibedeck/") ||
+             path == "graphify-out/" || (path.hasPrefix("graphify-out/") && parts.count == 2 && !path.hasSuffix("/")))
     }
     public static func localSnapshot(_ root: URL) throws -> Snapshot {
         let root = root.resolvingSymlinksInPath().standardizedFileURL
@@ -86,8 +94,16 @@ public final class RemoteWorkspace: @unchecked Sendable {
                     for child in try fm.contentsOfDirectory(atPath: url.path) { try walk(relative + "/" + child) }
                 } else if info.isRegularFile == true { result[relative] = try Data(contentsOf: url) }
             }
-            for directory in [".vibedeck", "graphify-out"] where fm.fileExists(atPath: root.appending(path: directory).path) {
-                try walk(directory)
+            if fm.fileExists(atPath: root.appending(path: ".vibedeck").path) { try walk(".vibedeck") }
+            let graph = root.appending(path: "graphify-out")
+            if fm.fileExists(atPath: graph.path) {
+                result["graphify-out/"] = Data()
+                for name in try fm.contentsOfDirectory(atPath: graph.path) {
+                    let url = graph.appending(path: name)
+                    let info = try url.resourceValues(forKeys: [.isSymbolicLinkKey, .isRegularFileKey, .fileSizeKey])
+                    guard info.isSymbolicLink != true else { throw VibeDeckError.ssh("Link simbólico nos dados do projeto: \(name)") }
+                    if info.isRegularFile == true, (info.fileSize ?? 0) <= graphFileLimit { result["graphify-out/" + name] = try Data(contentsOf: url) }
+                }
             }
             return result
         }
@@ -102,10 +118,10 @@ public final class RemoteWorkspace: @unchecked Sendable {
     }
     public func synchronize(using transport: any Transport) throws {
         try syncLock.withLock {
-            let remote = try transport.snapshot()
+            let previous = stateLock.withLock { base }
+            let remote = try transport.snapshot(reusing: previous)
             guard remote.keys.allSatisfy(Self.validPath) else { throw VibeDeckError.ssh("Caminho remoto inválido.") }
             let initial = try Self.localSnapshot(root)
-            let previous = stateLock.withLock { base }
             let paths = Set(previous.keys).union(initial.keys).union(remote.keys).sorted {
                 // Children are deleted before parents; parents are created before children.
                 let deletingA = initial[$0] == nil || (initial[$0] == previous[$0] && remote[$0] == nil), deletingB = initial[$1] == nil || (initial[$1] == previous[$1] && remote[$1] == nil)
@@ -120,10 +136,17 @@ public final class RemoteWorkspace: @unchecked Sendable {
                         let current = try Self.localSnapshot(root)[path]
                         guard current == local else { return }
                         if current != server { try apply(server, path: path) }
-                        try stateLock.withLock { base[path] = server; conflictFiles[path] = nil; try persist() }
+                        // Rewriting the whole state for every unchanged file made each round O(files × state size).
+                        try stateLock.withLock {
+                            guard base[path] != server || conflictFiles[path] != nil else { return }
+                            base[path] = server; conflictFiles[path] = nil; try persist()
+                        }
                     }
                 } else if local == server {
-                    try stateLock.withLock { base[path] = server; conflictFiles[path] = nil; try persist() }
+                    try stateLock.withLock {
+                        guard base[path] != server || conflictFiles[path] != nil else { return }
+                        base[path] = server; conflictFiles[path] = nil; try persist()
+                    }
                 } else if server == ancestor || (server == nil && local != nil) {
                     // A previous conflict remains blocked until an explicit choice, even if the
                     // server is subsequently deleted or changed back to the original base.
@@ -169,6 +192,10 @@ public final class RemoteWorkspace: @unchecked Sendable {
     }
 }
 
+extension RemoteWorkspace.Transport {
+    public func snapshot(reusing known: RemoteWorkspace.Snapshot) throws -> RemoteWorkspace.Snapshot { try snapshot() }
+}
+
 public struct SSHFileTransport: RemoteWorkspace.Transport {
     public let connection: SSHConnection
     public init(_ destination: SSHDestination) { connection = SSHConnection(destination) }
@@ -181,26 +208,61 @@ public struct SSHFileTransport: RemoteWorkspace.Transport {
         }
         return checks
     }
-    public func snapshot() throws -> RemoteWorkspace.Snapshot {
-        var result: RemoteWorkspace.Snapshot = [:]
-        let listing = try connection.run("for p in vibedeck.json README.md .vibedeck graphify-out; do if test -L \"$p\"; then exit 45; fi; if test -e \"$p\"; then find \"$p\" -type l -print0 || exit; fi; done")
+    public func snapshot() throws -> RemoteWorkspace.Snapshot { try snapshot(reusing: [:]) }
+    public func snapshot(reusing known: RemoteWorkspace.Snapshot) throws -> RemoteWorkspace.Snapshot {
+        let listing = try connection.run("for p in vibedeck.json README.md .vibedeck graphify-out; do if test -L \"$p\"; then exit 45; fi; done; if test -d .vibedeck; then find .vibedeck -type l -print0 || exit; fi; if test -d graphify-out; then find graphify-out -mindepth 1 -maxdepth 1 -type l -print0 || exit; fi")
         guard listing.isEmpty else { throw VibeDeckError.ssh("Links simbólicos nos dados remotos não são suportados.") }
-        let payload = try connection.run("for p in vibedeck.json README.md .vibedeck graphify-out; do if test -f \"$p\"; then printf '%s\\0' \"$p\"; wc -c < \"$p\" || exit; cat \"$p\" || exit; elif test -d \"$p\"; then find \"$p\" -type f ! -name \".vibedeck-transfer-*\" -exec sh -c 'for p do printf \"%s\\0\" \"$p\"; wc -c < \"$p\" || exit; cat \"$p\" || exit; done' sh {} + || exit; fi; done")
-        var offset = payload.startIndex
-        while offset < payload.endIndex {
-            guard let separator = payload[offset...].firstIndex(of: 0),
-                  let newline = payload[payload.index(after: separator)...].firstIndex(of: 10),
-                  let size = Int(String(decoding: payload[payload.index(after: separator)..<newline], as: UTF8.self).trimmingCharacters(in: .whitespaces)),
-                  size >= 0 else { throw VibeDeckError.ssh("Transferência remota incompleta. Tente reconectar.") }
-            let path = String(decoding: payload[offset..<separator], as: UTF8.self)
-            let content = payload.index(after: newline)
-            guard RemoteWorkspace.validPath(path), size <= payload.distance(from: content, to: payload.endIndex) else { throw VibeDeckError.ssh("Transferência remota inválida.") }
-            let end = payload.index(content, offsetBy: size)
-            result[path] = Data(payload[content..<end]); offset = end
+        // Manifest first (path, SHA-256, size), then download only what differs from the confirmed snapshot.
+        let hash = SSHConnection.quote("for p do h=$( { sha256sum < \"$p\" || shasum -a 256 < \"$p\"; } 2>/dev/null | cut -c1-64); s=$(wc -c < \"$p\") || exit; printf \"%s\\0%s %s\\n\" \"$p\" \"$h\" $s; done")
+        let manifest = try connection.run("h=" + hash + "; for p in vibedeck.json README.md; do if test -f \"$p\"; then sh -c \"$h\" sh \"$p\" || exit; fi; done; if test -d .vibedeck; then find .vibedeck -type f ! -name \".vibedeck-transfer-*\" -exec sh -c \"$h\" sh {} + || exit; fi; if test -d graphify-out; then printf 'graphify-out/\\0- 0\\n'; find graphify-out -mindepth 1 -maxdepth 1 -type f ! -name \".vibedeck-transfer-*\" -exec sh -c \"$h\" sh {} + || exit; fi", timeout: 300)
+        var result: RemoteWorkspace.Snapshot = [:], missing: [String] = []
+        for entry in try Self.records(manifest) {
+            let fields = String(decoding: entry.value, as: UTF8.self).split(separator: " ")
+            guard RemoteWorkspace.validPath(entry.path), let size = fields.last.flatMap({ Int($0) }) else { throw VibeDeckError.ssh("Manifesto remoto inválido.") }
+            if entry.path.hasSuffix("/") { result[entry.path] = Data(); continue }
+            if entry.path.hasPrefix("graphify-out/"), size > RemoteWorkspace.graphFileLimit { continue }
+            if fields.count == 2, let cached = known[entry.path], cached.count == size, Self.digest(cached) == String(fields[0]) {
+                result[entry.path] = cached
+            } else { missing.append(entry.path) }
         }
-        let dirs = try connection.run("for p in .vibedeck graphify-out; do if test -d \"$p\"; then find \"$p\" -type d -print0 || exit; fi; done")
+        if !missing.isEmpty {
+            var input = Data(); for path in missing { input.append(Data(path.utf8)); input.append(0) }
+            let payload = try connection.run("xargs -0 sh -c 'for p do printf \"%s\\0\" \"$p\"; wc -c < \"$p\" || exit 1; cat \"$p\" || exit 1; done' sh", input: input, timeout: 600)
+            var offset = payload.startIndex
+            while offset < payload.endIndex {
+                guard let separator = payload[offset...].firstIndex(of: 0),
+                      let newline = payload[payload.index(after: separator)...].firstIndex(of: 10),
+                      let size = Int(String(decoding: payload[payload.index(after: separator)..<newline], as: UTF8.self).trimmingCharacters(in: .whitespaces)),
+                      size >= 0 else { throw VibeDeckError.ssh("Transferência remota incompleta. Tente reconectar.") }
+                let path = String(decoding: payload[offset..<separator], as: UTF8.self)
+                let content = payload.index(after: newline)
+                guard missing.contains(path), size <= payload.distance(from: content, to: payload.endIndex) else { throw VibeDeckError.ssh("Transferência remota inválida.") }
+                let end = payload.index(content, offsetBy: size)
+                result[path] = Data(payload[content..<end]); offset = end
+            }
+            guard missing.allSatisfy({ result[$0] != nil }) else { throw VibeDeckError.ssh("Transferência remota incompleta. Tente reconectar.") }
+        }
+        let dirs = try connection.run("if test -d .vibedeck; then find .vibedeck -type d -print0 || exit; fi")
         for bytes in dirs.split(separator: 0) { result[String(decoding: bytes, as: UTF8.self) + "/"] = Data() }
         return result
+    }
+    /// Parses `path\0value\n` records; paths may contain newlines, values never do.
+    static func records(_ data: Data) throws -> [(path: String, value: Data)] {
+        var records: [(String, Data)] = [], offset = data.startIndex
+        while offset < data.endIndex {
+            guard let separator = data[offset...].firstIndex(of: 0),
+                  let newline = data[data.index(after: separator)...].firstIndex(of: 10) else { throw VibeDeckError.ssh("Manifesto remoto incompleto. Tente reconectar.") }
+            records.append((String(decoding: data[offset..<separator], as: UTF8.self), Data(data[data.index(after: separator)..<newline])))
+            offset = data.index(after: newline)
+        }
+        return records
+    }
+    static func digest(_ data: Data) -> String {
+        #if canImport(CryptoKit)
+        return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+        #else
+        return PortableSHA256.hash(data).map { String(format: "%02x", $0) }.joined()
+        #endif
     }
     public func replace(_ path: String, expected: Data?, with data: Data?) throws {
         let check = try checked(path), quoted = SSHConnection.quote(path)
@@ -210,13 +272,13 @@ public struct SSHFileTransport: RemoteWorkspace.Transport {
         let parent = (path as NSString).deletingLastPathComponent
         let temp = (parent.isEmpty ? "." : parent) + "/.vibedeck-transfer-" + UUID().uuidString
         let tempQuote = SSHConnection.quote(temp), baseQuote = SSHConnection.quote(temp + ".base")
-        if let expected { _ = try connection.run("umask 077; " + check + "cat > " + baseQuote, input: expected) }
+        if let expected { _ = try connection.run("umask 077; " + check + "cat > " + baseQuote, input: expected, timeout: 300) }
         defer { _ = try? connection.run("rm -f " + tempQuote + " " + baseQuote) }
         let compare = expected == nil ? "test ! -e " + quoted : "cmp -s " + quoted + " " + baseQuote
         if let data {
-            _ = try connection.run("umask 077; " + check + "mkdir -p " + SSHConnection.quote(parent.isEmpty ? "." : parent) + " && cat > " + tempQuote, input: data)
+            _ = try connection.run("umask 077; " + check + "mkdir -p " + SSHConnection.quote(parent.isEmpty ? "." : parent) + " && cat > " + tempQuote, input: data, timeout: 300)
             let permissions = "if test -e " + quoted + "; then mode=$(stat -c %a " + quoted + " 2>/dev/null || stat -f %Lp " + quoted + ") && chmod \"$mode\" " + tempQuote + " || exit; fi; "
-            _ = try connection.run(check + permissions + compare + " && mv -f " + tempQuote + " " + quoted + " && cmp -s " + quoted + " /dev/stdin", input: data)
+            _ = try connection.run(check + permissions + compare + " && mv -f " + tempQuote + " " + quoted + " && cmp -s " + quoted + " /dev/stdin", input: data, timeout: 300)
         } else {
             _ = try connection.run(check + compare + " && rm -f " + quoted + " && test ! -e " + quoted)
         }

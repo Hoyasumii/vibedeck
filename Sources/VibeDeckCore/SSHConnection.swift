@@ -83,9 +83,13 @@ public struct SSHConnection: Sendable {
             throw VibeDeckError.ssh("Falha na conexão SSH. \(result.error)")
         }
     }
-    public func run(_ command: String, input: Data? = nil) throws -> Data {
-        let result = try Self.capture("/usr/bin/ssh", commandArguments(inDirectory(command)), input: input)
-        guard result.status == 0 else { throw VibeDeckError.ssh("SSH (\(result.status)): \(result.error)") }
+    public func run(_ command: String, input: Data? = nil, timeout: TimeInterval = 30) throws -> Data {
+        let result = try Self.capture("/usr/bin/ssh", commandArguments(inDirectory(command)), input: input, timeout: timeout)
+        if result.timedOut { throw VibeDeckError.ssh("SSH: tempo esgotado após \(Int(timeout)) s. Verifique a rede ou o tamanho dos dados do projeto.") }
+        guard result.status == 0 else {
+            let detail = result.error.trimmingCharacters(in: .whitespacesAndNewlines)
+            throw VibeDeckError.ssh("SSH (\(result.status)): " + (detail.isEmpty ? (result.status == 255 ? "a conexão foi encerrada sem mensagem do servidor." : "o comando remoto falhou sem mensagem.") : detail))
+        }
         return result.output
     }
     public func resolved(directory: String) throws -> SSHDestination {
@@ -150,13 +154,14 @@ public struct SSHConnection: Sendable {
         var contents = (try? Data(contentsOf: file)) ?? Data()
         contents.append(Data(keys.utf8)); try AtomicFile.write(contents, to: file)
     }
-    public struct Result: Sendable { public let status: Int32; public let output: Data; public let error: String }
+    public struct Result: Sendable { public let status: Int32; public let output: Data; public let error: String; public var timedOut = false }
     public static func capture(_ executable: String, _ arguments: [String], input: Data? = nil, environment: [String: String]? = nil, timeout: TimeInterval = 30) throws -> Result {
         let p = Process(), stdout = Pipe(), stderr = Pipe(), stdin = Pipe()
         p.executableURL = URL(fileURLWithPath: executable); p.arguments = arguments; p.environment = environment
         p.standardOutput = stdout; p.standardError = stderr; p.standardInput = stdin
         try p.run()
-        let timer = DispatchWorkItem { if p.isRunning { p.terminate() } }
+        let expired = LockedData()
+        let timer = DispatchWorkItem { if p.isRunning { expired.set(Data([1])); p.terminate() } }
         DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: timer)
         let errors = LockedData()
         let group = DispatchGroup(); group.enter()
@@ -164,7 +169,7 @@ public struct SSHConnection: Sendable {
         DispatchQueue.global().async { if let input { try? stdin.fileHandleForWriting.write(contentsOf: input) }; try? stdin.fileHandleForWriting.close() }
         let output = stdout.fileHandleForReading.readDataToEndOfFile()
         p.waitUntilExit(); group.wait(); timer.cancel()
-        return Result(status: p.terminationStatus, output: output, error: String(decoding: errors.get(), as: UTF8.self))
+        return Result(status: p.terminationStatus, output: output, error: String(decoding: errors.get(), as: UTF8.self), timedOut: !expired.get().isEmpty)
     }
     private final class LockedData: @unchecked Sendable {
         private let lock = NSLock(); private var data = Data()

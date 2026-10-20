@@ -341,3 +341,20 @@ vibedeck cloud check --json                  # branch local == GitHub? (pré-req
 ```
 
 MCP: `vibedeck mcp install` (registra `vibedeck mcp` no Claude Code)
+
+## Projetos SSH
+
+Na tela inicial, Conectar via SSH permite configurar servidor, porta e usuário ou selecionar um alias.
+Use chaves/agente SSH ou senha; guardar no Chaves do macOS exige opção explícita. Confirme a impressão
+digital do servidor desconhecido. Chave conhecida alterada bloqueia a conexão até verificar a identidade.
+
+Navegue pelas pastas ou digite um caminho; inicializar exige confirmação. O servidor não precisa ter VibeDeck.
+Cada edição confirmada é persistida no cache do destino e pode ser recuperada ao reabrir offline. Há
+reconexão automática com intervalos crescentes e opção manual. Conflitos mostram as versões local e remota
+e aguardam sua escolha. Fechar a apresentação preserva ambas. Arquivos editados offline e apagados no
+servidor são recriados quando não há conflito registrado.
+
+Terminal, regras e IA executam no servidor, na pasta selecionada. Claude Code ou Codex deve estar instalado
+e autenticado no servidor; não há instalação, troca de provedor ou execução local automática. Use o terminal
+SSH para autenticar. IA e regras aguardam sincronizar pendências e resolver conflitos; o terminal permanece
+disponível. O painel distingue desconexão, sincronização, pendências, conflitos e sincronização concluída.

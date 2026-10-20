@@ -81,7 +81,8 @@ struct SectionListView: View {
                             LoggedButton("Importar de " + provider.title) {
                                 Task {
                                     do {
-                                        guard RemoteExecution.available(provider, root: model.store.root) else { return }
+                                        guard AIProvider.installed(in: model.store.root).contains(provider),
+                                              RemoteExecution.available(provider, root: model.store.root) else { return }
                                         let result: AIImportResult
                                         switch section {
                                         case .agents: result = try model.store.importAgents(provider: provider)

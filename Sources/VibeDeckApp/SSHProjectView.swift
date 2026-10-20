@@ -55,8 +55,8 @@ struct SSHProjectSheet: View {
                 }
                 List(directories, id: \.self) { directory in
                     LoggedButton { navigate(((destination?.directory ?? path) as NSString).appendingPathComponent(directory)) } label: {
-                        Label(directory, systemImage: "folder")
-                    }.loggedControl(control: "ssh.directory", label: "Abrir diretório")
+                        Label(directory, systemImage: "folder").frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+                    }.loggedControl(control: "ssh.directory", label: "Abrir diretório").buttonStyle(.plain)
                 }.frame(height: 220)
                 LoggedButton("Abrir esta pasta") { openSelected() }.loggedControl(control: "ssh.open", label: "Abrir esta pasta")
                     .disabled(busy)
