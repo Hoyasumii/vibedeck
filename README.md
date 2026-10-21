@@ -402,7 +402,7 @@ A nuvem só vê o GitHub, então antes o VibeDeck dá `git fetch` e compara a br
 se uma estiver atrás da outra (ou se divergirem), ele para e avisa que as branches precisam ser iguais.
 Alterações não commitadas só geram um aviso, que precisa ser confirmado (`--allow-dirty` / `allow_dirty`).
 
-O projeto traz um `.mcp.json` com o servidor `vibedeck mcp`. A VM da nuvem é Linux, então o CLI e o MCP (`swift build -c release --product vibedeck`, sem o app SwiftUI) compilam em Linux, e o CI garante isso; o binário precisa estar no `PATH` da VM (por exemplo, pelo script de setup do ambiente).
+O projeto traz um `.mcp.json` com o servidor `vibedeck mcp`. A VM da nuvem é Linux, então o CLI e o MCP (`swift build -c release --product vibedeck`, sem o app SwiftUI) compilam em Linux; o binário precisa estar no `PATH` da VM (por exemplo, pelo script de setup do ambiente).
 
 ### Limites de uso
 

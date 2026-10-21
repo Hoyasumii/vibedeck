@@ -3,7 +3,7 @@ author: ai
 ---
 # Sessões na nuvem e limites de uso
 
-Fontes: `README.md:316-340`, `.github/workflows/swift.yml:23-29`.
+Fontes: `README.md:316-340`.
 
 ## Sessões na nuvem
 
@@ -13,7 +13,7 @@ Fontes: `README.md:316-340`, `.github/workflows/swift.yml:23-29`.
 - Antes de iniciar, o VibeDeck faz `git fetch` e compara a branch padrão local com a da `origin`. Se uma estiver atrás da outra ou se divergirem, ele para e avisa (`README.md:322-324`).
 - Alterações não commitadas geram só um aviso, confirmado com `--allow-dirty` / `allow_dirty` (`README.md:324`).
 - `vibedeck cloud check` verifica se a main local é igual à do GitHub (`README.md:287`).
-- O projeto traz um `.mcp.json` com o servidor `vibedeck mcp`. O binário precisa estar no `PATH` da VM Linux (`README.md:326`). O CI garante que o CLI compila em Linux (`.github/workflows/swift.yml:23-29`).
+- O projeto traz um `.mcp.json` com o servidor `vibedeck mcp`. O binário precisa estar no `PATH` da VM Linux (`README.md:405`).
 
 ## Limites de uso do Claude Code
 
