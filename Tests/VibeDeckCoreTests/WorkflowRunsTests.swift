@@ -172,4 +172,62 @@ import Testing
         let text = String(decoding: try VDJSON.encode(WorkflowRun(workflow: "w", input: nil, start: "a")), as: UTF8.self)
         #expect(!text.contains("history") && !text.contains("questions") && !text.contains("input") && !text.contains("reason"))
     }
+    @Test func ideaRunIdentitySurvivesEditsAndResumePreservesProgress() throws {
+        let store = try cycleStore()
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let (slug, _) = try store.createIdea(title: "Uma ideia")
+        try store.updateIdea(slug) { idea in
+            idea.rules = [Rule(text: "R")]
+            RuleDiscoverVerdict(viable: true).apply(to: &idea)
+        }
+        let idea = try store.loadIdea(slug)
+        let started = try store.implementIdeaRun(idea.id.uuidString, workflow: "ciclo", restart: false, provider: .codex)
+        #expect(started.run.input?.contains(idea.id.uuidString) == true)
+        #expect(started.run.input?.contains("get_idea") == true)
+        #expect(started.ref.contains(idea.id.uuidString.lowercased()))
+        try store.recordRun(started.ref, verdict: "PLANO", summary: "Plano pronto")
+        try store.checkpointRun(started.ref, checkpoint: .init(step: "critico", output: "Parcial", completed: false))
+        try store.stopRun(started.ref, reason: "Pausa")
+        let paused = try store.loadRun(started.ref)
+        try store.updateIdea(slug) { idea in
+            idea.title = "Título novo"; idea.body = "Descrição nova"
+            RuleDiscoverVerdict(viable: true).apply(to: &idea)
+        }
+        let changed = try store.loadIdea(slug)
+        #expect(try store.ideaRun(changed, workflow: "ciclo")?.run.id == started.run.id)
+        let resumed = try store.implementIdeaRun(changed.id.uuidString, workflow: "ciclo", restart: false, provider: .codex)
+        #expect(resumed.ref == started.ref)
+        #expect(resumed.run.current == "critico")
+        #expect(resumed.run.history == paused.history)
+        #expect(resumed.run.checkpoint == paused.checkpoint)
+        #expect(resumed.run.cycle == paused.cycle)
+        #expect(try store.nextRunAction(resumed.ref).step == "critico")
+        try store.askRun(resumed.ref, questions: [.init(question: "Continuar?", options: [])])
+        let restarted = try store.implementIdeaRun(changed.id.uuidString, workflow: "ciclo", restart: true, provider: .codex)
+        #expect(restarted.run.current == "planejar")
+        #expect(restarted.run.checkpoint == nil)
+        #expect(restarted.run.openQuestions.isEmpty)
+        #expect(restarted.run.history == paused.history)
+        #expect(restarted.run.cycle == paused.cycle + 1)
+        #expect(restarted.run.currentCycle.isEmpty)
+        #expect(restarted.run.provider == .codex)
+    }
+
+    @Test func ideaRunRejectsExternallyInvalidatedAssessmentWithoutWrites() throws {
+        let store = try cycleStore()
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let (slug, _) = try store.createIdea(title: "Mudou")
+        try store.updateIdea(slug) { idea in
+            idea.rules = [Rule(text: "R")]
+            RuleDiscoverVerdict(viable: true).apply(to: &idea)
+        }
+        let id = try store.loadIdea(slug).id.uuidString
+        try store.updateIdea(slug) { $0.body = "Edição externa" }
+        #expect(throws: VibeDeckError.self) {
+            try store.implementIdeaRun(id, workflow: "ciclo", restart: false, provider: .codex)
+        }
+        #expect(try store.listRuns().isEmpty)
+        #expect(try store.loadIdea(slug).promotedTopic == nil)
+    }
+
 }

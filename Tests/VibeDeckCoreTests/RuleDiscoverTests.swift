@@ -333,4 +333,34 @@ private func newStore() throws -> ProjectStore {
         #expect(prompt.contains("submit_rule_check"))
         #expect(prompt.contains("status=done"))
     }
+    @Test func implementationModeRequiresApprovedAndCurrentViableAssessment() {
+        var idea = Idea(title: "Elegível")
+        idea.rules = [Rule(text: "R")]
+        for status in IdeaStatus.allCases {
+            idea.status = status
+            idea.readiness = nil
+            #expect(!IdeaImplementation.isEligible(idea))
+            idea.readiness = IdeaReadiness(viable: false, fingerprint: idea.contentFingerprint)
+            #expect(!IdeaImplementation.isEligible(idea))
+            idea.readiness = IdeaReadiness(viable: true, fingerprint: "antigo")
+            #expect(!IdeaImplementation.isEligible(idea))
+            idea.readiness = IdeaReadiness(viable: true, fingerprint: idea.contentFingerprint)
+            #expect(IdeaImplementation.isEligible(idea) == (status == .approved))
+        }
+    }
+
+    @Test func implementationIntentContractSeparatesExplicitModesFromQuestions() throws {
+        for mode in ["none", "ask", "standard", "workflow"] {
+            let data = Data("{\"mode\":\"\(mode)\",\"idea\":null,\"workflow\":null}".utf8)
+            #expect(try VDJSON.decoder.decode(IdeaImplementation.ChatIntent.self, from: data).mode.rawValue == mode)
+        }
+        let idea = Idea(title: "Modo offline")
+        let prompt = IdeaImplementation.intentPrompt("Implemente essa ideia sem workflow", context: "Modo offline",
+            ideas: [("modo-offline", idea)], workflows: [])
+        #expect(prompt.contains(idea.id.uuidString))
+        #expect(prompt.contains("standard"))
+        #expect(prompt.contains("Não execute comandos nem altere arquivos"))
+        #expect(prompt.contains("referência ambígua"))
+    }
+
 }

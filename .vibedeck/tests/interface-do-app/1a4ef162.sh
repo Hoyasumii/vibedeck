@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "${VIBEDECK_ROOT:-.}"
 # Não se aplica quando a tarefa não tocou em Sources/VibeDeckApp.
-if [ -n "${VIBEDECK_FILES:-}" ] && ! printf "%s\n" "$VIBEDECK_FILES" | grep -qE "^Sources/VibeDeckApp/|^Package\.swift$"; then exit 77; fi
+if [ -n "${VIBEDECK_FILES:-}" ] && ! printf "%s\n" "$VIBEDECK_FILES" | grep -E "^Sources/VibeDeckApp/|^Package\.swift$" >/dev/null; then exit 77; fi
 fail=0
 bad() { echo "$1: $2"; fail=1; }
 # Tópico apagado por qualquer caminho despromove a ideia.

@@ -77,9 +77,11 @@ def matches(t, ref):
     k = slug(ref)
     return bool(ref.strip()) and any(slug(r) == k for r in refs(t))
 
-def head_catalog():
-    import subprocess
-    return parse(subprocess.check_output(['git', 'show', 'HEAD:Sources/VibeDeckCore/Patterns.swift'], text=True))
+def original_catalog():
+    # Immutable snapshot before the eight-template expansion. HEAD advances after a merge.
+    import json
+    from pathlib import Path
+    return json.loads(Path(__file__).with_name('catalog-before-expansion.json').read_text(encoding='utf-8'))['templates']
 
 def mcp_calls(calls, binary='.build/debug/vibedeck', timeout=90):
     """Abre `vibedeck mcp` (stdio), faz handshake e chama cada (tool, args) em sequência; devolve a lista de textos de resultado."""

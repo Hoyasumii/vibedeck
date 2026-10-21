@@ -5,7 +5,7 @@ VD_SRC=$(pwd)
 # applies <regex>: sai com 77 se VIBEDECK_FILES não está vazio e nenhum arquivo casa.
 applies() {
   [ -z "${VIBEDECK_FILES:-}" ] && return 0
-  printf '%s\n' "$VIBEDECK_FILES" | grep -Eq "$1" || exit 77
+  printf '%s\n' "$VIBEDECK_FILES" | grep -E "$1" >/dev/null || exit 77
 }
 
 # build_cli: compila o vibedeck do código atual e exporta VD (caminho do binário).

@@ -172,6 +172,7 @@ struct RuleDiscoverButton: View {
     let applyVerdict: (RuleDiscoverVerdict) -> Void
     @Environment(AISession.self) private var session
     @State private var runner = RuleDiscoverRunner()
+    @State private var implementAfterDismiss = false
 
     var body: some View {
         LoggedButton {
@@ -195,7 +196,12 @@ struct RuleDiscoverButton: View {
         .help(assessOnly
               ? "Pede à IA (só leitura) para dizer se a ideia já dá para implementar."
               : "Pede à IA (só leitura) globs, uma entrevista para gerar regras e, por fim, a descrição e as tags. Você pode dar um contexto inicial. Nada é gravado sem aceite.")
-        .sheet(isPresented: Binding(get: { runner.isActive }, set: { if !$0 { runner.cancel() } })) {
+        .sheet(isPresented: Binding(get: { runner.isActive }, set: { if !$0 { runner.cancel() } }), onDismiss: {
+            if implementAfterDismiss {
+                implementAfterDismiss = false
+                onImplement?()
+            }
+        }) {
             RuleDiscoverSheet(runner: runner, subject: subject.kind,
                               start: { context in
                                   runner.start(current(), context: context, topics: topics, store: store, provider: session.provider)
@@ -221,8 +227,8 @@ struct RuleDiscoverButton: View {
                                   runner.subjectChanged(current())
                                   guard case .verdict = runner.state else { return }
                                   applyVerdict(verdict)
+                                  implementAfterDismiss = implementation && verdict.viable
                                   runner.cancel()
-                                  if implementation, verdict.viable { onImplement?() }
                               })
         }
         .onChange(of: subject) { _, new in runner.subjectChanged(new) }

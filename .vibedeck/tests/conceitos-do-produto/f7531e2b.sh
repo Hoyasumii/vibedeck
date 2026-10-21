@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "${VIBEDECK_ROOT:-.}"
 # Promover/despromover ideia só por ação explícita: botão do app, comando do CLI ou ferramenta MCP pedida pelo usuário.
-if [ -n "${VIBEDECK_FILES:-}" ] && ! printf "%s\n" "$VIBEDECK_FILES" | grep -qE "^Sources/"; then exit 77; fi
+if [ -n "${VIBEDECK_FILES:-}" ] && ! printf "%s\n" "$VIBEDECK_FILES" | grep -E "^Sources/" >/dev/null; then exit 77; fi
 python3 -I - <<'PY'
 import re, glob, sys
 bad = 0
@@ -29,10 +29,25 @@ for f, lines in src.items():
             fail(f"{f}:{i+1}: promove/despromove ideia fora de uma ação explícita do usuário: {l.strip()}")
 # 3. No app, promoteIdea/unpromoteIdea do model só dentro de Button.
 lines = src.get("Sources/VibeDeckApp/IdeaView.swift", [])
+def implementation_button_callback(index):
+    # RuleDiscoverButton dispatches onImplement only from Implementar or from saving its evaluation.
+    # Follow that explicit callback rather than assuming a four-line button body.
+    for start, line in enumerate(lines):
+        if "onImplement: implementation ? {" not in line:
+            continue
+        if "RuleDiscoverButton(" not in "\n".join(lines[max(0, start-5):start]):
+            continue
+        depth = 0
+        for end in range(start, len(lines)):
+            depth += lines[end].count("{") - lines[end].count("}")
+            if depth == 0:
+                if start <= index <= end: return True
+                break
+    return False
 for i, l in enumerate(lines):
     if re.search(r"model\.(un)?promoteIdea\(", l):
         ctx = "\n".join(lines[max(0, i-4):i])
-        if "Button" not in ctx:
+        if "Button" not in ctx and not implementation_button_callback(i):
             fail(f"Sources/VibeDeckApp/IdeaView.swift:{i+1}: promoção fora de um Button explícito")
 pm = src.get("Sources/VibeDeckApp/ProjectModel.swift", [])
 for i, l in enumerate(pm):

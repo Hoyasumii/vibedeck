@@ -210,7 +210,16 @@ struct IdeaView: View {
         RuleDiscoverButton(
             assessOnly: assessOnly,
             implementation: implementation,
-            onImplement: implementation ? { flush(); if idea.implementBlocker == nil, readyToPromote(then: implement), let topic = model.promoteIdea(slug) { implement(topic) } } : nil,
+            onImplement: implementation ? {
+                flush()
+                guard let current = try? model.store.loadIdea(slug) else { return }
+                if IdeaImplementation.isEligible(current) {
+                    session.requestIdeaImplementation(current)
+                } else if current.status != .approved, current.implementBlocker == nil,
+                          readyToPromote(then: implement), let topic = model.promoteIdea(slug) {
+                    implement(topic)
+                }
+            } : nil,
             subjectReady: idea.implementBlocker == nil,
             subject: .init(idea: idea),
             current: { flush(); return .init(idea: idea) },
@@ -300,7 +309,7 @@ struct IdeaView: View {
     }
 
     private func implement(_ topic: String) {
-        session.ask(IdeaImplementation.prompt(slug: slug, idea: idea, topic: topic))
+        session.ask(IdeaImplementation.prompt(slug: slug, idea: idea, topic: topic), inspectIdeas: false)
     }
 
     /// Before promoting from a button: true when it can go ahead now; false when globs match no file, and the

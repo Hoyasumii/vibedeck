@@ -9,7 +9,7 @@ Fontes: `README.md:131-168`; conceitos básicos em `.vibedeck/docs/conceitos-do-
 
 - Na etapa da descrição, a IA também diz se a ideia é **viável** ou o que falta; o veredito fica em `readiness` (`README.md:135-137`).
 - O botão "Implementar" só habilita com regras e veredito viável e atual. Mudanças em título, texto, globs ou regras invalidam o veredito, e "Verificar" refaz só essa avaliação (`README.md:137-138`).
-- Ao clicar, as regras são promovidas/sincronizadas (a ideia fica "Aprovada") e a IA recebe no chat o pedido de implementar seguindo as regras e o check (`README.md:138-139`).
+- No app, ideias `approved` com avaliação viável atual oferecem **Workflow**, **Execução padrão** e **Cancelar** antes de promover regras ou iniciar a implementação. Sem workflows, só aparecem Execução padrão e Cancelar, sem catálogo. O seletor permite escolher um workflow existente ou adicionar itens do catálogo por seleção explícita. No chat, o modo explícito é respeitado; pedidos sem modo aguardam a escolha. Execução padrão usa `IdeaImplementation.prompt`. Workflows recebem o UUID recuperável da ideia; mudanças de título ou descrição não mudam o vínculo. Havendo execução anterior, **Retomar** preserva o estado e **Reiniciar** começa na primeira etapa. A confirmação relê a avaliação atual no disco. Cancelar não inicia nem promove. CLI e MCP continuam sem a pergunta de modo.
 - "Promover": se o tópico já existe, os globs são somados; globs que não casam mais arquivo são avisados antes (`README.md:131-133`).
 
 ## Agentes, comandos e skills

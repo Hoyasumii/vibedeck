@@ -25,14 +25,14 @@ struct SSHProjectSheet: View {
             Label("Abrir projeto via SSH", systemImage: "network").font(.title2)
             if destination == nil {
                 Form {
-                    Picker("Destino SSH", selection: $alias) {
+                    Picker("Destino SSH", selection: $alias.logging(control: "ssh.destination", label: "Destino SSH", project: nil)) {
                         Text("Configuração manual").tag("")
                         ForEach(SSHConnection.aliases(), id: \.self) { Text($0).tag($0) }
                     }
                     .onChange(of: alias) { _, value in
                         guard !value.isEmpty else { return }
                         perform {
-                            let resolved = try await Task.detached { try SSHConnection.configuration(alias: value) }.value
+                            let resolved = try await VDLog.detached { try SSHConnection.configuration(alias: value) }.value
                             host = value; user = resolved.user; port = String(resolved.port)
                         }
                     }
@@ -40,7 +40,7 @@ struct SSHProjectSheet: View {
                     LoggedTextField("Porta", text: $port).loggedField(control: "ssh.port", label: "Porta")
                     LoggedTextField("Usuário", text: $user).loggedField(control: "ssh.user", label: "Usuário")
                     SecureField("Senha ou frase secreta (opcional)", text: $password)
-                    Toggle("Guardar senha no Chaves do macOS", isOn: $remember)
+                    Toggle("Guardar senha no Chaves do macOS", isOn: $remember.logging(control: "ssh.remember", label: "Guardar senha no Chaves do macOS", project: nil))
                     Text("Sem senha, usa as chaves e o agente SSH configurados neste Mac.").font(.caption).foregroundStyle(.secondary)
                 }
                 LoggedButton("Conectar") { connect() }.loggedControl(control: "ssh.connect", label: "Conectar")
@@ -97,18 +97,18 @@ struct SSHProjectSheet: View {
             let target: SSHDestination
             if !alias.isEmpty && alias == host {
                 let selectedAlias = alias
-                let resolved = try await Task.detached { try SSHConnection.configuration(alias: selectedAlias) }.value
+                let resolved = try await VDLog.detached { try SSHConnection.configuration(alias: selectedAlias) }.value
                 target = try SSHDestination(host: resolved.host, port: port, user: user, alias: alias)
             } else { target = try SSHDestination(host: host, port: port, user: user) }
             let connection = SSHConnection(target)
-            if let candidate = try await Task.detached(operation: { try connection.unknownHostKeys() }).value {
+            if let candidate = try await VDLog.detached(operation: { try connection.unknownHostKeys() }).value {
                 fingerprints = try SSHConnection.fingerprints(candidate); keys = candidate; return
             }
             let secret = password.isEmpty ? SSHCredentials.password(for: target) : password
-            try await Task.detached { try connection.connect(password: secret) }.value
+            try await VDLog.detached { try connection.connect(password: secret) }.value
             if remember, let secret { try SSHCredentials.store(secret, for: target) }
             password = ""
-            let home = String(decoding: try await Task.detached { try connection.run("printf '%s' \"$HOME\"") }.value, as: UTF8.self)
+            let home = String(decoding: try await VDLog.detached { try connection.run("printf '%s' \"$HOME\"") }.value, as: UTF8.self)
             destination = target
             navigate(home)
         }
@@ -116,8 +116,8 @@ struct SSHProjectSheet: View {
     private func navigate(_ requested: String) {
         guard let destination else { return }
         perform {
-            let resolved = try await Task.detached { try SSHConnection(destination).resolved(directory: requested) }.value
-            let folders = try await Task.detached { try SSHConnection(resolved).directories() }.value
+            let resolved = try await VDLog.detached { try SSHConnection(destination).resolved(directory: requested) }.value
+            let folders = try await VDLog.detached { try SSHConnection(resolved).directories() }.value
             self.destination = resolved; path = resolved.directory; directories = folders
         }
     }
@@ -126,13 +126,13 @@ struct SSHProjectSheet: View {
         let requestedPath = path
         perform {
             // Clicking Open also commits a typed path, even without pressing Return or Go.
-            let destination = try await Task.detached {
+            let destination = try await VDLog.detached {
                 try SSHConnection(currentDestination).resolved(directory: requestedPath)
             }.value
             self.destination = destination; path = destination.directory
             let workspace = try RemoteWorkspace.open(destination)
             let transport = SSHFileTransport(destination)
-            let snapshot = try await Task.detached { try transport.snapshot() }.value
+            let snapshot = try await VDLog.detached { try transport.snapshot() }.value
             if snapshot["vibedeck.json"] == nil && !create {
                 name = (path as NSString).lastPathComponent; initialize = true; return
             }
@@ -140,7 +140,7 @@ struct SSHProjectSheet: View {
                 guard snapshot["vibedeck.json"] == nil else { throw VibeDeckError.ssh("Já existe um projeto nessa pasta. Abra novamente.") }
                 try ProjectStore.initialize(at: workspace.root, name: name)
             }
-            try await Task.detached { try workspace.synchronize(using: transport) }.value
+            try await VDLog.detached { try workspace.synchronize(using: transport) }.value
             onOpen(workspace.root); dismiss()
         }
     }
@@ -171,7 +171,7 @@ final class RemoteProjectStatus {
         do {
             let workspace = workspace
             let secret = password.isEmpty ? SSHCredentials.password(for: workspace.destination) : password
-            try await Task.detached {
+            try await VDLog.detached {
                 try SSHConnection(workspace.destination).connect(password: secret)
                 try workspace.synchronize(using: SSHFileTransport(workspace.destination))
             }.value
@@ -188,7 +188,7 @@ final class RemoteProjectStatus {
         guard !busy else { return }; busy = true
         do {
             let workspace = workspace
-            try await Task.detached { try workspace.resolve(conflict.path, keepLocal: keepLocal, using: SSHFileTransport(workspace.destination)) }.value
+            try await VDLog.detached { try workspace.resolve(conflict.path, keepLocal: keepLocal, using: SSHFileTransport(workspace.destination)) }.value
             error = nil
         } catch { self.error = error.localizedDescription }
         busy = false; await synchronize(force: true)
@@ -241,7 +241,7 @@ struct RemoteProjectBar: View {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Reconectar ao servidor").font(.headline)
                 SecureField("Senha ou frase secreta", text: $status.password)
-                Toggle("Guardar no Chaves do macOS", isOn: $status.remember)
+                Toggle("Guardar no Chaves do macOS", isOn: $status.remember.logging(control: "ssh.reconnect_remember", label: "Guardar no Chaves do macOS", project: status.workspace.root))
                 LoggedButton("Conectar") {
                     Task {
                         do { try SSHCredentials.store(status.remember ? status.password : nil, for: status.workspace.destination) }

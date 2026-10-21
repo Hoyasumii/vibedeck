@@ -6,12 +6,12 @@ applies "$LOG_SCOPE"
 fail=0
 bad() { echo "$1"; fail=1; }
 L=Sources/VibeDeckCore/Logging.swift
-region "$L" 'static func withAction' '^    }$' | grep -q 'info("ui.activated"' || bad "$L: withAction deve gravar info 'ui.activated'"
-region "$L" 'static func withAction' '^    }$' | grep -q 'component: .app' || bad "$L: withAction deve usar component .app"
+region "$L" 'static func withAction' '^    }$' | grep  'info("ui.activated"' >/dev/null || bad "$L: withAction deve gravar info 'ui.activated'"
+region "$L" 'static func withAction' '^    }$' | grep  'component: .app' >/dev/null || bad "$L: withAction deve usar component .app"
 # Botões: nenhum Button/Menu cru fora de LoggedControls.swift.
 # Exceção: Button cujo corpo chama docGenerator.start, que abre a ação docs.generate (DocGenerate.swift).
 while IFS=: read -r f n _; do
-  sed -n "${n},$((n+3))p" "$f" | grep -q 'docGenerator.start(' && continue
+  sed -n "${n},$((n+3))p" "$f" | grep  'docGenerator.start(' >/dev/null && continue
   bad "$f:$n: Button sem LoggedButton"
 done < <(grep -rnE '(^|[^A-Za-z.])Button[ ({]' Sources/VibeDeckApp --include='*.swift' | grep -v 'LoggedControls.swift' | grep -vE '^\S+:[0-9]+:\s*//' || true)
 # Pickers e Toggles: o binding precisa passar por .logging(...) (olha a declaração e as 4 linhas seguintes).

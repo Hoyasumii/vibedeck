@@ -4,7 +4,7 @@ source "$(dirname "$0")/_lib.sh"
 applies
 body "$TESTS" '@Test func newRulesHaveConcreteVerificationDetails' > /tmp/vd_b_$$; b=$(cat /tmp/vd_b_$$); rm -f /tmp/vd_b_$$
 for pat in 'newCategories\.keys' 'hasPrefix\("Verificar:"\)' 'rule\.details'; do
-  printf '%s' "$b" | grep -qE "$pat" || { echo "$TESTS: newRulesHaveConcreteVerificationDetails não confere '$pat'"; fail=1; }
+  printf '%s' "$b" | grep -E "$pat" >/dev/null || { echo "$TESTS: newRulesHaveConcreteVerificationDetails não confere '$pat'"; fail=1; }
 done
 py <<'PY' || fail=1
 import re, os

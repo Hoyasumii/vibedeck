@@ -4,7 +4,7 @@ cd "${VIBEDECK_ROOT:-.}"
 # applies <regex>: sai com 77 se VIBEDECK_FILES não está vazio e nenhum arquivo casa.
 applies() {
   [ -z "${VIBEDECK_FILES:-}" ] && return 0
-  printf '%s\n' "$VIBEDECK_FILES" | grep -Eq "$1" || exit 77
+  printf '%s\n' "$VIBEDECK_FILES" | grep -E "$1" >/dev/null || exit 77
 }
 
 LOG_SCOPE='^Sources/VibeDeckCore/Logging\.swift$|^Sources/VibeDeckApp/|^Tests/VibeDeckCoreTests/LoggingTests\.swift$|^Sources/vibedeck/(CLI|MCPServer)\.swift$|^README\.md$|^\.vibedeck/guide\.md$'
@@ -26,7 +26,7 @@ run_tests() {
   if ! out=$(swift test --skip-build "${args[@]}" 2>&1); then
     printf '%s\n' "$out" | tail -40; exit 1
   fi
-  printf '%s\n' "$out" | grep -q "Test run with [1-9][0-9]* test" || { echo "nenhum teste rodou para: $*"; printf '%s\n' "$out" | tail -10; exit 1; }
+  printf '%s\n' "$out" | grep  "Test run with [1-9][0-9]* test" >/dev/null || { echo "nenhum teste rodou para: $*"; printf '%s\n' "$out" | tail -10; exit 1; }
 }
 
 # region <arquivo> <regex-inicio> <regex-fim>: imprime o trecho (inclusive) do início até o próximo fim.

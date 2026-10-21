@@ -3,7 +3,7 @@
 # e lista os filhos, que abrem o item no detalhe; Links tem página própria filtrável.
 set -euo pipefail
 cd "${VIBEDECK_ROOT:-.}"
-if [ -n "${VIBEDECK_FILES:-}" ] && ! printf '%s\n' "$VIBEDECK_FILES" | grep -qE '^Sources/VibeDeckApp/'; then exit 77; fi
+if [ -n "${VIBEDECK_FILES:-}" ] && ! printf '%s\n' "$VIBEDECK_FILES" | grep -E '^Sources/VibeDeckApp/' >/dev/null; then exit 77; fi
 python3 -I - <<'PY'
 import re, sys
 A = "Sources/VibeDeckApp/"

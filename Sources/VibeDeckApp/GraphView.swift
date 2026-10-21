@@ -33,7 +33,7 @@ final class GraphRunner {
                     try? FileManager.default.removeItem(at: snapshot)
                     if let workspace = RemoteWorkspace.existing(at: root) {
                         let path = snapshot.lastPathComponent
-                        Task.detached { _ = try? SSHConnection(workspace.destination).run("rm -rf " + SSHConnection.quote(path)) }
+                        VDLog.detached { _ = try? SSHConnection(workspace.destination).run("rm -rf " + SSHConnection.quote(path)) }
                     }
                 }
                 task = nil

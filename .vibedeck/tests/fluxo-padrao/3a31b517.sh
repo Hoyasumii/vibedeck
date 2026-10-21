@@ -23,10 +23,10 @@ for id in "$by_rules" "$by_target"; do
   if out=$("$VD" review set "$id" --status done 2>&1); then
     echo "Sources/vibedeck/CLI.swift: review set --status done passou sem check aprovado (item $id)"; fail=1
   else
-    printf '%s' "$out" | grep -q "$MSG" || { echo "Sources/VibeDeckCore/ProjectStore.swift: mensagem do bloqueio não está em pt-BR: $out"; fail=1; }
+    printf '%s' "$out" | grep  "$MSG" >/dev/null || { echo "Sources/VibeDeckCore/ProjectStore.swift: mensagem do bloqueio não está em pt-BR: $out"; fail=1; }
   fi
 done
-"$VD" review list --status done --json | grep -q "$by_rules" &&{ echo "Sources/vibedeck/CLI.swift: item bloqueado ficou done mesmo assim"; fail=1; }
+"$VD" review list --status done --json | grep  "$by_rules" >/dev/null &&{ echo "Sources/vibedeck/CLI.swift: item bloqueado ficou done mesmo assim"; fail=1; }
 
 # Item sem regras conclui direto.
 "$VD" review set "$free" --status done >/dev/null 2>&1 || { echo "Sources/vibedeck/CLI.swift: item sem regras foi bloqueado"; fail=1; }
@@ -38,9 +38,9 @@ a2=$(printf '{"id":"%s","status":"in_progress"}' "$by_rules")
 c1=$(call 1 update_review_item "$a1"); c2=$(call 2 update_review_item "$a2")
 out=$(mcp "$c1" "$c2")
 r1=$(printf '%s\n' "$out" | response 1)
-printf '%s' "$r1" | grep -q '"isError":true' || { echo "Sources/vibedeck/MCPServer.swift: update_review_item status=done passou sem check aprovado"; fail=1; }
-printf '%s' "$r1" | grep -q "$MSG" || { echo "Sources/vibedeck/MCPServer.swift: bloqueio do done sem mensagem em pt-BR: $r1"; fail=1; }
-printf '%s\n' "$out" | response 2 | grep -q '"isError":true' && { echo "Sources/vibedeck/MCPServer.swift: update_review_item status=in_progress falhou"; fail=1; }
+printf '%s' "$r1" | grep  '"isError":true' >/dev/null || { echo "Sources/vibedeck/MCPServer.swift: update_review_item status=done passou sem check aprovado"; fail=1; }
+printf '%s' "$r1" | grep  "$MSG" >/dev/null || { echo "Sources/vibedeck/MCPServer.swift: bloqueio do done sem mensagem em pt-BR: $r1"; fail=1; }
+printf '%s\n' "$out" | response 2 | grep  '"isError":true' >/dev/null && { echo "Sources/vibedeck/MCPServer.swift: update_review_item status=in_progress falhou"; fail=1; }
 
 # Check só de scripts deixa a regra manual 'must' pendente: ainda bloqueia.
 "$VD" rules check --task t --item "$by_rules" >/dev/null 2>&1 || true

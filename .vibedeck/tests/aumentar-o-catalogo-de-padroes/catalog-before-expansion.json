@@ -1,0 +1,618 @@
+{
+  "sourceCommit": "0a48c9a8a2f7559e939ae4ae5c9148b787fb7afd",
+  "templates": [
+    {
+      "id": "tdd",
+      "name": "TDD",
+      "category": "practices",
+      "summary": "Test-Driven Development: o teste vem antes do código; cada comportamento novo nasce de um teste que falha.",
+      "aliases": [
+        "test-driven development",
+        "testes primeiro",
+        "test first"
+      ],
+      "rules": [
+        {
+          "text": "Todo comportamento novo ou corrigido tem um teste automatizado",
+          "details": "Escreva primeiro o teste que falha (vermelho), depois o mínimo de código para passar (verde), depois refatore.\nVerificar: a alteração vem acompanhada de testes que a exercitam; um bug corrigido ganha um teste de regressão.",
+          "severity": "must"
+        },
+        {
+          "text": "A suíte de testes passa antes de concluir",
+          "details": "Verificar: rode os testes do projeto e confirme que todos passam; não desative nem apague testes para fazer passar.",
+          "severity": "must"
+        },
+        {
+          "text": "O código é testável sem infraestrutura real",
+          "details": "Dependências externas (rede, disco, relógio, banco) entram por parâmetro ou protocolo e são trocadas por dublês nos testes.\nVerificar: os testes novos não dependem de serviços externos nem de estado global.",
+          "severity": "must"
+        }
+      ]
+    },
+    {
+      "id": "solid",
+      "name": "SOLID",
+      "category": "practices",
+      "summary": "Responsabilidade única, aberto/fechado, substituição de Liskov, segregação de interfaces e inversão de dependência.",
+      "aliases": [
+        "solid principles",
+        "principios solid"
+      ],
+      "rules": [
+        {
+          "text": "Cada tipo tem uma única responsabilidade",
+          "details": "Verificar: classes/structs/módulos novos ou alterados têm um motivo só para mudar; nada de \"Manager\" que faz tudo.",
+          "severity": "must"
+        },
+        {
+          "text": "Módulos de alto nível dependem de abstrações, não de implementações concretas",
+          "details": "Verificar: regras de negócio recebem protocolos/interfaces; implementações concretas são injetadas de fora.",
+          "severity": "must"
+        },
+        {
+          "text": "Interfaces são pequenas e específicas",
+          "details": "Verificar: nenhum protocolo novo obriga quem o implementa a métodos que não usa.",
+          "severity": "should"
+        },
+        {
+          "text": "Comportamento novo entra por extensão, não alterando código estável",
+          "details": "Verificar: prefira novos tipos/estratégias a encher de `if`/`switch` um fluxo existente.",
+          "severity": "should"
+        }
+      ]
+    },
+    {
+      "id": "dependency-injection",
+      "name": "Injeção de dependência",
+      "category": "practices",
+      "summary": "Os objetos recebem suas dependências de fora (construtor/parâmetro) em vez de criá-las ou buscá-las em singletons.",
+      "aliases": [
+        "di",
+        "dependency injection",
+        "inversao de controle",
+        "ioc"
+      ],
+      "rules": [
+        {
+          "text": "Dependências entram pelo construtor ou por parâmetro",
+          "details": "Verificar: código novo não instancia serviços concretos internamente nem acessa singletons/estado global para obtê-los.",
+          "severity": "must"
+        },
+        {
+          "text": "A montagem das dependências fica num ponto de composição",
+          "details": "Verificar: a criação dos objetos concretos fica no ponto de entrada (main, app, container), não espalhada pelo domínio.",
+          "severity": "must"
+        }
+      ]
+    },
+    {
+      "id": "functional-core",
+      "name": "Núcleo funcional",
+      "category": "practices",
+      "summary": "Functional core, imperative shell: lógica em funções puras e dados imutáveis; efeitos colaterais só na borda.",
+      "aliases": [
+        "functional core imperative shell",
+        "imutabilidade",
+        "funcoes puras",
+        "fp"
+      ],
+      "rules": [
+        {
+          "text": "A lógica de negócio fica em funções puras",
+          "details": "Mesma entrada, mesma saída, sem I/O, relógio ou aleatoriedade escondidos.\nVerificar: regras novas podem ser testadas sem mocks, só com valores.",
+          "severity": "must"
+        },
+        {
+          "text": "Dados são imutáveis por padrão",
+          "details": "Verificar: prefira `let`/valores/cópias com alteração a estado mutável compartilhado.",
+          "severity": "must"
+        },
+        {
+          "text": "Efeitos colaterais ficam na casca, fora do núcleo",
+          "details": "Verificar: I/O, persistência e chamadas externas ficam nas bordas, que chamam o núcleo puro.",
+          "severity": "must"
+        }
+      ]
+    },
+    {
+      "id": "clean-code",
+      "name": "Clean Code",
+      "category": "practices",
+      "summary": "Código legível: nomes que revelam intenção, funções pequenas, sem duplicação nem código morto.",
+      "aliases": [
+        "codigo limpo",
+        "clean"
+      ],
+      "rules": [
+        {
+          "text": "Funções são pequenas e fazem uma coisa",
+          "details": "Verificar: funções novas cabem na tela e têm um nível de abstração; extraia passos com nomes claros.",
+          "severity": "should"
+        },
+        {
+          "text": "Nomes revelam intenção",
+          "details": "Verificar: variáveis, funções e tipos dizem o que são/fazem, sem abreviações obscuras.",
+          "severity": "must"
+        },
+        {
+          "text": "Sem duplicação nem código morto",
+          "details": "Verificar: reaproveite o que já existe em vez de copiar; remova código comentado e não usado.",
+          "severity": "must"
+        }
+      ]
+    },
+    {
+      "id": "hexagonal",
+      "name": "Arquitetura hexagonal",
+      "category": "architecture",
+      "summary": "Ports & Adapters: o domínio no centro define portas (interfaces); adaptadores (UI, banco, HTTP) as implementam por fora.",
+      "aliases": [
+        "ports and adapters",
+        "ports & adapters",
+        "portas e adaptadores",
+        "hexagonal architecture"
+      ],
+      "rules": [
+        {
+          "text": "O domínio não depende de frameworks nem de infraestrutura",
+          "details": "Verificar: o núcleo não importa UI, banco, HTTP ou SDKs; só a linguagem e o próprio domínio.",
+          "severity": "must"
+        },
+        {
+          "text": "O domínio fala com o mundo por portas (interfaces) que ele mesmo define",
+          "details": "Portas de entrada (casos de uso) e de saída (repositórios, gateways) ficam no núcleo.\nVerificar: toda dependência externa nova tem uma porta no domínio.",
+          "severity": "must"
+        },
+        {
+          "text": "Adaptadores implementam as portas e ficam fora do núcleo",
+          "details": "Verificar: código de UI, persistência e integrações está em adaptadores que dependem do domínio, nunca o contrário.",
+          "severity": "must"
+        },
+        {
+          "text": "Os casos de uso são testáveis com adaptadores falsos",
+          "details": "Verificar: há testes do núcleo usando implementações em memória das portas.",
+          "severity": "should"
+        }
+      ]
+    },
+    {
+      "id": "clean-architecture",
+      "name": "Clean Architecture",
+      "category": "architecture",
+      "summary": "Camadas concêntricas (entidades, casos de uso, adaptadores, frameworks) com dependências apontando só para dentro.",
+      "aliases": [
+        "arquitetura limpa",
+        "clean arch",
+        "onion",
+        "onion architecture"
+      ],
+      "rules": [
+        {
+          "text": "Dependências apontam só para dentro",
+          "details": "Entidades ← casos de uso ← adaptadores ← frameworks.\nVerificar: nenhuma camada interna importa ou conhece uma externa.",
+          "severity": "must"
+        },
+        {
+          "text": "Cada caso de uso é uma unidade explícita",
+          "details": "Verificar: regras de aplicação novas ficam em casos de uso (interactors) com entrada e saída definidas, não em controllers/views.",
+          "severity": "must"
+        },
+        {
+          "text": "Dados atravessam fronteiras como estruturas simples",
+          "details": "Verificar: entidades e modelos de framework (ORM, DTO de rede) não vazam entre camadas; há mapeamento na fronteira.",
+          "severity": "should"
+        }
+      ]
+    },
+    {
+      "id": "layered",
+      "name": "Arquitetura em camadas",
+      "category": "architecture",
+      "summary": "Apresentação, aplicação, domínio e infraestrutura separados; cada camada só fala com a de baixo.",
+      "aliases": [
+        "camadas",
+        "layers",
+        "n-tier",
+        "layered architecture"
+      ],
+      "rules": [
+        {
+          "text": "Cada camada só depende da camada abaixo",
+          "details": "Verificar: a apresentação não acessa a infraestrutura direto; o domínio não conhece a apresentação.",
+          "severity": "must"
+        },
+        {
+          "text": "Regra de negócio não fica na camada de apresentação",
+          "details": "Verificar: views/controllers só orquestram e formatam; decisões de negócio estão no domínio/aplicação.",
+          "severity": "must"
+        }
+      ]
+    },
+    {
+      "id": "mvvm",
+      "name": "MVVM",
+      "category": "architecture",
+      "summary": "Model-View-ViewModel: a View só desenha e repassa eventos; o ViewModel expõe estado e ações; o Model guarda dados e regras.",
+      "aliases": [
+        "model view viewmodel",
+        "model-view-viewmodel"
+      ],
+      "rules": [
+        {
+          "text": "Views não contêm lógica de negócio",
+          "details": "Verificar: views novas só leem estado do ViewModel e chamam suas ações.",
+          "severity": "must"
+        },
+        {
+          "text": "ViewModels não dependem da camada de UI",
+          "details": "Verificar: o ViewModel não importa tipos de view e pode ser testado sem UI.",
+          "severity": "must"
+        },
+        {
+          "text": "ViewModels têm testes do estado e das ações",
+          "details": "nil",
+          "severity": "should"
+        }
+      ]
+    },
+    {
+      "id": "mvc",
+      "name": "MVC",
+      "category": "architecture",
+      "summary": "Model-View-Controller: Model com dados e regras, View só exibe, Controller recebe a entrada e coordena.",
+      "aliases": [
+        "model view controller",
+        "model-view-controller"
+      ],
+      "rules": [
+        {
+          "text": "Regras de negócio ficam no Model",
+          "details": "Verificar: controllers não acumulam lógica de domínio; eles coordenam Model e View.",
+          "severity": "must"
+        },
+        {
+          "text": "Views não acessam dados direto",
+          "details": "Verificar: views recebem o que exibem; não consultam banco nem serviços.",
+          "severity": "must"
+        }
+      ]
+    },
+    {
+      "id": "ddd",
+      "name": "DDD",
+      "category": "domain",
+      "summary": "Domain-Driven Design: o código usa a linguagem do negócio, com entidades, objetos de valor, agregados e contextos delimitados.",
+      "aliases": [
+        "domain-driven design",
+        "domain driven design",
+        "design orientado a dominio"
+      ],
+      "rules": [
+        {
+          "text": "O código usa a linguagem ubíqua do domínio",
+          "details": "Verificar: tipos, métodos e eventos têm os nomes que o negócio usa, não nomes técnicos genéricos.",
+          "severity": "must"
+        },
+        {
+          "text": "Regras de negócio vivem nas entidades e objetos de valor, não em serviços anêmicos",
+          "details": "Verificar: invariantes são garantidas dentro do próprio modelo; nada de entidade só com getters/setters.",
+          "severity": "must"
+        },
+        {
+          "text": "Agregados protegem suas invariantes e são alterados só pela raiz",
+          "details": "Verificar: código externo não altera entidades internas de um agregado diretamente; referências entre agregados são por id.",
+          "severity": "must"
+        },
+        {
+          "text": "Contextos delimitados não se misturam",
+          "details": "Verificar: conceitos de um contexto não são importados direto em outro; há tradução (anticorrupção) na fronteira.",
+          "severity": "should"
+        }
+      ]
+    },
+    {
+      "id": "cqrs",
+      "name": "CQRS",
+      "category": "domain",
+      "summary": "Command Query Responsibility Segregation: comandos alteram estado e não retornam dados; consultas leem e não alteram nada.",
+      "aliases": [
+        "command query responsibility segregation",
+        "command query separation",
+        "cqs"
+      ],
+      "rules": [
+        {
+          "text": "Comandos e consultas são separados",
+          "details": "Verificar: uma operação nova ou altera estado (comando) ou retorna dados (consulta), nunca os dois.",
+          "severity": "must"
+        },
+        {
+          "text": "Cada comando tem um handler explícito que valida e aplica a mudança",
+          "details": "Verificar: comandos novos são tipos próprios com seu handler, não métodos soltos em serviços genéricos.",
+          "severity": "must"
+        },
+        {
+          "text": "Consultas não têm efeitos colaterais",
+          "details": "Verificar: o caminho de leitura não grava, não dispara eventos e pode usar modelos de leitura próprios.",
+          "severity": "must"
+        }
+      ]
+    },
+    {
+      "id": "event-sourcing",
+      "name": "Event Sourcing",
+      "category": "domain",
+      "summary": "O estado é derivado de uma sequência imutável de eventos de domínio, em vez de ser sobrescrito.",
+      "aliases": [
+        "eventos",
+        "event sourced",
+        "event store"
+      ],
+      "rules": [
+        {
+          "text": "Mudanças de estado são registradas como eventos imutáveis",
+          "details": "Verificar: alterações novas geram eventos com nome no passado (PedidoCriado), sem editar ou apagar eventos antigos.",
+          "severity": "must"
+        },
+        {
+          "text": "O estado é reconstruído aplicando os eventos",
+          "details": "Verificar: o agregado tem funções de aplicar evento determinísticas e sem efeitos colaterais.",
+          "severity": "must"
+        },
+        {
+          "text": "Eventos são versionados quando o formato muda",
+          "details": "nil",
+          "severity": "should"
+        }
+      ]
+    },
+    {
+      "id": "repository",
+      "name": "Repository",
+      "category": "domain",
+      "summary": "O domínio acessa a persistência por repositórios com interface de coleção, sem conhecer o banco.",
+      "aliases": [
+        "repositorio",
+        "repository pattern"
+      ],
+      "rules": [
+        {
+          "text": "Acesso a dados passa por repositórios",
+          "details": "Verificar: código de domínio/aplicação não faz SQL, chamadas de ORM ou de arquivo direto.",
+          "severity": "must"
+        },
+        {
+          "text": "A interface do repositório é do domínio; a implementação é da infraestrutura",
+          "details": "Verificar: o protocolo fica junto do domínio e fala em entidades; a implementação concreta fica fora e pode ser trocada em testes.",
+          "severity": "must"
+        }
+      ]
+    },
+    {
+      "id": "strategy",
+      "name": "Strategy",
+      "category": "design",
+      "summary": "Algoritmos intercambiáveis atrás de uma interface comum, escolhidos em tempo de execução em vez de if/switch espalhados.",
+      "aliases": [
+        "estrategia",
+        "strategy pattern"
+      ],
+      "rules": [
+        {
+          "text": "Variações de comportamento viram implementações de um protocolo",
+          "details": "Verificar: não há cadeias de if/switch por tipo repetidas em vários pontos; cada variante é um tipo que implementa a mesma interface.",
+          "severity": "must"
+        },
+        {
+          "text": "O cliente depende do protocolo, não da implementação concreta",
+          "details": "Verificar: quem usa a estratégia recebe o protocolo por parâmetro ou injeção.",
+          "severity": "must"
+        }
+      ]
+    },
+    {
+      "id": "observer",
+      "name": "Observer",
+      "category": "design",
+      "summary": "Um sujeito notifica observadores interessados sem conhecê-los, desacoplando quem emite de quem reage.",
+      "aliases": [
+        "pub/sub",
+        "publish subscribe",
+        "observador",
+        "observer pattern"
+      ],
+      "rules": [
+        {
+          "text": "O emissor não conhece os observadores concretos",
+          "details": "Verificar: o emissor expõe inscrição/cancelamento (callback, AsyncStream, Combine, delegate) e não referencia tipos de quem reage.",
+          "severity": "must"
+        },
+        {
+          "text": "Toda inscrição tem cancelamento claro",
+          "details": "Verificar: observadores são removidos ao fim do ciclo de vida, sem vazar memória nem retain cycles.",
+          "severity": "must"
+        }
+      ]
+    },
+    {
+      "id": "factory",
+      "name": "Factory",
+      "category": "design",
+      "summary": "Centraliza a criação de objetos (Factory Method / Abstract Factory), escondendo qual tipo concreto é instanciado.",
+      "aliases": [
+        "factory method",
+        "abstract factory",
+        "fabrica"
+      ],
+      "rules": [
+        {
+          "text": "A criação de variantes passa por uma fábrica",
+          "details": "Verificar: o código cliente não escolhe o tipo concreto com if/switch; pede à fábrica.",
+          "severity": "must"
+        },
+        {
+          "text": "A fábrica devolve o protocolo/tipo abstrato",
+          "details": "Verificar: o tipo de retorno é abstrato, para o cliente não depender da classe concreta.",
+          "severity": "must"
+        }
+      ]
+    },
+    {
+      "id": "builder",
+      "name": "Builder",
+      "category": "design",
+      "summary": "Constrói objetos complexos passo a passo, separando a construção da representação final.",
+      "aliases": [
+        "construtor passo a passo",
+        "builder pattern"
+      ],
+      "rules": [
+        {
+          "text": "Objetos com muitos parâmetros opcionais são montados por um builder",
+          "details": "Verificar: não há inicializadores com longas listas de parâmetros opcionais; a montagem é encadeada e legível.",
+          "severity": "must"
+        },
+        {
+          "text": "O resultado do builder é válido ou a construção falha",
+          "details": "Verificar: build() valida invariantes e não devolve objeto parcial.",
+          "severity": "must"
+        }
+      ]
+    },
+    {
+      "id": "adapter",
+      "name": "Adapter",
+      "category": "design",
+      "summary": "Converte a interface de um componente existente na interface que o cliente espera.",
+      "aliases": [
+        "adaptador",
+        "wrapper",
+        "adapter pattern"
+      ],
+      "rules": [
+        {
+          "text": "Código de terceiros/legado é isolado por um adapter",
+          "details": "Verificar: o resto do código usa a interface do projeto, não a API externa diretamente.",
+          "severity": "must"
+        },
+        {
+          "text": "O adapter só traduz, sem regra de negócio",
+          "details": "Verificar: o adapter converte formatos e chamadas; a lógica de domínio fica fora dele.",
+          "severity": "must"
+        }
+      ]
+    },
+    {
+      "id": "decorator",
+      "name": "Decorator",
+      "category": "design",
+      "summary": "Acrescenta comportamento a um objeto envolvendo-o em outro com a mesma interface, sem herança.",
+      "aliases": [
+        "decorador",
+        "decorator pattern"
+      ],
+      "rules": [
+        {
+          "text": "Comportamento transversal é adicionado por composição",
+          "details": "Verificar: log, cache, retry etc. envolvem o objeto original com o mesmo protocolo em vez de subclasses ou flags.",
+          "severity": "must"
+        },
+        {
+          "text": "O decorator preserva o contrato do objeto decorado",
+          "details": "Verificar: mesma interface e mesma semântica; quem usa não distingue o decorado do original.",
+          "severity": "must"
+        }
+      ]
+    },
+    {
+      "id": "facade",
+      "name": "Facade",
+      "category": "design",
+      "summary": "Oferece uma interface simples para um subsistema complexo.",
+      "aliases": [
+        "fachada",
+        "facade pattern"
+      ],
+      "rules": [
+        {
+          "text": "Subsistemas complexos expõem uma fachada com poucas operações",
+          "details": "Verificar: os clientes chamam a fachada, não vários componentes internos em sequência.",
+          "severity": "must"
+        },
+        {
+          "text": "A fachada não duplica nem esconde regras do subsistema",
+          "details": "Verificar: ela delega e orquestra; a lógica continua nos componentes internos.",
+          "severity": "must"
+        }
+      ]
+    },
+    {
+      "id": "command",
+      "name": "Command",
+      "category": "design",
+      "summary": "Encapsula uma ação como objeto, permitindo enfileirar, registrar, repetir e desfazer.",
+      "aliases": [
+        "comando",
+        "command pattern",
+        "undo"
+      ],
+      "rules": [
+        {
+          "text": "Ações de usuário/sistema passíveis de fila, histórico ou desfazer são objetos de comando",
+          "details": "Verificar: a ação tem um tipo próprio com tudo que precisa para executar (e desfazer, se aplicável).",
+          "severity": "must"
+        },
+        {
+          "text": "Quem dispara o comando não conhece quem o executa",
+          "details": "Verificar: invoker e receiver ficam desacoplados pelo protocolo do comando.",
+          "severity": "must"
+        }
+      ]
+    },
+    {
+      "id": "state",
+      "name": "State",
+      "category": "design",
+      "summary": "O comportamento de um objeto muda conforme seu estado interno, modelado como tipos ou casos explícitos.",
+      "aliases": [
+        "maquina de estados",
+        "state machine",
+        "state pattern"
+      ],
+      "rules": [
+        {
+          "text": "Estados e transições são explícitos",
+          "details": "Verificar: existe um enum/tipo por estado e as transições válidas ficam em um só lugar, sem flags booleanas combinadas.",
+          "severity": "must"
+        },
+        {
+          "text": "Transições inválidas são impossíveis ou rejeitadas",
+          "details": "Verificar: o código não permite ir para um estado não previsto; há teste das transições.",
+          "severity": "must"
+        }
+      ]
+    },
+    {
+      "id": "singleton",
+      "name": "Singleton",
+      "category": "design",
+      "summary": "Uma única instância compartilhada. Use com parcimônia: prefira injetar a instância.",
+      "aliases": [
+        "instancia unica",
+        "singleton pattern"
+      ],
+      "rules": [
+        {
+          "text": "Singletons não são acessados diretamente por quem os usa",
+          "details": "Verificar: o acesso ao singleton acontece na composição (raiz da app) e chega aos demais por injeção de dependência.",
+          "severity": "must"
+        },
+        {
+          "text": "O estado compartilhado é seguro para concorrência",
+          "details": "Verificar: acesso protegido (actor, lock ou imutabilidade).",
+          "severity": "must"
+        }
+      ]
+    }
+  ]
+}

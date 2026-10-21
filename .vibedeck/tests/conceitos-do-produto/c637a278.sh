@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "${VIBEDECK_ROOT:-.}"
 # Checks são histórico imutável: só submitCheck grava (arquivo novo), nada edita nem apaga.
-if [ -n "${VIBEDECK_FILES:-}" ] && ! printf "%s\n" "$VIBEDECK_FILES" | grep -qE "^Sources/"; then exit 77; fi
+if [ -n "${VIBEDECK_FILES:-}" ] && ! printf "%s\n" "$VIBEDECK_FILES" | grep -E "^Sources/" >/dev/null; then exit 77; fi
 python3 -I - <<'PY'
 import re, glob, sys
 bad = 0

@@ -11,10 +11,10 @@ grep -q 'queue.async(execute: work)' "$L" || bad "$L: caminho assíncrono ausent
 # sync: true só no handler de exceção não tratada.
 while IFS=: read -r f n rest; do
   ctx=$(sed -n "$((n-4)),${n}p" "$f")
-  printf '%s' "$ctx" | grep -qE 'crash|uncaught_exception|NSSetUncaughtExceptionHandler' || bad "$f:$n: sync: true fora de handler de crash/saída"
+  printf '%s' "$ctx" | grep -E 'crash|uncaught_exception|NSSetUncaughtExceptionHandler' >/dev/null || bad "$f:$n: sync: true fora de handler de crash/saída"
 done < <(grep -rn 'sync: true' Sources/VibeDeckApp --include='*.swift' || true)
 # flush() bloqueia: só ao encerrar o processo.
 while IFS=: read -r f n rest; do
-  sed -n "$((n-4)),${n}p" "$f" | grep -q 'applicationWillTerminate' || bad "$f:$n: VDLog.flush() bloqueante fora de applicationWillTerminate"
+  sed -n "$((n-4)),${n}p" "$f" | grep  'applicationWillTerminate' >/dev/null || bad "$f:$n: VDLog.flush() bloqueante fora de applicationWillTerminate"
 done < <(grep -rn 'VDLog\.flush()' Sources/VibeDeckApp --include='*.swift' || true)
 [ $fail -eq 0 ] || exit 1

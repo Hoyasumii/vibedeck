@@ -258,6 +258,20 @@ public struct WorkflowRunAction: Codable, Equatable, Sendable {
 
 /// Pure state machine over a `WorkflowRun` (no disk), so it can be tested and shared by app, CLI and MCP.
 public enum WorkflowRunEngine {
+    /// Explicit restart begins a fresh cycle, retaining the audit trail and closing old questions.
+    public static func restartFromBeginning(_ run: inout WorkflowRun, workflow: Workflow, now: Date = .now) throws {
+        guard let first = workflow.steps.first?.id else {
+            throw VibeDeckError.invalidWorkflow("o workflow não tem etapas.")
+        }
+        run.cycle += 1
+        run.current = first
+        run.checkpoint = nil
+        run.questions = []
+        run.status = .running
+        run.reason = nil
+        run.updatedAt = now
+    }
+
     /// Restarts a finished run (a new cycle from `from`, or the start); keeps an unfinished one where it is.
     public static func restart(_ run: inout WorkflowRun, workflow: Workflow, from: String? = nil, now: Date = .now) throws {
         let target = try from.map { try stepId($0, in: workflow) }
@@ -530,5 +544,31 @@ public enum WorkflowOrchestration {
         return prompt.replacingOccurrences(of: "(`Agent`, ", with: "(a ferramenta de subagente disponível no Codex, ")
             .replacingOccurrences(of: "`subagent_type: \"general-purpose\"`, `model` = o `model` da ação quando houver, `description: \"<step>\"`)", with: "contexto limpo; use o modelo configurado para Codex quando disponível)")
             .replacingOccurrences(of: "faça-as com `AskUserQuestion` (até 4 por vez, na ", with: "apresente-as ao usuário (até 4 por vez, na ")
+    }
+}
+
+extension ProjectStore {
+    /// App-only callers use this lookup before offering Retomar/Reiniciar. It has no side effects.
+    public func ideaRun(_ idea: Idea, workflow: String) throws -> (ref: String, run: WorkflowRun)? {
+        let slug = try resolveWorkflowSlug(workflow)
+        let input = IdeaImplementation.workflowInput(idea)
+        return try listRuns(workflow: slug).first { $0.run.input == input }
+    }
+
+    /// Explicit app decision. Direct CLI/MCP startRun keeps its existing semantics.
+    public func implementIdeaRun(_ ideaRef: String, workflow: String, restart: Bool, provider: AIProvider) throws -> (ref: String, run: WorkflowRun) {
+        let idea = try loadIdea(resolveIdeaSlug(ideaRef))
+        guard IdeaImplementation.isEligible(idea) else {
+            throw VibeDeckError.invalidWorkflow("a ideia precisa estar aprovada e ter uma avaliação viável atual.")
+        }
+        if let existing = try ideaRun(idea, workflow: workflow) {
+            if !restart { return (existing.ref, try resumeRun(existing.ref)) }
+            var run = existing.run
+            try WorkflowRunEngine.restartFromBeginning(&run, workflow: loadWorkflow(run.workflow))
+            try saveRun(run, ref: existing.ref)
+            return (existing.ref, run)
+        }
+        let started = try startRun(workflow, input: IdeaImplementation.workflowInput(idea), provider: provider)
+        return (started.ref, started.run)
     }
 }

@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "${VIBEDECK_ROOT:-.}"
 # Não se aplica quando a tarefa não tocou em Sources/VibeDeckApp.
-if [ -n "${VIBEDECK_FILES:-}" ] && ! printf "%s\n" "$VIBEDECK_FILES" | grep -qE "^Sources/VibeDeckApp/|^Package\.swift$"; then exit 77; fi
+if [ -n "${VIBEDECK_FILES:-}" ] && ! printf "%s\n" "$VIBEDECK_FILES" | grep -E "^Sources/VibeDeckApp/|^Package\.swift$" >/dev/null; then exit 77; fi
 fail=0
 bad() { echo "$1: $2"; fail=1; }
 # Root da janela: conteúdo do WindowGroup (VibeDeckApp.swift/RootView), WelcomeView e ProjectWindow
@@ -21,6 +21,6 @@ while IFS=: read -r n line; do
   bad "$f:$n" "minWidth/minHeight no ProjectWindow raiz"
 done < <(grep -nE 'minWidth|minHeight' "$f" || true)
 # Raiz: o WindowGroup deve renderizar RootView sem modificador de frame.
-awk '/WindowGroup\(/{g=1} g&&/RootView\(root:/{print; exit}' Sources/VibeDeckApp/VibeDeckApp.swift | grep -q 'RootView(root: \$root)$' \
+awk '/WindowGroup\(/{g=1} g&&/RootView\(root:/{print; exit}' Sources/VibeDeckApp/VibeDeckApp.swift | grep  'RootView(root: \$root)$' >/dev/null \
   || bad Sources/VibeDeckApp/VibeDeckApp.swift "RootView no WindowGroup deveria ficar sem modificadores de frame"
 exit $fail

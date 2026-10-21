@@ -9,7 +9,7 @@ want = {
  "modular-monolith": ("Monólito modular", "architecture"), "event-driven": ("Arquitetura orientada a eventos", "architecture"),
  "value-object": ("Objeto de valor", "domain"), "domain-service": ("Serviço de domínio", "domain"),
  "composite": ("Composição", "design"), "proxy": ("Representante", "design")}
-cat = {t["id"]: t for t in c.load()}; head = {t["id"] for t in c.head_catalog()}; bad = []
+cat = {t["id"]: t for t in c.load()}; head = {t["id"] for t in c.original_catalog()}; bad = []
 for i, (name, cat_) in want.items():
     t = cat.get(i)
     if not t: bad.append(f"{i}: ausente"); continue

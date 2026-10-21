@@ -15,6 +15,12 @@
     "Tests/VibeDeckCoreTests/RuleDiscoverTests.swift",
     "Tests/VibeDeckCoreTests/WorkflowRunsTests.swift"
   ],
+  "promotedTopic" : "novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme",
+  "readiness" : {
+    "checkedAt" : "2026-10-20T19:39:06Z",
+    "fingerprint" : "cb7de52fbe16138e",
+    "viable" : true
+  },
   "rules" : [
     {
       "author" : "ai",
@@ -153,12 +159,12 @@
       "text" : "Ao confirmar o modo de implementação, o app deve revalidar a elegibilidade da ideia usando seu conteúdo atual."
     }
   ],
-  "status" : "new",
+  "status" : "done",
   "tags" : [
     "ideias",
     "workflows",
     "interface"
   ],
   "title" : "Novo Comportamento de quando o usuário pedir para IA implementar uma ideia já aprovada, o programa deverá perguntar ao usuário se ele deseja implementar a ideia com um workflow, ou se deseja executar da forma padrão?",
-  "updatedAt" : "2026-10-20T13:46:06Z"
+  "updatedAt" : "2026-10-21T13:23:32Z"
 }

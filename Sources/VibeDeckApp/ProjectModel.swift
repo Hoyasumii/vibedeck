@@ -937,6 +937,89 @@ final class ProjectModel {
 
     // MARK: Ideas
 
+    /// Reload from disk at every confirmation; the watcher may not have delivered an external edit yet.
+    func currentImplementationIdea(_ id: UUID) throws -> (slug: String, idea: Idea) {
+        let slug = try store.resolveIdeaSlug(id.uuidString)
+        let idea = try store.loadIdea(slug)
+        guard IdeaImplementation.isEligible(idea) else {
+            throw VibeDeckError.invalidWorkflow("a ideia precisa estar aprovada e ter uma avaliação viável atual. Verifique novamente.")
+        }
+        return (slug, idea)
+    }
+
+    private struct IdeaImplementationState {
+        var slug: String
+        var idea: Idea
+        var topicSlug: String
+        var topic: RuleTopic?
+        var runRef: String?
+        var run: WorkflowRun?
+    }
+
+    private func restoreImplementation(_ state: IdeaImplementationState, undo: UndoManager?, registerUndo: Bool = true) {
+        do {
+            let inverse = IdeaImplementationState(slug: state.slug, idea: try store.loadIdea(state.slug),
+                topicSlug: state.topicSlug, topic: try? store.loadTopic(state.topicSlug),
+                runRef: state.runRef, run: state.runRef.flatMap { try? store.loadRun($0) })
+            try VDLog.$projectRoot.withValue(store.root) {
+                try VDLog.$undoName.withValue("Implementar ideia") {
+                    try store.saveIdea(state.idea, slug: state.slug)
+                    if let topic = state.topic { try store.saveTopic(topic, slug: state.topicSlug) }
+                    else if FileManager.default.fileExists(atPath: store.topicURL(state.topicSlug).path) {
+                        try ProjectFiles.remove(store.topicURL(state.topicSlug))
+                        logRemoval(store.topicURL(state.topicSlug), undoName: "Implementar ideia")
+                    }
+                    if let ref = state.runRef {
+                        if let run = state.run { try store.saveRun(run, ref: ref) }
+                        else if FileManager.default.fileExists(atPath: store.runURL(ref).path) {
+                            try ProjectFiles.remove(store.runURL(ref))
+                            logRemoval(store.runURL(ref), undoName: "Implementar ideia")
+                        }
+                    }
+                }
+            }
+            reloadIdeas(); reloadTopics(); reloadRuns()
+            if registerUndo {
+                undo?.registerUndo(withTarget: self) { $0.restoreImplementation(inverse, undo: undo) }
+                undo?.setActionName("Implementar ideia")
+            }
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    func prepareIdeaImplementation(_ id: UUID, workflow: String? = nil, restart: Bool = false,
+                                   skippingPaths: Set<String> = [], provider: AIProvider, undo: UndoManager?) throws
+        -> (prompt: String, execution: (ref: String, run: WorkflowRun)?) {
+        let (slug, idea) = try currentImplementationIdea(id)
+        let previousTopics = try store.listTopics()
+        let previousRun = try workflow.flatMap { try store.ideaRun(idea, workflow: $0) }
+        if let workflow {
+            let flow = try store.loadWorkflow(store.resolveWorkflowSlug(workflow))
+            guard !flow.steps.isEmpty else { throw VibeDeckError.invalidWorkflow("o workflow não tem etapas.") }
+            if let run = previousRun?.run, run.provider != provider {
+                throw VibeDeckError.invalidWorkflow("a execução pertence a outro provedor. Selecione \(run.provider.title) antes de continuar.")
+            }
+        }
+        return try VDLog.$projectRoot.withValue(store.root) {
+            try VDLog.$undoName.withValue("Implementar ideia") {
+                let topic = try store.promoteIdea(slug, skippingPaths: skippingPaths)
+                var before = IdeaImplementationState(slug: slug, idea: idea, topicSlug: topic,
+                    topic: previousTopics.first { $0.slug == topic }?.topic,
+                    runRef: previousRun?.ref, run: previousRun?.run)
+                do {
+                    let execution = try workflow.map { try store.implementIdeaRun(id.uuidString, workflow: $0, restart: restart, provider: provider) }
+                    before.runRef = execution?.ref
+                    reloadIdeas(); reloadTopics(); reloadRuns()
+                    undo?.registerUndo(withTarget: self) { $0.restoreImplementation(before, undo: undo) }
+                    undo?.setActionName("Implementar ideia")
+                    return (IdeaImplementation.prompt(slug: slug, idea: idea, topic: topic), execution)
+                } catch {
+                    restoreImplementation(before, undo: undo, registerUndo: false)
+                    throw error
+                }
+            }
+        }
+    }
+
     func idea(_ slug: String) -> Idea? {
         ideas.first { $0.slug == slug }?.value
     }

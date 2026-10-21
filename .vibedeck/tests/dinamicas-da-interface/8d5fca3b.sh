@@ -3,7 +3,7 @@
 # e toda mutação vinda da UI passa um UndoManager (undo: nil só no autosave de editores de texto, que têm undo próprio).
 set -euo pipefail
 cd "${VIBEDECK_ROOT:-.}"
-if [ -n "${VIBEDECK_FILES:-}" ] && ! printf '%s\n' "$VIBEDECK_FILES" | grep -qE '^Sources/VibeDeckApp/'; then exit 77; fi
+if [ -n "${VIBEDECK_FILES:-}" ] && ! printf '%s\n' "$VIBEDECK_FILES" | grep -E '^Sources/VibeDeckApp/' >/dev/null; then exit 77; fi
 python3 -I - <<'PY'
 import re, sys, glob
 bad = 0

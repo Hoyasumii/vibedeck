@@ -6,6 +6,61 @@ import VibeDeckCore
 /// are driven by VibeDeck and saved on disk. Legacy chat storage remains compatible.
 @Observable @MainActor
 final class AISession {
+    struct IdeaRequest: Identifiable {
+        let id = UUID()
+        let actionID = VDLog.actionID
+        let ideaID: UUID
+        var mode: IdeaImplementation.ChatIntent.Mode = .ask
+        var workflow: String?
+    }
+    var ideaRequest: IdeaRequest?
+    @ObservationIgnored private var ideaIntentTask: Task<Void, Never>?
+
+    func requestIdeaImplementation(_ idea: Idea) {
+        guard !isWorking, IdeaImplementation.isEligible(idea) else { return }
+        ideaRequest = IdeaRequest(ideaID: idea.id)
+    }
+
+    /// Resolve intent before sending anything to a writing-capable conversation.
+    private func inspectIdeaRequest(_ text: String, mentions: [UUID], attachments: [URL]) {
+        let project = ProjectStore(root: root)
+        isWorking = true
+        ideaIntentTask = Task {
+            defer { ideaIntentTask = nil }
+            do {
+                let ideas = try project.listIdeas()
+                let workflows = try project.listWorkflows()
+                let context = entries.suffix(8).compactMap { entry -> String? in
+                    switch entry.kind { case .user(let t), .assistant(let t): return t; default: return nil }
+                }.joined(separator: "\n")
+                let intent = try await AIReadOnlyOperation.run(root: root, provider: provider,
+                    operation: "Identificar implementação de ideia",
+                    prompt: IdeaImplementation.intentPrompt(text, context: context, ideas: ideas.map { ($0.slug, $0.idea) }, workflows: workflows),
+                    schema: IdeaImplementation.intentSchema) { data in
+                        let intent = try VDJSON.decoder.decode(IdeaImplementation.ChatIntent.self, from: data)
+                        guard intent.mode == .none || ideas.contains(where: { $0.idea.id.uuidString == intent.idea }) else {
+                            throw VibeDeckError.discoverFailed("Referência de ideia inválida.")
+                        }
+                        guard intent.workflow == nil || workflows.contains(where: { $0.slug == intent.workflow }) else {
+                            throw VibeDeckError.discoverFailed("Referência de workflow inválida.")
+                        }
+                        return intent
+                    }
+                try Task.checkCancellation()
+                isWorking = false
+                if intent.mode != .none, let ref = intent.idea {
+                    let idea = try project.loadIdea(project.resolveIdeaSlug(ref))
+                    guard IdeaImplementation.isEligible(idea) else {
+                        fail("A ideia precisa estar aprovada e ter uma avaliação viável atual antes de implementar.")
+                        return
+                    }
+                    ideaRequest = IdeaRequest(ideaID: idea.id, mode: intent.mode, workflow: intent.workflow)
+                } else {
+                    send(text, mentions: mentions, attachments: attachments, inspectIdeas: false)
+                }
+            } catch is CancellationError {} catch { isWorking = false; fail(error.localizedDescription) }
+        }
+    }
     struct Entry: Identifiable, Equatable {
         enum Kind: Equatable {
             case user(String)
@@ -273,21 +328,29 @@ final class AISession {
     // MARK: Actions
 
     /// Shows the conversation and sends `prompt`, for buttons elsewhere in the app.
-    func ask(_ prompt: String) {
+    func ask(_ prompt: String, inspectIdeas: Bool = true) {
         requestedPage = .chat
-        send(prompt)
+        send(prompt, inspectIdeas: inspectIdeas)
     }
 
     /// Sends `text`; `mentions` are other chats, included in full as JSON (their sessions aren't resumed);
     /// `attachments` are files referenced by absolute path in the prompt (nothing is copied).
-    func send(_ text: String, mentions: [UUID] = [], attachments: [URL] = []) {
+    func send(_ text: String, mentions: [UUID] = [], attachments: [URL] = [], inspectIdeas: Bool = true) {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !isWorking else { return }
+        guard !isWorking, ideaRequest == nil else { return }
         do { try RemoteWorkspace.existing(at: root)?.requireSynchronized() }
         catch { fail(error.localizedDescription); return }
         if provider == .codex, handleLocalCommand(text) { return }
         let paths = attachments.map(\.path)
         guard !text.isEmpty || !paths.isEmpty else { return }
+        if inspectIdeas, !text.isEmpty {
+            do {
+                if try !ProjectStore(root: root).listIdeas().isEmpty {
+                    inspectIdeaRequest(text, mentions: mentions, attachments: attachments)
+                    return
+                }
+            } catch { fail(error.localizedDescription); return }
+        }
         if needsRestart, !isWorking { stop() }
         if current == nil { current = ClaudeChat(title: ClaudeChat.untitled, provider: provider) }
         guard let chatId = current?.id else { return }
@@ -418,6 +481,7 @@ final class AISession {
     func interrupt() {
         guard isWorking || !pending.isEmpty else { return }
         acceptingEvents = false
+        ideaIntentTask?.cancel(); ideaIntentTask = nil
         current?.pendingPlan = nil
         if let ref = workflowRef, let store = workflowProject {
             if !turnOutput.isEmpty, let run = try? store.loadRun(ref), let step = run.current, run.checkpoint?.completed != true,
@@ -462,6 +526,8 @@ final class AISession {
 
     /// Ends the process, saving the transcript so far.
     func stop() {
+        ideaIntentTask?.cancel(); ideaIntentTask = nil
+        ideaRequest = nil
         finishUsage("cancelled")
         persist()
         codexTask?.cancel(); codexTask = nil

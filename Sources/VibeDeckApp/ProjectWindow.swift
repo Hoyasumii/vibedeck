@@ -159,6 +159,12 @@ struct ProjectWindow: View {
                 }
             }
         }
+        .sheet(item: Binding(get: { claude.ideaRequest }, set: { claude.ideaRequest = $0 })) { request in
+            IdeaImplementationSheet(request: request)
+                .environment(model)
+                .environment(claude)
+                .environment(\.logProject, model.store.root)
+        }
         .alert("Erro", isPresented: Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })) {
             LoggedButton("OK") { model.errorMessage = nil }.loggedControl(control: "project_window.button_1", label: "OK")
         } message: { Text(model.errorMessage ?? "") }

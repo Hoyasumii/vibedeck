@@ -3,7 +3,7 @@
 # editores de texto não sobrescrevem o que o usuário digita, e abas de itens apagados fecham.
 set -euo pipefail
 cd "${VIBEDECK_ROOT:-.}"
-if [ -n "${VIBEDECK_FILES:-}" ] && ! printf '%s\n' "$VIBEDECK_FILES" | grep -qE '^Sources/'; then exit 77; fi
+if [ -n "${VIBEDECK_FILES:-}" ] && ! printf '%s\n' "$VIBEDECK_FILES" | grep -E '^Sources/' >/dev/null; then exit 77; fi
 python3 -I - <<'PY'
 import re, sys
 A = "Sources/VibeDeckApp/"

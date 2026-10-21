@@ -15,11 +15,11 @@ done
 bad_hits=$(grep -rnE 'claude\.append' Sources --include=*.swift | grep -vE '^Sources/VibeDeckCore/ClaudeItem\.swift|^Sources/VibeDeckApp/(ClaudeItemsView|LinksView)\.swift' || true)
 [ -z "$bad_hits" ] || bad "escrita na coleção fora dos pontos de adição do usuário: $bad_hits"
 # Colar um link só abre o editor (não adiciona direto), e o tipo precisa ser escolhido pelo usuário.
-grep -A12 'onPasteCommand' "$V" | grep -q 'editing = ClaudeItem' || bad "$V: colar link deve apenas abrir o editor"
-grep -A12 'onPasteCommand' "$V" | grep -q 'claude.append' && bad "$V: colar link não pode adicionar direto"
+grep -A12 'onPasteCommand' "$V" | grep  'editing = ClaudeItem' >/dev/null || bad "$V: colar link deve apenas abrir o editor"
+grep -A12 'onPasteCommand' "$V" | grep  'claude.append' >/dev/null && bad "$V: colar link não pode adicionar direto"
 grep -q 'kind = isNew ? nil' "$V" || bad "$V: novo item deve começar sem tipo escolhido"
 grep -q 'disabled(normalized == nil)' "$V" || bad "$V: Adicionar deve exigir dados válidos"
 # CLI e MCP: add exige --kind/url explícitos.
-grep -A8 'struct Add: ParsableCommand' Sources/vibedeck/CLI.swift | grep -q 'var kind: ClaudeItemKind$' || bad "CLI claude add: --kind deve ser obrigatório"
+grep -A8 'struct Add: ParsableCommand' Sources/vibedeck/CLI.swift | grep  'var kind: ClaudeItemKind$' >/dev/null || bad "CLI claude add: --kind deve ser obrigatório"
 [ $fail -eq 0 ] || exit 1
 run_tests ClaudeItemsTests/localCollectionRoundTripAndRemoval

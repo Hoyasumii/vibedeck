@@ -3,7 +3,7 @@
 # está no schema e todo diretório/schema está descrito no AGENTS.md (AgentsGuide.swift).
 set -euo pipefail
 cd "${VIBEDECK_ROOT:-.}"
-if [ -n "${VIBEDECK_FILES:-}" ] && ! printf "%s\n" "$VIBEDECK_FILES" | grep -qE "^Sources/|^schema/"; then exit 77; fi
+if [ -n "${VIBEDECK_FILES:-}" ] && ! printf "%s\n" "$VIBEDECK_FILES" | grep -E "^Sources/|^schema/" >/dev/null; then exit 77; fi
 python3 -I - <<'PY'
 import re, glob, json, sys
 bad = 0

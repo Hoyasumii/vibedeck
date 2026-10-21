@@ -8,5 +8,5 @@ if [ -f graphify-out/graph.html ]; then
   [ -z "$l" ] || bad "graphify-out/graph.html:${l%%:*}" "o HTML gerado depende de CDN (${l#*:}) e não funciona offline"
 fi
 # Deve existir cópia local da lib (vis-network) empacotada ou reescrita pelo app.
-grep -rqiE 'vis-network|vis\.min' Sources || find Sources -iname '*vis*network*' | grep -q . || bad "$G:1" "nenhuma cópia local de vis-network empacotada nem reescrita do HTML para uso offline"
+grep -rqiE 'vis-network|vis\.min' Sources || find Sources -iname '*vis*network*' | grep  . >/dev/null || bad "$G:1" "nenhuma cópia local de vis-network empacotada nem reescrita do HTML para uso offline"
 exit $fail

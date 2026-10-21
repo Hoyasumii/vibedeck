@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "${VIBEDECK_ROOT:-.}"
 # Item de revisão sempre pertence a um grupo (reviews/<slug>.json) e o kind vem de reviewKinds.
-if [ -n "${VIBEDECK_FILES:-}" ] && ! printf "%s\n" "$VIBEDECK_FILES" | grep -qE "^Sources/|^schema/"; then exit 77; fi
+if [ -n "${VIBEDECK_FILES:-}" ] && ! printf "%s\n" "$VIBEDECK_FILES" | grep -E "^Sources/|^schema/" >/dev/null; then exit 77; fi
 python3 -I - <<'PY'
 import re, glob, sys
 bad = 0

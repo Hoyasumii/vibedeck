@@ -617,3 +617,112 @@ private struct WorkflowRunSheet: View {
         dismiss()
     }
 }
+
+/// One app gate for the Implementar button and chat requests. No project write until final confirmation.
+struct IdeaImplementationSheet: View {
+    @Environment(ProjectModel.self) private var model
+    @Environment(AISession.self) private var session
+    @Environment(\.undoManager) private var undo
+    @Environment(\.logProject) private var logProject
+    let request: AISession.IdeaRequest
+    @State private var choosingWorkflow = false
+    @State private var workflow: String?
+    @State private var existing: WorkflowRun?
+    @State private var stalePaths: [String] = []
+    @State private var pendingRestart = false
+    @State private var error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Implementar ideia").font(.headline)
+            if let error {
+                Text(error).foregroundStyle(.red)
+            } else if !stalePaths.isEmpty {
+                Text("Globs que não casam nenhum arquivo")
+                Text(stalePaths.joined(separator: "\n")).font(.caption)
+                LoggedButton("Promover sem eles") { finish(skipping: Set(stalePaths)) }
+                    .loggedControl(control: "idea_implementation.skip_paths", label: "Promover sem eles")
+                LoggedButton("Promover com eles") { finish() }
+                    .loggedControl(control: "idea_implementation.keep_paths", label: "Promover com eles")
+            } else if let existing {
+                Text("Já existe uma execução para esta ideia e este workflow. Deseja retomar do estado salvo ou reiniciar pela primeira etapa?")
+                Text("Ciclo \(existing.cycle) · \(existing.current ?? "Concluída")").font(.caption).foregroundStyle(.secondary)
+                LoggedButton("Retomar") { confirm(restart: false) }
+                    .loggedControl(control: "idea_implementation.resume", label: "Retomar")
+                LoggedButton("Reiniciar") { confirm(restart: true) }
+                    .loggedControl(control: "idea_implementation.restart", label: "Reiniciar")
+            } else if choosingWorkflow {
+                Text("Escolha um workflow do projeto.")
+                ForEach(model.workflows) { entry in
+                    LoggedButton { selectWorkflow(entry.slug) } label: { Text(entry.value.title) }
+                        .loggedControl(control: "idea_implementation.select_workflow", label: "Selecionar workflow")
+                }
+                KitCatalogButton()
+            } else {
+                Text("Como deseja implementar esta ideia?")
+                if !model.workflows.isEmpty {
+                    LoggedButton("Workflow") { choosingWorkflow = true }
+                        .loggedControl(control: "idea_implementation.workflow", label: "Workflow")
+                }
+                LoggedButton("Execução padrão") { confirm(restart: false) }
+                    .loggedControl(control: "idea_implementation.standard", label: "Execução padrão")
+            }
+            HStack {
+                Spacer()
+                LoggedButton("Cancelar", role: .cancel) { session.ideaRequest = nil }
+                    .loggedControl(control: "idea_implementation.cancel", label: "Cancelar")
+                    .keyboardShortcut(.cancelAction)
+            }
+        }
+        .padding(24).frame(width: 440)
+        .task {
+            VDLog.$actionID.withValue(request.actionID) {
+                if request.mode == .standard { confirm(restart: false) }
+                else if request.mode == .workflow {
+                    if let workflow = request.workflow { selectWorkflow(workflow) }
+                    else if !model.workflows.isEmpty { choosingWorkflow = true }
+                }
+            }
+        }
+    }
+
+    private func selectWorkflow(_ slug: String) {
+        do {
+            let (_, idea) = try model.currentImplementationIdea(request.ideaID)
+            workflow = slug
+            existing = try model.store.ideaRun(idea, workflow: slug)?.run
+            if existing == nil { confirm(restart: false) }
+        } catch { self.error = error.localizedDescription }
+    }
+
+    private func confirm(restart: Bool) {
+        do {
+            let (slug, _) = try model.currentImplementationIdea(request.ideaID)
+            pendingRestart = restart
+            stalePaths = try model.store.unmatchedIdeaPaths(slug)
+            if stalePaths.isEmpty { finish() }
+        } catch { self.error = error.localizedDescription }
+    }
+
+    private func finish(skipping: Set<String> = []) {
+        do {
+            guard !session.isWorking else { return }
+            try RemoteWorkspace.existing(at: model.store.root)?.requireSynchronized()
+            let (_, idea) = try model.currentImplementationIdea(request.ideaID)
+            if let workflow, let latest = try model.store.ideaRun(idea, workflow: workflow)?.run,
+               latest.id != existing?.id {
+                existing = latest
+                stalePaths = []
+                return
+            }
+            let prepared = try model.prepareIdeaImplementation(request.ideaID, workflow: workflow,
+                restart: pendingRestart, skippingPaths: skipping, provider: session.provider, undo: undo)
+            session.ideaRequest = nil
+            if let execution = prepared.execution {
+                session.resumeWorkflow(execution.ref, run: execution.run, store: model.store)
+            } else {
+                session.ask(prepared.prompt, inspectIdeas: false)
+            }
+        } catch { self.error = error.localizedDescription }
+    }
+}
