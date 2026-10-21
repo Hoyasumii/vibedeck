@@ -52,9 +52,9 @@ O terminal usa a JetBrains Mono Nerd Font Mono, copiada para `Contents/Resources
 - Renderizador do grafo: `node scripts/test-graph-renderer.cjs` (`README.md:187`).
 - Eficiência de IA: `scripts/test-ai-efficiency.sh` (`README.md:384`).
 
-## Build só do CLI/MCP (Linux)
+## Build só do CLI/MCP
 
-`swift build -c release --product vibedeck` compila sem o app SwiftUI. O CI valida isso num contêiner `swift:6.2` (`.github/workflows/swift.yml:24-29`; `README.md:326`).
+`swift build -c release --product vibedeck` compila sem o app SwiftUI (`README.md:405`).
 
 ## CI
 
