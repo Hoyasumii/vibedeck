@@ -21,6 +21,8 @@ struct SectionListView: View {
 
     private var allRows: [SectionRow] { model.rows(for: section) }
 
+    private var unlinkedDocs: [String] { section == .docs ? model.unlinkedRootMarkdown() : [] }
+
     private var rows: [SectionRow] { allRows.filter { filter.matches($0) } }
 
     var body: some View {
@@ -63,6 +65,16 @@ struct SectionListView: View {
                                     } catch { model.errorMessage = error.localizedDescription }
                                 }
                             }.loggedControl(control: "section_list_view.button_1", label: "Importar de ")
+                        }
+                    }
+                }
+            }
+            if section == .docs, !model.isReadOnly, !unlinkedDocs.isEmpty {
+                ToolbarItem {
+                    Menu("Vincular de novo", systemImage: "link.badge.plus") {
+                        ForEach(unlinkedDocs, id: \.self) { file in
+                            LoggedButton(file) { model.linkDoc(file: file) }
+                                .loggedControl(control: "section_list_view.relink", label: "Vincular de novo")
                         }
                     }
                 }

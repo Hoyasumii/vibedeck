@@ -42,6 +42,8 @@ struct OnboardingReport: Decodable, Equatable, Sendable {
     var stack: [String]
     var patterns: [PatternRef]
     var resources: [Resource]
+    /// Nomes de tecnologias detectadas nos arquivos do projeto (aditivo; ausente em Cores antigos).
+    var suggestedStack: [String]?
 
     var isSkipped: Bool { status == "skipped" }
 }

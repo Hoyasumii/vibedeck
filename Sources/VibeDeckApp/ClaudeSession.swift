@@ -46,7 +46,7 @@ final class AISession {
                 let intent = try await AIReadOnlyOperation.run(root: root, provider: provider,
                     operation: "Identificar implementação de ideia",
                     prompt: IdeaImplementation.intentPrompt(text, context: context, ideas: ideas.map { (slug: $0.slug, idea: $0.value) }, workflows: workflows.map { (slug: $0.slug, workflow: $0.value) }),
-                    schema: IdeaImplementation.intentSchema) { data in
+                    schema: IdeaImplementation.intentSchema, store: project) { data in
                         let intent = try VDJSON.decoder.decode(IdeaImplementation.ChatIntent.self, from: data)
                         guard intent.mode == .none || ideas.contains(where: { $0.value.id.uuidString == intent.idea }) else {
                             throw VibeDeckError.discoverFailed("Referência de ideia inválida.")
@@ -1078,7 +1078,7 @@ extension AISession {
                 let conditions = String(decoding: try VDJSON.encode(candidates), as: UTF8.self)
                 let prompt = "Avalie as condições na ordem sobre a saída da etapa. Retorne {\"to\":\"id\"} para a primeira condição verdadeira, ou {\"to\":null}.\nCondições: \(conditions)\nSaída: \(output). Leia a fonte para avaliar; ausência de evidência não torna uma condição verdadeira."
                 let schema = #"{"type":"object","properties":{"to":{"type":["string","null"]}},"required":["to"],"additionalProperties":false}"#
-                return try await AIReadOnlyOperation.run(root: self.root, provider: self.provider, operation: "Workflow · Transição", prompt: prompt, schema: schema) { data in
+                return try await AIReadOnlyOperation.run(root: self.root, provider: self.provider, operation: "Workflow · Transição", prompt: prompt, schema: schema, store: store) { data in
                     let value = try JSONDecoder().decode(JSONValue.self, from: data)
                     guard let target = value["to"], target == .null || target.string != nil else { throw AIIntegrationError.invalidTransition }
                     if let id = target.string, !candidates.contains(where: { $0.to == id }) { throw AIIntegrationError.invalidTransition }

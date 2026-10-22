@@ -20,11 +20,6 @@ enum AIPromptPolicy {
         "\(instructions)\n\n## Tarefa\n\(task)\n\n## Contexto\n\(context)\n\n## Saída obrigatória\n\(output)"
     }
 
-    static func recovery(_ original: String, diagnosis: String) -> String {
-        original + "\n\n## Recuperação única\nA resposta não cumpriu o contrato: \(diagnosis). "
-            + "Releia as fontes pertinentes e amplie a busca. Corrija a resposta completa, sem inventar evidências."
-    }
-
     static let incomplete = "A resposta continua incompleta após uma recuperação. Amplie o contexto ou escolha um modelo mais capaz."
 }
 

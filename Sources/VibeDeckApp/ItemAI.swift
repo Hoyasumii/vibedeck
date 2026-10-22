@@ -54,7 +54,7 @@ final class ItemAIRunner {
                                                  existing: existingItems, refs: listing)
                 let proposal = try await AIReadOnlyOperation.run(
                     root: store.root, provider: provider, operation: current == nil ? "Criar \(kind.title) com IA" : "Editar \(kind.title) com IA",
-                    prompt: prompt, schema: ItemDiscover.schema(kind), request: send,
+                    prompt: prompt, schema: ItemDiscover.schema(kind), request: send, store: store,
                     parse: { try ItemDiscover.parse(kind, $0, refs: refs) })
                 try Task.checkCancellation()
                 guard token == generation else { return }

@@ -70,10 +70,10 @@ import Foundation
             } catch {
                 usage.finish("invalid-answer"); try AIUsageStore(root: root).save(usage)
                 guard recover(error) else { throw error }
-                // A recuperação vem do Core (ai_recovery_prompt); sem Core (testes) vale a cópia local de AIPromptPolicy.
+                // A recuperação vem do Core (ai_recovery_prompt); sem Core (testes) ou se ele falhar, a nova tentativa reenvia o prompt original.
                 let plan = try? await store?.aiRecoveryPrompt(original: prompt, diagnosis: error.localizedDescription)
                 guard attempt == 1 else { throw VibeDeckError.discoverFailed(plan?.incomplete ?? AIPromptPolicy.incomplete) }
-                nextPrompt = plan?.prompt ?? AIPromptPolicy.recovery(prompt, diagnosis: error.localizedDescription)
+                nextPrompt = plan?.prompt ?? prompt
                 continue
             }
             usage.finish("completed")

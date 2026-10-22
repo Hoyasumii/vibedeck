@@ -11,6 +11,8 @@ struct V2OnboardingSheet: View {
     @State private var step = 0
     @State private var stack: [StackItem] = []
     @State private var pickingStack = false
+    /// Sugestões do Core que não casaram com o catálogo de ícones: só texto, não entram na stack.
+    @State private var unmatchedSuggestions: [String] = []
     @State private var catalog: [PatternCatalogEntry] = []
     @State private var catalogFailure: String?
     @State private var chosenPatterns = Set<String>()
@@ -39,11 +41,31 @@ struct V2OnboardingSheet: View {
 
     private func start() async {
         stack = model.project.stack
+        await prefillSuggestedStack()
         do {
             catalog = try await model.store.patternCatalog()
         } catch {
             catalogFailure = error.localizedDescription
         }
+    }
+
+    /// Pré-preenche o rascunho com `suggestedStack` casando nomes com o catálogo de ícones; nada é gravado até "Concluir".
+    private func prefillSuggestedStack() async {
+        let suggestions = report.suggestedStack ?? []
+        guard !suggestions.isEmpty else { return }
+        await SkillIconCache.shared.loadCatalog()
+        let catalog = SkillIconCache.shared.catalog
+        var draft = stack
+        var unmatched: [String] = []
+        for name in suggestions {
+            if let icon = catalog.first(where: { $0.matches(exactly: name) }) {
+                if !draft.contains(where: { $0.icon == icon.id }) { draft.append(StackItem(icon, author: .human)) }
+            } else {
+                unmatched.append(name)
+            }
+        }
+        stack = draft
+        unmatchedSuggestions = unmatched
     }
 
     // MARK: Cabeçalho e rodapé
@@ -120,6 +142,11 @@ struct V2OnboardingSheet: View {
                           alignment: .leading, spacing: DesignTokens.Space.s2) {
                     ForEach(stack) { item in VDBadge(item.name, tone: .neutral) }
                 }
+            }
+            if !unmatchedSuggestions.isEmpty {
+                Text("Sugestões sem ícone no catálogo: " + unmatchedSuggestions.joined(separator: ", "))
+                    .font(DesignTokens.Typography.body)
+                    .foregroundStyle(DesignTokens.Colors.inkMuted)
             }
             LoggedButton("Escolher tecnologias") { pickingStack = true }
                 .loggedControl(control: "v2_onboarding.pick_stack", label: "Escolher tecnologias")

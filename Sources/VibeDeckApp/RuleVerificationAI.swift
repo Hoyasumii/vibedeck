@@ -1,7 +1,7 @@
 import Foundation
 
 @MainActor enum RuleVerificationAI {
-    static func run(root: URL, provider: AIProvider, topic: RuleTopic, slug: String, rules: [Rule], scripts: [RuleResult]) async throws -> [RuleResult] {
+    static func run(root: URL, provider: AIProvider, topic: RuleTopic, slug: String, rules: [Rule], scripts: [RuleResult], store: CoreStore? = nil) async throws -> [RuleResult] {
         struct RequestedRule: Encodable {
             let ruleId: UUID
             let text: String
@@ -26,7 +26,7 @@ import Foundation
         \(scriptsJSON)
         """
         return try await AIReadOnlyOperation.run(root: root, provider: provider, operation: "Verificar regras",
-                                                prompt: prompt, schema: RuleVerificationAnswer.schema) { data in
+                                                prompt: prompt, schema: RuleVerificationAnswer.schema, store: store) { data in
             try RuleVerificationAnswer.parse(data, rules: rules, topic: slug)
         }
     }

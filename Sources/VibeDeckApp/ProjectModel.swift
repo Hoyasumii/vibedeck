@@ -1092,6 +1092,19 @@ final class ProjectModel {
         }
     }
 
+    /// .md da raiz do projeto que não aparecem vinculados em `list_docs`. Só lista em projeto local: em SSH não há
+    /// forma barata de listar a raiz, então devolve vazio (o botão some).
+    func unlinkedRootMarkdown() -> [String] {
+        guard RemoteWorkspace.existing(at: store.root) == nil else { return [] }
+        let linked = Set(docs.compactMap { $0.link?.target })
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: store.root.path)) ?? []
+        return names.filter { name in
+            guard name.lowercased().hasSuffix(".md"), !name.hasPrefix("."), !linked.contains(name) else { return false }
+            var isDirectory: ObjCBool = false
+            return FileManager.default.fileExists(atPath: store.root.appending(path: name).path, isDirectory: &isDirectory) && !isDirectory.boolValue
+        }.sorted()
+    }
+
     func deleteDoc(_ slug: String) {
         docs.removeAll { $0.slug == slug }
         docTexts.removeValue(forKey: slug)

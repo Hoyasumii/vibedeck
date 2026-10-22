@@ -95,7 +95,7 @@ final class ReviewResolveRunner {
                 do {
                     let reply = try await AIReadOnlyOperation.run(
                         root: model?.store.root ?? URL(fileURLWithPath: "/"), provider: provider, operation: "Resolver (plano)",
-                        prompt: prompt, schema: ReviewResolve.schema) { data in
+                        prompt: prompt, schema: ReviewResolve.schema, store: model?.store) { data in
                         try ReviewResolve.parse(data, allowQuestions: allowQuestions)
                     }
                     guard !Task.isCancelled else { return }
