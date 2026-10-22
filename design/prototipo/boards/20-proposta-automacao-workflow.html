@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="utf-8">
+<title>Proposta — Workflow</title>
+<script src="../vendor/dc-runtime.js"></script>
+<style>/* VibeDeck — generated from tokens.json */
+@font-face { font-family: "Bricolage Grotesque"; src: url("fonts/BricolageGrotesque-Variable.woff2") format("woff2"); font-weight: 200 800; font-style: normal; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("fonts/JetBrainsMono-Variable.woff2") format("woff2"); font-weight: 100 800; font-style: normal; font-display: swap; }
+
+:root, [data-theme="dark"] {
+  --bg-window: #1b1a19; --bg-sidebar: #222120;
+  --surface-100: #2a2927; --surface-200: #33322f; --surface-300: #3e3c39;
+  --line: #393735; --line-strong: #7f7a72;
+  --ink: #f4f1ec; --ink-muted: #b5afa6; --ink-faint: #a39c93;
+  --brand: #ff8a3d; --brand-hover: #ffa062; --on-brand: #1b1a19; --brand-soft: #4a2a14; --brand-text: #ffa468;
+  --ai: #3cc8c0; --ai-soft: #163b39; --ai-text: #6adbd3;
+  --fix: #ff7a72; --fix-soft: #4a1f1d;
+  --change: #86afff; --change-soft: #1d2a47;
+  --remove: #e88acb; --remove-soft: #43203a;
+  --done: #5ccb8f; --done-soft: #183a28;
+  --neutral-soft: #3a3835;
+  --focus-ring: var(--brand);
+  --shadow-popover: 0 12px 32px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+[data-theme="light"] {
+  --bg-window: #f7f6f3; --bg-sidebar: #eeece7;
+  --surface-100: #ffffff; --surface-200: #f2f0eb; --surface-300: #e7e4dd;
+  --line: #e2ded6; --line-strong: #8f897f;
+  --ink: #1b1a19; --ink-muted: #625d55; --ink-faint: #6e6960;
+  --brand: #f2701f; --brand-hover: #dc6114; --on-brand: #1b1a19; --brand-soft: #ffe7d5; --brand-text: #a84708;
+  --ai: #12a39b; --ai-soft: #d5f3f0; --ai-text: #0a6a65;
+  --fix: #b42f29; --fix-soft: #fde2df;
+  --change: #2a5fc7; --change-soft: #e1eafd;
+  --remove: #9c2f79; --remove-soft: #f8e1f0;
+  --done: #1d7a4a; --done-soft: #ddf3e6;
+  --neutral-soft: #ebe8e2;
+  --focus-ring: var(--brand);
+  --shadow-popover: 0 12px 32px rgba(27, 26, 25, 0.16), 0 0 0 1px rgba(27, 26, 25, 0.06);
+  --shadow-raised: 0 1px 2px rgba(27, 26, 25, 0.08);
+}
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-12: 48px;
+  --radius-xs: 4px; --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-card: 5px; --radius-pill: 999px;
+  --duration-fast: 120ms; --duration-base: 200ms;
+  --font-brand: "Bricolage Grotesque", system-ui, sans-serif;
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", Cantarell, "Noto Sans", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+.display-xl { font-family: var(--font-brand); font-size: 34px; line-height: 40px; font-weight: 700; letter-spacing: -0.5px; }
+.display-lg { font-family: var(--font-brand); font-size: 24px; line-height: 30px; font-weight: 700; letter-spacing: -0.3px; }
+.title { font-family: var(--font-ui); font-size: 15px; line-height: 20px; font-weight: 600; }
+.headline { font-family: var(--font-ui); font-size: 13px; line-height: 18px; font-weight: 600; }
+.body { font-family: var(--font-ui); font-size: 13px; line-height: 18px; font-weight: 400; }
+.callout { font-family: var(--font-ui); font-size: 12px; line-height: 16px; font-weight: 500; }
+.caption { font-family: var(--font-ui); font-size: 11px; line-height: 14px; font-weight: 600; letter-spacing: 0.2px; }
+.mono { font-family: var(--font-mono); font-size: 12px; line-height: 16px; font-weight: 400; }
+</style>
+<style>/* VibeDeck components — every value comes from tokens.css */
+body { margin: 0; background: var(--bg-window); color: var(--ink); font-family: var(--font-ui); font-size: 13px; line-height: 18px; -webkit-font-smoothing: antialiased; }
+.vd-icon { flex: none; display: block; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+/* Logo */
+.vd-logo-human { fill: var(--brand); }
+.vd-logo-ai { fill: var(--ai); }
+.vd-logo-mono { fill: var(--ink); }
+.vd-logo-lockup { display: inline-flex; align-items: center; gap: 0.36em; font-family: var(--font-brand); font-weight: 700; letter-spacing: -0.02em; color: var(--ink); line-height: 1; }
+.vd-logo-lockup .vd-logo-mark { width: 1.45em; height: 1.45em; }
+
+/* Button */
+.vd-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); border: 1px solid transparent; border-radius: var(--radius-pill); cursor: pointer; font-weight: 600; white-space: nowrap; transition: background-color var(--duration-fast), border-color var(--duration-fast); }
+.vd-btn-md { height: 30px; padding: 0 var(--space-3); font-size: 13px; }
+.vd-btn-lg { height: 44px; padding: 0 var(--space-6); font-size: 15px; }
+.vd-btn-primary { background: var(--brand); color: var(--on-brand); box-shadow: var(--shadow-raised); }
+.vd-btn-primary:hover { background: var(--brand-hover); }
+.vd-btn-secondary { background: var(--surface-100); border-color: var(--line-strong); color: var(--ink); }
+.vd-btn-secondary:hover { background: var(--surface-200); }
+.vd-btn-quiet { background: transparent; color: var(--ink); }
+.vd-btn-quiet:hover { background: var(--surface-200); }
+.vd-btn-danger { background: var(--surface-100); border-color: var(--line-strong); color: var(--fix); }
+.vd-btn-danger:hover { background: var(--fix-soft); }
+.vd-btn:disabled { opacity: .45; cursor: default; }
+
+/* Segmented control */
+.vd-seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--surface-200); border-radius: var(--radius-pill); }
+.vd-seg-item { border: 0; background: transparent; height: 26px; padding: 0 var(--space-4); border-radius: var(--radius-pill); color: var(--ink-muted); font-weight: 500; cursor: pointer; transition: background-color var(--duration-fast), color var(--duration-fast); }
+.vd-seg-item:hover { color: var(--ink); }
+.vd-seg-item.is-on { background: var(--surface-100); color: var(--ink); font-weight: 600; box-shadow: var(--shadow-raised); }
+
+/* Filter chip */
+.vd-chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 var(--space-3); border-radius: var(--radius-pill); border: 1px solid var(--line); background: transparent; color: var(--ink-muted); font-weight: 500; cursor: pointer; }
+.vd-chip:hover { background: var(--surface-200); color: var(--ink); }
+.vd-chip.is-on { background: var(--surface-300); border-color: var(--line-strong); color: var(--ink); }
+.vd-chip-count { font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; }
+
+/* Type badge + tones */
+.vd-badge { display: inline-flex; align-items: center; gap: var(--space-1); height: 22px; padding: 0 var(--space-2); border-radius: var(--radius-pill); font-size: 12px; font-weight: 600; line-height: 16px; }
+.vd-tone-fix { --tone: var(--fix); --tone-soft: var(--fix-soft); }
+.vd-tone-change { --tone: var(--change); --tone-soft: var(--change-soft); }
+.vd-tone-remove { --tone: var(--remove); --tone-soft: var(--remove-soft); }
+.vd-tone-disable, .vd-tone-hide { --tone: var(--ink-muted); --tone-soft: var(--neutral-soft); }
+.vd-badge { background: var(--tone-soft); color: var(--tone); }
+.vd-chip[class*="vd-tone-"] .vd-icon { color: var(--tone); }
+
+/* Author tag */
+.vd-author { display: inline-flex; align-items: center; gap: var(--space-1); height: 22px; padding: 0 var(--space-2); border-radius: var(--radius-pill); font-size: 12px; font-weight: 600; }
+.vd-author-human { background: var(--brand-soft); color: var(--brand-text); }
+.vd-author-ai { background: var(--ai-soft); color: var(--ai-text); }
+
+/* Sidebar item */
+.vd-side { display: flex; align-items: center; gap: 10px; width: 100%; height: 32px; padding: 0 var(--space-3); border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--ink); text-align: left; cursor: pointer; }
+.vd-side .vd-icon { color: var(--brand-text); }
+.vd-side:hover { background: var(--surface-200); }
+.vd-side.is-on { background: var(--surface-300); }
+.vd-side-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vd-side-count { color: var(--ink-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+/* Review item */
+.vd-review { display: flex; gap: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--surface-100); border: 1px solid var(--line); border-radius: var(--radius-md); }
+.vd-review.is-selected { border-color: var(--brand); }
+.vd-check { flex: none; width: 20px; height: 20px; margin-top: 0; border-radius: 50%; border: 1.5px solid var(--line-strong); background: transparent; display: grid; place-items: center; cursor: pointer; color: var(--bg-window); transition: background-color var(--duration-base), border-color var(--duration-base); }
+.vd-check:hover { border-color: var(--done); }
+.vd-review.is-done .vd-check { background: var(--done); border-color: var(--done); }
+.vd-review-body { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.vd-review-title { font-size: 15px; line-height: 20px; font-weight: 600; }
+.vd-review.is-done .vd-review-title { color: var(--ink-muted); text-decoration: line-through; text-decoration-color: var(--line-strong); }
+.vd-review-where { font-family: var(--font-mono); font-size: 12px; line-height: 16px; color: var(--ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vd-review-meta { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+
+/* Composer */
+.vd-composer { display: flex; align-items: center; gap: var(--space-2); padding: 6px; background: var(--surface-100); border: 1px solid var(--line); border-radius: var(--radius-pill); box-shadow: var(--shadow-raised); }
+.vd-composer:focus-within { border-color: var(--line-strong); }
+.vd-composer-type { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px 0 var(--space-3); border: 0; border-radius: var(--radius-pill); background: var(--surface-200); font-weight: 600; cursor: pointer; }
+.vd-composer-type > .vd-icon:first-child { color: var(--tone); }
+.vd-composer-type > .vd-icon:last-child { color: var(--ink-muted); }
+.vd-composer-input { flex: 1; min-width: 0; height: 32px; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: 14px; outline: none; }
+.vd-composer-input::placeholder { color: var(--ink-faint); }
+.vd-composer-add { width: 32px; height: 32px; border: 0; border-radius: 50%; display: grid; place-items: center; background: var(--brand); color: var(--on-brand); cursor: pointer; }
+.vd-composer-add:hover { background: var(--brand-hover); }
+
+/* Inspector */
+.vd-insp { display: flex; flex-direction: column; gap: 6px; }
+.vd-insp-title { margin: 0 0 0 var(--space-1); font-size: 11px; line-height: 14px; font-weight: 600; letter-spacing: .2px; color: var(--ink-muted); }
+.vd-insp-list { margin: 0; background: var(--surface-100); border-radius: var(--radius-md); padding: 0 var(--space-4); }
+.vd-insp-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); min-height: 40px; border-bottom: 1px solid var(--line); }
+.vd-insp-row:last-child { border-bottom: 0; }
+.vd-insp-row dt { color: var(--ink); }
+.vd-insp-row dd { margin: 0; display: inline-flex; align-items: center; gap: 6px; color: var(--ink); text-align: right; min-width: 0; }
+.vd-insp-row dd .vd-icon { color: var(--ink-muted); }
+.vd-insp-row dd.is-mono { font-family: var(--font-mono); font-size: 12px; }
+.vd-insp-row dd.is-empty { color: var(--ink-faint); }
+
+/* Recent project */
+.vd-recent { display: flex; align-items: center; gap: var(--space-3); width: 100%; padding: var(--space-3) var(--space-4); border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface-100); text-align: left; cursor: pointer; }
+.vd-recent:hover { background: var(--surface-200); }
+.vd-recent-icon { color: var(--brand-text); }
+.vd-recent-text { display: flex; flex-direction: column; min-width: 0; }
+.vd-recent-name { font-size: 15px; line-height: 20px; font-weight: 600; }
+.vd-recent-path { font-family: var(--font-mono); font-size: 12px; line-height: 16px; color: var(--ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Extra tones (status, nota) */
+.vd-tone-note, .vd-tone-neutral { --tone: var(--ink-muted); --tone-soft: var(--neutral-soft); }
+.vd-tone-done { --tone: var(--done); --tone-soft: var(--done-soft); }
+.vd-status { border: 0; cursor: pointer; }
+.vd-status > .vd-icon:last-child { opacity: .8; }
+.vd-id { font-family: var(--font-mono); font-size: 11px; line-height: 22px; color: var(--ink-muted); }
+.vd-icon-btn { flex: none; width: 28px; height: 28px; border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--ink-muted); display: grid; place-items: center; cursor: pointer; }
+.vd-icon-btn:hover { background: var(--surface-200); color: var(--ink); }
+.vd-link { border: 0; padding: 0; background: transparent; color: var(--brand-text); font-weight: 600; cursor: pointer; }
+.vd-link:hover { text-decoration: underline; }
+.vd-review-resolve { margin-left: auto; align-self: center; color: var(--ai-text); }
+.vd-switch { display: inline-block; width: 30px; height: 18px; border-radius: var(--radius-pill); background: var(--surface-300); position: relative; }
+.vd-switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--ink-muted); transition: left var(--duration-fast); }
+.vd-switch.is-on { background: var(--brand); }
+.vd-switch.is-on::after { left: 14px; background: var(--on-brand); }
+
+/* Sidebar: seções, árvore */
+.vd-side.is-muted .vd-side-label { color: var(--ink-muted); }
+.vd-chev { color: var(--ink-muted); transition: transform var(--duration-fast); }
+.vd-chev.is-open { transform: rotate(90deg); }
+.vd-tree-head { gap: 6px; }
+.vd-tree-head .vd-icon:nth-child(2) { color: var(--ink-muted); }
+.vd-sec { display: flex; flex-direction: column; }
+.vd-sec-head { display: flex; align-items: center; border-radius: var(--radius-sm); }
+.vd-sec-head:hover { background: var(--surface-200); }
+.vd-sec-head.is-on { background: var(--surface-300); }
+.vd-sec-toggle { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 6px 0 var(--space-3); border: 0; background: transparent; color: var(--ink); font-weight: 600; text-align: left; cursor: pointer; }
+.vd-sec-toggle > .vd-icon:first-child { color: var(--brand-text); }
+.vd-sec-add { flex: none; width: 26px; height: 26px; margin-right: 3px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--ink-muted); display: grid; place-items: center; cursor: pointer; }
+.vd-sec-add:hover { background: var(--surface-300); color: var(--ink); }
+.vd-sec-items { display: flex; flex-direction: column; gap: 1px; padding: 2px 0 6px; }
+
+/* Usage meter */
+.vd-meter { display: flex; flex-direction: column; gap: 4px; }
+.vd-meter-row { display: flex; justify-content: space-between; font-size: 11px; line-height: 14px; color: var(--ink-muted); font-weight: 600; }
+.vd-meter-detail { font-variant-numeric: tabular-nums; font-weight: 500; }
+.vd-meter-track { height: 5px; border-radius: var(--radius-pill); background: var(--surface-300); overflow: hidden; }
+.vd-meter-fill { height: 100%; border-radius: inherit; background: var(--ai); }
+.vd-meter-fill.is-high { background: var(--brand); }
+
+/* Tab */
+.vd-tab { display: inline-flex; align-items: center; max-width: 220px; height: 28px; padding: 0 4px 0 0; border-radius: var(--radius-pill); background: transparent; color: var(--ink-muted); }
+.vd-tab:hover { background: var(--surface-200); }
+.vd-tab.is-on { background: var(--surface-100); color: var(--ink); box-shadow: var(--shadow-raised); }
+.vd-tab-main { display: inline-flex; align-items: center; gap: 6px; min-width: 0; height: 28px; padding: 0 6px 0 var(--space-3); border: 0; background: transparent; cursor: pointer; font-weight: 500; }
+.vd-tab-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vd-tab-close { flex: none; width: 20px; height: 20px; border: 0; border-radius: 50%; background: transparent; color: var(--ink-muted); display: grid; place-items: center; cursor: pointer; }
+.vd-tab-close:hover { background: var(--surface-300); color: var(--ink); }
+
+/* Severidade e testes */
+.vd-sev-must { background: var(--brand-soft); color: var(--brand-text); }
+.vd-sev-should { background: var(--neutral-soft); color: var(--ink-muted); }
+.vd-test { display: inline-flex; gap: var(--space-1); }
+.vd-test-script { background: var(--change-soft); color: var(--change); }
+.vd-test-manual, .vd-test-none, .vd-res-na, .vd-res-pending, .vd-res-running { background: var(--neutral-soft); color: var(--ink-muted); }
+.vd-test-stale { background: var(--brand-soft); color: var(--brand-text); }
+.vd-res-pass { background: var(--done-soft); color: var(--done); }
+.vd-res-fail { background: var(--fix-soft); color: var(--fix); }
+
+/* Rule row */
+.vd-rule { display: flex; gap: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--surface-100); border: 1px solid var(--line); border-radius: var(--radius-md); }
+.vd-rule.is-selected { border-color: var(--brand); }
+.vd-rule-sev { flex: none; width: 28px; height: 28px; border: 0; border-radius: 50%; display: grid; place-items: center; cursor: pointer; }
+.vd-rule-body { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.vd-rule-text { font-size: 14px; line-height: 20px; font-weight: 600; }
+.vd-rule-detail { color: var(--ink-muted); }
+
+/* Workflow step */
+.vd-step { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4); background: var(--surface-100); border: 1px solid var(--line); border-radius: var(--radius-md); }
+.vd-step.is-selected { border-color: var(--brand); }
+.vd-step-head { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.vd-step-num { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--surface-300); display: grid; place-items: center; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.vd-step-kind { color: var(--brand-text); display: inline-flex; }
+.vd-step-title { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vd-step-start { height: 20px; padding: 0 var(--space-2); border-radius: var(--radius-pill); background: var(--done-soft); color: var(--done); font-size: 11px; font-weight: 700; line-height: 20px; }
+.vd-step-note { margin: 0; color: var(--ink-muted); }
+.vd-step-trans { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.vd-trans { display: flex; align-items: center; gap: var(--space-2); min-height: 28px; padding: 0 var(--space-2); border-radius: var(--radius-sm); background: var(--surface-200); }
+.vd-trans .vd-icon { color: var(--ink-muted); }
+.vd-trans.is-empty { color: var(--ink-faint); }
+.vd-trans-op { min-width: 22px; text-align: center; font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--ai-text); }
+.vd-trans-op.is-else { color: var(--ink-muted); }
+.vd-trans-when { font-family: var(--font-mono); font-size: 12px; font-weight: 600; }
+.vd-trans-to { font-weight: 600; }
+.vd-trans-to.is-back { color: var(--brand-text); }
+.vd-step-foot { font-size: 12px; color: var(--ink-muted); }
+
+/* Next step */
+.vd-next { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3); background: var(--surface-100); border-radius: var(--radius-md); }
+.vd-next-icon { flex: none; color: var(--brand-text); display: inline-flex; }
+.vd-next-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.vd-next-title { font-weight: 600; }
+.vd-next-note { font-size: 12px; line-height: 16px; color: var(--ink-muted); }
+
+/* Chat */
+.vd-bubble { display: flex; gap: var(--space-3); align-items: flex-start; }
+.vd-bubble-user { justify-content: flex-end; }
+.vd-bubble-body { max-width: 640px; white-space: pre-line; font-size: 14px; line-height: 21px; }
+.vd-bubble-user .vd-bubble-body { padding: var(--space-2) var(--space-4); border-radius: var(--radius-lg); background: var(--surface-200); }
+.vd-bubble-avatar { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--ai-soft); color: var(--ai-text); display: grid; place-items: center; }
+.vd-toolline { display: flex; align-items: center; gap: var(--space-2); width: 100%; min-height: 30px; padding: 0 var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-sm); background: transparent; color: var(--ink-muted); text-align: left; cursor: pointer; }
+.vd-toolline:hover { background: var(--surface-200); }
+.vd-toolline-name { font-weight: 600; color: var(--ink); }
+.vd-toolline-detail { min-width: 0; font-family: var(--font-mono); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vd-action { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); background: var(--surface-100); border: 1px solid var(--line-strong); border-radius: var(--radius-lg); box-shadow: var(--shadow-popover); }
+.vd-action-head { display: flex; align-items: center; gap: var(--space-2); font-weight: 700; color: var(--ai-text); }
+.vd-action-detail { color: var(--ink); }
+.vd-action-code { margin: 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--bg-window); font-family: var(--font-mono); font-size: 12px; line-height: 18px; white-space: pre-wrap; color: var(--ink); }
+.vd-action-buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); }
+
+/* Cards: stack e padrões */
+.vd-card { display: flex; flex-direction: column; gap: 6px; padding: var(--space-4); background: var(--surface-100); border: 1px solid var(--line); border-radius: var(--radius-lg); min-width: 0; }
+.vd-card-name { font-size: 15px; line-height: 20px; font-weight: 600; }
+.vd-card-cat { font-size: 12px; line-height: 16px; color: var(--ink-muted); }
+.vd-card-note { margin: 0; color: var(--ink-muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.vd-stack-icon { width: 40px; height: 40px; border-radius: var(--radius-md); margin-bottom: 4px; }
+.vd-stack-icon.is-placeholder { display: grid; place-items: center; background: var(--surface-300); border: 1px dashed var(--line-strong); font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--ink-muted); }
+.vd-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.vd-tag { font-size: 12px; line-height: 16px; color: var(--brand-text); }
+.vd-pattern-head { display: flex; align-items: center; gap: var(--space-3); }
+.vd-pattern-icon { flex: none; width: 32px; height: 32px; border-radius: var(--radius-sm); background: var(--brand-soft); color: var(--brand-text); display: grid; place-items: center; }
+.vd-pattern-note { margin: 0; display: flex; gap: 6px; align-items: flex-start; font-size: 12px; line-height: 16px; color: var(--ink); }
+.vd-pattern-note .vd-icon { margin-top: 1px; color: var(--ink-muted); }
+.vd-pattern-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-top: 2px; font-size: 12px; }
+.vd-pattern-scope { display: inline-flex; align-items: center; gap: 4px; min-width: 0; color: var(--ink-muted); font-family: var(--font-mono); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+</style>
+<script src="../vendor/vibedeck-components.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.v2-cap{padding:14px 12px 4px;font-size:11px;line-height:14px;font-weight:600;letter-spacing:.2px;color:var(--ink-muted)}
+.v2-node{display:flex;align-items:center;gap:10px;padding:0 14px;background:var(--surface-100);border:1px solid var(--line);border-radius:var(--radius-md)}
+.v2-line{display:flex;flex-direction:column;align-items:center;gap:2px}
+.v2-line>span.bar{flex:1;width:2px;background:var(--line-strong)}
+.v2-verdict{padding:1px 8px;border-radius:var(--radius-pill);background:var(--ai-soft);color:var(--ai-text);font-family:var(--font-mono);font-size:11px;line-height:16px;font-weight:700}
+.v2-loop{position:relative;margin:24px 0 24px 40px;border:2px solid var(--brand-text);border-right:0;border-radius:14px 0 0 14px}
+.v2-loop-label{position:absolute;top:50%;left:0;transform:translate(-50%,-50%);padding:1px 6px;border-radius:var(--radius-pill);background:var(--bg-window);color:var(--brand-text);font-family:var(--font-mono);font-size:11px;line-height:16px;font-weight:700;white-space:nowrap}
+.v2-run{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:var(--radius-md);background:var(--surface-100);border:1px solid var(--line)}
+</style>
+</helmet>
+<div data-theme="dark" style="width: 100%; min-height: 900px; position: relative; display: flex; flex-direction: column; background: var(--bg-window); color: var(--ink); font-family: var(--font-ui); font-size: 13px; line-height: 18px;">
+  <div aria-hidden="true" style="position: absolute; top: 18px; left: 20px; display: flex; gap: 8px; z-index: 2;">
+    <span style="width: 12px; height: 12px; border-radius: 50%; background: #ff5f57;"></span>
+    <span style="width: 12px; height: 12px; border-radius: 50%; background: #febc2e;"></span>
+    <span style="width: 12px; height: 12px; border-radius: 50%; background: #28c840;"></span>
+  </div>
+
+  <div style="flex: 1; min-height: 868px; display: flex; flex-wrap: wrap;">
+    <div style="flex: none; width: 76px; display: flex;">
+      <dc-import name="V2Rail" space="auto" hint-size="76px,868px"></dc-import>
+    </div>
+
+    <nav aria-label="Automação" style="flex: 1 1 220px; max-width: 256px; box-sizing: border-box; padding: 40px 10px 12px; display: flex; flex-direction: column; gap: 1px; background: var(--bg-sidebar); border-right: 1px solid var(--line);">
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 0 4px 0 12px;">
+        <span style="font-size: 15px; font-weight: 700;">Automação</span>
+        <button type="button" class="vd-icon-btn" aria-label="Novo agente, comando, skill ou workflow">
+          <x-import component-from-global-scope="VibeDeck.Icon" name="plus" size="15"></x-import>
+        </button>
+      </div>
+      <span class="v2-cap">Workflows</span>
+      <x-import component-from-global-scope="VibeDeck.SidebarItem" icon="workflow" label="Implementar até aprovar" selected="{{yes}}"></x-import>
+      <x-import component-from-global-scope="VibeDeck.SidebarItem" icon="workflow" label="Revisão de PR"></x-import>
+      <span class="v2-cap">Agentes</span>
+      <x-import component-from-global-scope="VibeDeck.SidebarItem" icon="agent" label="Implementador"></x-import>
+      <x-import component-from-global-scope="VibeDeck.SidebarItem" icon="agent" label="Revisor de código"></x-import>
+      <x-import component-from-global-scope="VibeDeck.SidebarItem" icon="agent" label="Testador"></x-import>
+      <span class="v2-cap">Comandos</span>
+      <x-import component-from-global-scope="VibeDeck.SidebarItem" icon="command" label="/testar"></x-import>
+      <x-import component-from-global-scope="VibeDeck.SidebarItem" icon="command" label="/abrir-pr"></x-import>
+      <span class="v2-cap">Skills</span>
+      <x-import component-from-global-scope="VibeDeck.SidebarItem" icon="skill" label="Revisar acessibilidade"></x-import>
+      <div style="margin-top: auto; padding: 10px 12px 0;">
+        <button type="button" class="vd-link" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px;">
+          <x-import component-from-global-scope="VibeDeck.Icon" name="kit" size="13"></x-import>
+          <span>Kits pré-definidos</span>
+        </button>
+      </div>
+    </nav>
+
+    <main style="flex: 999 1 480px; min-width: 0; box-sizing: border-box; padding: 40px 40px 24px; display: flex; flex-direction: column; gap: 20px;">
+      <header style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px;">
+        <div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+          <span class="caption" style="color: var(--ink-muted);">Workflow</span>
+          <h1 class="display-lg" style="margin: 0;">Implementar até aprovar</h1>
+          <span style="color: var(--ink-muted);">4 etapas · até 12 passos · entrada: <span class="mono">&lt;descrição da tarefa&gt;</span></span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <x-import component-from-global-scope="VibeDeck.Button" variant="primary" icon="play">Executar</x-import>
+          <button type="button" class="vd-icon-btn" aria-label="Mais ações">
+            <x-import component-from-global-scope="VibeDeck.Icon" name="more" size="16"></x-import>
+          </button>
+        </div>
+      </header>
+
+      <div style="flex-grow: 1; display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 20px; align-items: start;">
+        <section aria-label="Fluxo" style="display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <x-import component-from-global-scope="VibeDeck.SegmentedControl" label="Visualização" options="{{views}}"></x-import>
+            <button type="button" class="vd-link" style="font-size: 12px;">Editar etapas</button>
+          </div>
+          <div style="display: grid; grid-template-columns: 84px 84px minmax(0, 300px); grid-template-rows: 32px 32px 48px 32px 48px 40px 48px 40px 48px 32px 32px;">
+            <div style="grid-column: 3; grid-row: 1; justify-self: center; align-self: center; padding: 4px 14px; border-radius: var(--radius-pill); background: var(--done-soft); color: var(--done); font-weight: 700;">Início</div>
+            <div class="v2-line" style="grid-column: 3; grid-row: 2;"><span class="bar"></span></div>
+            <div class="v2-node" style="grid-column: 3; grid-row: 3;">
+              <span style="color: var(--brand-text); display: inline-flex;"><x-import component-from-global-scope="VibeDeck.Icon" name="agent" size="15"></x-import></span>
+              <span style="font-weight: 600;">Implementador</span>
+            </div>
+            <div class="v2-line" style="grid-column: 3; grid-row: 4;"><span class="bar"></span></div>
+            <div class="v2-node" style="grid-column: 3; grid-row: 5;">
+              <span style="color: var(--brand-text); display: inline-flex;"><x-import component-from-global-scope="VibeDeck.Icon" name="command" size="15"></x-import></span>
+              <span style="font-weight: 600;">/testar</span>
+            </div>
+            <div class="v2-line" style="grid-column: 3; grid-row: 6;"><span class="bar"></span><span class="v2-verdict">= PASSOU</span><span class="bar"></span></div>
+            <div class="v2-node" style="grid-column: 3; grid-row: 7; border-color: var(--brand);">
+              <span style="color: var(--brand-text); display: inline-flex;"><x-import component-from-global-scope="VibeDeck.Icon" name="agent" size="15"></x-import></span>
+              <span style="flex: 1; font-weight: 600;">Revisor de código</span>
+              <span class="callout" style="color: var(--ai-text); font-weight: 600;">agora</span>
+            </div>
+            <div class="v2-line" style="grid-column: 3; grid-row: 8;"><span class="bar"></span><span class="v2-verdict">= APROVADO</span><span class="bar"></span></div>
+            <div class="v2-node" style="grid-column: 3; grid-row: 9;">
+              <span style="color: var(--brand-text); display: inline-flex;"><x-import component-from-global-scope="VibeDeck.Icon" name="command" size="15"></x-import></span>
+              <span style="font-weight: 600;">/abrir-pr</span>
+            </div>
+            <div class="v2-line" style="grid-column: 3; grid-row: 10;"><span class="bar"></span></div>
+            <div style="grid-column: 3; grid-row: 11; justify-self: center; align-self: center; padding: 4px 14px; border-radius: var(--radius-pill); background: var(--neutral-soft); color: var(--ink-muted); font-weight: 700;">Fim</div>
+            <div class="v2-loop" style="grid-column: 1; grid-row: 3 / 8;"><span class="v2-loop-label">= MUDANÇAS</span></div>
+            <div class="v2-loop" style="grid-column: 2; grid-row: 3 / 6;"><span class="v2-loop-label">= FALHOU</span></div>
+          </div>
+        </section>
+
+        <section aria-label="Execuções" style="display: flex; flex-direction: column; gap: 8px;">
+          <span style="font-size: 11px; line-height: 14px; font-weight: 600; color: var(--ink-muted);">Execuções</span>
+          <div class="v2-run" style="border-color: var(--brand);">
+            <span style="font-weight: 600;">Modo foco no editor</span>
+            <span class="callout" style="color: var(--ai-text);">Em andamento · passo 5 de 12</span>
+          </div>
+          <div class="v2-run">
+            <span style="font-weight: 600;">Contagens no plural</span>
+            <span class="callout" style="color: var(--brand-text);">Aguardando sua resposta</span>
+          </div>
+          <div class="v2-run">
+            <span style="font-weight: 600;">Grafo em HTML interativo</span>
+            <span class="callout" style="color: var(--ink-muted);">Concluída ontem · 7 passos</span>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <aside aria-label="IA" style="flex: 1 1 280px; max-width: 320px; box-sizing: border-box; padding: 40px 14px 14px; display: flex; flex-direction: column; gap: 12px; background: var(--bg-sidebar); border-left: 1px solid var(--line);">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="color: var(--ai-text); display: inline-flex;"><x-import component-from-global-scope="VibeDeck.Icon" name="ai" size="16"></x-import></span>
+        <span style="font-size: 15px; font-weight: 700;">IA</span>
+        <button type="button" class="vd-badge vd-tone-neutral" style="border: 0; cursor: pointer;">Claude Code · Opus <x-import component-from-global-scope="VibeDeck.Icon" name="updown" size="12"></x-import></button>
+        <button type="button" class="vd-icon-btn" aria-label="Recolher painel de IA" style="margin-left: auto;">
+          <x-import component-from-global-scope="VibeDeck.Icon" name="inspector" size="15"></x-import>
+        </button>
+      </div>
+      <section aria-label="Pergunta da execução" style="display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: var(--radius-lg); background: var(--surface-100); border: 1px solid var(--line);">
+        <span style="display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--brand-text);"><x-import component-from-global-scope="VibeDeck.Icon" name="help" size="14"></x-import>Contagens no plural</span>
+        <span>O Implementador pergunta: qual arquivo de strings devo usar?</span>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <button type="button" class="vd-btn vd-btn-secondary vd-btn-md" style="justify-content: flex-start;"><span class="mono">Localizable.xcstrings</span></button>
+          <button type="button" class="vd-btn vd-btn-quiet vd-btn-md" style="justify-content: flex-start;">Outro…</button>
+        </div>
+      </section>
+      <button type="button" style="display: flex; gap: 10px; align-items: flex-start; width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface-100); color: var(--ink); text-align: left; cursor: pointer; font: inherit;">
+        <span style="color: var(--ai-text); display: inline-flex; margin-top: 1px;"><x-import component-from-global-scope="VibeDeck.Icon" name="rule" size="15"></x-import></span>
+        <span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-weight: 600;">Revisar o fluxo</span><span class="callout" style="color: var(--ink-muted);">Procura etapas sem saída e laços sem limite</span></span>
+      </button>
+      <div style="flex-grow: 1;"></div>
+      <div style="display: flex; align-items: flex-end; gap: 8px; padding: 8px 8px 8px 12px; border-radius: var(--radius-lg); background: var(--surface-100); border: 1px solid var(--line);">
+        <textarea rows="2" aria-label="Pergunte à IA" placeholder="Peça uma etapa nova…" style="flex: 1; resize: none; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: 13px; outline: none;"></textarea>
+        <button type="button" class="vd-composer-add" aria-label="Enviar">
+          <x-import component-from-global-scope="VibeDeck.Icon" name="send" size="15"></x-import>
+        </button>
+      </div>
+    </aside>
+  </div>
+
+  <dc-import name="V2StatusBar" task="Workflow · Implementar até aprovar 5/12" progress="42%" hint-size="100%,32px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      yes: true,
+      views: [
+        { value: "flow", label: "Fluxo" },
+        { value: "steps", label: "Etapas" }
+      ]
+    };
+  }
+}
+</script>
+
+
+</body></html>

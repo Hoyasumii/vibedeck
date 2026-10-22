@@ -1,0 +1,268 @@
+{
+  "title": "VibeDeck — Logo e interface multiplataforma",
+  "boards": [
+    {
+      "file": "00-logo-e-icones-por-plataforma.html",
+      "title": "Logo e ícones por plataforma",
+      "width": 1280,
+      "height": 800,
+      "note": "Logo e ícones: fonte do ícone do app (scripts/make-icon.swift) e do componente VibeDeck.Logo."
+    },
+    {
+      "file": "01-macos-escuro.html",
+      "title": "macOS — escuro",
+      "width": 1440,
+      "height": 860,
+      "note": "Referência V1: a janela macOS com barra lateral única foi substituída pela proposta V2 (trilho de espaços, pranchas 13–28). Use para tokens, componentes e conteúdo."
+    },
+    {
+      "file": "02-windows-11-claro.html",
+      "title": "Windows 11 — claro",
+      "width": 1440,
+      "height": 892,
+      "note": "Fora desta entrega: a nova interface é só para macOS 26 (ideia “Nova Interface”). Windows/Linux ficam para a próxima atualização."
+    },
+    {
+      "file": "03-linux-gnome-escuro.html",
+      "title": "Linux (GNOME) — escuro",
+      "width": 1440,
+      "height": 906,
+      "note": "Fora desta entrega: a nova interface é só para macOS 26 (ideia “Nova Interface”). Windows/Linux ficam para a próxima atualização."
+    },
+    {
+      "file": "04-boas-vindas-macos.html",
+      "title": "Boas-vindas — macOS",
+      "width": 1280,
+      "height": 760,
+      "note": "Referência V1: substituída por “Proposta · Boas-vindas” (prancha 28)."
+    },
+    {
+      "file": "05-corpo-da-janela-compartilhado.html",
+      "title": "Corpo da janela (compartilhado)",
+      "width": 1440,
+      "height": 860,
+      "note": "Referência V1: lista de revisões, inspetor e composer. Na V2, o conteúdo segue a prancha 15."
+    },
+    {
+      "file": "06-barra-lateral-compartilhada.html",
+      "title": "Barra lateral (compartilhada)",
+      "width": 280,
+      "height": 860,
+      "note": "Referência V1: barra lateral única. Na V2, o trilho de espaços (18) e a navegação de cada espaço a substituem."
+    },
+    {
+      "file": "07-regras-topico-e-execucao.html",
+      "title": "Regras — tópico e execução",
+      "width": 1440,
+      "height": 860,
+      "note": "Referência V1: execução de regras com progresso. Na V2, a execução aparece na barra de status e na prancha 13."
+    },
+    {
+      "file": "08-ideia-rascunho-de-regras.html",
+      "title": "Ideia — rascunho de regras",
+      "width": 1440,
+      "height": 860,
+      "note": "Referência V1: rascunho de regras da ideia. Na V2, segue as pranchas 14 e 37."
+    },
+    {
+      "file": "09-workflow-fluxo-e-execucoes.html",
+      "title": "Workflow — fluxo e execuções",
+      "width": 1440,
+      "height": 860,
+      "note": "Referência V1: fluxo e execuções do workflow. Na V2, segue a prancha 20."
+    },
+    {
+      "file": "10-agente-proximos-passos.html",
+      "title": "Agente — próximos passos",
+      "width": 1440,
+      "height": 860,
+      "note": "Referência V1: próximos passos do agente. Na V2, segue a prancha 16."
+    },
+    {
+      "file": "11-chat-de-ia.html",
+      "title": "Chat de IA",
+      "width": 1440,
+      "height": 860,
+      "note": "Referência V1, atualizada: sem o botão “Sessão na nuvem” (MUD-003). Na V2, segue a prancha 25."
+    },
+    {
+      "file": "12-stack-e-padroes.html",
+      "title": "Stack e padrões",
+      "width": 1440,
+      "height": 1000,
+      "note": "Referência V1, atualizada: sem menção a sessões na nuvem (MUD-003). Na V2, Stack e Padrões ficam em Projeto (17)."
+    },
+    {
+      "file": "13-proposta-qualidade-regras.html",
+      "title": "Proposta · Qualidade › Regras",
+      "width": 1440,
+      "height": 900,
+      "note": "Atualizada: sugestão “Reorganizar” no painel de IA, que abre a proposta da prancha 38."
+    },
+    {
+      "file": "14-proposta-planejar-ideia-descubra-no-painel-de-ia.html",
+      "title": "Proposta · Planejar › Ideia (Descubra no painel de IA)",
+      "width": 1440,
+      "height": 900,
+      "note": "Atualizada: “Depende de” com dependências da ideia (concluída e pendente) e Dependentes. Com dependência pendente, Implementar fica desativado; a avaliação continua liberada."
+    },
+    {
+      "file": "15-proposta-qualidade-revisao-resolver-no-painel-de-ia.html",
+      "title": "Proposta · Qualidade › Revisão (Resolver no painel de IA)",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "16-proposta-automacao-agente.html",
+      "title": "Proposta · Automação › Agente",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "17-proposta-projeto-ia-recolhida.html",
+      "title": "Proposta · Projeto (IA recolhida)",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "18-proposta-trilho-de-espacos.html",
+      "title": "Proposta · trilho de espaços",
+      "width": 76,
+      "height": 900
+    },
+    {
+      "file": "19-proposta-barra-de-status.html",
+      "title": "Proposta · barra de status",
+      "width": 1440,
+      "height": 152,
+      "note": "Barra de status com o indicador de ambiente: Local, SSH conectado, SSH offline com alterações pendentes e SSH com conflito. Clicar no indicador abre o estado da conexão (prancha 30)."
+    },
+    {
+      "file": "20-proposta-automacao-workflow.html",
+      "title": "Proposta · Automação › Workflow",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "21-proposta-automacao-comando-terminal-aberto.html",
+      "title": "Proposta · Automação › Comando (terminal aberto)",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "22-proposta-automacao-kits-pre-definidos.html",
+      "title": "Proposta · Automação › Kits pré-definidos",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "23-proposta-planejar-doc-gerar-documentos-no-painel-de-ia.html",
+      "title": "Proposta · Planejar › Doc (Gerar documentos no painel de IA)",
+      "width": 1440,
+      "height": 900,
+      "note": "Atualizada: README.md vinculado da raiz aparece em Docs (MUD-002, pranchas 35 e 36)."
+    },
+    {
+      "file": "24-proposta-planejar-referencias-links-claude.html",
+      "title": "Proposta · Planejar › Referências (links + Claude)",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "25-proposta-ia-em-tela-cheia.html",
+      "title": "Proposta · IA em tela cheia",
+      "width": 1440,
+      "height": 900,
+      "note": "Atualizada: o menu da conversa não oferece mais sessão na nuvem (MUD-003)."
+    },
+    {
+      "file": "26-proposta-projeto-grafo.html",
+      "title": "Proposta · Projeto › Grafo",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "27-proposta-ajustes.html",
+      "title": "Proposta · Ajustes",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "28-proposta-boas-vindas.html",
+      "title": "Proposta · Boas-vindas",
+      "width": 1440,
+      "height": 900,
+      "note": "Atualizada: “Conectar via SSH…” e projeto SSH nos recentes (MUD-003, prancha 29)."
+    },
+    {
+      "file": "29-nova-ssh-conectar.html",
+      "title": "Nova · Boas-vindas › Conectar via SSH",
+      "width": 1440,
+      "height": 900,
+      "note": "MUD-003 e ideia “Criar projetos remotos via SSH”: conexão (destino do ~/.ssh/config ou manual, chave ou senha, Chaves do macOS opcional), impressão digital do host, navegação da pasta remota e inicialização só após confirmação."
+    },
+    {
+      "file": "30-nova-ssh-offline-e-conflito.html",
+      "title": "Nova · Projeto SSH › conflito ao reconectar",
+      "width": 1440,
+      "height": 900,
+      "note": "Projeto SSH: o indicador de ambiente na barra de status abre o estado da conexão (alterações offline guardadas no Mac, reconectar, senha, Terminal SSH). Ao reconectar, cada conflito mostra as versões local e remota; nada é descartado sem escolha, e IA e regras esperam a resolução."
+    },
+    {
+      "file": "31-nova-inicio-guiado-1-stack.html",
+      "title": "Nova · Início guiado › 1. Stack",
+      "width": 1440,
+      "height": 900,
+      "note": "MUD-001: ao iniciar um projeto, perguntar a stack. Sugestões vêm dos arquivos do projeto (só marcadas pelo usuário entram) e do catálogo."
+    },
+    {
+      "file": "32-nova-inicio-guiado-2-padroes.html",
+      "title": "Nova · Início guiado › 2. Padrões",
+      "width": 1440,
+      "height": 900,
+      "note": "MUD-001: perguntar os padrões de projeto a partir do catálogo existente; cada padrão escolhido gera um tópico de regras com escopo."
+    },
+    {
+      "file": "33-nova-inicio-guiado-3-recursos.html",
+      "title": "Nova · Início guiado › 3. Recursos encontrados",
+      "width": 1440,
+      "height": 900,
+      "note": "MUD-001: listar skills, agentes e comandos já presentes no projeto e perguntar se devem ser cadastrados. Nada é importado sem marcação; itens já cadastrados aparecem bloqueados e não são duplicados."
+    },
+    {
+      "file": "34-nova-inicio-guiado-4-resumo.html",
+      "title": "Nova · Início guiado › 4. Resumo",
+      "width": 1440,
+      "height": 900,
+      "note": "MUD-001: resumo antes de gravar. Só ao confirmar os registros são criados (author=human, pois foi o usuário quem escolheu)."
+    },
+    {
+      "file": "35-nova-planejar-doc-vinculado.html",
+      "title": "Nova · Planejar › Doc vinculado (README.md)",
+      "width": 1440,
+      "height": 900,
+      "note": "MUD-002: Markdown da raiz espelhado em Docs por link simbólico. Selo “Vinculado”, origem e aviso de que editar grava na origem; “Remover vínculo” apaga só o link. Vínculo quebrado aparece na lista com ícone de aviso."
+    },
+    {
+      "file": "36-nova-planejar-vincular-markdown.html",
+      "title": "Nova · Planejar › Vincular Markdown da raiz",
+      "width": 1440,
+      "height": 900,
+      "note": "MUD-002: escolha de quais .md da raiz entram em Docs (pelo + da lista). Cria links relativos em .vibedeck/docs/; itens já vinculados não se repetem."
+    },
+    {
+      "file": "37-nova-planejar-ideia-implementar.html",
+      "title": "Nova · Planejar › Ideia › Implementar (modo)",
+      "width": 1440,
+      "height": 900,
+      "note": "Ideias “Executar ideia com workflow” e “Dependência de ideias”: só para ideia aprovada com avaliação atual e dependências concluídas. Com workflows no projeto: Workflow, Execução padrão ou Cancelar; execução existente pergunta Retomar ou Reiniciar. Sem workflows, só Execução padrão e Cancelar."
+    },
+    {
+      "file": "38-nova-qualidade-reorganizar.html",
+      "title": "Nova · Qualidade › Reorganizar (proposta da IA)",
+      "width": 1440,
+      "height": 900,
+      "note": "Ideia “Botão de Reorganizar”: a IA (só leitura) propõe ações sobre regras, docs, ideias e revisões: conflito (usuário escolhe qual manter), mesclar repetidos, mover, criar tópico e melhorias de fluxo. Aceite total ou por ação, em um único desfazer."
+    }
+  ]
+}

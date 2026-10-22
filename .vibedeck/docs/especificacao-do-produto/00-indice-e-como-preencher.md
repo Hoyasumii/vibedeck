@@ -22,6 +22,9 @@ Mudanças na especificação descrevem o destino desejado; retirar uma descriç�
 7. [Mudanças confirmadas: início guiado, Docs vinculados e local/SSH](07-mudancas-confirmadas.md).
 8. [Stack e padrões cadastrados do projeto](08-stack-e-padroes-do-projeto.md).
 9. [Prompt de coordenação da implementação do Core/CLI/MCP em Rust](09-prompt-de-implementacao-do-core-rust.md).
+10. [Atualização automática do app, CLI e MCP](10-atualizacao-automatica.md) — fora da primeira versão.
+11. [Prompt de implementação da nova interface](11-prompt-de-implementacao-da-interface.md).
+12. [Prompt mestre: Core/CLI/MCP + Site + App macOS](12-prompt-mestre-core-interface-site.md) — coordena 09 e 11 num só pedido.
 
 ## Legenda
 
@@ -65,3 +68,5 @@ Decisões bloqueantes: ver documento 06; principalmente ambiente SSH, plataforma
 ## Decisão do usuário — 22/10/2026
 
 O produto passa a ter início guiado (stack, padrões e oferta de cadastro de skills/agentes/comandos existentes), Docs com Markdown da raiz espelhado por link simbólico e execução somente local ou SSH. Sessões de nuvem serão removidas. Ver [requisitos e pendências](07-mudancas-confirmadas.md). Estas são mudanças solicitadas, ainda não implementadas.
+
+No mesmo dia foi pedida a atualização automática do app (MUD-004) e, em seguida, adiada: **fica fora da primeira versão**. Requisitos, pré-requisitos e decisões para a versão posterior em [10 — Atualização automática](10-atualizacao-automatica.md).

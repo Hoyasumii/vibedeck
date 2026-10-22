@@ -1,0 +1,253 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-22T16:14:09.724Z",
+  "failures" : [
+
+  ],
+  "files" : [
+    ".vibedeck/docs/especificacao-do-produto/00-indice-e-como-preencher.md",
+    ".vibedeck/docs/especificacao-do-produto/06-decisoes-e-migracao.md",
+    ".vibedeck/docs/especificacao-do-produto/07-mudancas-confirmadas.md",
+    ".vibedeck/docs/especificacao-do-produto/09-prompt-de-implementacao-do-core-rust.md",
+    ".vibedeck/docs/especificacao-do-produto/10-atualizacao-automatica.md"
+  ],
+  "id" : "277FE02E-2FD8-48F3-A88D-7CC0590DA53E",
+  "passed" : true,
+  "pending" : [
+    "README atualizado quando muda algo documentado",
+    "Código de terceiros/legado é isolado por um adapter",
+    "O adapter só traduz, sem regra de negócio",
+    "Objetos com muitos parâmetros opcionais são montados por um builder",
+    "O resultado do builder é válido ou a construção falha",
+    "Dependências apontam só para dentro",
+    "Cada caso de uso é uma unidade explícita",
+    "Dados atravessam fronteiras como estruturas simples",
+    "Funções são pequenas e fazem uma coisa",
+    "Nomes revelam intenção",
+    "Sem duplicação nem código morto",
+    "Ações de usuário/sistema passíveis de fila, histórico ou desfazer são objetos de comando",
+    "Quem dispara o comando não conhece quem o executa",
+    "O código usa a linguagem ubíqua do domínio",
+    "Regras de negócio vivem nas entidades e objetos de valor, não em serviços anêmicos",
+    "Agregados protegem suas invariantes e são alterados só pela raiz",
+    "Contextos delimitados não se misturam",
+    "Comportamento transversal é adicionado por composição",
+    "O decorator preserva o contrato do objeto decorado",
+    "Cenários descrevem comportamentos observáveis",
+    "Cada cenário explicita contexto, ação e resultado esperado",
+    "Cenários de comportamento têm testes automatizados",
+    "Operações explicitam suas precondições",
+    "Operações explicitam suas pós-condições",
+    "Alterações preservam as invariantes do objeto",
+    "Contratos têm testes de entradas válidas e violações",
+    "A criação de variantes passa por uma fábrica",
+    "A fábrica devolve o protocolo/tipo abstrato",
+    "Dependências entram pelo construtor ou por parâmetro",
+    "A montagem das dependências fica num ponto de composição",
+    "A lógica de negócio fica em funções puras",
+    "Dados são imutáveis por padrão",
+    "Efeitos colaterais ficam na casca, fora do núcleo",
+    "Igualdade de objetos de valor depende de seus atributos",
+    "Objetos de valor são imutáveis",
+    "A construção rejeita valores que violam invariantes",
+    "Objetos de valor têm testes de igualdade e invariantes",
+    "O emissor não conhece os observadores concretos",
+    "Toda inscrição tem cancelamento claro",
+    "Acesso a dados passa por repositórios",
+    "A interface do repositório é do domínio; a implementação é da infraestrutura",
+    "Operações do serviço expressam regras que não pertencem a uma única entidade ou objeto de valor",
+    "Serviços de domínio não mantêm estado de negócio entre chamadas",
+    "Dependências de infraestrutura entram por abstrações",
+    "Serviços de domínio têm testes das regras de negócio",
+    "Singletons não são acessados diretamente por quem os usa",
+    "O estado compartilhado é seguro para concorrência",
+    "Cada tipo tem uma única responsabilidade",
+    "Módulos de alto nível dependem de abstrações, não de implementações concretas",
+    "Interfaces são pequenas e específicas",
+    "Comportamento novo entra por extensão, não alterando código estável",
+    "Estados e transições são explícitos",
+    "Transições inválidas são impossíveis ou rejeitadas",
+    "Variações de comportamento viram implementações de um protocolo",
+    "O cliente depende do protocolo, não da implementação concreta",
+    "Todo comportamento novo ou corrigido tem um teste automatizado",
+    "A suíte de testes passa antes de concluir",
+    "O código é testável sem infraestrutura real"
+  ],
+  "results" : [
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/9d6f362b.sh (exit 0)\n(sem saída)",
+      "ruleId" : "9D6F362B-9F0E-4661-97B3-6158B160D478",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/geral/9f92a765.sh (exit 77)\n(sem saída)",
+      "ruleId" : "9F92A765-76E7-4EA0-A66A-78AE12EE4C8F",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/ac4ba963.sh (exit 0)\n(sem saída)",
+      "ruleId" : "AC4BA963-CDEE-419C-B057-9140643E115D",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/geral/0e5aec71.sh (exit 77)\n(sem saída)",
+      "ruleId" : "0E5AEC71-405E-4113-AB27-615313AB2B5F",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/97e096a2.sh (exit 77)\n(sem saída)",
+      "ruleId" : "97E096A2-000D-4657-B152-0FE64E0C8E6C",
+      "source" : "script",
+      "topic" : "colecao-de-artefatos-e-docs-do-claude",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/b5b453dc.sh (exit 77)\n(sem saída)",
+      "ruleId" : "B5B453DC-7961-43CF-B3C2-DFA18950E81D",
+      "source" : "script",
+      "topic" : "colecao-de-artefatos-e-docs-do-claude",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/0f77f1fd.sh (exit 77)\n(sem saída)",
+      "ruleId" : "0F77F1FD-8852-4A26-B860-8C363E445637",
+      "source" : "script",
+      "topic" : "colecao-de-artefatos-e-docs-do-claude",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/dcd7508b.sh (exit 77)\n(sem saída)",
+      "ruleId" : "DCD7508B-3ADF-4776-93EF-EA4FD237CAD5",
+      "source" : "script",
+      "topic" : "colecao-de-artefatos-e-docs-do-claude",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/133b62cd.sh (exit 77)\n(sem saída)",
+      "ruleId" : "133B62CD-0226-4845-9E53-4F502A05CA08",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/a21b5419.sh (exit 77)\n(sem saída)",
+      "ruleId" : "A21B5419-49D4-4F31-9BEC-DEA037FB9F2F",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/d4dd944d.sh (exit 77)\n(sem saída)",
+      "ruleId" : "D4DD944D-5DC9-4EEA-9139-DEE9F8968FEF",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/4d89a4da.sh (exit 77)\n(sem saída)",
+      "ruleId" : "4D89A4DA-FD25-4B06-8C32-504434336A75",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/953b1e7e.sh (exit 77)\n(sem saída)",
+      "ruleId" : "953B1E7E-82E7-4157-AD7D-2F0576EF05AC",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/384b5c03.sh (exit 77)\n(sem saída)",
+      "ruleId" : "384B5C03-96A1-47DA-B363-30B8EF61E50C",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/103b84bc.sh (exit 77)\n(sem saída)",
+      "ruleId" : "103B84BC-17CD-4929-839E-BE0B82B976D8",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/2621dabd.sh (exit 77)\n(sem saída)",
+      "ruleId" : "2621DABD-5DC8-44DE-943C-A601518D7929",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/bba08717.sh (exit 77)\n(sem saída)",
+      "ruleId" : "BBA08717-71D1-4963-B090-6E869319B8D2",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/8a34ae9e.sh (exit 77)\n(sem saída)",
+      "ruleId" : "8A34AE9E-0913-41BD-8441-4B7E1652275B",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    }
+  ],
+  "task" : "Especificação: atualização automática (MUD-004) movida para fora da primeira versão",
+  "topics" : [
+    "geral",
+    "colecao-de-artefatos-e-docs-do-claude",
+    "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+    "padrao-adapter",
+    "padrao-builder",
+    "padrao-clean-architecture",
+    "padrao-clean-code",
+    "padrao-command",
+    "padrao-ddd",
+    "padrao-decorator",
+    "padrao-desenvolvimento-orientado-a-comportamento",
+    "padrao-design-por-contrato",
+    "padrao-factory",
+    "padrao-injecao-de-dependencia",
+    "padrao-nucleo-funcional",
+    "padrao-objeto-de-valor",
+    "padrao-observer",
+    "padrao-repository",
+    "padrao-servico-de-dominio",
+    "padrao-singleton",
+    "padrao-solid",
+    "padrao-state",
+    "padrao-strategy",
+    "padrao-tdd"
+  ],
+  "warnings" : [
+
+  ]
+}

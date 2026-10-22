@@ -28,6 +28,7 @@ Você é o coordenador da migração do VibeDeck para um novo Core, CLI e servid
 - Guiar quem começa um projeto com perguntas de stack e padrões. Detectar skills, agentes e comandos existentes e oferecer cadastro com escolha explícita; não importar/sobrescrever automaticamente.
 - Espelhar Markdown da raiz, como README.md, em Docs por link simbólico, preservando a origem. Definir os detalhes pendentes de edição, remoção, links quebrados, permissões e suporte por plataforma antes da implementação afetada.
 - Manter compatibilidade dos dados e dos comportamentos aprovados, com exceções deliberadas documentadas. Não traduzir Swift linha por linha nem copiar como requisito definitivo tudo que existe hoje.
+- Atualização automática (MUD-004, [doc 10](10-atualizacao-automatica.md)) **fica fora da primeira versão**: não implemente Sparkle, feed, pipeline de release, `self-update` nem UI de atualização. Apenas não tome decisões que impeçam adicioná-la depois.
 - Não criar uma UI Windows/Linux, acrescentar OpenCode, trocar providers automaticamente ou converter todos os scripts antes de validar o piloto sem decisão de escopo.
 
 ### 2. Fontes e preparação

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Barra lateral</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/vibedeck/tokens.css">
+<link rel="stylesheet" href="ds/vibedeck/components/bundle.css">
+<script src="ds/vibedeck/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<nav aria-label="Projeto" style="width: 100%; height: 100%; min-height: 860px; box-sizing: border-box; padding: 12px 10px; display: flex; flex-direction: column; gap: 1px; background: var(--bg-sidebar); border-right: 1px solid var(--line); color: var(--ink); font-family: var(--font-ui); font-size: 13px; line-height: 18px;">
+  <sc-if value="{{inset}}" hint-placeholder-val="{{inset}}">
+    <div style="height: 36px; flex: none;"></div>
+  </sc-if>
+
+  <x-import component-from-global-scope="VibeDeck.SidebarItem" icon="stack" label="Stack" count="9" selected="{{sel.stack}}"></x-import>
+  <x-import component-from-global-scope="VibeDeck.SidebarItem" icon="pattern" label="Padrões" count="3"></x-import>
+  <x-import component-from-global-scope="VibeDeck.SidebarItem" icon="link" label="Links" count="12"></x-import>
+  <x-import component-from-global-scope="VibeDeck.SidebarItem" icon="claude" label="Claude" count="4"></x-import>
+  <x-import component-from-global-scope="VibeDeck.SidebarItem" icon="graph" label="Grafo"></x-import>
+  <x-import component-from-global-scope="VibeDeck.SidebarItem" icon="ai" label="IA" selected="{{sel.chat}}"></x-import>
+  <x-import component-from-global-scope="VibeDeck.SidebarItem" icon="terminal" label="Terminal" count="1"></x-import>
+
+  <div style="height: 10px; flex: none;"></div>
+
+  <x-import component-from-global-scope="VibeDeck.SidebarSection" icon="doc" label="Docs" count="5" expanded="{{exp.docs}}" items="{{docItems}}"></x-import>
+  <x-import component-from-global-scope="VibeDeck.SidebarSection" icon="review" label="Revisões" count="4" expanded="{{exp.review}}" items="{{reviewItems}}"></x-import>
+  <x-import component-from-global-scope="VibeDeck.SidebarSection" icon="rule" label="Regras" count="3" expanded="{{exp.rules}}" items="{{ruleItems}}"></x-import>
+  <x-import component-from-global-scope="VibeDeck.SidebarSection" icon="idea" label="Ideias" count="5" expanded="{{exp.idea}}" items="{{ideaItems}}"></x-import>
+  <x-import component-from-global-scope="VibeDeck.SidebarSection" icon="agent" label="Agentes" count="3" expanded="{{exp.agent}}" items="{{agentItems}}"></x-import>
+  <x-import component-from-global-scope="VibeDeck.SidebarSection" icon="command" label="Comandos" count="4" expanded="{{exp.none}}"></x-import>
+  <x-import component-from-global-scope="VibeDeck.SidebarSection" icon="skill" label="Skills" count="2" expanded="{{exp.none}}"></x-import>
+  <x-import component-from-global-scope="VibeDeck.SidebarSection" icon="workflow" label="Workflows" count="2" expanded="{{exp.workflow}}" items="{{workflowItems}}"></x-import>
+
+  <div style="margin-top: auto; padding-top: 12px; display: flex; flex-direction: column; gap: 10px;">
+    <label style="display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: var(--radius-sm); background: var(--surface-200); color: var(--ink-muted);">
+      <x-import component-from-global-scope="VibeDeck.Icon" name="search" size="13"></x-import>
+      <input type="search" placeholder="Filtrar sidebar (#tag)" aria-label="Filtrar sidebar" style="flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: 12px; outline: none;">
+    </label>
+
+    <section aria-label="Uso de IA" style="display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: var(--radius-md); background: var(--surface-100);">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <button type="button" aria-label="Provedor anterior" style="width: 22px; height: 22px; border: 0; border-radius: 50%; background: transparent; color: var(--ink-muted); display: grid; place-items: center; cursor: pointer; transform: scaleX(-1);">
+          <x-import component-from-global-scope="VibeDeck.Icon" name="chevron" size="12"></x-import>
+        </button>
+        <span style="font-size: 12px; font-weight: 600;">Claude Code</span>
+        <button type="button" aria-label="Próximo provedor" style="width: 22px; height: 22px; border: 0; border-radius: 50%; background: transparent; color: var(--ink-muted); display: grid; place-items: center; cursor: pointer;">
+          <x-import component-from-global-scope="VibeDeck.Icon" name="chevron" size="12"></x-import>
+        </button>
+      </div>
+      <x-import component-from-global-scope="VibeDeck.UsageMeter" label="Sessão" value="{{usage.session}}" detail="42% · reinicia 18h"></x-import>
+      <x-import component-from-global-scope="VibeDeck.UsageMeter" label="Semana" value="{{usage.week}}" detail="83% · reinicia seg."></x-import>
+      <div style="display: flex; gap: 12px;">
+        <button type="button" class="vd-link" style="font-size: 12px;">Consumo por tarefa</button>
+        <button type="button" class="vd-link" style="font-size: 12px;">Guia de IA</button>
+      </div>
+    </section>
+
+    <button type="button" style="display: flex; align-items: center; gap: 8px; padding: 4px 12px 0; border: 0; background: transparent; color: var(--ink-muted); cursor: pointer; text-align: left;">
+      <x-import component-from-global-scope="VibeDeck.Icon" name="folder" size="14"></x-import>
+      <span class="mono" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">~/Documents/vibedeck/</span>
+    </button>
+  </div>
+</nav>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"inset":{"editor":"boolean","default":false},"active":{"editor":"enum","options":["review","rules","idea","workflow","agent","chat","stack"],"default":"review"},"$preview":{"width":280,"height":860}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const a = this.props.active ?? 'review';
+    const on = (k) => a === k;
+    return {
+      inset: !!this.props.inset,
+      sel: { stack: on('stack'), chat: on('chat') },
+      exp: { docs: false, none: false, review: on('review'), rules: on('rules'), idea: on('idea'), agent: on('agent'), workflow: on('workflow') },
+      usage: { session: 0.42, week: 0.83 },
+      docItems: [
+        { label: 'Visão geral do app', icon: 'doc' }
+      ],
+      reviewItems: [
+        { folder: true, label: 'Interface', items: [
+          { label: 'Funcionamento da tela', icon: 'review', count: 2, selected: on('review') },
+          { label: 'Coisas que estão faltando', icon: 'review', count: 1 }
+        ] }
+      ],
+      ruleItems: [
+        { label: 'Geral', icon: 'rule', count: 4 },
+        { label: 'Interface', icon: 'scope', count: 6, selected: on('rules') },
+        { label: 'Acessibilidade', icon: 'scope', count: 3 }
+      ],
+      ideaItems: [
+        { label: 'Modo foco no editor', icon: 'search', selected: on('idea') },
+        { label: 'Exportar workflow como skill', icon: 'idea' },
+        { label: 'Grafo em HTML interativo', icon: 'seal', muted: true }
+      ],
+      agentItems: [
+        { label: 'Implementador', icon: 'agent' },
+        { label: 'Revisor de código', icon: 'agent', selected: on('agent') },
+        { label: 'Testador', icon: 'agent' }
+      ],
+      workflowItems: [
+        { label: 'Implementar até aprovar', icon: 'workflow', selected: on('workflow') },
+        { label: 'Revisão de PR', icon: 'workflow' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
