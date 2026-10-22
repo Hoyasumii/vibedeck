@@ -1,0 +1,169 @@
+//! CLI clap. Cada área nova adiciona um módulo com seu `Subcommand` e uma variante em `Command`.
+//!
+//! Padrões previstos (cli.md):
+//! - grupos com subcomando padrão: `#[command(args_conflicts_with_subcommands = true)]` +
+//!   `Option<Sub>` e, quando `None`, rodar o `list` com as opções do nível do grupo;
+//! - `--json` por comando folha e saída via `output::print_json`;
+//! - erros: `CliError` (exit 1, `Error: <msg>` em stderr); erros de parse de argumentos saem com 64.
+
+pub mod output;
+
+use clap::{Args, CommandFactory, Parser, Subcommand};
+use std::ffi::OsString;
+use std::fmt;
+use std::path::{Path, PathBuf};
+
+pub const EXIT_FAILURE: i32 = 1;
+/// EX_USAGE: erro de parse/validação de argumentos (como o swift-argument-parser).
+pub const EXIT_USAGE: i32 = 64;
+
+#[derive(Parser, Debug)]
+#[command(
+    name = "vibedeck",
+    version,
+    about = "VibeDeck: projeto, regras e revisões para agentes de IA"
+)]
+pub struct Cli {
+    /// Diretório de partida (padrão: diretório atual); o projeto é achado subindo até vibedeck.json.
+    #[arg(short = 'C', long = "root", global = true, value_name = "dir")]
+    pub root: Option<PathBuf>,
+
+    #[command(subcommand)]
+    pub command: Command,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum Command {
+    /// Servidor MCP por stdio (ou instalação nos agentes).
+    Mcp(McpArgs),
+}
+
+#[derive(Args, Debug)]
+#[command(args_conflicts_with_subcommands = true)]
+pub struct McpArgs {
+    /// Sem subcomando equivale a `serve` (defaultSubcommand).
+    #[command(subcommand)]
+    pub command: Option<McpCommand>,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum McpCommand {
+    /// Inicia o servidor MCP em stdin/stdout.
+    Serve,
+}
+
+/// Erro de comando: mensagem em stderr e exit code.
+#[derive(Debug)]
+pub struct CliError {
+    pub message: String,
+    pub code: i32,
+}
+
+impl CliError {
+    pub fn new(message: impl Into<String>) -> Self {
+        CliError {
+            message: message.into(),
+            code: EXIT_FAILURE,
+        }
+    }
+}
+
+impl fmt::Display for CliError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+
+impl std::error::Error for CliError {}
+
+/// Ponto de entrada: devolve o exit code.
+pub fn run<I, T>(args: I) -> i32
+where
+    I: IntoIterator<Item = T>,
+    T: Into<OsString> + Clone,
+{
+    let cli = match Cli::try_parse_from(args) {
+        Ok(cli) => cli,
+        Err(e) => {
+            let _ = e.print();
+            // --help/--version saem 0; qualquer erro de uso sai 64.
+            return if e.use_stderr() { EXIT_USAGE } else { 0 };
+        }
+    };
+    match execute(cli) {
+        Ok(code) => code,
+        Err(e) => {
+            if !e.message.is_empty() {
+                eprintln!("Error: {}", e.message);
+            }
+            e.code
+        }
+    }
+}
+
+fn execute(cli: Cli) -> Result<i32, CliError> {
+    match cli.command {
+        Command::Mcp(mcp) => match mcp.command.unwrap_or(McpCommand::Serve) {
+            McpCommand::Serve => {
+                let root = locate_root(cli.root.as_deref())?;
+                Ok(crate::mcp::serve(root))
+            }
+        },
+    }
+}
+
+/// `~` expandido; `None` = cwd.
+fn start_dir(root: Option<&Path>) -> Result<PathBuf, CliError> {
+    let raw = match root {
+        Some(p) => p.to_path_buf(),
+        None => std::env::current_dir().map_err(|e| CliError::new(e.to_string()))?,
+    };
+    let s = raw.to_string_lossy();
+    if let Some(rest) = s
+        .strip_prefix("~/")
+        .or(if s == "~" { Some("") } else { None })
+        && let Some(home) = std::env::var_os("HOME")
+    {
+        return Ok(PathBuf::from(home).join(rest));
+    }
+    Ok(raw)
+}
+
+/// Sobe diretórios até achar `vibedeck.json`.
+/// INTEGRAÇÃO: trocar por `ProjectStore::locate` do vibedeck-core quando existir.
+pub fn locate_root(root: Option<&Path>) -> Result<PathBuf, CliError> {
+    let start = start_dir(root)?;
+    let start = std::fs::canonicalize(&start).unwrap_or(start);
+    for dir in start.ancestors() {
+        if dir.join("vibedeck.json").is_file() {
+            return Ok(dir.to_path_buf());
+        }
+    }
+    Err(CliError::new(format!(
+        "Nenhum vibedeck.json encontrado em {} ou diretórios acima. Rode `vibedeck init`.",
+        start.display()
+    )))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn estrutura_clap_valida() {
+        Cli::command().debug_assert();
+    }
+
+    #[test]
+    fn mcp_padrao_e_serve() {
+        let a = Cli::try_parse_from(["vibedeck", "-C", "/x", "mcp"]).unwrap();
+        assert!(matches!(a.command, Command::Mcp(McpArgs { command: None })));
+        let b = Cli::try_parse_from(["vibedeck", "mcp", "serve", "-C", "/y"]).unwrap();
+        assert_eq!(b.root.as_deref(), Some(Path::new("/y")));
+    }
+
+    #[test]
+    fn uso_invalido_sai_64() {
+        assert_eq!(run(["vibedeck", "nope"]), EXIT_USAGE);
+    }
+}

@@ -83,7 +83,9 @@ impl Args {
         match self.str("severity") {
             None | Some("must") => Ok("must"),
             Some("should") => Ok("should"),
-            Some(s) => Err(ToolError::invalid_params(format!("Severidade inválida: {s}"))),
+            Some(s) => Err(ToolError::invalid_params(format!(
+                "Severidade inválida: {s}"
+            ))),
         }
     }
 
@@ -112,7 +114,12 @@ mod tests {
         assert_eq!(x.str("a"), None);
         assert_eq!(x.str("b"), Some("x"));
         assert_eq!(x.str("c"), None);
-        assert!(x.req("a").unwrap_err().0.contains("Parâmetro obrigatório: a"));
+        assert!(
+            x.req("a")
+                .unwrap_err()
+                .0
+                .contains("Parâmetro obrigatório: a")
+        );
     }
 
     #[test]

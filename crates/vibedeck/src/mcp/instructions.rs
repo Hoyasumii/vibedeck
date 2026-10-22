@@ -28,7 +28,13 @@ mod tests {
         let t = instructions("/x");
         assert!(t.chars().count() <= 1200);
         assert!(!t.contains("Trabalhe por escopo"));
-        for m in ["rules_for", "submit_rule_check", "passed=true", "verify_manual", "AGENTS.md"] {
+        for m in [
+            "rules_for",
+            "submit_rule_check",
+            "passed=true",
+            "verify_manual",
+            "AGENTS.md",
+        ] {
             assert!(t.contains(m), "{m}");
         }
         assert!(t.starts_with("Projeto VibeDeck em /x.\n\nREGRA"));
