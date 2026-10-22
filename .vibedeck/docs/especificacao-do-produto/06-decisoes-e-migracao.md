@@ -21,7 +21,7 @@ Estado: roteiro para revisão humana, atualizado em 22/10/2026. A direção gera
 | --- | --- | --- |
 | DEC-001 | Cliente e ambiente SSH prioritários | Nuvem removida do escopo; escolher máquina local limpa e servidor SSH para a prova |
 | DEC-002 | Sistemas e CPUs da primeira entrega | macOS/CLI urgentes; definir Linux da prova, Windows e arquiteturas |
-| DEC-003 | Distribuição e atualização | Artefatos pré-compilados são a direção; decidir download/instalador e atualização |
+| DEC-003 | Distribuição e atualização | Artefatos pré-compilados são a direção; atualização automática confirmada (MUD-004), mas fora da primeira versão; UPD-001…008 do [doc 10](10-atualizacao-automatica.md) ficam para depois |
 | DEC-004 | Operações mínimas MCP | Selecionar leitura e escrita representativas, com contratos atuais |
 | DEC-005 | Regras do piloto | Selecionar 3 a 5, incluindo resultado válido, erro e não aplicabilidade |
 | DEC-006 | Fronteira SwiftUI/Rust | Processo/JSON versus biblioteca/FFI; escolher após avaliação pequena |

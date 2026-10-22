@@ -8,3 +8,4 @@ worker/public/
 worker/.dev.vars
 .env*
 graphify-out/
+design/prototipo/dist/

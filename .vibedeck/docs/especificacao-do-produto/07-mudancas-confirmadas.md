@@ -61,11 +61,16 @@ A validação atual de caminhos gerenciados precisa ser revisada deliberadamente
 
 **Aceite candidato:** produto não oferece nem inicia sessão de nuvem; fluxos local e SSH permanecem funcionais; CLI/MCP deixam de expor criação de sessões de nuvem segundo a política de transição escolhida.
 
+## MUD-004 — Atualização automática
+
+**Pedido confirmado, fora da primeira versão:** o app deve se atualizar automaticamente numa versão posterior; a primeira versão não implementa nem depende disso. Requisitos (Developer ID, notarização, Sparkle 2, feed assinado, pipeline de release, CLI/MCP e migração de dados), decisões UPD-001…008 e aceite candidato em [10 — Atualização automática](10-atualizacao-automatica.md).
+
 ## Relação com a especificação e as ideias
 
 MUD-001: FUN-001, FUN-006 e FUN-011.
 MUD-002: FUN-007 e contratos de arquivos, leitura/escrita e grupos.
 MUD-003: FUN-009/FUN-010, contratos, aceite e ideias 01–05 do Core.
+MUD-004: FUN-009 (instalação/atualização do CLI/MCP) e DEC-003; fora da primeira versão, sem fase no roteiro do Core.
 A ordem das cinco etapas permanece; muda o destino da prova MCP. Onboarding e Docs entram no mapa de funcionalidades da migração, com prioridade interna a definir.
 
 Antes de implementar, reconciliar as regras ativas e os rascunhos com essas decisões. Em especial, o rascunho 13D1425F-0210-42DD-B667-A24FFDA86743 da reescrita exigia nuvem e está revogado por esta decisão; não deve ser promovido assim. A ferramenta atual de atualização de ideias não edita regras individuais: a revisão desse texto estruturado fica explicitamente pendente antes da promoção/implementação. As demais exigências de paridade devem tratar a remoção de nuvem como exceção deliberada do usuário.

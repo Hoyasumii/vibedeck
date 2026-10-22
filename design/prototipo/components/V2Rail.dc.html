@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Trilho de espaços</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/vibedeck/tokens.css">
+<link rel="stylesheet" href="ds/vibedeck/components/bundle.css">
+<script src="ds/vibedeck/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.v2-space{width:60px;min-height:56px;border:0;border-radius:var(--radius-md);background:transparent;color:var(--ink-muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;font:inherit;font-size:11px;line-height:14px;font-weight:600}
+.v2-space:hover{background:var(--surface-200);color:var(--ink)}
+.v2-space.is-on{background:var(--surface-300);color:var(--ink)}
+.v2-space.is-on .vd-icon{color:var(--brand-text)}
+</style>
+</helmet>
+<nav aria-label="Espaços" style="width: 100%; height: 100%; min-height: {{minh}}; box-sizing: border-box; padding: 44px 8px 12px; display: flex; flex-direction: column; align-items: center; gap: 6px; background: var(--bg-sidebar); border-right: 1px solid var(--line); color: var(--ink); font-family: var(--font-ui);">
+  <button type="button" class="{{cls.plan}}" aria-current="{{cur.plan}}">
+    <x-import component-from-global-scope="VibeDeck.Icon" name="idea" size="18"></x-import>
+    <span>Planejar</span>
+  </button>
+  <button type="button" class="{{cls.auto}}" aria-current="{{cur.auto}}">
+    <x-import component-from-global-scope="VibeDeck.Icon" name="workflow" size="18"></x-import>
+    <span>Automação</span>
+  </button>
+  <button type="button" class="{{cls.quality}}" aria-current="{{cur.quality}}">
+    <x-import component-from-global-scope="VibeDeck.Icon" name="rule" size="18"></x-import>
+    <span>Qualidade</span>
+  </button>
+  <button type="button" class="{{cls.project}}" aria-current="{{cur.project}}">
+    <x-import component-from-global-scope="VibeDeck.Icon" name="stack" size="18"></x-import>
+    <span>Projeto</span>
+  </button>
+
+  <div style="margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+    <button type="button" class="v2-space" aria-label="Buscar e comandos (⌘K)" style="min-height: 44px;">
+      <x-import component-from-global-scope="VibeDeck.Icon" name="search" size="18"></x-import>
+    </button>
+    <button type="button" class="v2-space" aria-label="Ajustes" style="min-height: 44px;">
+      <x-import component-from-global-scope="VibeDeck.Icon" name="script" size="18"></x-import>
+    </button>
+    <button type="button" aria-label="Projeto: vibedeck" style="width: 40px; height: 40px; margin-top: 4px; border: 0; border-radius: var(--radius-md); background: var(--surface-100); display: grid; place-items: center; cursor: pointer;">
+      <x-import component-from-global-scope="VibeDeck.Logo" size="26"></x-import>
+    </button>
+  </div>
+</nav>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"space":{"editor":"enum","options":["plan","auto","quality","project"],"default":"quality"},"minHeight":{"editor":"text","default":"868px"},"$preview":{"width":76,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.props.space ?? 'quality';
+    const c = (k) => s === k ? 'v2-space is-on' : 'v2-space';
+    const p = (k) => s === k ? 'page' : undefined;
+    return {
+      minh: this.props.minHeight ?? '868px',
+      cls: { plan: c('plan'), auto: c('auto'), quality: c('quality'), project: c('project') },
+      cur: { plan: p('plan'), auto: p('auto'), quality: p('quality'), project: p('project') }
+    };
+  }
+}
+</script>
+</body>
+</html>

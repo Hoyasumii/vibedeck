@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Corpo da janela</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/vibedeck/tokens.css">
+<link rel="stylesheet" href="ds/vibedeck/components/bundle.css">
+<script src="ds/vibedeck/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 100%; min-height: 860px; display: flex; flex-wrap: wrap; background: var(--bg-window); color: var(--ink); font-family: var(--font-ui); font-size: 13px; line-height: 18px;">
+
+  <div style="flex: 1 1 240px; max-width: 280px; min-width: 220px; display: flex;">
+    <dc-import name="Sidebar" active="review" inset="{{inset}}" hint-size="100%,860px"></dc-import>
+  </div>
+
+  <main style="flex: 999 1 520px; min-width: 0; box-sizing: border-box; padding: 12px 28px 20px; display: flex; flex-direction: column; gap: 18px;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <nav aria-label="Abas" style="flex: 1; min-width: 0; display: flex; gap: 4px; padding: 3px; border-radius: var(--radius-pill); background: var(--bg-sidebar); overflow: hidden;">
+        <x-import component-from-global-scope="VibeDeck.Tab" icon="review" label="Funcionamento da tela" selected="{{yes}}"></x-import>
+        <x-import component-from-global-scope="VibeDeck.Tab" icon="scope" label="Interface"></x-import>
+        <x-import component-from-global-scope="VibeDeck.Tab" icon="stack" label="Stack"></x-import>
+      </nav>
+      <button type="button" class="vd-icon-btn" aria-label="Mostrar inspetor (⌥⌘I)">
+        <x-import component-from-global-scope="VibeDeck.Icon" name="inspector" size="16"></x-import>
+      </button>
+    </div>
+
+    <header style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px;">
+      <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0;">
+        <h1 class="display-lg" style="margin: 0;">Funcionamento da tela</h1>
+        <span class="callout" style="color: var(--ink-muted);">2 abertos · 4 no total</span>
+        <span class="body" style="color: var(--ink-faint);">Adicionar descrição…</span>
+        <div style="display: flex; gap: 8px; margin-top: 2px;">
+          <span class="vd-tag">#ui</span>
+          <span class="vd-tag">#configuracoes</span>
+        </div>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
+        <x-import component-from-global-scope="VibeDeck.Button" variant="secondary" icon="ai">Resolver grupo</x-import>
+        <x-import component-from-global-scope="VibeDeck.SegmentedControl" label="Status" options="{{statusOptions}}"></x-import>
+      </div>
+    </header>
+
+    <div role="toolbar" aria-label="Filtrar por tipo" style="display: flex; flex-wrap: wrap; gap: 8px;">
+      <x-import component-from-global-scope="VibeDeck.FilterChip" icon="all" label="Todos" default-selected="{{yes}}"></x-import>
+      <x-import component-from-global-scope="VibeDeck.FilterChip" icon="fix" tone="fix" label="Corrigir" count="1"></x-import>
+      <x-import component-from-global-scope="VibeDeck.FilterChip" icon="change" tone="change" label="Alterar" count="1"></x-import>
+      <x-import component-from-global-scope="VibeDeck.FilterChip" icon="remove" tone="remove" label="Remover" count="1"></x-import>
+      <x-import component-from-global-scope="VibeDeck.FilterChip" icon="disable" tone="disable" label="Inativar"></x-import>
+      <x-import component-from-global-scope="VibeDeck.FilterChip" icon="hide" tone="hide" label="Ocultar"></x-import>
+      <x-import component-from-global-scope="VibeDeck.FilterChip" icon="note" tone="note" label="Nota" count="1"></x-import>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px; flex-grow: 1;">
+      <x-import component-from-global-scope="VibeDeck.ReviewItem" title="Botão de salvar não responde" type="fix" author="human" where="src/screens/Settings.tsx · #save-btn" status="doing" priority="high" rules="{{two}}" resolve="{{yes}}" selected="{{yes}}"></x-import>
+      <x-import component-from-global-scope="VibeDeck.ReviewItem" title="Trocar o texto do estado vazio" type="change" author="ai" where="src/components/EmptyState.tsx" resolve="{{yes}}"></x-import>
+      <x-import component-from-global-scope="VibeDeck.ReviewItem" title="Usuários pediram atalho para salvar" type="note" author="human"></x-import>
+      <x-import component-from-global-scope="VibeDeck.ReviewItem" title="Remover a aba de configurações antigas" type="remove" author="human" default-done="{{yes}}"></x-import>
+    </div>
+
+    <x-import component-from-global-scope="VibeDeck.Composer" type="fix"></x-import>
+  </main>
+
+  <aside aria-label="Inspetor" style="flex: 1 1 300px; max-width: 360px; box-sizing: border-box; padding: 20px 16px; display: flex; flex-direction: column; gap: 18px; background: var(--bg-sidebar); border-left: 1px solid var(--line);">
+    <sc-if value="{{inset}}" hint-placeholder-val="{{inset}}">
+      <div style="height: 16px;"></div>
+    </sc-if>
+    <x-import component-from-global-scope="VibeDeck.InspectorGroup" title="Item" rows="{{itemRows}}"></x-import>
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <x-import component-from-global-scope="VibeDeck.InspectorGroup" title="Onde" rows="{{whereRows}}"></x-import>
+      <div style="display: flex; justify-content: flex-end;">
+        <x-import component-from-global-scope="VibeDeck.Button" variant="quiet" icon="search">Descubra</x-import>
+      </div>
+    </div>
+    <x-import component-from-global-scope="VibeDeck.InspectorGroup" title="Regras verificadas" rows="{{ruleRows}}"></x-import>
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <span class="caption" style="color: var(--ink-muted); padding-left: 4px;">Registro</span>
+      <div style="background: var(--surface-100); border-radius: var(--radius-md); padding: 0 16px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; min-height: 40px; border-bottom: 1px solid var(--line);">
+          <span>Autor</span>
+          <x-import component-from-global-scope="VibeDeck.AuthorTag" author="human"></x-import>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; min-height: 40px; border-bottom: 1px solid var(--line);">
+          <span>Criado</span>
+          <span style="color: var(--ink-muted);">7 de out. de 2026, 14:27</span>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; min-height: 40px; border-bottom: 1px solid var(--line);">
+          <span>Atualizado</span>
+          <span style="color: var(--ink-muted);">13 de out. de 2026, 09:12</span>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; min-height: 40px;">
+          <span>Id</span>
+          <span class="mono" style="color: var(--ink-muted);">a3f9c21e</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"inset":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":860}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      inset: !!this.props.inset,
+      yes: true, two: 2,
+      statusOptions: [
+        { value: "open", label: "Abertos" },
+        { value: "done", label: "Concluídos" },
+        { value: "all", label: "Todos" }
+      ],
+      itemRows: [
+        { label: "Título", value: "Botão de salvar não responde" },
+        { label: "Detalhes", placeholder: "Adicionar detalhes…" },
+        { label: "Tipo", value: "Corrigir", picker: true },
+        { label: "Status", value: "Em andamento", picker: true },
+        { label: "Prioridade", value: "Alta", picker: true }
+      ],
+      whereRows: [
+        { label: "Arquivo", value: "src/screens/Settings.tsx", mono: true },
+        { label: "Rota / tela", value: "/settings", mono: true },
+        { label: "Componente", value: "SaveButton", mono: true },
+        { label: "Seletor", value: "#save-btn", mono: true }
+      ],
+      ruleRows: [
+        { label: "Geral", toggle: true },
+        { label: "Interface", toggle: true },
+        { label: "Acessibilidade", toggle: false }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

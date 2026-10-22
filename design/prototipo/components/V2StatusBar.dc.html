@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Barra de status</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/vibedeck/tokens.css">
+<link rel="stylesheet" href="ds/vibedeck/components/bundle.css">
+<script src="ds/vibedeck/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.v2-sb-btn{height:24px;padding:0 8px;border:0;border-radius:var(--radius-sm);background:transparent;color:var(--ink-muted);display:inline-flex;align-items:center;gap:6px;cursor:pointer;font:inherit;font-size:12px}
+.v2-sb-btn:hover{background:var(--surface-200);color:var(--ink)}
+</style>
+</helmet>
+<footer aria-label="Barra de status" style="width: 100%; height: 32px; box-sizing: border-box; padding: 0 8px; display: flex; align-items: center; gap: 4px; background: var(--bg-sidebar); border-top: 1px solid var(--line); color: var(--ink-muted); font-family: var(--font-ui); font-size: 12px; line-height: 16px; white-space: nowrap;">
+  <button type="button" class="v2-sb-btn" aria-label="Uso da IA: Claude Code, sessão 42%, semana 83%">
+    <x-import component-from-global-scope="VibeDeck.Icon" name="ai" size="13"></x-import>
+    <span>Claude Code</span>
+    <span style="display: inline-flex; align-items: center; gap: 4px;">Sessão
+      <span style="width: 36px; height: 4px; border-radius: 999px; background: var(--surface-300); overflow: hidden;"><span style="display: block; width: 42%; height: 100%; background: var(--ai);"></span></span>
+    </span>
+    <span style="display: inline-flex; align-items: center; gap: 4px;">Semana
+      <span style="width: 36px; height: 4px; border-radius: 999px; background: var(--surface-300); overflow: hidden;"><span style="display: block; width: 83%; height: 100%; background: var(--brand);"></span></span>
+    </span>
+  </button>
+
+  <sc-if value="{{hasTask}}" hint-placeholder-val="{{hasTask}}">
+    <span aria-hidden="true" style="width: 1px; height: 16px; background: var(--line);"></span>
+    <button type="button" class="v2-sb-btn" style="color: var(--ai-text);">
+      <x-import component-from-global-scope="VibeDeck.Icon" name="play" size="12"></x-import>
+      <span>{{task}}</span>
+      <span style="width: 48px; height: 4px; border-radius: 999px; background: var(--surface-300); overflow: hidden;"><span style="display: block; width: {{progress}}; height: 100%; background: var(--ai);"></span></span>
+    </button>
+  </sc-if>
+
+  <span style="margin-left: auto;"></span>
+  <button type="button" class="v2-sb-btn" aria-label="{{env.aria}}" style="{{env.style}}">
+    <x-import component-from-global-scope="VibeDeck.Icon" name="{{env.icon}}" size="13"></x-import>
+    <span>{{env.label}}</span>
+    <sc-if value="{{env.hasDetail}}" hint-placeholder-val="{{env.hasDetail}}">
+      <span style="display: inline-flex; align-items: center; gap: 4px;"><span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 50%; background: {{env.dot}};"></span>{{env.detail}}</span>
+    </sc-if>
+  </button>
+  <span aria-hidden="true" style="width: 1px; height: 16px; background: var(--line);"></span>
+  <button type="button" class="v2-sb-btn">
+    <x-import component-from-global-scope="VibeDeck.Icon" name="rule" size="13"></x-import>
+    <span>Último check aprovado · 14:20</span>
+  </button>
+  <button type="button" class="v2-sb-btn">
+    <x-import component-from-global-scope="VibeDeck.Icon" name="terminal" size="13"></x-import>
+    <span>Terminal</span>
+  </button>
+  <span class="mono" style="padding: 0 8px; font-size: 11px;">main</span>
+</footer>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"task":{"editor":"text","default":"Regras · Interface 5/6"},"env":{"editor":"enum","options":["local","ssh","ssh-offline","ssh-conflict"],"default":"local"},"host":{"editor":"text","default":"deploy@srv-01"},"pending":{"editor":"text","default":"2"},"$preview":{"width":1440,"height":32}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const task = this.props.task ?? 'Regras · Interface 5/6';
+    const kind = this.props.env ?? 'local';
+    const host = this.props.host ?? 'deploy@srv-01';
+    const pending = Number(this.props.pending ?? 2);
+    const pendingLabel = pending === 1 ? '1 alteração pendente' : pending + ' alterações pendentes';
+    const env = kind === 'ssh'
+      ? { icon: 'terminal', label: 'SSH · ' + host, detail: 'conectado', dot: 'var(--done)', hasDetail: true, style: '', aria: 'Ambiente: SSH em ' + host + ', conectado' }
+      : kind === 'ssh-conflict'
+        ? { icon: 'terminal', label: 'SSH · ' + host, detail: 'conflito ao sincronizar', dot: 'var(--fix)', hasDetail: true, style: 'color: var(--brand-text);', aria: 'Ambiente: SSH em ' + host + ', com conflito ao sincronizar' }
+      : kind === 'ssh-offline'
+        ? { icon: 'terminal', label: 'SSH · ' + host, detail: 'offline · ' + pendingLabel, dot: 'var(--brand)', hasDetail: true, style: 'color: var(--brand-text);', aria: 'Ambiente: SSH em ' + host + ', offline com ' + pendingLabel }
+        : { icon: 'folder', label: 'Local', detail: '', dot: 'transparent', hasDetail: false, style: '', aria: 'Ambiente: local' };
+    return { task, hasTask: !!task, progress: this.props.progress ?? '83%', env };
+  }
+}
+</script>
+</body>
+</html>
