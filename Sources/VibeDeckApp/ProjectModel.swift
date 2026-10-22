@@ -1150,16 +1150,7 @@ final class ProjectModel {
     /// A ideia que pode ser implementada agora, relida do Core (a memória pode estar um passo atrás): o gate único
     /// para implementar (padrão ou workflow, app ou chat). Lança todos os motivos pelos quais não pode agora.
     func currentImplementationIdea(_ id: UUID) async throws -> (slug: String, idea: Idea) {
-        let fresh = try await store.listIdeas()
-        guard let found = fresh.first(where: { $0.value.id == id }) else { throw VibeDeckError.ideaNotFound(id.uuidString) }
-        var reasons: [String] = []
-        if !IdeaImplementation.isEligible(found.value) {
-            reasons.append("a ideia precisa estar aprovada e ter uma avaliação viável atual. Verifique novamente.")
-        }
-        let pairs = fresh.map { (slug: $0.slug, idea: $0.value) }
-        reasons += IdeaImplementation.dependencyBlockers(of: found.value, in: pairs).map(\.message)
-        guard reasons.isEmpty else { throw VibeDeckError.ideaNotImplementable(reasons) }
-        return (found.slug, found.value)
+        try await store.implementableIdea(id.uuidString)
     }
 
     /// Dependencies that keep the idea from being implemented, from the loaded ideas.
@@ -1372,21 +1363,13 @@ final class ProjectModel {
     func importResources(_ tool: String, provider: AIProvider, reload: () -> Void) async -> Int {
         do {
             await writeChain?.value
-            let text = try await store.call(tool, ["provider": provider.rawValue], timeout: 300)
+            let result = try await store.importRecords(tool, provider: provider)
             reload()
-            return ProjectModel.countImported(text)
+            return result.slugs.count
         } catch {
             errorMessage = error.localizedDescription
             return 0
         }
-    }
-
-    /// `import_*` devolve `["slug", ...]` (Claude) ou `{"slugs": [...], "warnings": [...]}` (Codex).
-    static func countImported(_ text: String) -> Int {
-        guard let data = text.data(using: .utf8), let object = try? JSONSerialization.jsonObject(with: data) else { return 0 }
-        if let list = object as? [Any] { return list.count }
-        if let dictionary = object as? [String: Any], let list = dictionary["slugs"] as? [Any] { return list.count }
-        return 0
     }
 
     // MARK: Commands

@@ -10,9 +10,49 @@ extension FocusedValues {
     @Entry var aiPanelToggle: AIPanelToggle?
 }
 
+/// Abre o projeto (inicia o Core Rust, local ou por SSH, e lê os dados) e então mostra a janela.
+struct ProjectWindowV2: View {
+    let root: URL
+    @State private var model: ProjectModel?
+    @State private var failure: String?
+    @State private var attempt = 0
+
+    var body: some View {
+        content
+            .task(id: attempt) { await load() }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if let model = model {
+            ProjectWindowV2Content(root: root, model: model)
+        } else if let failure = failure {
+            VStack(spacing: 12) {
+                ContentUnavailableView("Não foi possível abrir o projeto", systemImage: "exclamationmark.triangle", description: Text(failure))
+                LoggedButton("Tentar de novo") { attempt += 1 }
+                    .loggedControl(control: "v2_project_window.retry_open", label: "Tentar de novo")
+                    .buttonStyle(.glass)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            ProgressView("Abrindo o projeto…")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private func load() async {
+        failure = nil
+        do {
+            model = try await ProjectModel.open(root: root)
+        } catch {
+            failure = error.localizedDescription
+        }
+    }
+}
+
 /// Janela do projeto V2: trilho de espaços, coluna de conteúdo com lista filtrável, detalhe,
 /// painel de IA à direita (inspector, ⇧⌘C) e barra de status. Sem nuvem.
-struct ProjectWindowV2: View {
+struct ProjectWindowV2Content: View {
     @Environment(\.openSettings) private var openSettings
     @State private var model: ProjectModel
     @State private var claude: AISession
@@ -26,10 +66,9 @@ struct ProjectWindowV2: View {
     @State private var filterFocusRequest = 0
     @State private var reconciledMoveRevision = 0
 
-    init(root: URL) {
-        let model = ProjectModel(store: CoreStore(root: root))
+    init(root: URL, model: ProjectModel) {
         _model = State(initialValue: model)
-        _claude = State(initialValue: AISession(root: root, projectId: model.project.id))
+        _claude = State(initialValue: AISession(root: root, projectId: model.project.id, core: model.store))
         _workspace = State(initialValue: RemoteWorkspace.existing(at: root))
     }
 
@@ -128,7 +167,7 @@ struct ProjectWindowV2: View {
                onSelect: { showSpace($0) },
                onSearch: { filterFocusRequest += 1 },
                onSettings: { openSettings() },
-               onProject: { NSWorkspace.shared.activateFileViewerSelecting([model.store.manifestURL]) })
+               onProject: { if !model.store.isRemote { NSWorkspace.shared.activateFileViewerSelecting([model.store.manifestURL]) } })
     }
 
     private var statusBar: some View {

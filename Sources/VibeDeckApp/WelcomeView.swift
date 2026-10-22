@@ -75,12 +75,15 @@ struct WelcomeView: View {
         .sheet(isPresented: $sshSheet) { SSHProjectSheet { root = $0 } }
         .sheet(item: $pendingInit) { url in
             InitProjectSheet(url: url, name: $projectName) {
-                do {
-                    try CoreStore.initialize(at: url, name: projectName)
-                    pendingInit = nil
-                    root = url
-                } catch {
-                    errorMessage = error.localizedDescription
+                let name = projectName
+                Task {
+                    do {
+                        try await CoreStore.initializeProject(at: url, name: name)
+                        pendingInit = nil
+                        root = url
+                    } catch {
+                        errorMessage = error.localizedDescription
+                    }
                 }
             }
         }

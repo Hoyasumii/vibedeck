@@ -17,7 +17,7 @@ public struct WorkflowStepCheckpoint: Codable, Equatable, Sendable {
     public typealias Decide = (String, [WorkflowTransition]) async throws -> String?
 
     public static func run(ref: String, store: CoreStore, cli: String = "vibedeck",
-                           settings: (String) throws -> AIProviderSettings,
+                           settings: (String) async throws -> AIProviderSettings,
                            execute: Execute, decide: Decide,
                            onAction: (WorkflowRunAction) -> Void = { _ in }) async throws -> WorkflowRunAction {
         while true {
@@ -37,7 +37,7 @@ public struct WorkflowStepCheckpoint: Codable, Equatable, Sendable {
                     if let partial = snapshot.checkpoint, partial.step == step {
                         prompt += "\nEsta etapa foi interrompida. Consulte a saída parcial e o estado atual antes de continuar; não repita alterações já efetuadas.\n" + partial.output
                     }
-                    let output = try await execute(prompt, settings(ref), action.title ?? step)
+                    let output = try await execute(prompt, try await settings(ref), action.title ?? step)
                     try Task.checkCancellation()
                     let current = try await store.loadRun(ref)
                     guard !current.isFinished, current.current == step else { return try await store.nextRunAction(ref) }

@@ -129,135 +129,56 @@ struct SSHProjectSheet: View {
                 try SSHConnection(currentDestination).resolved(directory: requestedPath)
             }.value
             self.destination = destination; path = destination.directory
-            let workspace = try RemoteWorkspace.open(destination)
-            let transport = SSHFileTransport(destination)
-            let snapshot = try await VDLog.detached { try transport.snapshot() }.value
-            if snapshot["vibedeck.json"] == nil && !create {
+            let connection = SSHConnection(destination)
+            let probe = try await VDLog.detached { try connection.run("test -f vibedeck.json && printf yes || printf no") }.value
+            let exists = String(decoding: probe, as: UTF8.self) == "yes"
+            if !exists && !create {
                 name = (path as NSString).lastPathComponent; initialize = true; return
             }
             if create {
-                guard snapshot["vibedeck.json"] == nil else { throw VibeDeckError.ssh("Já existe um projeto nessa pasta. Abra novamente.") }
-                try CoreStore.initialize(at: workspace.root, name: name)
+                guard !exists else { throw VibeDeckError.ssh("Já existe um projeto nessa pasta. Abra novamente.") }
+                // O `vibedeck` do servidor cria vibedeck.json e .vibedeck/ (mesmo binário que roda o MCP).
+                let command = RemoteExecution.launcher("vibedeck", arguments: ["init", "--name", name, destination.directory])
+                _ = try await VDLog.detached { try connection.run(command, timeout: 60) }.value
             }
-            try await VDLog.detached { try workspace.synchronize(using: transport) }.value
-            onOpen(workspace.root); dismiss()
+            onOpen(RemoteWorkspace.rootURL(for: destination)); dismiss()
         }
     }
 }
 
+/// Estado da conexão SSH de um projeto remoto: o Core Rust roda no servidor (`ssh host vibedeck mcp`);
+/// aqui só se (re)abre a conexão mestre do OpenSSH e se confirma que o Core responde.
 @Observable @MainActor
 final class RemoteProjectStatus {
     let workspace: RemoteWorkspace
-    var message = "Desconectado"
+    var store: CoreStore?
+    var message = "Conectando…"
     var error: String?
     var busy = false
-    var pending = 0
-    var conflicts: [RemoteWorkspace.Conflict] = []
+    var connected = false
     var password = ""
     var remember = false
     var credentials = false
-    private var nextAttempt = Date.distantPast
-    private var delay: TimeInterval = 2
     init(_ workspace: RemoteWorkspace) { self.workspace = workspace }
-    func synchronize(force: Bool = false) async {
+
+    func reconnect() async {
         guard !busy else { return }
-        pending = workspace.pendingCount; conflicts = workspace.conflicts
-        if !conflicts.isEmpty { message = "Conflito" }
-        else if pending > 0 && error == nil { message = "Alterações pendentes" }
-        guard force || Date() >= nextAttempt else { return }
-        busy = true; message = "Sincronizando…"
-        defer { busy = false; pending = workspace.pendingCount; conflicts = workspace.conflicts }
+        busy = true
+        message = "Conectando…"
+        defer { busy = false }
         do {
             let workspace = workspace
             let secret = password.isEmpty ? SSHCredentials.password(for: workspace.destination) : password
-            try await VDLog.detached {
-                try SSHConnection(workspace.destination).connect(password: secret)
-                try workspace.synchronize(using: SSHFileTransport(workspace.destination))
-            }.value
-            password = ""; error = nil; delay = 2
-            message = workspace.conflicts.isEmpty ? (workspace.pendingCount == 0 ? "Sincronizado" : "Alterações pendentes") : "Conflito"
-            nextAttempt = Date().addingTimeInterval(2)
+            try await VDLog.detached { try SSHConnection(workspace.destination).connect(password: secret) }.value
+            if let store = store { try await store.client.connect() }
+            password = ""
+            error = nil
+            connected = true
+            message = "Conectado"
         } catch {
             self.error = error.localizedDescription
-            message = "Desconectado · \(workspace.pendingCount) pendência(s)"
-            nextAttempt = Date().addingTimeInterval(delay); delay = min(60, delay * 2)
+            connected = false
+            message = "Desconectado"
         }
-    }
-    func resolve(_ conflict: RemoteWorkspace.Conflict, keepLocal: Bool) async {
-        guard !busy else { return }; busy = true
-        do {
-            let workspace = workspace
-            try await VDLog.detached { try workspace.resolve(conflict.path, keepLocal: keepLocal, using: SSHFileTransport(workspace.destination)) }.value
-            error = nil
-        } catch { self.error = error.localizedDescription }
-        busy = false; await synchronize(force: true)
-    }
-}
-
-struct RemoteProjectBar: View {
-    @State private var status: RemoteProjectStatus
-    @State private var conflict: RemoteWorkspace.Conflict?
-    @Environment(AISession.self) private var session
-    init(workspace: RemoteWorkspace) { _status = State(initialValue: RemoteProjectStatus(workspace)) }
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label(status.message, systemImage: status.busy ? "arrow.triangle.2.circlepath" : "network")
-            Text(status.workspace.destination.title).font(.caption).textSelection(.enabled)
-            if status.pending > 0 { Text("\(status.pending) alteração(ões) pendente(s)").font(.caption) }
-            HStack {
-                LoggedButton("Reconectar") { Task { await status.synchronize(force: true) } }.loggedControl(control: "ssh.reconnect", label: "Reconectar")
-                LoggedButton("Senha…") { status.credentials = true }.loggedControl(control: "ssh.password", label: "Senha")
-                LoggedButton("Terminal SSH") { session.openTerminal() }.loggedControl(control: "ssh.terminal", label: "Terminal SSH")
-            }
-            Text("Para autenticar a IA, abra o Terminal SSH e execute claude ou codex no servidor.").font(.caption).foregroundStyle(.secondary)
-            ForEach(status.conflicts) { item in
-                LoggedButton("Resolver: \(item.path)") { conflict = item }.loggedControl(control: "ssh.conflict", label: "Resolver conflito")
-            }
-            if let error = status.error { Text(error).font(.caption).foregroundStyle(.red).textSelection(.enabled) }
-        }
-        .padding(8)
-        .task {
-            while !Task.isCancelled {
-                await status.synchronize()
-                do { try await Task.sleep(for: .seconds(1)) } catch { break }
-            }
-        }
-        .sheet(item: $conflict) { item in
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Conflito: \(item.path)").font(.headline)
-                HStack(alignment: .top) {
-                    version("Versão local", data: item.local)
-                    version("Versão remota", data: item.remote)
-                }
-                HStack {
-                    LoggedButton("Preservar local") { Task { await status.resolve(item, keepLocal: true); conflict = nil } }.loggedControl(control: "ssh.keep_local", label: "Preservar local")
-                    LoggedButton("Preservar remota") { Task { await status.resolve(item, keepLocal: false); conflict = nil } }.loggedControl(control: "ssh.keep_remote", label: "Preservar remota")
-                    LoggedButton("Decidir depois", role: .cancel) { conflict = nil }.loggedControl(control: "ssh.conflict_cancel", label: "Decidir depois")
-                }.disabled(status.busy)
-            }.padding(24).frame(width: 780, height: 520)
-        }
-        .sheet(isPresented: $status.credentials) {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Reconectar ao servidor").font(.headline)
-                SecureField("Senha ou frase secreta", text: $status.password)
-                Toggle("Guardar no Chaves do macOS", isOn: $status.remember.logging(control: "ssh.reconnect_remember", label: "Guardar no Chaves do macOS", project: status.workspace.root))
-                LoggedButton("Conectar") {
-                    Task {
-                        do { try SSHCredentials.store(status.remember ? status.password : nil, for: status.workspace.destination) }
-                        catch { status.error = error.localizedDescription; return }
-                        await status.synchronize(force: true); status.credentials = false
-                    }
-                }.loggedControl(control: "ssh.password_connect", label: "Conectar")
-            }.padding(24).frame(width: 420)
-        }
-    }
-    private func version(_ title: String, data: Data?) -> some View {
-        VStack(alignment: .leading) {
-            Text(title).font(.headline)
-            ScrollView {
-                Text(data.map { String(data: $0, encoding: .utf8) ?? "Arquivo binário (\($0.count) bytes)\n" + $0.base64EncodedString() } ?? "Arquivo excluído")
-                    .font(.system(.caption, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }.frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
