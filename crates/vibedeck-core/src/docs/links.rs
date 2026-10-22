@@ -12,15 +12,81 @@
 //! - nunca se segue link para fora: só vale alvo que seja **arquivo regular `.md` diretamente na raiz** do
 //!   projeto. Alvo fora da raiz, em subpasta, encadeado (alvo também é symlink) ou diretório é `Rejected`:
 //!   ignorado na listagem (com aviso) e recusado na leitura/escrita;
-//! - um vínculo saudável removido à mão volta na próxima sincronização (é a regra "todo .md da raiz aparece");
-//!   remover só faz sentido para vínculo quebrado, ou para trocar o nome mudando o arquivo da raiz.
+//! - desvincular (`docs unlink`, `delete_doc` de doc vinculado) grava o nome do arquivo da raiz em
+//!   `.vibedeck/docs/.unlinked` (uma linha por nome) e a sincronização o respeita; `docs link <arquivo.md>`
+//!   (`link_doc`) tira o nome da lista e recria o vínculo. Um vínculo removido à mão (sem registro) volta.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use super::error::{DocError, Result};
 use crate::paths;
 use crate::slug;
-use crate::store::Store;
+use crate::store::{Store, write_atomic};
+
+/// Arquivo (dentro de `docs/`) com os `.md` da raiz que o usuário desvinculou.
+pub const UNLINKED_FILE: &str = ".unlinked";
+
+fn unlinked_path(store: &Store) -> PathBuf {
+    store.data_dir().join("docs").join(UNLINKED_FILE)
+}
+
+/// Nomes de `.md` da raiz desvinculados (um por linha; vazias ignoradas).
+pub fn unlinked(store: &Store) -> std::collections::BTreeSet<String> {
+    fs::read_to_string(unlinked_path(store))
+        .map(|t| {
+            t.lines()
+                .map(str::trim)
+                .filter(|l| !l.is_empty())
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn save_unlinked(store: &Store, names: &std::collections::BTreeSet<String>) -> Result<()> {
+    let path = unlinked_path(store);
+    if names.is_empty() {
+        return match fs::remove_file(&path) {
+            Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(DocError::io(&path, e)),
+            _ => Ok(()),
+        };
+    }
+    let text: String = names.iter().map(|n| format!("{n}\n")).collect();
+    write_atomic(&path, text.as_bytes())?;
+    Ok(())
+}
+
+/// Registra `name` como desvinculado (idempotente).
+pub fn mark_unlinked(store: &Store, name: &str) -> Result<()> {
+    let mut names = unlinked(store);
+    if names.insert(name.to_string()) {
+        save_unlinked(store, &names)?;
+    }
+    Ok(())
+}
+
+/// Vincula de novo o `.md` da raiz `file`: tira-o da lista de desvinculados e sincroniza. Devolve o slug.
+pub fn link_doc(store: &Store, file: &str) -> Result<String> {
+    let name = file.trim();
+    let root_c = paths::canonical(store.root());
+    let ok = !name.contains('/') && !name.starts_with('.') && is_md(name);
+    if !ok || !root_markdown_files(&root_c).iter().any(|n| n == name) {
+        return Err(DocError::NotRootMarkdown(name.to_string()));
+    }
+    store.ensure_directories()?;
+    let mut names = unlinked(store);
+    if names.remove(name) {
+        save_unlinked(store, &names)?;
+    }
+    sync_root_links(store);
+    let docs_c = paths::canonical(&store.data_dir().join("docs"));
+    scan(&docs_c, &root_c)
+        .into_iter()
+        .find(|e| matches!(&e.link, Some(LinkState::Ok { name: n, .. } | LinkState::Broken { name: n, .. }) if n == name))
+        .map(|e| e.slug)
+        .ok_or_else(|| DocError::NotRootMarkdown(name.to_string()))
+}
 
 /// Estado de um symlink dentro de `docs/`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -175,6 +241,7 @@ pub fn sync_root_links(store: &Store) -> Vec<String> {
         return created;
     }
     let entries = scan(&docs_c, &root_c);
+    let ignored = unlinked(store);
     let mut taken: std::collections::HashSet<String> = entries
         .iter()
         .map(|e| last_component(&e.slug).to_lowercase())
@@ -183,7 +250,7 @@ pub fn sync_root_links(store: &Store) -> Vec<String> {
         let already = entries.iter().any(|e| {
             matches!(&e.link, Some(LinkState::Ok { name: n, .. } | LinkState::Broken { name: n, .. }) if *n == name)
         });
-        if already {
+        if already || ignored.contains(&name) {
             continue;
         }
         let base = slug::make(&name[..name.len() - 3]);

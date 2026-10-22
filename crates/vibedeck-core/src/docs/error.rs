@@ -25,6 +25,8 @@ pub enum DocError {
     BrokenLink { slug: String, target: String },
     #[error("O doc {0} não é um vínculo com um .md da raiz; nada foi removido.")]
     NotLinked(String),
+    #[error("{0} não é um .md regular na raiz do projeto; nada foi vinculado.")]
+    NotRootMarkdown(String),
     #[error(
         "A IA retornou uma proposta de documentos inválida. Nenhum documento foi criado. Tente gerar novamente."
     )]

@@ -402,15 +402,35 @@ pub fn set_doc_tags(store: &Store, reference: &str, tags: &[String]) -> Result<(
 pub fn delete_doc(store: &Store, slug: &str) -> Result<()> {
     let file = doc_file(store, slug)?;
     let path = file.path();
-    fs::remove_file(path).map_err(|e| DocError::io(path, e))
+    fs::remove_file(path).map_err(|e| DocError::io(path, e))?;
+    if let DocFile::Linked { target, .. } = &file
+        && let Some(name) = target.file_name()
+    {
+        links::mark_unlinked(store, &name.to_string_lossy())?;
+    }
+    if let DocFile::Broken { name, .. } = &file {
+        links::mark_unlinked(store, name)?;
+    }
+    Ok(())
 }
 
 /// Remove o vínculo de um doc vinculado (inclusive quebrado). Recusa doc que não seja link.
 pub fn unlink_doc(store: &Store, reference: &str) -> Result<String> {
     let slug = resolve_doc_slug(store, reference)?;
     match doc_file(store, &slug)? {
-        DocFile::Linked { link, .. } | DocFile::Broken { link, .. } => {
+        file @ (DocFile::Linked { .. } | DocFile::Broken { .. }) => {
+            let (link, name) = match &file {
+                DocFile::Linked { link, target } => (
+                    link.clone(),
+                    target.file_name().map(|n| n.to_string_lossy().into_owned()),
+                ),
+                DocFile::Broken { link, name } => (link.clone(), Some(name.clone())),
+                DocFile::Regular(_) => unreachable!(),
+            };
             fs::remove_file(&link).map_err(|e| DocError::io(&link, e))?;
+            if let Some(name) = name {
+                links::mark_unlinked(store, &name)?;
+            }
             Ok(slug)
         }
         DocFile::Regular(_) => Err(DocError::NotLinked(slug)),
