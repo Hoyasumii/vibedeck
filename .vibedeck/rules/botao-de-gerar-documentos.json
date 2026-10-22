@@ -56,7 +56,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-gerar-documentos/f0aaab3e.sh",
-        "generatedAt" : "2026-10-22T18:47:29Z",
+        "generatedAt" : "2026-10-22T19:34:36Z",
         "mode" : "script",
         "ruleHash" : "8917d18d26a96813"
       },
@@ -70,7 +70,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-gerar-documentos/fcf3ba40.sh",
-        "generatedAt" : "2026-10-22T18:47:29Z",
+        "generatedAt" : "2026-10-22T19:34:36Z",
         "mode" : "script",
         "ruleHash" : "ee6af39585493434"
       },
@@ -98,7 +98,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-gerar-documentos/da211ac8.sh",
-        "generatedAt" : "2026-10-22T18:47:29Z",
+        "generatedAt" : "2026-10-22T19:34:36Z",
         "mode" : "script",
         "ruleHash" : "ad629e64f2c6f3ac"
       },
@@ -154,7 +154,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-gerar-documentos/26b70328.sh",
-        "generatedAt" : "2026-10-22T18:47:29Z",
+        "generatedAt" : "2026-10-22T19:34:36Z",
         "mode" : "script",
         "ruleHash" : "a429574b591844f8"
       },
@@ -168,7 +168,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-gerar-documentos/5dc6ae92.sh",
-        "generatedAt" : "2026-10-22T18:47:29Z",
+        "generatedAt" : "2026-10-22T19:34:36Z",
         "mode" : "script",
         "ruleHash" : "a3920d2eab4a2b0f"
       },
@@ -238,7 +238,7 @@
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-gerar-documentos/8b870feb.sh",
-        "generatedAt" : "2026-10-22T18:47:29Z",
+        "generatedAt" : "2026-10-22T19:34:36Z",
         "mode" : "script",
         "ruleHash" : "3d2b447552cfd69e"
       },

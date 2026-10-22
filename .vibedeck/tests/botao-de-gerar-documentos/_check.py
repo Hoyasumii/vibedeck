@@ -112,7 +112,7 @@ def proposal():
     # Reject side effects anywhere in the proposal/runner, including change callbacks.
     forbid(DG, r'writeDoc\(|createDoc\(|createGeneratedDoc\(|deleteDoc\(|AtomicFile\.write|\.write\(to:|FileManager\.', 'Proposta não pode gravar/apagar arquivos')
     need(DG, r'private func close\(\) \{ runner.cancel\(\); dismiss\(\) \}', 'Cancelar deve apenas descartar proposta')
-    need(PM, r'func acceptGeneratedDocs\(.*?store\.createDoc\([^)]*generated: true\)', 'Aceite deve persistir via Core (create_doc com autoria ai)')
+    need(PM, r'func acceptGeneratedDocs\(.*?store\.docGenerateApply\(proposed, group: group\)', 'Aceite deve persistir via Core (doc_generate_apply, autoria ai)')
 
 def cargo_test(test_file, names):
     """Roda só os testes Rust pedidos (cargo, offline); exige que cada um exista e passe."""
@@ -176,7 +176,9 @@ elif RULE in {'83D8DA0A', '81D69362'}:
 elif RULE in {'F0AAAB3E', '26B70328'}:
     proposal()
 elif RULE == 'FCF3BA40':
-    need(PM, r'store\.createDoc\(title: document\.title, body: document\.content, reference: reference, generated: true\)', 'Aceite deve usar o Core com autoria ai')
+    need(PM, r'store\.docGenerateApply\(proposed, group: group\)', 'Aceite deve usar o Core (doc_generate_apply)')
+    need(GEN, r'pub fn apply\(.*?create_generated_doc\(', 'Documentos gerados usam create_generated_doc (author=ai, conferido em DOCS)')
+    need(APPCORE + 'CoreStore+DocGenerate.swift', r'call\("doc_generate_apply"|callJSON\("doc_generate_apply"', 'O app deve chamar a tool doc_generate_apply')
     need(DOCS, r'pub fn create_generated_doc\(.*?create_doc\(store, title, body, Author::Ai, reference\)', 'Documento gerado deve ter author=ai')
     need(MCP, r'args\.bool\("generated"\) == Some\(true\).*?Author::Ai', 'MCP write_doc generated deve gravar author=ai')
     need(CLI, r'Some\(DocsCommand::Cat \{ slug \}\) => \{\s*print!\("\{\}", docs::read_doc\(&ctx\.store\(\)\?, &slug\)\?\)', 'CLI deve ler documentos do mesmo store')
@@ -188,7 +190,7 @@ elif RULE == '778E9BF5':
     if not errors:
         generated_docs_roundtrip()
 elif RULE == 'DA211AC8':
-    need(DG, r'parse: DocGenerate.parse', 'App deve validar a resposta no parser do Core')
+    need(DG, r'store\.docGenerateValidate\(answer: data\)', 'App deve validar a resposta no parser do Core (doc_generate_validate)')
     need(DG, r'case \.failed\(let message\).*?description: Text\(message\)', 'Erro deve ser exibido ao usuário')
     need(GEN, r'pub fn parse\(data: &\[u8\]\) -> Result<Vec<Document>>.*?DocError::InvalidAnswer', 'O parser do Core deve rejeitar resposta inválida')
     need(DERR, r'"A IA retornou uma proposta de documentos inválida\. Nenhum documento foi criado\.', 'Mensagem clara em pt-BR deve afirmar que nenhum documento foi criado')
@@ -218,7 +220,8 @@ elif RULE == '5DC6AE92':
     need(GEN, r'pub const SCHEMA: &str', 'Schema deve ficar no Core')
     forbid(GEN, r'SwiftUI|\buse (std::fs|std::process)\b|AtomicFile|write_atomic', 'A lógica pura de propostas não pode depender de UI, disco ou processos')
     need(GEN, r'#\[cfg\(test\)\]\s*mod tests', 'O módulo do Core deve ter testes de unidade')
-    need(DG, r'prompt: DocGenerate.prompt\(.*?schema: DocGenerate.schema.*?parse: DocGenerate.parse', 'App deve chamar prompt, schema e parser de DocGenerate')
+    need(DG, r'store\.docGeneratePlan\(\).*?prompt: plan\.prompt.*?schema: plan\.schema.*?store\.docGenerateValidate\(', 'App deve chamar prompt, schema e parser do Core (doc_generate_prompt/validate)')
+    forbid(APPCORE + 'Discover/DocGenerateLogic.swift', r'static let schema|static func (prompt|parse|validated)', 'Prompt, schema e parser vivem só no Core')
     if not errors:
         cargo_test(GEN, ['strict_json_and_empty_documents', 'limits_and_prompt'])
 elif RULE == 'C5D852BD':
@@ -249,7 +252,7 @@ elif RULE == '8B870FEB':
         'Nenhum documento proposto', 'A IA não encontrou conteúdo novo dentro dos limites da geração.',
         'Revise os documentos. Editar ou descartar aqui não altera arquivos.',
         'Aceitar', 'Editar', 'Pré-visualizar', 'Descartar', 'Título',
-        'Informe título e conteúdo; o conteúdo deve ter até 40.000 caracteres.',
+        r'Informe título e conteúdo; o conteúdo deve ter até \(runner.maxContentLength) caracteres.',
         'Cancelar geração', 'Cancelar', 'Aceitar selecionados', 'Aceitar todos',
     }
     noncopy = {'exclamationmark.triangle', 'doc.text', r'# \(document.title)\n\n\(document.content)'}
