@@ -184,7 +184,10 @@ mod tests {
     fn truncates_at_60_possibly_ending_in_dash() {
         let t = "Criar agentes, comandos, skills e workflows pré-definidos que sejam úteis";
         let s = make(t);
-        assert_eq!(s, "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-");
+        assert_eq!(
+            s,
+            "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-"
+        );
         assert_eq!(s.len(), 60);
         assert!(s.ends_with('-'));
         assert_eq!(make(&"a".repeat(100)).len(), 60);
@@ -240,10 +243,7 @@ mod tests {
             resolve("Segunda", &c, no).unwrap().as_deref(),
             Some("grupo/beta")
         );
-        assert_eq!(
-            resolve("bbbb", &c, no).unwrap().as_deref(),
-            Some("gamma")
-        );
+        assert_eq!(resolve("bbbb", &c, no).unwrap().as_deref(), Some("gamma"));
         assert_eq!(
             resolve("aaaa2", &c, no).unwrap().as_deref(),
             Some("grupo/beta")

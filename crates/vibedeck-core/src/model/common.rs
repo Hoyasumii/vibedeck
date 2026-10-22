@@ -27,7 +27,13 @@ impl Default for Id {
 
 impl fmt::Display for Id {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0.as_hyphenated().encode_upper(&mut Uuid::encode_buffer()))
+        write!(
+            f,
+            "{}",
+            self.0
+                .as_hyphenated()
+                .encode_upper(&mut Uuid::encode_buffer())
+        )
     }
 }
 
@@ -154,6 +160,8 @@ pub(crate) fn trim_non_empty(s: Option<String>) -> Option<String> {
     s.map(|s| s.trim().to_string()).filter(|s| !s.is_empty())
 }
 
-pub(crate) fn de_trim_non_empty<'de, D: Deserializer<'de>>(d: D) -> Result<Option<String>, D::Error> {
+pub(crate) fn de_trim_non_empty<'de, D: Deserializer<'de>>(
+    d: D,
+) -> Result<Option<String>, D::Error> {
     Ok(trim_non_empty(Option::<String>::deserialize(d)?))
 }

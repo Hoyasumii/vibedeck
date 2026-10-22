@@ -38,12 +38,12 @@ pub type ProviderSettingsMap = BTreeMap<String, ProviderSettings>;
 
 macro_rules! persona {
     (
-        $(#[$meta:meta])* $name:ident, $wire:ident, $schema:literal;
-        $( $(#[$em:meta])* $extra:ident / $extra_key:literal ),*
+        $(#[$meta:meta])* $name:ident, $wire:ident, $wire_lit:literal, $schema:literal;
+        $( $(#[$em:meta])* $extra:ident ),*
     ) => {
         $(#[$meta])*
         #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-        #[serde(from = "$wire", rename_all = "camelCase")]
+        #[serde(from = $wire_lit, rename_all = "camelCase")]
         pub struct $name {
             #[serde(rename = "$schema", skip_serializing_if = "Option::is_none")]
             pub schema: Option<String>,
@@ -53,7 +53,7 @@ macro_rules! persona {
             pub summary: Option<String>,
             $(
                 $(#[$em])*
-                #[serde(rename = $extra_key, skip_serializing_if = "Option::is_none")]
+                #[serde(skip_serializing_if = "Option::is_none")]
                 pub $extra: Option<String>,
             )*
             #[serde(skip_serializing_if = "Option::is_none")]
@@ -82,7 +82,7 @@ macro_rules! persona {
             id: Id,
             title: String,
             summary: Option<String>,
-            $( #[serde(rename = $extra_key)] $extra: Option<String>, )*
+            $( $extra: Option<String>, )*
             model: Option<String>,
             provider_settings: Option<ProviderSettingsMap>,
             #[serde(default, deserialize_with = "nd")]
@@ -147,15 +147,15 @@ macro_rules! persona {
 
 persona!(
     /// `agents/<slug>.json` (schema `agent`).
-    Agent, AgentWire, "agent";
+    Agent, AgentWire, "AgentWire", "agent";
 );
 persona!(
     /// `commands/<slug>.json` (schema `command`).
-    Command, CommandWire, "command";
-    argument_hint / "argumentHint"
+    Command, CommandWire, "CommandWire", "command";
+    argument_hint
 );
 persona!(
     /// `skills/<grupo/>/<slug>.json` (schema `skill`). `sourcePath` é absoluto e dependente da máquina.
-    Skill, SkillWire, "skill";
-    source_path / "sourcePath"
+    Skill, SkillWire, "SkillWire", "skill";
+    source_path
 );

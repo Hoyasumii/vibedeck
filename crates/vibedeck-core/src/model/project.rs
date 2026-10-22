@@ -55,11 +55,7 @@ fn de_version<'de, D: Deserializer<'de>>(d: D) -> Result<i64, D::Error> {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Project {
-    #[serde(
-        rename = "$schema",
-        default,
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(rename = "$schema", default, skip_serializing_if = "Option::is_none")]
     pub schema: Option<String>,
     #[serde(default = "default_version", deserialize_with = "de_version")]
     pub version: i64,
