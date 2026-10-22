@@ -18,7 +18,7 @@ D-MERGE (usuário): ao terminar tudo, abrir PRs e mergear na main resolvendo con
 ## Trilhas
 - CORE: F01 inventário CLI/MCP feito (f01/), dados em andamento; workspace+CI criados
 - APP: APP-1 escrito (DesignSystem/), aguardando CI macOS; D2 regras revisadas
-- SITE: SITE-1 pendente (depende F01)
+- SITE: SITE-1 APROVADO (typecheck, validate 10 schemas + 464 dados, 102 rotas ok; verificado pelo coordenador)
 
 ## Donos
 - CORE: Cargo.*, crates/, schema/, .github/workflows/rust.yml
