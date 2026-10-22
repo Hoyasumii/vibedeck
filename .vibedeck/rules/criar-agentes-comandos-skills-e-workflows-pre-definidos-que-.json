@@ -8,30 +8,30 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-13T17:11:31Z",
-      "details" : "Verificar que o tipo do catálogo está em Sources/VibeDeckCore e que o target não importa SwiftUI/AppKit.",
+      "details" : "Verificar que o catálogo e a instalação estão em crates/vibedeck-core/src/resources/kits.rs (kits embutidos em assets/kits/) e que o crate não depende de SwiftUI/AppKit; o app só chama o MCP add_kit.",
       "id" : "133B62CD-0226-4845-9E53-4F502A05CA08",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/133b62cd.sh",
-        "generatedAt" : "2026-10-14T14:12:49Z",
+        "generatedAt" : "2026-10-22T18:41:13Z",
         "mode" : "script",
-        "ruleHash" : "2a8a546a43b2f641"
+        "ruleHash" : "fcd3355724eca913"
       },
-      "text" : "O catálogo de kits pré-definidos (agentes, comandos, skills e workflows) fica no Core, sem depender de SwiftUI."
+      "text" : "O catálogo de kits pré-definidos (agentes, comandos, skills e workflows) fica no Core Rust (vibedeck-core, resources::kits), sem depender de UI."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-13T17:11:31Z",
-      "details" : "Verificar que a adição não escreve arquivos direto e reutiliza as operações existentes de ProjectStore.swift.",
+      "details" : "Verificar que a adição não escreve arquivos direto (sem std::fs em kits.rs) e reutiliza as operações existentes de crates/vibedeck-core (resources::persona e Store::save).",
       "id" : "A21B5419-49D4-4F31-9BEC-DEA037FB9F2F",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/a21b5419.sh",
-        "generatedAt" : "2026-10-14T14:12:49Z",
+        "generatedAt" : "2026-10-22T18:41:13Z",
         "mode" : "script",
-        "ruleHash" : "06cb58a06789d7f1"
+        "ruleHash" : "787a3a627b7eb4be"
       },
-      "text" : "Adicionar um item do catálogo ao projeto passa por uma operação do ProjectStore (createAgent/createCommand/createSkill/createWorkflow) e grava via AtomicFile.write."
+      "text" : "Adicionar um item do catálogo ao projeto passa pelas operações de criação do Core (persona::create para agente/comando/skill e Store::save para workflow) e grava via escrita atômica (store::write_atomic)."
     },
     {
       "author" : "ai",
@@ -41,7 +41,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/d4dd944d.sh",
-        "generatedAt" : "2026-10-14T14:12:49Z",
+        "generatedAt" : "2026-10-22T18:41:13Z",
         "mode" : "script",
         "ruleHash" : "ecc141353c5b5566"
       },
@@ -50,16 +50,16 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-13T17:11:31Z",
-      "details" : "Teste no Core: adicionar o mesmo item duas vezes gera dois itens com slugs distintos e preserva o conteúdo do primeiro.",
+      "details" : "Teste no Core: adicionar o mesmo item duas vezes gera dois itens com slugs distintos (sufixo -2) e preserva o conteúdo do primeiro; só o rollback da própria operação apaga itens.",
       "id" : "4D89A4DA-FD25-4B06-8C32-504434336A75",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/4d89a4da.sh",
-        "generatedAt" : "2026-10-14T14:12:49Z",
+        "generatedAt" : "2026-10-22T18:41:13Z",
         "mode" : "script",
-        "ruleHash" : "944d800ae0f60067"
+        "ruleHash" : "dfec874b9670f34b"
       },
-      "text" : "Adicionar um item do catálogo nunca sobrescreve nem apaga item existente; se o slug já existe, usa Slug.make + uniqueSlug."
+      "text" : "Adicionar um item do catálogo nunca sobrescreve nem apaga item existente; se o slug já existe, usa slug::make + slug::unique."
     },
     {
       "author" : "ai",
@@ -69,7 +69,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/953b1e7e.sh",
-        "generatedAt" : "2026-10-14T14:12:50Z",
+        "generatedAt" : "2026-10-22T18:41:13Z",
         "mode" : "script",
         "ruleHash" : "74232e85324cd039"
       },
@@ -78,14 +78,14 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-13T17:11:31Z",
-      "details" : "Verificar que os JSON/markdown gerados validam no schema atual e são lidos por ProjectStore sem tratamento especial.",
+      "details" : "Verificar que os JSON gerados seguem o schema atual e são lidos pelo Store do Core (crates/vibedeck-core) sem tratamento especial.",
       "id" : "384B5C03-96A1-47DA-B363-30B8EF61E50C",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/384b5c03.sh",
-        "generatedAt" : "2026-10-14T14:12:50Z",
+        "generatedAt" : "2026-10-22T18:41:13Z",
         "mode" : "script",
-        "ruleHash" : "ae76257ca82ee2dc"
+        "ruleHash" : "15310f484603f0d0"
       },
       "text" : "Itens adicionados a partir do catálogo ficam em arquivos do repo, no mesmo formato dos itens criados à mão."
     },
@@ -97,7 +97,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/103b84bc.sh",
-        "generatedAt" : "2026-10-14T14:12:50Z",
+        "generatedAt" : "2026-10-22T18:41:13Z",
         "mode" : "script",
         "ruleHash" : "794102c24009ec19"
       },
@@ -111,7 +111,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/2621dabd.sh",
-        "generatedAt" : "2026-10-14T14:12:50Z",
+        "generatedAt" : "2026-10-22T18:41:13Z",
         "mode" : "script",
         "ruleHash" : "96437c3ab14ca18b"
       },
@@ -125,7 +125,7 @@
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/bba08717.sh",
-        "generatedAt" : "2026-10-14T14:12:50Z",
+        "generatedAt" : "2026-10-22T18:41:13Z",
         "mode" : "script",
         "ruleHash" : "ffb02fd273170de0"
       },
@@ -139,7 +139,7 @@
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/8a34ae9e.sh",
-        "generatedAt" : "2026-10-14T14:12:50Z",
+        "generatedAt" : "2026-10-22T18:41:13Z",
         "mode" : "script",
         "ruleHash" : "4ee24c6455bd1c8f"
       },

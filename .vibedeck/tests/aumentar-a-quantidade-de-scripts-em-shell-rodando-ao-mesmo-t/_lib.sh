@@ -1,16 +1,16 @@
 # Ajudantes comuns dos scripts deste tópico: checagens estáticas e rápidas, sem rede e sem compilar.
 cd "${VIBEDECK_ROOT:-.}"
 bad=0
-PS=Sources/VibeDeckCore/ProjectStore.swift
-RT=Sources/VibeDeckCore/RuleTests.swift
-RE=Tests/VibeDeckCoreTests/RuleExecutionTests.swift
-RTT=Tests/VibeDeckCoreTests/RuleTestsTests.swift
+EXEC=crates/vibedeck-core/src/rules/execution.rs
+RUN=crates/vibedeck-core/src/rules/runner.rs
+TASKS=crates/vibedeck-core/src/rules/tasks.rs
+RRT=crates/vibedeck-core/tests/rules_runner.rs
+RCLI=crates/vibedeck/src/cli/rules.rs
+RMCP=crates/vibedeck/src/mcp/tools/rules.rs
 APPT=Tests/VibeDeckAppTests/RuleExecutionModelTests.swift
 MODEL=Sources/VibeDeckApp/RuleExecutionModel.swift
 VIEW=Sources/VibeDeckApp/RuleExecutionView.swift
 SETTINGS=Sources/VibeDeckApp/AppSettingsView.swift
-CLI=Sources/vibedeck/CLI.swift
-MCP=Sources/vibedeck/MCPServer.swift
 # has FILE REGEX MSG: a regex (ERE) precisa aparecer no arquivo.
 has() { grep -Eq -e "$2" "$1" 2>/dev/null || { echo "$1: $3"; bad=1; }; }
 # hasF FILE TEXT MSG: o texto literal precisa aparecer no arquivo.

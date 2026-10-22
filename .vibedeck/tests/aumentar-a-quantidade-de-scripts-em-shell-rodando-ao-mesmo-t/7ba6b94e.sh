@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
-hasF $RT 'cancellation: ShellCancellation? = nil' "ShellRunner.run deve aceitar cancelamento"
-hasF $RT 'terminateTree(process)' "o cancelamento deve terminar o processo"
-hasF $PS 'cancellation?.isCancelled != true' "a fila não deve iniciar novos scripts depois do cancelamento"
-has $RE 'func cancellationStopsQueueAndRunningScripts' "falta o teste de cancelamento no Core"
-hasF $RE 'terminated.values == ["one"]' "o teste deve exigir terminate no script ativo"
-hasF $RE 'events.values == ["one"]' "o teste deve exigir que nenhum .started novo seja emitido"
-has $APPT 'func cancelTerminatesScriptsAndSkipsAIAndSaving' "falta o teste de cancelamento no app"
+hasF $RUN 'terminate_tree(pid);' "o cancelamento deve terminar o processo"
+hasF $RUN 'if cancel_flag.load(Ordering::SeqCst) {' "run_shell deve observar o cancelamento"
+hasF $EXEC 'while !guard.pending.is_empty() && !guard.stopped && !cancelled() {' "a fila não deve iniciar novos scripts depois do cancelamento"
+has $EXEC 'fn cancellation_stops_the_queue_and_running_scripts' "falta o teste de cancelamento no Core"
+hasF $EXEC 'assert_eq!(started.load(Ordering::SeqCst), 1);' "o teste deve exigir que nenhum script novo inicie"
+hasF $EXEC 'assert_eq!(runs[0].outcome.exit_code, 130);' "o teste deve exigir que o script ativo seja cancelado"
 finish
