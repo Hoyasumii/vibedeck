@@ -99,7 +99,7 @@ enum CoreLocator {
         switch location {
         case .local(let root):
             guard let binary = binary() else { throw CoreError.binaryNotFound }
-            return CoreInvocation(executable: binary, arguments: ["mcp", "-C", root.path], environment: ProcessInfo.processInfo.environment)
+            return CoreInvocation(executable: binary, arguments: ["mcp", "--app", "-C", root.path], environment: ProcessInfo.processInfo.environment)
         case .ssh(let arguments, _):
             return CoreInvocation(executable: URL(fileURLWithPath: "/usr/bin/ssh"), arguments: arguments, environment: ProcessInfo.processInfo.environment)
         }

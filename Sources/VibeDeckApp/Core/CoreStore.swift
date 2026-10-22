@@ -389,7 +389,7 @@ final class CoreStore: @unchecked Sendable {
     /// `ssh <opções> host 'vibedeck mcp -C <dir>'`, achando o binário no servidor pelas pastas usuais (RemoteExecution).
     static func sshLocation(for workspace: RemoteWorkspace) throws -> CoreLocation {
         let connection = SSHConnection(workspace.destination)
-        let body = RemoteExecution.launcher("vibedeck", arguments: ["mcp", "-C", workspace.destination.directory])
+        let body = RemoteExecution.launcher("vibedeck", arguments: ["mcp", "--app", "-C", workspace.destination.directory])
         let login = "exec \"${SHELL:-/bin/sh}\" -lc " + SSHConnection.quote(body)
         return .ssh(arguments: connection.commandArguments(login), remoteRoot: workspace.destination.directory)
     }
