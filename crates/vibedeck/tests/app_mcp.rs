@@ -186,7 +186,8 @@ impl Drop for Session {
     }
 }
 
-const APP_ONLY: [&str; 17] = [
+const APP_ONLY: [&str; 18] = [
+    "release_orphaned",
     "workflow_run_restart",
     "put_record",
     "delete_record",
@@ -1115,5 +1116,37 @@ fn reorganize_restore_desfaz_e_refaz_o_recibo_do_apply() {
     assert!(
         app.fail("reorganize_restore", json!({"receipt": receipt}))
             .contains("forward")
+    );
+}
+
+#[test]
+fn release_orphaned_solta_ideia_de_topico_apagado_por_fora() {
+    let p = Project::new();
+    let mut app = p.app();
+    let idea = app.json("add_idea", json!({"title":"Promovida"}));
+    let slug = idea["slug"].as_str().unwrap().to_string();
+    app.ok("add_idea_rule", json!({"idea": slug, "text":"Regra"}));
+    let promoted = app.ok("promote_idea", json!({"idea": slug}));
+    let topic = promoted
+        .lines()
+        .next()
+        .unwrap()
+        .rsplit(": ")
+        .next()
+        .unwrap()
+        .to_string();
+    assert_eq!(
+        app.json("release_orphaned", json!({})),
+        json!({"ideas": [], "patterns": []})
+    );
+    std::fs::remove_file(p.path(&format!(".vibedeck/rules/{topic}.json"))).unwrap();
+    assert_eq!(
+        app.json("release_orphaned", json!({}))["ideas"],
+        json!([slug])
+    );
+    assert!(
+        app.json("get_idea", json!({"idea": slug}))
+            .get("promotedTopic")
+            .is_none()
     );
 }

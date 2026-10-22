@@ -278,6 +278,20 @@ pub fn rule_verification_status(store: &Store, review_item: &str) -> Result<Veri
     })
 }
 
+/// Solta ideias e padrões promovidos para um tópico que não existe mais (apagado fora do app).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Released {
+    pub ideas: Vec<String>,
+    pub patterns: Vec<String>,
+}
+
+pub fn release_orphaned(store: &Store) -> Result<Released> {
+    Ok(Released {
+        ideas: store.release_orphaned_ideas().map_err(err)?,
+        patterns: store.release_orphaned_patterns().map_err(err)?,
+    })
+}
+
 // ---- ideias ------------------------------------------------------------------------------------------
 
 /// Resultado de `idea_implement`.

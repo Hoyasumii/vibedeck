@@ -199,6 +199,12 @@ pub fn tools() -> Vec<Tool> {
             },
         ),
         Tool::new(
+            "release_orphaned",
+            "Solta ideias e padrões promovidos para tópico inexistente; devolve {ideas, patterns} soltos.",
+            schema(&[], &[], &[], &[]),
+            |ctx, _| json_text(&app::release_orphaned(&ctx.store()?)?),
+        ),
+        Tool::new(
             "workflow_run_restart",
             "Reinicia a execução (parada, em andamento ou terminada) da primeira etapa, em novo ciclo; devolve {ref, run}.",
             schema(&[prop("run", "string", "workflow/execução|id")], &["run"], &[], &[]),
