@@ -49,9 +49,11 @@ else:
     for kind in sorted(set(re.findall(r"SectionRow\(id: \.(\w+)\(", rows.group(0)))):
         if not st or f"case .{kind}(" not in st.group(0):
             fail(f"Sources/VibeDeckApp/ProjectModel.swift: setTags não edita tags de .{kind}")
+# V2: o filtro por #tag mora em V2ListFilter (coluna de conteúdo e tabela do detalhe o compartilham).
+lf = open("Sources/VibeDeckApp/V2/V2ListFilter.swift").read()
 sl = open("Sources/VibeDeckApp/SectionListView.swift").read()
-if not re.search(r"\.searchable\(text: \$search, tokens: \$tokens", sl) or "#tag" not in sl:
-    fail("Sources/VibeDeckApp/SectionListView.swift: lista sem filtro por #tag")
+if 'hasPrefix("#")' not in lf or "filter.matches" not in sl:
+    fail("Sources/VibeDeckApp/V2/V2ListFilter.swift: lista sem filtro por #tag")
 lv = open("Sources/VibeDeckApp/LinksView.swift").read()
 if not re.search(r"\.tags\.contains", lv): fail("Sources/VibeDeckApp/LinksView.swift: links não filtráveis por tag")
 # Schemas dos conceitos descrevem tags.

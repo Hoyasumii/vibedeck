@@ -102,14 +102,14 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-12T03:21:50Z",
-      "details" : "Em startRuleExecution, o bloco withAI roda após o fim do stream de eventos e recebe scriptResults com todos os resultados de script.",
+      "details" : "Em startRuleExecution, o bloco withAI roda após a chamada única run_rule_tests (que devolve todos os scripts) e recebe scriptResults com todos os resultados de script.",
       "id" : "493FE647-7C2C-466A-A734-9833580EF36F",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/493fe647.sh",
-        "generatedAt" : "2026-10-14T14:13:14Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "script",
-        "ruleHash" : "abc296157de69823"
+        "ruleHash" : "15d9fe27b778af3a"
       },
       "text" : "No app, a verificação por IA só começa depois que todos os scripts terminaram."
     },
@@ -135,7 +135,7 @@
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/fb6c9696.sh",
-        "generatedAt" : "2026-10-14T14:13:14Z",
+        "generatedAt" : "2026-10-22T19:18:51Z",
         "mode" : "script",
         "ruleHash" : "777ee4d12766b5c6"
       },
@@ -149,7 +149,7 @@
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/93b728c6.sh",
-        "generatedAt" : "2026-10-14T14:13:14Z",
+        "generatedAt" : "2026-10-22T19:18:51Z",
         "mode" : "script",
         "ruleHash" : "f2615b92d6e08f55"
       },
@@ -163,7 +163,7 @@
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/8271a947.sh",
-        "generatedAt" : "2026-10-14T14:13:14Z",
+        "generatedAt" : "2026-10-22T19:18:51Z",
         "mode" : "script",
         "ruleHash" : "b41434b253519716"
       },
@@ -186,14 +186,14 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-12T03:29:11Z",
-      "details" : "Procurar a chave do limite: deve existir só em Sources/VibeDeckApp (tela de configurações) e não em schema/v1 nem em Models.swift. O arquivo que lê ou grava UserDefaults precisa estar no LOCAL_OK de .vibedeck/tests/conceitos-do-produto/9e02c127.sh, com justificativa.",
+      "details" : "Procurar a chave do limite: deve existir só em Sources/VibeDeckApp (tela de configurações) e não em schema/v1 nem nos crates. Os arquivos RuleExecutionModel.swift e AppSettingsView.swift precisam estar no LOCAL_OK de .vibedeck/tests/conceitos-do-produto/9e02c127.sh, com justificativa.",
       "id" : "D02043AE-AB25-4919-9C9B-C22F8656125E",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/d02043ae.sh",
-        "generatedAt" : "2026-10-14T14:13:14Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "script",
-        "ruleHash" : "0aff86c8946c348a"
+        "ruleHash" : "256a795117c12705"
       },
       "text" : "O limite de scripts simultâneos é configurado só nas configurações do app e guardado por máquina (UserDefaults), nunca em vibedeck.json nem em .vibedeck/."
     },
@@ -298,14 +298,14 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-12T03:29:11Z",
-      "details" : "Em RuleExecutionModel.startRuleExecution, com withAI=true e uma interrupção, verify não é chamado.",
+      "details" : "Em RuleExecutionModel.startRuleExecution, com withAI=true e uma interrupção (cancelamento ou falha must), o retorno vem antes do bloco withAI e verify não é chamado.",
       "id" : "67BAFB60-BC65-41B2-A4FF-9390164B8406",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/67bafb60.sh",
-        "generatedAt" : "2026-10-14T14:13:14Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "script",
-        "ruleHash" : "0829fe1885cedb07"
+        "ruleHash" : "ee7bf6bd5a6740cf"
       },
       "text" : "Depois de um cancelamento ou de uma falha must que interrompe os scripts, o app não inicia a verificação por IA."
     },
@@ -354,16 +354,16 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-12T03:51:29Z",
-      "details" : "Teste no ProjectModel com runner bloqueante: cancelar não cria arquivo novo em .vibedeck/checks.",
+      "details" : "Em RuleExecutionModel/startRuleExecution, a chamada submit_rule_check tem um único ponto e vem só depois do retorno por cancelamento; o teste de cancelamento exige execution.saved == false.",
       "id" : "FAD870A7-625F-44E4-8ACE-5720D1C6D3C4",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/fad870a7.sh",
-        "generatedAt" : "2026-10-14T14:13:14Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "script",
-        "ruleHash" : "e2000a332b347807"
+        "ruleHash" : "04432370aaa99461"
       },
-      "text" : "Uma execução cancelada ou interrompida no app não grava check: completeRuleExecution não é chamado."
+      "text" : "Uma execução cancelada ou interrompida no app não grava check: submit_rule_check não é chamado."
     },
     {
       "author" : "ai",
@@ -494,16 +494,16 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-12T03:51:29Z",
-      "details" : "bash .vibedeck/tests/conceitos-do-produto/9e02c127.sh termina com exit 0.",
+      "details" : "bash .vibedeck/tests/conceitos-do-produto/9e02c127.sh termina com exit 0; só esses dois arquivos do app usam a chave, e o Core, o CLI e o MCP nunca usam UserDefaults.",
       "id" : "118EEFDB-EB87-4EC9-9F46-8478FE0FF601",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/118eefdb.sh",
-        "generatedAt" : "2026-10-14T14:13:13Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "script",
-        "ruleHash" : "7910715e8971b981"
+        "ruleHash" : "ec80a5936fabbc37"
       },
-      "text" : "O arquivo do app que lê ou grava a chave do limite está no LOCAL_OK de .vibedeck/tests/conceitos-do-produto/9e02c127.sh, com justificativa, e o script continua passando."
+      "text" : "Os arquivos do app que leem ou gravam a chave do limite (RuleExecutionModel.swift e AppSettingsView.swift) estão no LOCAL_OK de .vibedeck/tests/conceitos-do-produto/9e02c127.sh, com justificativa, e o script continua passando."
     },
     {
       "author" : "ai",
@@ -512,7 +512,7 @@
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/3b6122fa.sh",
-        "generatedAt" : "2026-10-14T14:13:14Z",
+        "generatedAt" : "2026-10-22T19:18:51Z",
         "mode" : "script",
         "ruleHash" : "adb0525e8d535fb1"
       },
@@ -539,7 +539,7 @@
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/fda4d667.sh",
-        "generatedAt" : "2026-10-14T14:13:15Z",
+        "generatedAt" : "2026-10-22T19:18:51Z",
         "mode" : "script",
         "ruleHash" : "764d658df3ad694e"
       },
@@ -553,7 +553,7 @@
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/6b9f65b7.sh",
-        "generatedAt" : "2026-10-14T14:13:14Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "script",
         "ruleHash" : "5473c24ff0ed5e05"
       },

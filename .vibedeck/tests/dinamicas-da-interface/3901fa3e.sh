@@ -49,7 +49,7 @@ rows = block(pm, r"func rows\(for section: SidebarSection\)")
 for s in sections:
     if not re.search(rf"case \.{s}: return \.", fs): fail("V2/V2Navigation.swift", f"forSection não mapeia a seção .{s}")
     if not re.search(rf"case \.{s}\b", rows): fail("ProjectModel.swift", f"rows(for:) não lista a seção .{s}")
-if "model.rows(for:" not in col and "model.rows(for: $0)" not in col: fail("V2/V2ContentColumn.swift", "coluna sem as linhas da seção (model.rows(for:))")
+if "model.columnRows(for:" not in col: fail("V2/V2ContentColumn.swift", "coluna sem as linhas da seção (model.columnRows(for:))")
 if "private var filterField" not in col: fail("V2/V2ContentColumn.swift", "coluna de conteúdo sem filtro")
 if "pageList" not in col or "sectionList" not in col: fail("V2/V2ContentColumn.swift", "coluna sem lista de seção e lista de páginas")
 # Abrir no detalhe: cada item e página tem destino em V2ProjectWindow.

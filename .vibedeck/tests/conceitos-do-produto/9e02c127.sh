@@ -94,6 +94,7 @@ APP = "Sources/VibeDeckApp/"
 LOCAL_OK = {APP + p for p in (
     "IdeaView.swift", "DocView.swift", "WorkflowView.swift",       # modo de visualização
     "V2/V2ProjectWindow.swift",                                    # abas/seleção/expansão da janela
+    "GroupTreeView.swift",                                         # grupos abertos da árvore (preferência de UI por projeto)
     "VibeDeckApp.swift",                                           # projetos recentes (bookmarks)
     "ClaudeSession.swift",                                         # modelo/esforço/provedor e chat atual
     "Core/AI/ClaudeChats.swift",                                   # histórico de chats da máquina

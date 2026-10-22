@@ -87,14 +87,14 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-12T03:07:42Z",
-      "details" : "Rodar um comando do CLI que altere um item com o app aberto e conferir a entrada de reação do app.",
+      "details" : "Rodar um comando do CLI que altere um item com o app aberto e conferir a entrada de reação do app. Gravações do próprio app não geram essa entrada: o app guarda a revisão do Core (project_revision) após cada gravação e ignora o evento do FSEvents cuja revisão é a mesma (eco); durante uma gravação do app o evento não é logado como external.",
       "id" : "BE4A2B46-5296-45AF-A8D4-4196AE2C387C",
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/sistema-de-logs/be4a2b46.sh",
-        "generatedAt" : "2026-10-22T18:52:14Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "script",
-        "ruleHash" : "67f148812663cd9f"
+        "ruleHash" : "8f7b4c62f4a9e488"
       },
       "text" : "Mudanças externas aplicadas ao vivo pelo app (arquivo alterado fora do app) registram uma entrada info com o arquivo relativo e a origem external."
     },

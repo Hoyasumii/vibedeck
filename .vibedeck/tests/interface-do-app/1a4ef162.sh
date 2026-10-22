@@ -33,9 +33,9 @@ bad = 0
 m = re.search(r"func deleteTopic\(.*?\n    \}", src, re.S)
 if not m or "deleteRecord(.rule, slug: slug)" not in m.group(0) or "reloadIdeas()" not in m.group(0):
     print(f"{sys.argv[1]}: Mover para o Lixo (deleteTopic) não apaga pelo Core nem recarrega as ideias"); bad = 1
-m = re.search(r"func handleExternalChanges\(.*?\n    \}", src, re.S)
+m = re.search(r"func applyExternalChanges\(.*?\n    \}", src, re.S)
 if not m or not re.search(r"if topicsChanged \{[^}]*schedule\(\.ideas\)", m.group(0)):
-    print(f"{sys.argv[1]}: handleExternalChanges não recarrega as ideias quando um tópico muda"); bad = 1
+    print(f"{sys.argv[1]}: applyExternalChanges não recarrega as ideias quando um tópico muda"); bad = 1
 sys.exit(bad)
 PY
 # 3) Tópicos apagados fora do app (Finder, rm, outro processo) também soltam a ideia: alguém além de delete_topic

@@ -4,54 +4,55 @@
   "description" : "Regras vindas da ideia \"Painel Lateral Melhorado\".",
   "id" : "10B42757-6C13-4554-B547-06B540FF0E67",
   "paths" : [
-    "Sources/VibeDeckApp/ProjectWindow.swift",
+    "Sources/VibeDeckApp/V2/**",
     "Sources/VibeDeckApp/ProjectModel.swift",
+    "Sources/VibeDeckApp/SectionListView.swift",
+    "Tests/VibeDeckAppTests/V2ColumnVisibilityTests.swift",
     "crates/vibedeck-core/src/rules/**",
-    "crates/vibedeck-core/src/model/**",
-    "Tests/VibeDeckAppTests/RuleExecutionModelTests.swift"
+    "crates/vibedeck-core/src/model/**"
   ],
   "rules" : [
     {
       "author" : "ai",
       "createdAt" : "2026-10-09T17:36:55Z",
-      "details" : "Em ProjectWindow.swift (case .groups), o ForEach filtra grupos com openCount == 0. Verificar com um grupo cujos itens estão todos done/wontfix: ele não aparece na sidebar.",
+      "details" : "Em ProjectModel.columnRows/isOmittedFromColumn (usado por V2ContentColumn), grupos com openCount == 0 ficam fora da coluna. Verificar com um grupo cujos itens estão todos done/wontfix: ele não aparece na coluna.",
       "id" : "E044FE9D-EF2F-40E6-A5F4-3345A69AD9C8",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/painel-lateral-melhorado/e044fe9d.sh",
-        "generatedAt" : "2026-10-22T18:51:22Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "script",
-        "ruleHash" : "3081a76cc3049135"
+        "ruleHash" : "77c8bcc5cf3f93a7"
       },
-      "text" : "A lista de Revisões na sidebar mostra só grupos com pelo menos um item aberto (openCount > 0)."
+      "text" : "A coluna de conteúdo (lista de Revisões) mostra só grupos com pelo menos um item aberto (openCount > 0)."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-09T17:36:55Z",
-      "details" : "A tela de Revisões lista todos os grupos, inclusive os sem itens abertos, e permite abri-los e abri-los em aba.",
+      "details" : "A tabela de Revisões no detalhe (SectionListView, seção .groups) lista todos os grupos, inclusive os sem itens abertos, e permite abri-los e abri-los em aba.",
       "id" : "48A075FC-F155-4EC3-898A-C98B196C54CA",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/painel-lateral-melhorado/48a075fc.sh",
-        "generatedAt" : "2026-10-22T18:51:22Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "script",
-        "ruleHash" : "2710dbe4583c757a"
+        "ruleHash" : "a104137d5ac24af2"
       },
       "text" : "Grupos de revisão sem itens abertos continuam acessíveis na tela de Revisões (seção .groups)."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-09T17:36:55Z",
-      "details" : "Em ProjectWindow.swift (case .ideas), filtrar status == .done. Ideias descartadas, novas, em exploração e aprovadas continuam aparecendo.",
+      "details" : "Em ProjectModel.isOmittedFromColumn, ideias com status == .done ficam fora da coluna. Ideias descartadas, novas, em exploração e aprovadas continuam aparecendo.",
       "id" : "E248D5A3-186D-47B0-B365-1B8D777BB1EF",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/painel-lateral-melhorado/e248d5a3.sh",
-        "generatedAt" : "2026-10-22T18:51:22Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "script",
-        "ruleHash" : "c56a6dcf40472254"
+        "ruleHash" : "e2ed52b039bcee7f"
       },
-      "text" : "A lista de Ideias na sidebar omite ideias com status done (Implementada)."
+      "text" : "A coluna de conteúdo (lista de Ideias) omite ideias com status done (Implementada)."
     },
     {
       "author" : "ai",
@@ -75,25 +76,25 @@
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/painel-lateral-melhorado/122bdd0c.sh",
-        "generatedAt" : "2026-10-22T18:51:22Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "script",
-        "ruleHash" : "3b5d429277d53ee0"
+        "ruleHash" : "d59ff76bb7529f5d"
       },
-      "text" : "Um grupo de revisão ou ideia aberto/selecionado que a sidebar omite não deixa a seleção ou a aba inválida."
+      "text" : "Um grupo de revisão ou ideia aberto/selecionado que a coluna de conteúdo omite não deixa a seleção ou a aba inválida."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-09T17:36:55Z",
-      "details" : "Com o novo filtro de visibilidade aplicado, digitar texto ou #tag filtra apenas entre grupos com itens abertos e ideias não implementadas, sem quebrar a busca.",
+      "details" : "Com o filtro de visibilidade aplicado, digitar texto ou #tag (V2ListFilter) filtra apenas entre grupos com itens abertos e ideias não implementadas, sem quebrar a busca.",
       "id" : "279A3FF7-0F45-4FB1-B77A-F2DACA0AC289",
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/painel-lateral-melhorado/279a3ff7.sh",
-        "generatedAt" : "2026-10-22T18:51:22Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "script",
-        "ruleHash" : "f4cc422ad87a7a3d"
+        "ruleHash" : "2441a38552ff2643"
       },
-      "text" : "O filtro por texto e por #tag da sidebar continua funcionando sobre os grupos e ideias que ela exibe."
+      "text" : "O filtro por texto e por #tag da coluna de conteúdo continua funcionando sobre os grupos e ideias que ela exibe."
     },
     {
       "author" : "ai",
@@ -103,39 +104,39 @@
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/painel-lateral-melhorado/1409d15b.sh",
-        "generatedAt" : "2026-10-22T18:51:22Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "script",
-        "ruleHash" : "a705f328fd37524f"
+        "ruleHash" : "1089fa6e115994b8"
       },
-      "text" : "Um grupo de revisão omitido da sidebar volta a aparecer nela assim que algum de seus itens passa a ter status aberto (open ou in_progress, conforme openCount)."
+      "text" : "Um grupo de revisão omitido da coluna de conteúdo volta a aparecer nela assim que algum de seus itens passa a ter status aberto (open ou in_progress, conforme openCount)."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-09T18:08:07Z",
-      "details" : "Verificar que o filtro de omissão é aplicado somente em children(of:) da sidebar e que ProjectModel.swift:965 (lista da tela de Revisões) segue listando todos os grupos.",
+      "details" : "Verificar que a omissão é aplicada somente em columnRows (coluna de conteúdo) e que ProjectModel.rows(for:), usado pela tabela do detalhe, segue listando todos os grupos e ideias.",
       "id" : "5E0C4B04-4D23-4AC8-B65E-8F0FE8F8AED3",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/painel-lateral-melhorado/5e0c4b04.sh",
-        "generatedAt" : "2026-10-22T18:51:22Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "script",
-        "ruleHash" : "62c2e6dbfed912e5"
+        "ruleHash" : "5716fd723eca553e"
       },
-      "text" : "A sidebar de Revisões e de Ideias mostra o mesmo conjunto de itens após filtrar, e a tela de Revisões (.groups) e a de Ideias continuam usando a lista completa, sem o filtro de omissão."
+      "text" : "A coluna de Revisões e de Ideias mostra o mesmo conjunto de itens após filtrar, e a tabela de Revisões (.groups) e a de Ideias continuam usando a lista completa, sem o filtro de omissão."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-09T18:08:07Z",
-      "details" : "Teste: ideias com cada status não-done aparecem na lista da sidebar.",
+      "details" : "Teste: ideias com cada status não-done aparecem na lista da coluna.",
       "id" : "7332715D-BF28-4041-B881-397DD6FD8B33",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/painel-lateral-melhorado/7332715d.sh",
-        "generatedAt" : "2026-10-22T18:51:22Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "script",
-        "ruleHash" : "dbfc36b3dfb8917a"
+        "ruleHash" : "c397caa1a9a4ffcc"
       },
-      "text" : "Ideias com status diferente de done (por exemplo rascunho, promovida) continuam aparecendo na sidebar."
+      "text" : "Ideias com status diferente de done (por exemplo rascunho, promovida) continuam aparecendo na coluna de conteúdo."
     }
   ],
   "sourceIdea" : "70094A4A-1578-40DB-88FB-A19346569612",

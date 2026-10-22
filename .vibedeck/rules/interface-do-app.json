@@ -10,15 +10,15 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "Comentário em VibeDeckApp.swift: \"No min-size frame here: on macOS 26+ it fights NavigationSplitView/inspector column sizing and crashes AppKit's constraint pass. Columns set their own limits.\" Vale para o conteúdo do WindowGroup e para o ProjectWindow raiz. minWidth em subviews internas (ex.: editor/preview em DocView) é permitido.\nVerificar: nenhum .frame(minWidth:/minHeight:) no root.",
+      "details" : "Comentário em VibeDeckApp.swift: \"No min-size frame here: on macOS 26+ it fights NavigationSplitView/inspector column sizing and crashes AppKit's constraint pass. Columns set their own limits.\" Vale para o conteúdo do WindowGroup e para a janela V2 raiz (V2ProjectWindow). minWidth em subviews internas (ex.: editor/preview em DocView) é permitido.\nVerificar: nenhum .frame(minWidth:/minHeight:) no root.",
       "id" : "EE65A0A5-71DA-431A-A4B7-567144D40423",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/interface-do-app/ee65a0a5.sh",
-        "generatedAt" : "2026-10-09T00:50:49Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "script",
         "reason" : "Sem min-size/frame no root (WindowGroup, WelcomeView, ProjectWindow)",
-        "ruleHash" : "f8c2a89f675d28e3"
+        "ruleHash" : "65390de1335f5dbe"
       },
       "text" : "Nada de minWidth/min-size no root da janela"
     },
@@ -40,44 +40,44 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "V2: coluna de conteúdo do espaço min 220, ideal 260, max 340 (navigationSplitViewColumnWidth); painel de IA à direita via inspector min 300, ideal 340, max 460 (inspectorColumnWidth). Exceção: o trilho de espaços tem largura fixa definida em DesignTokens. Não controlar largura de coluna com .frame.\nVerificar: colunas/inspectors novos usam esses modificadores.",
+      "details" : "V2: coluna de conteúdo do espaço min 220, ideal 260, max 340 (navigationSplitViewColumnWidth); painel de IA à direita, único .inspector da janela, min 300, ideal 340, max 460 (inspectorColumnWidth). Exceções de largura fixa, ambas em DesignTokens.V2Layout: o trilho de espaços (railWidth) e o contexto do item no detalhe (contextWidth, V2DetailContext). Não controlar largura de coluna com .frame.\nVerificar: colunas/inspectors novos usam esses modificadores; nenhuma outra view abre .inspector.",
       "id" : "047D2216-D1C9-4AFC-AA0A-D789DC1E8A60",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/interface-do-app/047d2216.sh",
-        "generatedAt" : "2026-10-09T00:50:49Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "script",
         "reason" : "Valores de inspectorColumnWidth/navigationSplitViewColumnWidth",
-        "ruleHash" : "95929952301fb436"
+        "ruleHash" : "f05b0af497cbfd7d"
       },
       "text" : "Limites de coluna só via navigationSplitViewColumnWidth / inspectorColumnWidth"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "ProjectModel é um espelho em memória que grava cada mudança imediatamente (mutateGroup e equivalentes) e registra um undo que restaura o valor anterior; desfazer registra o inverso, então Shift+Cmd+Z refaz. Use os helpers mutate* do ProjectModel em vez de chamar o ProjectStore direto das views.\nVerificar: a ação nova pode ser desfeita com Cmd+Z e refeita com Shift+Cmd+Z, e o arquivo no disco reflete a mudança na hora.",
+      "details" : "ProjectModel é um espelho em memória que grava cada mudança imediatamente no Core Rust (mutateGroup e equivalentes, fila serial de gravação) e registra um undo que restaura o valor anterior; desfazer registra o inverso, então Shift+Cmd+Z refaz. Use os helpers mutate* do ProjectModel em vez de chamar o CoreStore direto das views.\nVerificar: a ação nova pode ser desfeita com Cmd+Z e refeita com Shift+Cmd+Z, e o arquivo no disco reflete a mudança na hora.",
       "id" : "00E57961-FE6D-4AFC-BB1A-3DC70152D38D",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/interface-do-app/00e57961.sh",
-        "generatedAt" : "2026-10-09T00:50:49Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "script",
         "reason" : "Views não mutam ProjectStore direto; mutate* do ProjectModel registram undo",
-        "ruleHash" : "e67b7acaf70c1924"
+        "ruleHash" : "7ad0624e679f5bcf"
       },
       "text" : "Toda mutação é gravada no disco na hora e registra undo"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "ProjectModel guarda os últimos bytes que gravou por caminho, para que o FSEvents (FileWatcher, que reporta também as escritas do próprio app) não dispare reload. Mudança externa (CLI, MCP, IA) é aplicada: no doc, como edição desfazível (\"Alteração externa\", MarkdownEditor); na ideia, só se não houver digitação pendente (IdeaView).\nVerificar: editar o arquivo pelo CLI com o app aberto atualiza a tela sem perder o que o usuário digitava.",
+      "details" : "ProjectModel guarda a revisão do Core (project_revision) logo depois de cada gravação do app; o evento do FSEvents (FileWatcher, que reporta também as escritas do próprio app) cuja revisão é igual à guardada é só o eco e é ignorado: não recarrega nem vira log \"external\". Mudança externa (CLI, MCP, IA) é aplicada: no doc, como edição desfazível (\"Alteração externa\", MarkdownEditor); na ideia, só se não houver digitação pendente (IdeaView). Docs vinculados observam também o .md de origem na raiz.\nVerificar: editar o arquivo pelo CLI com o app aberto atualiza a tela sem perder o que o usuário digitava.",
       "id" : "8385BC07-3F91-46DC-8BBD-6F62C4851DD9",
       "severity" : "must",
       "test" : {
-        "generatedAt" : "2026-10-09T00:50:49Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "manual",
         "reason" : "Comportamento em runtime (FSEvents + digitação pendente + edição externa via CLI); só verificável rodando o app.",
-        "ruleHash" : "962bd9d3414c9a34"
+        "ruleHash" : "2ca9c4b722bb68fb"
       },
       "text" : "Escritas próprias não recarregam; escritas externas são aplicadas"
     },
@@ -128,29 +128,29 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "V2: na coluna de conteúdo de cada espaço, o chevron de um grupo/seção é um botão que só abre/fecha, sem selecionar a linha nem trocar o detalhe; vários grupos podem ficar abertos; o estado é persistido; o grupo do item selecionado abre.\nVerificar: clicar no chevron não muda o conteúdo do detalhe.",
+      "details" : "V2: na coluna de conteúdo de cada espaço, o chevron de um grupo/pasta (GroupTreeView) é um botão que só abre/fecha, sem selecionar a linha nem trocar o detalhe; vários grupos podem ficar abertos; o estado é persistido por projeto e conceito (UserDefaults); os grupos que contêm o item selecionado abrem e a linha do item fica destacada.\nVerificar: clicar no chevron não muda o conteúdo do detalhe e reabrir a janela mantém os grupos abertos.",
       "id" : "335DA4F8-7DBF-4120-8878-42130C661D69",
       "severity" : "must",
       "test" : {
-        "generatedAt" : "2026-10-09T00:50:49Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "manual",
         "reason" : "Comportamento de interação (chevron não seleciona nem troca de página); só verificável no app.",
-        "ruleHash" : "9db1a99e1a1fcdd0"
+        "ruleHash" : "1b07c4ecb2dd9a42"
       },
       "text" : "Grupos colapsáveis da coluna de conteúdo não dependem da seleção"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "V2: o filtro fica no topo da coluna de conteúdo de cada espaço. SectionListView (ou sucessor V2) filtra por texto livre e por tokens #tag ou pela barra de tags; chips de tag clicáveis filtram. Seção nova segue o mesmo padrão.\nVerificar: digitar #ui filtra só os itens com essa tag.",
+      "details" : "V2: o filtro fica no topo da coluna de conteúdo de cada espaço e é único: V2ListFilter (texto livre, tokens #tag digitados e chips de tag) é compartilhado entre a coluna (V2ContentColumn) e a tabela do detalhe (SectionListView), que só o aplica e não tem campo de busca próprio. Seção nova segue o mesmo padrão.\nVerificar: digitar #ui filtra só os itens com essa tag, na coluna e na tabela.",
       "id" : "A999B857-E236-4893-97A9-07257A538B57",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/interface-do-app/a999b857.sh",
-        "generatedAt" : "2026-10-09T00:50:49Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "script",
         "reason" : "SectionListView com filtro texto/#tag/tag bar/chips; seções só via SectionListView",
-        "ruleHash" : "ff08eff2df3d9b86"
+        "ruleHash" : "10f387f547ed5306"
       },
       "text" : "Listas de seção filtráveis por texto e por #tag"
     },
@@ -172,15 +172,15 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : ".toolbarBackgroundVisibility(.hidden, for: .windowToolbar) na tela de boas-vindas e na janela V2 do projeto (trilho, conteúdo e detalhe), para o header ter a mesma cor do conteúdo. Janelas/colunas novas seguem isso.\nVerificar: não aparece faixa de cor diferente no topo.",
+      "details" : ".toolbarBackgroundVisibility(.hidden, for: .windowToolbar) na tela de boas-vindas e na janela V2 do projeto (casca com trilho e conteúdo, e coluna de detalhe), para o header ter a mesma cor do conteúdo. Janelas/colunas novas seguem isso.\nVerificar: não aparece faixa de cor diferente no topo.",
       "id" : "492100C1-EFE3-488F-8368-08CE17A797DA",
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/interface-do-app/492100c1.sh",
-        "generatedAt" : "2026-10-09T00:50:49Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "script",
         "reason" : "toolbarBackgroundVisibility(.hidden) em WelcomeView e ProjectWindow",
-        "ruleHash" : "0c67aab9e95e470f"
+        "ruleHash" : "e4b6ecd30f34d4a0"
       },
       "text" : "Sem faixa de toolbar separada"
     },
