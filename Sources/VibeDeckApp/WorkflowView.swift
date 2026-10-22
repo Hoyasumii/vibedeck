@@ -493,10 +493,12 @@ private struct WorkflowRunRow: View {
                 HStack {
                     if !AIProvider.installed(in: providerRoot).isEmpty, run.status != .done {
                         LoggedButton(run.isFinished ? "Retomar" : "Continuar") {
-                            do {
-                                let resumed = try model.store.resumeRun(ref)
-                                claude.resumeWorkflow(ref, run: resumed, store: model.store)
-                            } catch { model.errorMessage = error.localizedDescription }
+                            Task {
+                                do {
+                                    let resumed = try await model.store.resumeRun(ref)
+                                    claude.resumeWorkflow(ref, run: resumed, store: model.store)
+                                } catch { model.errorMessage = error.localizedDescription }
+                            }
                         }.loggedControl(control: "workflow_view.button_14", label: "Ativar controle")
                         .help("O chat volta a orquestrar esta execução de onde ela parou")
                     }
@@ -690,42 +692,47 @@ struct IdeaImplementationSheet: View {
     }
 
     private func selectWorkflow(_ slug: String) {
-        do {
-            let (_, idea) = try model.currentImplementationIdea(request.ideaID)
-            workflow = slug
-            existing = try model.store.ideaRun(idea, workflow: slug)?.run
-            if existing == nil { confirm(restart: false) }
-        } catch { self.error = error.localizedDescription }
+        Task {
+            do {
+                let (_, idea) = try await model.currentImplementationIdea(request.ideaID)
+                workflow = slug
+                existing = model.ideaRun(idea, workflow: slug)?.value
+                if existing == nil { confirm(restart: false) }
+            } catch { self.error = error.localizedDescription }
+        }
     }
 
     private func confirm(restart: Bool) {
-        do {
-            let (slug, _) = try model.currentImplementationIdea(request.ideaID)
-            pendingRestart = restart
-            stalePaths = try model.store.unmatchedIdeaPaths(slug)
-            if stalePaths.isEmpty { finish() }
-        } catch { self.error = error.localizedDescription }
+        Task {
+            do {
+                let (slug, _) = try await model.currentImplementationIdea(request.ideaID)
+                pendingRestart = restart
+                stalePaths = model.unmatchedIdeaPaths(slug)
+                if stalePaths.isEmpty { finish() }
+            } catch { self.error = error.localizedDescription }
+        }
     }
 
     private func finish(skipping: Set<String> = []) {
-        do {
-            guard !session.isWorking else { return }
-            try RemoteWorkspace.existing(at: model.store.root)?.requireSynchronized()
-            let (_, idea) = try model.currentImplementationIdea(request.ideaID)
-            if let workflow, let latest = try model.store.ideaRun(idea, workflow: workflow)?.run,
-               latest.id != existing?.id {
-                existing = latest
-                stalePaths = []
-                return
-            }
-            let prepared = try model.prepareIdeaImplementation(request.ideaID, workflow: workflow,
-                restart: pendingRestart, skippingPaths: skipping, provider: session.provider, undo: undo)
-            session.ideaRequest = nil
-            if let execution = prepared.execution {
-                session.resumeWorkflow(execution.ref, run: execution.run, store: model.store)
-            } else {
-                session.ask(prepared.prompt, inspectIdeas: false)
-            }
-        } catch { self.error = error.localizedDescription }
+        guard !session.isWorking else { return }
+        Task {
+            do {
+                let (_, idea) = try await model.currentImplementationIdea(request.ideaID)
+                if let workflow, let latest = model.ideaRun(idea, workflow: workflow)?.value,
+                   latest.id != existing?.id {
+                    existing = latest
+                    stalePaths = []
+                    return
+                }
+                let prepared = try await model.prepareIdeaImplementation(request.ideaID, workflow: workflow,
+                    restart: pendingRestart, skippingPaths: skipping, provider: session.provider, undo: undo)
+                session.ideaRequest = nil
+                if let execution = prepared.execution {
+                    session.resumeWorkflow(execution.ref, run: execution.run, store: model.store)
+                } else {
+                    session.ask(prepared.prompt, inspectIdeas: false)
+                }
+            } catch { self.error = error.localizedDescription }
+        }
     }
 }

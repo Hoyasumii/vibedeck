@@ -84,9 +84,9 @@ struct SectionListView: View {
                                               RemoteExecution.available(provider, root: model.store.root) else { return }
                                         let result: AIImportResult
                                         switch section {
-                                        case .agents: result = try model.store.importAgents(provider: provider)
-                                        case .commands: result = try model.store.importCommands(provider: provider)
-                                        default: result = try await model.store.importSkills(provider: provider)
+                                        case .agents: result = try await model.store.importRecords("import_agents", provider: provider)
+                                        case .commands: result = try await model.store.importRecords("import_commands", provider: provider)
+                                        default: result = try await model.store.importRecords("import_skills", provider: provider)
                                         }
                                         model.reloadAgents(); model.reloadCommands(); model.reloadSkills()
                                         importedCount = result.slugs.count

@@ -1,26 +1,26 @@
 import Foundation
 
-public enum AIProvider: String, Codable, CaseIterable, Sendable {
+enum AIProvider: String, Codable, CaseIterable, Sendable {
     case claude, codex
-    public var title: String { self == .claude ? "Claude" : "Codex" }
-    public var executable: URL? { self == .claude ? ClaudeCode.executable : CodexCode.executable }
-    public var isInstalled: Bool { executable != nil }
-    public static func installed(in root: URL?) -> [AIProvider] {
+    var title: String { self == .claude ? "Claude" : "Codex" }
+    var executable: URL? { self == .claude ? ClaudeCode.executable : CodexCode.executable }
+    var isInstalled: Bool { executable != nil }
+    static func installed(in root: URL?) -> [AIProvider] {
         guard let root else { return installed }
         return RemoteExecution.providers(root: root)
     }
-    public static var installed: [AIProvider] { allCases.filter(\.isInstalled) }
+    static var installed: [AIProvider] { allCases.filter(\.isInstalled) }
 }
 
-public struct AIProviderSettings: Codable, Equatable, Sendable {
-    public var model: String?
-    public var effort: String?
-    public init(model: String? = nil, effort: String? = nil) { self.model = model; self.effort = effort }
+struct AIProviderSettings: Codable, Equatable, Sendable {
+    var model: String?
+    var effort: String?
+    init(model: String? = nil, effort: String? = nil) { self.model = model; self.effort = effort }
 }
 
-public enum CodexCode {
-    public static let executable: URL? = locate()
-    public static var isInstalled: Bool { executable != nil }
+enum CodexCode {
+    static let executable: URL? = locate()
+    static var isInstalled: Bool { executable != nil }
     static func locate(home: URL = FileManager.default.homeDirectoryForCurrentUser,
                        path: String? = ProcessInfo.processInfo.environment["PATH"],
                        isExecutable: (String) -> Bool = { FileManager.default.isExecutableFile(atPath: $0) },
@@ -35,12 +35,12 @@ public enum CodexCode {
     }
 }
 
-public struct CodexModel: Equatable, Sendable, Identifiable {
-    public var id: String
-    public var title: String
-    public var efforts: [String]
-    public var isDefault: Bool
-    public static func list(_ response: JSONValue) -> [CodexModel] {
+struct CodexModel: Equatable, Sendable, Identifiable {
+    var id: String
+    var title: String
+    var efforts: [String]
+    var isDefault: Bool
+    static func list(_ response: JSONValue) -> [CodexModel] {
         (response["data"]?.array ?? []).compactMap {
             guard let model = $0["model"]?.string, $0["hidden"]?.bool != true else { return nil }
             return CodexModel(id: model, title: $0["displayName"]?.string ?? model,
@@ -50,11 +50,11 @@ public struct CodexModel: Equatable, Sendable, Identifiable {
     }
 }
 
-public struct CodexSkill: Equatable, Sendable {
-    public var name: String
-    public var description: String
-    public var path: String
-    public static func list(_ response: JSONValue) -> [CodexSkill] {
+struct CodexSkill: Equatable, Sendable {
+    var name: String
+    var description: String
+    var path: String
+    static func list(_ response: JSONValue) -> [CodexSkill] {
         (response["data"]?.array ?? []).flatMap { $0["skills"]?.array ?? [] }.compactMap {
             guard $0["enabled"]?.bool != false, let name = $0["name"]?.string, let path = $0["path"]?.string else { return nil }
             return CodexSkill(name: name, description: $0["description"]?.string ?? "", path: path)
@@ -62,12 +62,12 @@ public struct CodexSkill: Equatable, Sendable {
     }
 }
 
-public struct CodexRateLimit: Equatable, Sendable, Identifiable {
-    public var id: String
-    public var usedPercent: Double
-    public var minutes: Double
-    public var resetsAt: Date?
-    public static func list(_ response: JSONValue) -> [CodexRateLimit] {
+struct CodexRateLimit: Equatable, Sendable, Identifiable {
+    var id: String
+    var usedPercent: Double
+    var minutes: Double
+    var resetsAt: Date?
+    static func list(_ response: JSONValue) -> [CodexRateLimit] {
         let buckets = response["rateLimitsByLimitId"]?.object ?? ["codex": response["rateLimits"] ?? .null]
         return buckets.keys.sorted().flatMap { key in
             ["primary", "secondary"].compactMap { window in
@@ -79,8 +79,8 @@ public struct CodexRateLimit: Equatable, Sendable, Identifiable {
     }
 }
 
-public enum CodexQueries {
-    @MainActor public static func limits(root: URL) async throws -> JSONValue {
+enum CodexQueries {
+    @MainActor static func limits(root: URL) async throws -> JSONValue {
         let rpc = CodexRPC(); defer { rpc.stop() }
         try await rpc.start(root: root)
         return try await rpc.request("account/rateLimits/read")

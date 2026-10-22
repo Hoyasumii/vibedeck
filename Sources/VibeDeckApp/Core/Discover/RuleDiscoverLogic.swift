@@ -3,38 +3,38 @@ import Foundation
 /// "Descubra" in a rule topic or an idea: asks the AI provider, with read-only tools, for the globs of the subject,
 /// interviews the user to draft rules and, last, rewrites the description and suggests tags. The user may give an
 /// opening context first. Every answer becomes a proposal the user accepts item by item; nothing here writes. `RuleDiscoverScope.apply` / `RuleDiscoverDrafts.apply` are the only way in.
-public enum RuleDiscover {
+enum RuleDiscover {
     /// Same read-only tool set as the review Descubra (Read/Grep/Glob, no Edit/Write/Bash).
-    public static let tools = ReviewDiscover.tools
+    static let tools = ReviewDiscover.tools
     /// Questions shown per interview round; extra ones are dropped.
-    public static let maxQuestions = 4
+    static let maxQuestions = 4
     /// Rounds of questions before the next call is forced to generate rules.
-    public static let maxRounds = 3
+    static let maxRounds = 3
     /// Files scanned when checking that a glob matches something.
-    public static let fileLimit = 20000
+    static let fileLimit = 20000
 
     /// What the Descubra works on: a topic or an idea, read when the call starts.
-    public struct Subject: Equatable, Sendable {
-        public enum Kind: String, Sendable { case topic, idea }
+    struct Subject: Equatable, Sendable {
+        enum Kind: String, Sendable { case topic, idea }
 
-        public var kind: Kind
-        public var title: String
-        public var description: String?
-        public var paths: [String]
-        public var tags: [String]
-        public var rules: [Rule]
+        var kind: Kind
+        var title: String
+        var description: String?
+        var paths: [String]
+        var tags: [String]
+        var rules: [Rule]
         /// Optional free text from the user, given before the Descubra starts. Not part of the stored subject.
-        public var context: String?
+        var context: String?
 
-        public init(topic: RuleTopic) {
+        init(topic: RuleTopic) {
             self.init(kind: .topic, title: topic.title, description: topic.description, paths: topic.paths, tags: topic.tags, rules: topic.rules)
         }
 
-        public init(idea: Idea) {
+        init(idea: Idea) {
             self.init(kind: .idea, title: idea.title, description: idea.body, paths: idea.paths, tags: idea.tags, rules: idea.rules)
         }
 
-        public init(kind: Kind, title: String, description: String?, paths: [String], tags: [String], rules: [Rule], context: String? = nil) {
+        init(kind: Kind, title: String, description: String?, paths: [String], tags: [String], rules: [Rule], context: String? = nil) {
             self.context = context
             self.kind = kind
             self.title = title
@@ -46,7 +46,7 @@ public enum RuleDiscover {
 
         /// Same content as the prompts see it. Ignores rule metadata (ids, dates, tests): a reload from disk
         /// truncates `createdAt` to whole seconds, which must not count as an edit.
-        public func hasSameContent(as other: Subject) -> Bool {
+        func hasSameContent(as other: Subject) -> Bool {
             func content(_ rules: [Rule]) -> [[String?]] { rules.map { [$0.text, $0.details, $0.severity.rawValue] } }
             return kind == other.kind && title == other.title && description == other.description
                 && paths == other.paths && tags == other.tags && content(rules) == content(other.rules)
@@ -54,23 +54,23 @@ public enum RuleDiscover {
     }
 
     /// Existing rules elsewhere in the project, to avoid duplicates and conflicts.
-    public struct KnownTopic: Equatable, Sendable {
-        public var slug: String
-        public var title: String
-        public var rules: [String]
+    struct KnownTopic: Equatable, Sendable {
+        var slug: String
+        var title: String
+        var rules: [String]
 
-        public init(slug: String, title: String, rules: [String]) {
+        init(slug: String, title: String, rules: [String]) {
             self.slug = slug
             self.title = title
             self.rules = rules
         }
     }
 
-    public struct Suggestion: Decodable, Equatable, Sendable {
-        public var value: String
-        public var reason: String
+    struct Suggestion: Decodable, Equatable, Sendable {
+        var value: String
+        var reason: String
 
-        public init(value: String, reason: String) {
+        init(value: String, reason: String) {
             self.value = value
             self.reason = reason
         }
@@ -78,11 +78,11 @@ public enum RuleDiscover {
 
     // MARK: Scope (globs)
 
-    public struct ScopeAnswer: Decodable, Equatable, Sendable {
-        public var paths: [Suggestion]
-        public var tags: [Suggestion]
+    struct ScopeAnswer: Decodable, Equatable, Sendable {
+        var paths: [Suggestion]
+        var tags: [Suggestion]
 
-        public init(paths: [Suggestion] = [], tags: [Suggestion] = []) {
+        init(paths: [Suggestion] = [], tags: [Suggestion] = []) {
             self.paths = paths
             self.tags = tags
         }
@@ -90,7 +90,7 @@ public enum RuleDiscover {
         enum CodingKeys: String, CodingKey { case paths, tags }
         enum ItemKeys: String, CodingKey { case glob, tag, reason }
 
-        public init(from decoder: Decoder) throws {
+        init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             paths = try Self.items(c, .paths, key: .glob)
             tags = c.contains(.tags) ? try Self.items(c, .tags, key: .tag) : []
@@ -107,11 +107,11 @@ public enum RuleDiscover {
         }
     }
 
-    public static let scopeSchema = #"""
+    static let scopeSchema = #"""
     {"type":"object","properties":{"paths":{"type":"array","items":{"type":"object","properties":{"glob":{"type":"string"},"reason":{"type":"string"}},"required":["glob","reason"]}}},"required":["paths"]}
     """#
 
-    public static func scopePrompt(_ subject: Subject, topics: [KnownTopic]) -> String {
+    static func scopePrompt(_ subject: Subject, topics: [KnownTopic]) -> String {
         var lines = header(subject)
         lines += known(topics)
         lines += [
@@ -128,7 +128,7 @@ public enum RuleDiscover {
 
     /// Keeps globs that aren't catch-all, aren't on the subject yet and match a project file; tags not on the
     /// subject, marking the ones outside the vocabulary as new.
-    public static func scope(_ answer: ScopeAnswer, subject: Subject, vocabulary: [String], files: [String]) -> RuleDiscoverScope {
+    static func scope(_ answer: ScopeAnswer, subject: Subject, vocabulary: [String], files: [String]) -> RuleDiscoverScope {
         var scope = RuleDiscoverScope()
         for suggestion in answer.paths {
             let glob = suggestion.value.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -155,23 +155,23 @@ public enum RuleDiscover {
     }
 
     /// A glob that covers (nearly) everything: only `*`, `/` and `.`.
-    public static func isCatchAll(_ glob: String) -> Bool {
+    static func isCatchAll(_ glob: String) -> Bool {
         glob.allSatisfy { "*/.".contains($0) }
     }
 
     /// Project files (no folders, build or dependency output) the globs are checked against.
-    public static func projectFiles(root: URL) -> [String] {
+    static func projectFiles(root: URL) -> [String] {
         ClaudeCompletion.projectFiles(root: root, limit: fileLimit).filter { !$0.hasSuffix("/") }
     }
 
     // MARK: Interview (questions → rules)
 
-    public struct Question: Equatable, Identifiable, Sendable {
-        public var id: Int
-        public var text: String
-        public var options: [String]
+    struct Question: Equatable, Identifiable, Sendable {
+        var id: Int
+        var text: String
+        var options: [String]
 
-        public init(id: Int, text: String, options: [String] = []) {
+        init(id: Int, text: String, options: [String] = []) {
             self.id = id
             self.text = text
             self.options = options
@@ -179,28 +179,28 @@ public enum RuleDiscover {
     }
 
     /// A question asked in an earlier round and what the user answered (empty = skipped).
-    public struct Exchange: Equatable, Sendable {
-        public var question: String
-        public var answer: String
+    struct Exchange: Equatable, Sendable {
+        var question: String
+        var answer: String
 
-        public init(question: String, answer: String) {
+        init(question: String, answer: String) {
             self.question = question
             self.answer = answer
         }
     }
 
-    public enum Relation: String, Decodable, Sendable { case none, duplicate, conflict }
+    enum Relation: String, Decodable, Sendable { case none, duplicate, conflict }
 
-    public struct RuleSuggestion: Decodable, Equatable, Sendable {
-        public var text: String
-        public var details: String
-        public var severity: RuleSeverity
-        public var reason: String
+    struct RuleSuggestion: Decodable, Equatable, Sendable {
+        var text: String
+        var details: String
+        var severity: RuleSeverity
+        var reason: String
         /// Existing rule this one duplicates or conflicts with (text), when `relation` isn't `none`.
-        public var related: String
-        public var relation: Relation
+        var related: String
+        var relation: Relation
 
-        public init(text: String, details: String = "", severity: RuleSeverity = .must, reason: String = "", related: String = "", relation: Relation = .none) {
+        init(text: String, details: String = "", severity: RuleSeverity = .must, reason: String = "", related: String = "", relation: Relation = .none) {
             self.text = text
             self.details = details
             self.severity = severity
@@ -210,35 +210,35 @@ public enum RuleDiscover {
         }
     }
 
-    public struct InterviewAnswer: Decodable, Equatable, Sendable {
+    struct InterviewAnswer: Decodable, Equatable, Sendable {
         struct RawQuestion: Decodable, Equatable, Sendable {
             var text: String
             var options: [String]
         }
 
         var rawQuestions: [RawQuestion]
-        public var rules: [RuleSuggestion]
+        var rules: [RuleSuggestion]
 
         enum CodingKeys: String, CodingKey { case rawQuestions = "questions", rules }
 
-        public init(questions: [String] = [], rules: [RuleSuggestion] = []) {
+        init(questions: [String] = [], rules: [RuleSuggestion] = []) {
             rawQuestions = questions.map { RawQuestion(text: $0, options: []) }
             self.rules = rules
         }
 
         /// Non-empty questions, at most `maxQuestions`; repeated options are dropped (they'd be duplicate picker tags).
-        public var questions: [Question] {
+        var questions: [Question] {
             rawQuestions.compactMap { q in q.text.trimmed.nonEmpty.map { ($0, q.options.compactMap { $0.trimmed.nonEmpty }) } }
                 .prefix(maxQuestions).enumerated().map { Question(id: $0.offset, text: $0.element.0, options: $0.element.1.reduce(into: []) { if !$0.contains($1) { $0.append($1) } }) }
         }
     }
 
-    public static let interviewSchema = #"""
+    static let interviewSchema = #"""
     {"type":"object","properties":{"questions":{"type":"array","items":{"type":"object","properties":{"text":{"type":"string"},"options":{"type":"array","items":{"type":"string"}}},"required":["text","options"]}},"rules":{"type":"array","items":{"type":"object","properties":{"text":{"type":"string"},"details":{"type":"string"},"severity":{"type":"string","enum":["must","should"]},"reason":{"type":"string"},"related":{"type":"string"},"relation":{"type":"string","enum":["none","duplicate","conflict"]}},"required":["text","details","severity","reason","related","relation"]}}},"required":["questions","rules"]}
     """#
 
     /// One interview call. `finish` (the user asked to generate, or the round limit was hit) forbids new questions.
-    public static func interviewPrompt(_ subject: Subject, topics: [KnownTopic], history: [Exchange], finish: Bool) -> String {
+    static func interviewPrompt(_ subject: Subject, topics: [KnownTopic], history: [Exchange], finish: Bool) -> String {
         var lines = header(subject)
         lines.append("Regras atuais:" + (subject.rules.isEmpty ? " (nenhuma)" : ""))
         lines += subject.rules.map { "- [\($0.severity.rawValue)] \($0.text)" }
@@ -268,7 +268,7 @@ public enum RuleDiscover {
     }
 
     /// Drops empty and repeated rules and flags duplicates of existing rules the AI didn't flag itself.
-    public static func drafts(_ answer: InterviewAnswer, subject: Subject, topics: [KnownTopic]) -> RuleDiscoverDrafts {
+    static func drafts(_ answer: InterviewAnswer, subject: Subject, topics: [KnownTopic]) -> RuleDiscoverDrafts {
         var drafts = RuleDiscoverDrafts()
         let existing = subject.rules.map(\.text) + topics.flatMap(\.rules)
         var seen = Set<String>()
@@ -289,12 +289,12 @@ public enum RuleDiscover {
 
     // MARK: Details (description + tags)
 
-    public struct DetailsAnswer: Decodable, Equatable, Sendable {
-        public var description: String
-        public var reason: String
-        public var tags: [Suggestion]
+    struct DetailsAnswer: Decodable, Equatable, Sendable {
+        var description: String
+        var reason: String
+        var tags: [Suggestion]
 
-        public init(description: String, reason: String = "", tags: [Suggestion] = []) {
+        init(description: String, reason: String = "", tags: [Suggestion] = []) {
             self.description = description
             self.reason = reason
             self.tags = tags
@@ -302,7 +302,7 @@ public enum RuleDiscover {
 
         enum CodingKeys: String, CodingKey { case description, reason, tags }
 
-        public init(from decoder: Decoder) throws {
+        init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             description = try c.decodeIfPresent(String.self, forKey: .description) ?? ""
             reason = try c.decodeIfPresent(String.self, forKey: .reason) ?? ""
@@ -310,12 +310,12 @@ public enum RuleDiscover {
         }
     }
 
-    public static let detailsSchema = #"""
+    static let detailsSchema = #"""
     {"type":"object","properties":{"description":{"type":"string"},"reason":{"type":"string"},"tags":{"type":"array","items":{"type":"object","properties":{"tag":{"type":"string"},"reason":{"type":"string"}},"required":["tag","reason"]}}},"required":["description","reason","tags"]}
     """#
 
     /// Rewrites the description and suggests tags with what the Descubra gathered (globs, rules, interview).
-    public static func detailsPrompt(_ subject: Subject, vocabulary: [String], topics: [KnownTopic], history: [Exchange]) -> String {
+    static func detailsPrompt(_ subject: Subject, vocabulary: [String], topics: [KnownTopic], history: [Exchange]) -> String {
         var lines = header(subject)
         lines += ["", "## Tags existentes no projeto", vocabulary.isEmpty ? "(nenhuma)" : vocabulary.joined(separator: ", ")]
         lines.append("Regras atuais:" + (subject.rules.isEmpty ? " (nenhuma)" : ""))
@@ -351,7 +351,7 @@ public enum RuleDiscover {
     }
 
     /// Normalizes the answer; `suggested` is nil when the text equals the current description, tags follow `scope`'s rules.
-    public static func details(_ answer: DetailsAnswer, subject: Subject, vocabulary: [String]) -> RuleDiscoverDetails {
+    static func details(_ answer: DetailsAnswer, subject: Subject, vocabulary: [String]) -> RuleDiscoverDetails {
         let current = subject.description?.trimmed.nonEmpty
         let text = answer.description.trimmed.nonEmpty
         return RuleDiscoverDetails(
@@ -364,30 +364,30 @@ public enum RuleDiscover {
 
     // MARK: Verdict (viability of an idea)
 
-    public struct VerdictAnswer: Decodable, Equatable, Sendable {
-        public var viable: Bool
-        public var missing: [String]
+    struct VerdictAnswer: Decodable, Equatable, Sendable {
+        var viable: Bool
+        var missing: [String]
 
-        public init(viable: Bool = false, missing: [String] = []) {
+        init(viable: Bool = false, missing: [String] = []) {
             self.viable = viable
             self.missing = missing
         }
 
         enum CodingKeys: String, CodingKey { case viable, missing }
 
-        public init(from decoder: Decoder) throws {
+        init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             viable = try c.decodeIfPresent(Bool.self, forKey: .viable) ?? false
             missing = try c.decodeIfPresent([String].self, forKey: .missing) ?? []
         }
     }
 
-    public static let verdictSchema = #"""
+    static let verdictSchema = #"""
     {"type":"object","properties":{"viable":{"type":"boolean"},"missing":{"type":"array","items":{"type":"string"}}},"required":["viable","missing"]}
     """#
 
     /// Judges whether the idea, as written, is ready for an agent to implement. Doesn't rewrite anything.
-    public static func verdictPrompt(_ subject: Subject, topics: [KnownTopic]) -> String {
+    static func verdictPrompt(_ subject: Subject, topics: [KnownTopic]) -> String {
         var lines = header(subject)
         lines.append("Regras atuais:" + (subject.rules.isEmpty ? " (nenhuma)" : ""))
         lines += subject.rules.map { rule in
@@ -408,7 +408,7 @@ public enum RuleDiscover {
         return lines.joined(separator: "\n")
     }
 
-    public static func verdict(_ answer: VerdictAnswer, subject: Subject) -> RuleDiscoverVerdict {
+    static func verdict(_ answer: VerdictAnswer, subject: Subject) -> RuleDiscoverVerdict {
         RuleDiscoverVerdict(viable: answer.viable && !subject.rules.isEmpty, missing: answer.missing.compactMap { $0.trimmed.nonEmpty })
     }
 
@@ -462,55 +462,55 @@ public enum RuleDiscover {
 }
 
 /// Validated globs and tags waiting for the user's choice.
-public struct RuleDiscoverScope: Equatable, Sendable {
-    public struct PathAddition: Equatable, Identifiable, Sendable {
-        public var glob: String
+struct RuleDiscoverScope: Equatable, Sendable {
+    struct PathAddition: Equatable, Identifiable, Sendable {
+        var glob: String
         /// Project files the glob matches now.
-        public var matches: Int
-        public var reason: String?
-        public var id: String { glob }
+        var matches: Int
+        var reason: String?
+        var id: String { glob }
     }
 
-    public struct TagAddition: Equatable, Identifiable, Sendable {
-        public var tag: String
+    struct TagAddition: Equatable, Identifiable, Sendable {
+        var tag: String
         /// Not in the project's vocabulary yet: starts unchecked.
-        public var isNew: Bool
-        public var reason: String?
-        public var id: String { tag }
+        var isNew: Bool
+        var reason: String?
+        var id: String { tag }
     }
 
-    public var paths: [PathAddition] = []
-    public var tags: [TagAddition] = []
+    var paths: [PathAddition] = []
+    var tags: [TagAddition] = []
     /// Suggestions dropped by validation, shown so the user knows they existed.
-    public var discarded: [String] = []
+    var discarded: [String] = []
 
-    public init() {}
+    init() {}
 
-    public var isEmpty: Bool { paths.isEmpty && tags.isEmpty }
+    var isEmpty: Bool { paths.isEmpty && tags.isEmpty }
 
     /// Tags that start checked: the ones already in the vocabulary. A new tag needs an explicit check.
-    public var defaultTags: Set<String> { Set(tags.filter { !$0.isNew }.map(\.tag)) }
+    var defaultTags: Set<String> { Set(tags.filter { !$0.isNew }.map(\.tag)) }
 
     /// Appends the chosen globs and tags; existing ones are never removed.
-    public func apply(paths chosenPaths: Set<String>, tags chosenTags: Set<String>, to current: inout [String], tags currentTags: inout [String]) {
+    func apply(paths chosenPaths: Set<String>, tags chosenTags: Set<String>, to current: inout [String], tags currentTags: inout [String]) {
         for path in paths where chosenPaths.contains(path.glob) && !current.contains(path.glob) { current.append(path.glob) }
         for tag in tags where chosenTags.contains(tag.tag) && !currentTags.contains(tag.tag) { currentTags.append(tag.tag) }
     }
 }
 
 /// Rules drafted by the interview waiting for the user's choice.
-public struct RuleDiscoverDrafts: Equatable, Sendable {
-    public struct Draft: Equatable, Identifiable, Sendable {
-        public var id = UUID()
-        public var text: String
-        public var details: String?
-        public var severity: RuleSeverity
-        public var reason: String?
-        public var relation: RuleDiscover.Relation
+struct RuleDiscoverDrafts: Equatable, Sendable {
+    struct Draft: Equatable, Identifiable, Sendable {
+        var id = UUID()
+        var text: String
+        var details: String?
+        var severity: RuleSeverity
+        var reason: String?
+        var relation: RuleDiscover.Relation
         /// Text of the existing rule it duplicates or conflicts with.
-        public var related: String?
+        var related: String?
 
-        public init(text: String, details: String? = nil, severity: RuleSeverity, reason: String? = nil, relation: RuleDiscover.Relation = .none, related: String? = nil) {
+        init(text: String, details: String? = nil, severity: RuleSeverity, reason: String? = nil, relation: RuleDiscover.Relation = .none, related: String? = nil) {
             self.text = text
             self.details = details
             self.severity = severity
@@ -520,17 +520,17 @@ public struct RuleDiscoverDrafts: Equatable, Sendable {
         }
     }
 
-    public var rules: [Draft] = []
+    var rules: [Draft] = []
 
-    public init() {}
+    init() {}
 
-    public var isEmpty: Bool { rules.isEmpty }
+    var isEmpty: Bool { rules.isEmpty }
 
     /// Drafts that start checked: the ones not flagged as duplicate or conflict.
-    public var defaultRules: Set<UUID> { Set(rules.filter { $0.relation == .none }.map(\.id)) }
+    var defaultRules: Set<UUID> { Set(rules.filter { $0.relation == .none }.map(\.id)) }
 
     /// Appends the chosen drafts as AI-authored rules (to `idea.rules` they stay drafts until promotion).
-    public func apply(_ chosen: Set<UUID>, to current: inout [Rule], now: Date = .now) {
+    func apply(_ chosen: Set<UUID>, to current: inout [Rule], now: Date = .now) {
         for draft in rules where chosen.contains(draft.id) {
             current.append(Rule(text: draft.text, details: draft.details, severity: draft.severity, author: .ai, now: now))
         }
@@ -538,14 +538,14 @@ public struct RuleDiscoverDrafts: Equatable, Sendable {
 }
 
 /// Rewritten description and suggested tags waiting for the user's choice.
-public struct RuleDiscoverDetails: Equatable, Sendable {
-    public var current: String?
+struct RuleDiscoverDetails: Equatable, Sendable {
+    var current: String?
     /// New text; nil when the AI kept the current one.
-    public var suggested: String?
-    public var reason: String?
-    public var tags: [RuleDiscoverScope.TagAddition]
+    var suggested: String?
+    var reason: String?
+    var tags: [RuleDiscoverScope.TagAddition]
 
-    public init(current: String? = nil, suggested: String? = nil, reason: String? = nil, tags: [RuleDiscoverScope.TagAddition] = []) {
+    init(current: String? = nil, suggested: String? = nil, reason: String? = nil, tags: [RuleDiscoverScope.TagAddition] = []) {
         self.current = current
         self.suggested = suggested
         self.reason = reason
@@ -553,34 +553,34 @@ public struct RuleDiscoverDetails: Equatable, Sendable {
     }
 
     /// Tags that start checked: the ones already in the vocabulary. A new tag needs an explicit check.
-    public var defaultTags: Set<String> { Set(tags.filter { !$0.isNew }.map(\.tag)) }
+    var defaultTags: Set<String> { Set(tags.filter { !$0.isNew }.map(\.tag)) }
 
-    public var isEmpty: Bool { suggested == nil && tags.isEmpty }
+    var isEmpty: Bool { suggested == nil && tags.isEmpty }
 
     /// Replaces the description with the suggestion when `acceptDescription`, and appends the chosen tags.
-    public func apply(acceptDescription: Bool, tags chosen: Set<String>, description: inout String?, tags current: inout [String]) {
+    func apply(acceptDescription: Bool, tags chosen: Set<String>, description: inout String?, tags current: inout [String]) {
         if acceptDescription, let suggested { description = suggested }
         for tag in tags where chosen.contains(tag.tag) && !current.contains(tag.tag) { current.append(tag.tag) }
     }
 }
 
 /// Whether an idea is ready to implement, waiting to be saved on it.
-public struct RuleDiscoverVerdict: Equatable, Sendable {
-    public var viable: Bool
-    public var missing: [String]
+struct RuleDiscoverVerdict: Equatable, Sendable {
+    var viable: Bool
+    var missing: [String]
 
-    public init(viable: Bool = false, missing: [String] = []) {
+    init(viable: Bool = false, missing: [String] = []) {
         self.viable = viable
         self.missing = missing
     }
 
     /// The verdict for `idea` as it is now.
-    public func readiness(for idea: Idea, now: Date = .now) -> IdeaReadiness {
+    func readiness(for idea: Idea, now: Date = .now) -> IdeaReadiness {
         IdeaReadiness(viable: viable && !idea.rules.isEmpty, missing: missing, checkedAt: now, fingerprint: idea.contentFingerprint)
     }
 
     /// Saves the evaluation and approves eligible ideas without promoting their draft rules.
-    public func apply(to idea: inout Idea, now: Date = .now) {
+    func apply(to idea: inout Idea, now: Date = .now) {
         let readiness = readiness(for: idea, now: now)
         idea.readiness = readiness
         if readiness.viable, !idea.status.isClosed, idea.promotedTopic == nil {

@@ -34,7 +34,7 @@ struct DocView: View {
                     }
                 }
             }
-            .onAppear(perform: load)
+            .task { await load() }
             .onChange(of: text) { _, _ in saveIfNeeded() }
             .onChange(of: model.externalDocChange[slug]) { _, _ in handleExternalChange() }
             .onDisappear(perform: flush)
@@ -85,10 +85,11 @@ struct DocView: View {
 
     // MARK: Persistence
 
-    private func load() {
+    private func load() async {
         guard !loaded else { return }
-        text = model.readDoc(slug)
-        savedText = text
+        let disk = await model.loadDoc(slug)
+        text = disk
+        savedText = disk
         loaded = true
     }
 

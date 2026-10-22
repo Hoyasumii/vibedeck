@@ -1,8 +1,8 @@
 import Foundation
 
-public enum CodexMCP {
+enum CodexMCP {
     /// Embedded so installed app bundles and Linux CLI builds do not depend on a repository checkout.
-    public static let adapter = #"""
+    static let adapter = #"""
 """Adapta capacidades experimentais do Codex para o SDK Swift MCP 0.12."""
 
 import json
@@ -50,12 +50,12 @@ if __name__ == "__main__":
     sys.exit(main())
 """#
 
-    public static func sessionConfig(root: URL, cli: String?) -> [String: JSONValue] {
+    static func sessionConfig(root: URL, cli: String?) -> [String: JSONValue] {
         let args = ["-c", adapter, cli ?? "vibedeck", "mcp", "--root", root.path]
         return ["mcp_servers.vibedeck": .object(["command": .string("python3"), "args": .array(args.map(JSONValue.string)), "required": .bool(true)])]
     }
 
-    public static func install(root: URL, cli: String, name: String = "vibedeck", user: Bool = false, force: Bool = false, home: URL = FileManager.default.homeDirectoryForCurrentUser) throws {
+    static func install(root: URL, cli: String, name: String = "vibedeck", user: Bool = false, force: Bool = false, home: URL = FileManager.default.homeDirectoryForCurrentUser) throws {
         guard !name.isEmpty, name.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-" || $0 == "_") }) else { throw CodexRPCError.server("Nome MCP inválido") }
         let file = (user ? home : root).appending(path: ".codex/config.toml")
         var text = (try? String(contentsOf: file, encoding: .utf8)) ?? ""
@@ -75,7 +75,7 @@ if __name__ == "__main__":
         text += "\n" + begin + "[mcp_servers.\(name)]\ncommand = \"python3\"\nargs = [" + (try args.map(literal)).joined(separator: ", ") + "]\n" + end
         try AtomicFile.write(Data(text.utf8), to: file)
     }
-    public static func uninstall(root: URL, name: String = "vibedeck", user: Bool = false, home: URL = FileManager.default.homeDirectoryForCurrentUser) throws {
+    static func uninstall(root: URL, name: String = "vibedeck", user: Bool = false, home: URL = FileManager.default.homeDirectoryForCurrentUser) throws {
         let file = (user ? home : root).appending(path: ".codex/config.toml")
         guard var text = try? String(contentsOf: file, encoding: .utf8), let range = managedRange(text, begin: "# BEGIN VibeDeck MCP \(name)\n", end: "# END VibeDeck MCP \(name)\n") else { return }
         text.removeSubrange(range)

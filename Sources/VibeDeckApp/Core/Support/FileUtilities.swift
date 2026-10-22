@@ -6,8 +6,8 @@ final class FilesLock: @unchecked Sendable {
     let lock = NSRecursiveLock()
 }
 
-public enum AtomicFile {
-    public static func write(_ data: Data, to url: URL) throws {
+enum AtomicFile {
+    static func write(_ data: Data, to url: URL) throws {
         try FilesLock.shared.lock.withLock {
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
             try data.write(to: url, options: .atomic)
@@ -16,8 +16,8 @@ public enum AtomicFile {
     }
 }
 
-public enum Slug {
-    public static func make(_ text: String) -> String {
+enum Slug {
+    static func make(_ text: String) -> String {
         let folded = text.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "en_US_POSIX"))
         var out = ""
         var lastDash = false
@@ -35,9 +35,9 @@ public enum Slug {
     }
 }
 
-public enum Markdown {
+enum Markdown {
     /// Title from YAML frontmatter `title:` or the first `# ` heading.
-    public static func title(of text: String) -> String? {
+    static func title(of text: String) -> String? {
         let (front, body) = frontmatter(of: text)
         if let value = front?.first(where: { $0.hasPrefix("title:") })?
             .dropFirst("title:".count).trimmingCharacters(in: CharacterSet(charactersIn: " \"'")).nonEmpty {
@@ -50,7 +50,7 @@ public enum Markdown {
     }
 
     /// Tags from YAML frontmatter: `tags: [a, b]` or `tags: a, b`.
-    public static func tags(of text: String) -> [String] {
+    static func tags(of text: String) -> [String] {
         guard let line = frontmatter(of: text).front?.first(where: { $0.hasPrefix("tags:") }) else { return [] }
         return line.dropFirst("tags:".count)
             .trimmingCharacters(in: CharacterSet(charactersIn: " []"))
@@ -61,7 +61,7 @@ public enum Markdown {
 
     /// Returns `text` with the frontmatter `tags:` line replaced, added (creating the frontmatter
     /// if needed) or removed when `tags` is empty. Everything else is preserved.
-    public static func settingTags(_ tags: [String], in text: String) -> String {
+    static func settingTags(_ tags: [String], in text: String) -> String {
         let tagLine = tags.isEmpty ? nil : "tags: [\(tags.joined(separator: ", "))]"
         let (front, body) = frontmatter(of: text)
         var lines = (front ?? []).filter { !$0.hasPrefix("tags:") }

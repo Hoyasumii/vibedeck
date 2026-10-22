@@ -1,9 +1,9 @@
 import Foundation
 
 /// Shared by every installation and provider. Never rewrites user-authored instructions.
-public enum AIPromptPolicy {
-    public static let version = 2
-    public static let instructions = """
+enum AIPromptPolicy {
+    static let version = 2
+    static let instructions = """
     Antes de implementar, leia .vibedeck/AGENTS.md, stack/patterns e notas em vibedeck.json e regras
     aplicáveis em .vibedeck/rules/ (paths são globs; vazio é global).
     Trabalhe por escopo: objetivo, restrições, evidências e critério de conclusão. Use busca e leia trechos
@@ -16,44 +16,44 @@ public enum AIPromptPolicy {
     o que ficou incompleto e sugira um modelo mais capaz. Responda de forma concisa com resultado e evidência.
     """
 
-    public static func prompt(task: String, context: String, output: String) -> String {
+    static func prompt(task: String, context: String, output: String) -> String {
         "\(instructions)\n\n## Tarefa\n\(task)\n\n## Contexto\n\(context)\n\n## Saída obrigatória\n\(output)"
     }
 
-    public static func recovery(_ original: String, diagnosis: String) -> String {
+    static func recovery(_ original: String, diagnosis: String) -> String {
         original + "\n\n## Recuperação única\nA resposta não cumpriu o contrato: \(diagnosis). "
             + "Releia as fontes pertinentes e amplie a busca. Corrija a resposta completa, sem inventar evidências."
     }
 
-    public static let incomplete = "A resposta continua incompleta após uma recuperação. Amplie o contexto ou escolha um modelo mais capaz."
+    static let incomplete = "A resposta continua incompleta após uma recuperação. Amplie o contexto ou escolha um modelo mais capaz."
 }
 
 /// Immutable local snapshots. Providers without CLI/MCP access can read the referenced file directly.
-public struct AIContextStore: Sendable {
-    public let directory: URL
-    public init(directory: URL) { self.directory = directory }
-    public init(root: URL) { directory = AILocalStore.directory(root: root).appending(path: "context") }
+struct AIContextStore: Sendable {
+    let directory: URL
+    init(directory: URL) { self.directory = directory }
+    init(root: URL) { directory = AILocalStore.directory(root: root).appending(path: "context") }
 
-    public struct Reference: Codable, Equatable, Sendable {
-        public let id: String
-        public let title: String
-        public let path: String
-        public let characters: Int
-        public var instruction: String {
+    struct Reference: Codable, Equatable, Sendable {
+        let id: String
+        let title: String
+        let path: String
+        let characters: Int
+        var instruction: String {
             "\(title): \(characters) caracteres. Fonte completa: `\(path)`. "
                 + "Leia por trechos ou use `vibedeck ai context \(id) --offset 0 --limit 4000`; "
                 + "MCP: ai_context(id: \(id)). Conteúdo omitido aqui, não descartado."
         }
     }
 
-    public struct Page: Codable, Equatable, Sendable {
-        public let text: String
-        public let offset: Int
-        public let nextOffset: Int?
-        public let totalCharacters: Int
+    struct Page: Codable, Equatable, Sendable {
+        let text: String
+        let offset: Int
+        let nextOffset: Int?
+        let totalCharacters: Int
     }
 
-    public func save(_ text: String, title: String) throws -> Reference {
+    func save(_ text: String, title: String) throws -> Reference {
         let id = PortableSHA256.hash(Data(text.utf8)).map { String(format: "%02x", $0) }.joined()
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let file = directory.appending(path: id + ".txt")
@@ -61,7 +61,7 @@ public struct AIContextStore: Sendable {
         return Reference(id: id, title: title, path: file.path, characters: text.count)
     }
 
-    public func page(id: String, offset: Int = 0, limit: Int = 4000) throws -> Page {
+    func page(id: String, offset: Int = 0, limit: Int = 4000) throws -> Page {
         guard id.count == 64, id.allSatisfy({ "0123456789abcdef".contains($0) }), offset >= 0,
               (1...16000).contains(limit) else { throw AIContextError.invalidRange }
         let text = try String(contentsOf: directory.appending(path: id + ".txt"), encoding: .utf8)
@@ -72,9 +72,9 @@ public struct AIContextStore: Sendable {
     }
 }
 
-public enum AIContextError: LocalizedError {
+enum AIContextError: LocalizedError {
     case invalidRange
-    public var errorDescription: String? { "Referência ou intervalo inválido. Use offset ≥ 0 e limit entre 1 e 16000." }
+    var errorDescription: String? { "Referência ou intervalo inválido. Use offset ≥ 0 e limit entre 1 e 16000." }
 }
 
 enum AILocalStore {

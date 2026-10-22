@@ -1,8 +1,8 @@
 import Foundation
 
 /// Shared Claude process for app, CLI and MCP: only Read/Grep/Glob, cancellation and timeout.
-public enum AIReadOnlyProcess {
-    public static func run(executable: URL, root: URL, input: String, schema: String? = nil, settings: AIProviderSettings = .init()) async throws -> Data {
+enum AIReadOnlyProcess {
+    static func run(executable: URL, root: URL, input: String, schema: String? = nil, settings: AIProviderSettings = .init()) async throws -> Data {
         let input = try await RemoteExecution.prepareContext(input, root: root)
         let path = ClaudeCode.childPATH()
         let process = Process()

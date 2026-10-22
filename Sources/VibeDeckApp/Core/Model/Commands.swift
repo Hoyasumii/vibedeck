@@ -4,24 +4,24 @@ import Foundation
 
 /// A file per command in `.vibedeck/commands/`: a reusable prompt (like a Claude Code slash command, with
 /// `$ARGUMENTS`) plus the next steps that chain it into a flow, exactly like agents.
-public struct Command: Codable, Equatable, Identifiable, Sendable {
-    public var schema: String?
-    public var id: UUID
-    public var title: String
-    public var summary: String?
+struct Command: Codable, Equatable, Identifiable, Sendable {
+    var schema: String?
+    var id: UUID
+    var title: String
+    var summary: String?
     /// What goes in `$ARGUMENTS` (e.g. `<mensagem>`).
-    public var argumentHint: String?
-    public var model: String?
-    public var providerSettings: [String: AIProviderSettings]?
-    public var tools: [String]
-    public var prompt: String
-    public var nextSteps: [NextStep]
-    public var tags: [String]
-    public var author: Author
-    public var createdAt: Date
-    public var updatedAt: Date
+    var argumentHint: String?
+    var model: String?
+    var providerSettings: [String: AIProviderSettings]?
+    var tools: [String]
+    var prompt: String
+    var nextSteps: [NextStep]
+    var tags: [String]
+    var author: Author
+    var createdAt: Date
+    var updatedAt: Date
 
-    public init(
+    init(
         title: String, summary: String? = nil, argumentHint: String? = nil, model: String? = nil, tools: [String] = [],
         prompt: String = "", tags: [String] = [], author: Author = .human, now: Date = .now
     ) {
@@ -45,7 +45,7 @@ public struct Command: Codable, Equatable, Identifiable, Sendable {
         case schema = "$schema", id, title, summary, argumentHint, model, providerSettings, tools, prompt, nextSteps, tags, author, createdAt, updatedAt
     }
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         schema = try c.decodeIfPresent(String.self, forKey: .schema)
         id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
@@ -63,7 +63,7 @@ public struct Command: Codable, Equatable, Identifiable, Sendable {
         updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
     }
 
-    public func encode(to encoder: Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encodeIfPresent(schema, forKey: .schema)
         try c.encode(id, forKey: .id)
@@ -86,17 +86,17 @@ public struct Command: Codable, Equatable, Identifiable, Sendable {
 
 /// Parses a Claude Code slash command file: Markdown whose optional frontmatter has `description`,
 /// `argument-hint`, `allowed-tools` and `model`; the body is the prompt. The name comes from the file path.
-public enum ClaudeCommandFile {
-    public struct Parsed: Equatable, Sendable {
-        public var name: String
-        public var description: String?
-        public var argumentHint: String?
-        public var model: String?
-        public var tools: [String]
-        public var prompt: String
+enum ClaudeCommandFile {
+    struct Parsed: Equatable, Sendable {
+        var name: String
+        var description: String?
+        var argumentHint: String?
+        var model: String?
+        var tools: [String]
+        var prompt: String
     }
 
-    public static func parse(_ text: String, fallbackName: String) -> Parsed {
+    static func parse(_ text: String, fallbackName: String) -> Parsed {
         let (fields, body) = Frontmatter.parse(text)
         return Parsed(
             name: Frontmatter.value(fields, "name") ?? fallbackName,

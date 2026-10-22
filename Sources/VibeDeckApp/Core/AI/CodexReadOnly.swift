@@ -3,16 +3,16 @@ import Foundation
 /// Isolated structured calls. Read-only by default; test generation explicitly requests workspace writes.
 /// Read-only calls disable MCP; writing jobs get only the app's VibeDeck MCP for rule checks.
 /// Approvals stay disabled; ephemeral threads do not enter chat history.
-@MainActor public final class CodexReadOnly {
+@MainActor final class CodexReadOnly {
     private let rpc = CodexRPC()
     private var waiter: CheckedContinuation<String, Error>?
     private var output = ""
     private var thread: String?
     private var timeoutTask: Task<Void, Never>?
-    public private(set) var tokens = AITokenUsage()
-    public private(set) var model: String?
-    public init() {}
-    public func run(root: URL, prompt: String, schema: JSONValue, timeout: Duration = .seconds(90), settings: AIProviderSettings = .init(), workspaceWrites: Bool = false, mcpCLI: String? = nil) async throws -> String {
+    private(set) var tokens = AITokenUsage()
+    private(set) var model: String?
+    init() {}
+    func run(root: URL, prompt: String, schema: JSONValue, timeout: Duration = .seconds(90), settings: AIProviderSettings = .init(), workspaceWrites: Bool = false, mcpCLI: String? = nil) async throws -> String {
         let prompt = try await RemoteExecution.prepareContext(prompt, root: root)
         output = ""; tokens = .init()
         defer { stop() }
@@ -111,7 +111,7 @@ import Foundation
     }
     private func finish(_ result: Result<String, Error>) { let saved = waiter; waiter = nil; saved?.resume(with: result) }
     private func stop() { thread = nil; timeoutTask?.cancel(); timeoutTask = nil; rpc.stop() }
-    public static func strictSchema(_ value: JSONValue) -> JSONValue {
+    static func strictSchema(_ value: JSONValue) -> JSONValue {
         guard var object = value.object else {
             if let array = value.array { return .array(array.map(strictSchema)) }
             return value

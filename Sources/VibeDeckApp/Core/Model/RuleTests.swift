@@ -3,20 +3,20 @@ import Foundation
 // MARK: - Running
 
 /// What a rule's script said: exit 0 = pass, 77 = n/a (doesn't apply to the touched files), anything else = fail.
-public struct RuleTestOutcome: Equatable, Sendable {
-    public var verdict: RuleVerdict
-    public var exitCode: Int32
-    public var output: String
+struct RuleTestOutcome: Equatable, Sendable {
+    var verdict: RuleVerdict
+    var exitCode: Int32
+    var output: String
 
-    public init(verdict: RuleVerdict, exitCode: Int32, output: String) {
+    init(verdict: RuleVerdict, exitCode: Int32, output: String) {
         self.verdict = verdict
         self.exitCode = exitCode
         self.output = output
     }
 
-    public static let notApplicableExit: Int32 = 77
+    static let notApplicableExit: Int32 = 77
 
-    public init(exitCode: Int32, output: String) {
+    init(exitCode: Int32, output: String) {
         let verdict: RuleVerdict = switch exitCode {
         case 0: .pass
         case Self.notApplicableExit: .na
@@ -27,30 +27,30 @@ public struct RuleTestOutcome: Equatable, Sendable {
 }
 
 /// One script run, as reported by `runRuleTests`.
-public struct RuleTestRun: Sendable {
-    public var topic: String
-    public var rule: Rule
-    public var command: String
-    public var outcome: RuleTestOutcome
+struct RuleTestRun: Sendable {
+    var topic: String
+    var rule: Rule
+    var command: String
+    var outcome: RuleTestOutcome
 }
 
 /// Runs a rule's script. Injectable so tests don't spawn processes.
-public struct RuleTestRunner: Sendable {
-    public var run: @Sendable (_ command: String, _ context: Context) -> RuleTestOutcome
+struct RuleTestRunner: Sendable {
+    var run: @Sendable (_ command: String, _ context: Context) -> RuleTestOutcome
 
-    public struct Context: Sendable {
-        public var root: URL
-        public var files: [String]
-        public var ruleId: UUID
+    struct Context: Sendable {
+        var root: URL
+        var files: [String]
+        var ruleId: UUID
         /// Fired when the execution is cancelled: a running script must stop and return.
-        public var cancellation: ShellCancellation? = nil
+        var cancellation: ShellCancellation? = nil
     }
 
-    public init(run: @escaping @Sendable (_ command: String, _ context: Context) -> RuleTestOutcome) {
+    init(run: @escaping @Sendable (_ command: String, _ context: Context) -> RuleTestOutcome) {
         self.run = run
     }
 
-    public static let live = RuleTestRunner { command, context in
+    static let live = RuleTestRunner { command, context in
         let result = ShellRunner.run(command, in: context.root, environment: [
             "VIBEDECK_ROOT": RemoteExecution.path(for: context.root),
             "VIBEDECK_FILES": context.files.joined(separator: "\n"),
@@ -61,16 +61,16 @@ public struct RuleTestRunner: Sendable {
 }
 
 /// Cancels shell runs from outside: running processes are terminated and later runs never start.
-public final class ShellCancellation: @unchecked Sendable {
+final class ShellCancellation: @unchecked Sendable {
     private let lock = NSLock()
     private var cancelled = false
     private var handlers: [UUID: @Sendable () -> Void] = [:]
 
-    public init() {}
+    init() {}
 
-    public var isCancelled: Bool { lock.withLock { cancelled } }
+    var isCancelled: Bool { lock.withLock { cancelled } }
 
-    public func cancel() {
+    func cancel() {
         let pending: [@Sendable () -> Void] = lock.withLock {
             guard !cancelled else { return [] }
             cancelled = true
@@ -82,7 +82,7 @@ public final class ShellCancellation: @unchecked Sendable {
 
     /// Runs `handler` on cancellation (right away if already cancelled). Returns a token for `remove`.
     @discardableResult
-    public func onCancel(_ handler: @escaping @Sendable () -> Void) -> UUID {
+    func onCancel(_ handler: @escaping @Sendable () -> Void) -> UUID {
         let id = UUID()
         let now: Bool = lock.withLock {
             if cancelled { return true }
@@ -93,12 +93,12 @@ public final class ShellCancellation: @unchecked Sendable {
         return id
     }
 
-    public func remove(_ id: UUID) { lock.withLock { _ = handlers.removeValue(forKey: id) } }
+    func remove(_ id: UUID) { lock.withLock { _ = handlers.removeValue(forKey: id) } }
 }
 
 /// Build tools whose scripts share build directories or lock files (`.build`, `node_modules`, `target`…):
 /// two scripts with the same key never run at the same time. One table for every ecosystem.
-public enum BuildToolLock {
+enum BuildToolLock {
     /// (serialization key, pattern of an invocation of the tool).
     static let table: [(key: String, pattern: String)] = [
         ("swift", #"\bswift\s+(build|test|run|package)\b|\bxcodebuild\b|\bswiftc\b|\bswift["']\s*,\s*["'](build|test|run|package)\b"#),
@@ -113,7 +113,7 @@ public enum BuildToolLock {
     ]
 
     /// Keys of the build tools invoked by `text`. Comment lines are ignored.
-    public static func keys(in text: String) -> [String] {
+    static func keys(in text: String) -> [String] {
         let code = text.split(separator: "\n", omittingEmptySubsequences: false)
             .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("#") }
             .joined(separator: "\n")
@@ -122,7 +122,7 @@ public enum BuildToolLock {
 
     /// Reads referenced shell and Python files too: rule wrappers and sourced helpers can invoke a build indirectly.
     /// Only local readable paths are followed; shell expressions are never evaluated.
-    public static func keys(command: String, root: URL) -> [String] {
+    static func keys(command: String, root: URL) -> [String] {
         var text = command
         let base = root.resolvingSymlinksInPath().standardizedFileURL
         var visited = Set<URL>()
@@ -151,12 +151,12 @@ public enum BuildToolLock {
 }
 
 /// `command` in the user's login shell, stdout+stderr merged, killed after `timeout` seconds.
-public enum ShellRunner {
-    public static let timedOutStatus: Int32 = 124
-    public static let cancelledStatus: Int32 = 130
+enum ShellRunner {
+    static let timedOutStatus: Int32 = 124
+    static let cancelledStatus: Int32 = 130
     private static let timeoutQueue = DispatchQueue(label: "vibedeck.shell-runner-timeout")
 
-    public static func run(
+    static func run(
         _ command: String, in root: URL, environment: [String: String] = [:], timeout: TimeInterval = 120, outputLimit: Int = 20_000,
         cancellation: ShellCancellation? = nil
     ) -> (output: String, status: Int32) {
@@ -269,14 +269,14 @@ final class ScriptSchedule: @unchecked Sendable {
 
 // MARK: - Generating
 
-public enum RuleTestPrompt {
+enum RuleTestPrompt {
     /// Where the generated script of a rule goes, relative to the project root.
-    public static func scriptPath(topic slug: String, rule: Rule) -> String {
+    static func scriptPath(topic slug: String, rule: Rule) -> String {
         "\(CoreStore.dataDirName)/tests/\(slug)/\(rule.id.uuidString.prefix(8).lowercased()).sh"
     }
 
     /// Which rules of a topic a generation covers.
-    public enum Selection: String, CaseIterable, Sendable {
+    enum Selection: String, CaseIterable, Sendable {
         /// No test registered yet.
         case missing
         /// The rule changed since its test was registered.
@@ -288,7 +288,7 @@ public enum RuleTestPrompt {
     }
 
     /// The rules of `topic` that `selection` covers.
-    public static func rules(_ topic: RuleTopic, _ selection: Selection) -> [Rule] {
+    static func rules(_ topic: RuleTopic, _ selection: Selection) -> [Rule] {
         switch selection {
         case .missing: topic.rules.filter { $0.testState == .none }
         case .stale: topic.rules.filter { $0.testState == .stale }
@@ -298,19 +298,19 @@ public enum RuleTestPrompt {
     }
 
     /// Rules that still need a test written (none yet, or the rule changed since).
-    public static func pending(_ topic: RuleTopic) -> [Rule] {
+    static func pending(_ topic: RuleTopic) -> [Rule] {
         rules(topic, .pending)
     }
 
     /// The chat prompt behind the "Gerar/Atualizar testes" button. `onlyPending` skips rules whose test is current.
-    public static func generate(slug: String, topic: RuleTopic, onlyPending: Bool) -> String {
+    static func generate(slug: String, topic: RuleTopic, onlyPending: Bool) -> String {
         generate(slug: slug, topic: topic, selection: onlyPending ? .pending : .all)
     }
 
     /// Prompt for generating the tests of `selection`. `headless` (with the `cli` path) is for a background
     /// `claude -p` run: nobody answers questions and project MCP servers may not be approved, so it registers
     /// through the CLI and ends with a short summary.
-    public static func generate(slug: String, topic: RuleTopic, selection: Selection, headless cli: String? = nil) -> String {
+    static func generate(slug: String, topic: RuleTopic, selection: Selection, headless cli: String? = nil) -> String {
         let rules = rules(topic, selection)
         let list = rules.map { rule in
             var line = "- `\(rule.id.uuidString.prefix(8))` [\(rule.severity.rawValue)] \(rule.text)"

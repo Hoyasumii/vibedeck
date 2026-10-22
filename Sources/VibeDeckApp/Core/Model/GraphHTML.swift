@@ -1,8 +1,8 @@
 import Foundation
 
 /// Trusted offline replacement for graphify's vis-network CDN HTML. Graph attributes remain data.
-public enum GraphHTML {
-    public static func render(_ graph: ProjectGraph, root: URL) throws -> Data {
+enum GraphHTML {
+    static func render(_ graph: ProjectGraph, root: URL) throws -> Data {
         guard let scriptURL = Bundle.module.url(forResource: "graph", withExtension: "js", subdirectory: "GraphResources"),
               let styleURL = Bundle.module.url(forResource: "graph", withExtension: "css", subdirectory: "GraphResources") else {
             throw VibeDeckError.graph("Recursos locais do grafo ausentes. Reinstale o VibeDeck.")
@@ -40,7 +40,7 @@ public enum GraphHTML {
         return Data(html.utf8)
     }
 
-    public static func write(_ graph: ProjectGraph, root: URL, output: URL) throws {
+    static func write(_ graph: ProjectGraph, root: URL, output: URL) throws {
         try AtomicFile.write(render(graph, root: root), to: output)
     }
 }

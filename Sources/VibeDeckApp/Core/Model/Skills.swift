@@ -10,24 +10,24 @@ import Foundation
 
 /// A file per skill in `.vibedeck/skills/`: instructions the AI loads when the task matches its description
 /// (like a Claude Code skill's `SKILL.md`), plus the next steps that chain it into a flow, exactly like agents.
-public struct Skill: Codable, Equatable, Identifiable, Sendable {
-    public var schema: String?
-    public var id: UUID
-    public var title: String
+struct Skill: Codable, Equatable, Identifiable, Sendable {
+    var schema: String?
+    var id: UUID
+    var title: String
     /// When to use the skill: it is what triggers it, so it should be specific.
-    public var summary: String?
-    public var model: String?
-    public var providerSettings: [String: AIProviderSettings]?
-    public var tools: [String]
-    public var sourcePath: String?
-    public var prompt: String
-    public var nextSteps: [NextStep]
-    public var tags: [String]
-    public var author: Author
-    public var createdAt: Date
-    public var updatedAt: Date
+    var summary: String?
+    var model: String?
+    var providerSettings: [String: AIProviderSettings]?
+    var tools: [String]
+    var sourcePath: String?
+    var prompt: String
+    var nextSteps: [NextStep]
+    var tags: [String]
+    var author: Author
+    var createdAt: Date
+    var updatedAt: Date
 
-    public init(
+    init(
         title: String, summary: String? = nil, model: String? = nil, tools: [String] = [], prompt: String = "",
         tags: [String] = [], author: Author = .human, now: Date = .now
     ) {
@@ -51,7 +51,7 @@ public struct Skill: Codable, Equatable, Identifiable, Sendable {
         case schema = "$schema", id, title, summary, model, providerSettings, tools, sourcePath, prompt, nextSteps, tags, author, createdAt, updatedAt
     }
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         schema = try c.decodeIfPresent(String.self, forKey: .schema)
         id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
@@ -69,7 +69,7 @@ public struct Skill: Codable, Equatable, Identifiable, Sendable {
         updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
     }
 
-    public func encode(to encoder: Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encodeIfPresent(schema, forKey: .schema)
         try c.encode(id, forKey: .id)
@@ -92,16 +92,16 @@ public struct Skill: Codable, Equatable, Identifiable, Sendable {
 
 /// Parses a Claude Code `SKILL.md`: Markdown whose frontmatter has `name`, `description`, `allowed-tools` and
 /// `model`; the body is the instructions. The name falls back to the skill's folder.
-public enum ClaudeSkillFile {
-    public struct Parsed: Equatable, Sendable {
-        public var name: String
-        public var description: String?
-        public var model: String?
-        public var tools: [String]
-        public var prompt: String
+enum ClaudeSkillFile {
+    struct Parsed: Equatable, Sendable {
+        var name: String
+        var description: String?
+        var model: String?
+        var tools: [String]
+        var prompt: String
     }
 
-    public static func parse(_ text: String, fallbackName: String) -> Parsed {
+    static func parse(_ text: String, fallbackName: String) -> Parsed {
         let (fields, body) = Frontmatter.parse(text)
         return Parsed(
             name: Frontmatter.value(fields, "name") ?? fallbackName,

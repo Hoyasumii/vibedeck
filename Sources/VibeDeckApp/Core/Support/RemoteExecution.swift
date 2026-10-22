@@ -1,9 +1,9 @@
 import Foundation
 
-public enum RemoteExecution {
-    public static func path(for root: URL) -> String { RemoteWorkspace.existing(at: root)?.destination.directory ?? root.path }
+enum RemoteExecution {
+    static func path(for root: URL) -> String { RemoteWorkspace.existing(at: root)?.destination.directory ?? root.path }
     /// Replaces a local launch with SSH. Never falls back to the Mac's executable.
-    public static func configure(_ process: Process, root: URL, program: String? = nil, command: String? = nil, environment: [String: String] = [:]) throws {
+    static func configure(_ process: Process, root: URL, program: String? = nil, command: String? = nil, environment: [String: String] = [:]) throws {
         guard let workspace = RemoteWorkspace.existing(at: root) else { return }
         try workspace.requireSynchronized()
         let connection = SSHConnection(workspace.destination)
@@ -36,10 +36,10 @@ public enum RemoteExecution {
             + " >&2; exit 127; }; exec " + ([name] + arguments).map(SSHConnection.quote).joined(separator: " ")
     }
     /// Sem espelho local (o Core roda no servidor), não há o que sincronizar antes de chamar o provedor.
-    public static func synchronize(root: URL) async throws {}
-    public static func contextDirectory(_ workspace: RemoteWorkspace) -> String { "/tmp/vibedeck-context-" + workspace.destination.id }
+    static func synchronize(root: URL) async throws {}
+    static func contextDirectory(_ workspace: RemoteWorkspace) -> String { "/tmp/vibedeck-context-" + workspace.destination.id }
     /// Transfer only full context references actually used by this prompt, off the UI thread.
-    public static func prepareContext(_ text: String, root: URL) async throws -> String {
+    static func prepareContext(_ text: String, root: URL) async throws -> String {
         guard let workspace = RemoteWorkspace.existing(at: root) else { return text }
         return try await VDLog.detached {
             let local = AIContextStore(root: root).directory
@@ -55,9 +55,9 @@ public enum RemoteExecution {
             return result
         }.value
     }
-    public static func executable(_ provider: AIProvider, root: URL) -> URL? {
+    static func executable(_ provider: AIProvider, root: URL) -> URL? {
         RemoteWorkspace.existing(at: root) == nil ? provider.executable : URL(fileURLWithPath: "/" + provider.rawValue)
     }
-    public static func available(_ provider: AIProvider, root: URL) -> Bool { RemoteWorkspace.existing(at: root) != nil || provider.isInstalled }
-    public static func providers(root: URL) -> [AIProvider] { RemoteWorkspace.existing(at: root) == nil ? AIProvider.installed : AIProvider.allCases }
+    static func available(_ provider: AIProvider, root: URL) -> Bool { RemoteWorkspace.existing(at: root) != nil || provider.isInstalled }
+    static func providers(root: URL) -> [AIProvider] { RemoteWorkspace.existing(at: root) == nil ? AIProvider.installed : AIProvider.allCases }
 }

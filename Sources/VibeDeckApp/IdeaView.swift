@@ -304,15 +304,16 @@ struct IdeaView: View {
             implementation: implementation,
             onImplement: implementation ? {
                 flush()
-                guard let current = try? model.store.loadIdea(slug) else { return }
-                // Pending dependencies stop here, before any promotion (Core reads them from disk).
+                guard let current = model.idea(slug) else { return }
+                // Pending dependencies stop here, before any promotion.
                 guard model.ideaDependenciesMet(slug) else { return }
                 if IdeaImplementation.isEligible(current) {
                     session.requestIdeaImplementation(current)
                 } else if current.status != .approved, current.implementBlocker == nil,
-                          readyToPromote(then: implement, forImplementation: true),
-                          let topic = model.promoteIdea(slug, forImplementation: true) {
-                    implement(topic)
+                          readyToPromote(then: implement, forImplementation: true) {
+                    Task {
+                        if let topic = await model.promoteIdea(slug, forImplementation: true) { implement(topic) }
+                    }
                 }
             } : nil,
             subjectReady: idea.implementBlocker == nil,
@@ -382,7 +383,11 @@ struct IdeaView: View {
 
     private var promoteButton: some View {
         LoggedButton {
-            if readyToPromote(then: openTopic), let topic = model.promoteIdea(slug) { openTopic(topic) }
+            if readyToPromote(then: openTopic) {
+                Task {
+                    if let topic = await model.promoteIdea(slug) { openTopic(topic) }
+                }
+            }
         } label: {
             Label(idea.promotedTopic == nil ? "Promover para Regras" : "Sincronizar regras", systemImage: "arrow.up.forward.square")
         }.loggedControl(control: "idea_view.button_5", label: "Ativar controle")
@@ -393,11 +398,15 @@ struct IdeaView: View {
         .confirmationDialog("Globs que não casam nenhum arquivo", isPresented: Binding(get: { !stalePaths.isEmpty }, set: { if !$0 { stalePaths = [] } })) {
             LoggedButton("Promover sem eles") {
                 let (skipped, then, implementing) = takePendingPromotion()
-                if let topic = model.promoteIdea(slug, skippingPaths: skipped, forImplementation: implementing) { then?(topic) }
+                Task {
+                    if let topic = await model.promoteIdea(slug, skippingPaths: skipped, forImplementation: implementing) { then?(topic) }
+                }
             }.loggedControl(control: "idea_view.button_6", label: "Promover sem eles")
             LoggedButton("Promover com eles") {
                 let (_, then, implementing) = takePendingPromotion()
-                if let topic = model.promoteIdea(slug, forImplementation: implementing) { then?(topic) }
+                Task {
+                    if let topic = await model.promoteIdea(slug, forImplementation: implementing) { then?(topic) }
+                }
             }.loggedControl(control: "idea_view.button_7", label: "Promover com eles")
             LoggedButton("Cancelar", role: .cancel) { stalePaths = []; afterPromote = nil; promotionForImplementation = false }.loggedControl(control: "idea_view.button_8", label: "Cancelar")
         } message: {
@@ -414,7 +423,7 @@ struct IdeaView: View {
     /// `forImplementation`: the dialog's confirmation rechecks the dependencies (Core, from disk) before promoting.
     private func readyToPromote(then: @escaping (String) -> Void, forImplementation: Bool = false) -> Bool {
         flush()
-        stalePaths = (try? model.store.unmatchedIdeaPaths(slug)) ?? []
+        stalePaths = model.unmatchedIdeaPaths(slug)
         afterPromote = stalePaths.isEmpty ? nil : then
         promotionForImplementation = !stalePaths.isEmpty && forImplementation
         return stalePaths.isEmpty

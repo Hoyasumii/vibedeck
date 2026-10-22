@@ -3,27 +3,27 @@ import Foundation
 // MARK: - Agent processes
 
 /// State of one agent or subagent of a conversation, known only from provider events.
-public enum AgentProcessState: String, Codable, Sendable {
+enum AgentProcessState: String, Codable, Sendable {
     case running, succeeded, failed, interrupted
     /// Saved as running by a provider session that is gone; nothing confirmed it is still alive.
     case unconfirmed
 }
 
 /// An agent (the conversation's own, or a subagent it delegated to) seen in the provider's events.
-public struct AgentProcess: Codable, Equatable, Identifiable, Sendable {
+struct AgentProcess: Codable, Equatable, Identifiable, Sendable {
     /// Provider id: Claude's `tool_use_id` of the Agent call, Codex's thread id; `main` for the conversation's agent.
-    public var id: String
+    var id: String
     /// Other id the provider uses for it (Claude's `task_id`).
-    public var alias: String?
-    public var name: String
-    public var detail: String?
+    var alias: String?
+    var name: String
+    var detail: String?
     /// Agent that started this one, when the provider reports it.
-    public var parentID: String?
-    public var state: AgentProcessState
-    public var startedAt: Date
-    public var endedAt: Date?
+    var parentID: String?
+    var state: AgentProcessState
+    var startedAt: Date
+    var endedAt: Date?
 
-    public init(id: String, alias: String? = nil, name: String, detail: String? = nil, parentID: String? = nil,
+    init(id: String, alias: String? = nil, name: String, detail: String? = nil, parentID: String? = nil,
                 state: AgentProcessState = .running, startedAt: Date = .now, endedAt: Date? = nil) {
         self.id = id; self.alias = alias; self.name = name; self.detail = detail; self.parentID = parentID
         self.state = state; self.startedAt = startedAt; self.endedAt = endedAt
@@ -31,7 +31,7 @@ public struct AgentProcess: Codable, Equatable, Identifiable, Sendable {
 
     private enum CodingKeys: String, CodingKey { case id, alias, name, detail, parentID, state, startedAt, endedAt }
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(String.self, forKey: .id)
         alias = try c.decodeIfPresent(String.self, forKey: .alias)
@@ -43,7 +43,7 @@ public struct AgentProcess: Codable, Equatable, Identifiable, Sendable {
         endedAt = try c.decodeIfPresent(Date.self, forKey: .endedAt)
     }
 
-    public func encode(to encoder: Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(id, forKey: .id)
         try c.encodeIfPresent(alias, forKey: .alias)
@@ -57,7 +57,7 @@ public struct AgentProcess: Codable, Equatable, Identifiable, Sendable {
 }
 
 /// Start or end of a subagent, as reported by the provider (never inferred from response text).
-public enum AgentProcessEvent: Equatable, Sendable {
+enum AgentProcessEvent: Equatable, Sendable {
     /// `parentID` nil: started by the conversation's own agent.
     case started(id: String, alias: String? = nil, name: String, detail: String? = nil, parentID: String? = nil)
     /// `id` matches a process id or alias; `state` is a terminal state, or `.running` for a status update.
@@ -66,22 +66,22 @@ public enum AgentProcessEvent: Equatable, Sendable {
 
 /// Processes of one conversation. Each event touches only the process it names, so simultaneous agents
 /// stay running until their own end is reported.
-public struct AgentProcessTracker: Equatable, Sendable {
-    public static let mainID = "main"
-    public private(set) var processes: [AgentProcess]
+struct AgentProcessTracker: Equatable, Sendable {
+    static let mainID = "main"
+    private(set) var processes: [AgentProcess]
 
-    public init(processes: [AgentProcess] = []) { self.processes = processes }
+    init(processes: [AgentProcess] = []) { self.processes = processes }
 
     /// Saved processes of a reopened conversation: the provider session that ran them is gone, so the ones
     /// saved as running come back unconfirmed.
-    public init(restoring saved: [AgentProcess]) {
+    init(restoring saved: [AgentProcess]) {
         processes = saved.map { var p = $0; if p.state == .running { p.state = .unconfirmed }; return p }
     }
 
-    public var running: [AgentProcess] { processes.filter { $0.state == .running } }
-    public var isEmpty: Bool { processes.isEmpty }
+    var running: [AgentProcess] { processes.filter { $0.state == .running } }
+    var isEmpty: Bool { processes.isEmpty }
 
-    public mutating func apply(_ event: AgentProcessEvent, now: Date = .now) {
+    mutating func apply(_ event: AgentProcessEvent, now: Date = .now) {
         switch event {
         case .started(let id, let alias, let name, let detail, let parentID):
             let parent = parentID ?? (id == Self.mainID ? nil : Self.mainID)
@@ -101,7 +101,7 @@ public struct AgentProcessTracker: Equatable, Sendable {
 
     /// The conversation's own agent works from the first event of a turn until the turn's result; Claude's
     /// Agent tool calls and subagent lines arrive as `.agents`.
-    public mutating func apply(_ event: AIEvent, provider: AIProvider, now: Date = .now) {
+    mutating func apply(_ event: AIEvent, provider: AIProvider, now: Date = .now) {
         switch event {
         case .textStarted, .textDelta, .thinking, .toolUse, .toolResult, .permission:
             startMain(provider, now: now)
@@ -117,7 +117,7 @@ public struct AgentProcessTracker: Equatable, Sendable {
 
     /// The provider process ended (stopped, interrupted or disconnected): whatever still ran in it ended too.
     /// `.unconfirmed` when only the conversation's thread was replaced and its agents can no longer be followed.
-    public mutating func providerEnded(as state: AgentProcessState = .interrupted, now: Date = .now) {
+    mutating func providerEnded(as state: AgentProcessState = .interrupted, now: Date = .now) {
         for i in processes.indices where processes[i].state == .running {
             processes[i].state = state; processes[i].endedAt = now
         }

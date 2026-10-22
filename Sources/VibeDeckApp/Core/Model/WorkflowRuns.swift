@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Workflow runs
 
 /// State of one execution of a workflow.
-public enum WorkflowRunStatus: String, Codable, CaseIterable, Sendable {
+enum WorkflowRunStatus: String, Codable, CaseIterable, Sendable {
     /// A step is (or should be) running.
     case running
     /// Waiting for the user's answers to a step's questions.
@@ -15,18 +15,18 @@ public enum WorkflowRunStatus: String, Codable, CaseIterable, Sendable {
 }
 
 /// One step run inside an execution, with the verdict that decided where to go.
-public struct WorkflowRunEntry: Codable, Equatable, Sendable {
-    public var step: String
+struct WorkflowRunEntry: Codable, Equatable, Sendable {
+    var step: String
     /// Last line of the step's result.
-    public var verdict: String?
-    public var summary: String?
+    var verdict: String?
+    var summary: String?
     /// Step chosen after this one (nil = end).
-    public var next: String?
+    var next: String?
     /// Which pass over the workflow this belongs to (a new one starts each time a finished run is started again).
-    public var cycle: Int
-    public var at: Date
+    var cycle: Int
+    var at: Date
 
-    public init(step: String, verdict: String? = nil, summary: String? = nil, next: String? = nil, cycle: Int = 1, at: Date = .now) {
+    init(step: String, verdict: String? = nil, summary: String? = nil, next: String? = nil, cycle: Int = 1, at: Date = .now) {
         self.step = step
         self.verdict = verdict
         self.summary = summary
@@ -37,7 +37,7 @@ public struct WorkflowRunEntry: Codable, Equatable, Sendable {
 
     enum CodingKeys: String, CodingKey { case step, verdict, summary, next, cycle, at }
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         step = try c.decode(String.self, forKey: .step)
         verdict = try c.decodeIfPresent(String.self, forKey: .verdict)?.trimmed.nonEmpty
@@ -48,11 +48,11 @@ public struct WorkflowRunEntry: Codable, Equatable, Sendable {
     }
 }
 
-public struct WorkflowQuestionOption: Codable, Equatable, Sendable {
-    public var label: String
-    public var description: String?
+struct WorkflowQuestionOption: Codable, Equatable, Sendable {
+    var label: String
+    var description: String?
 
-    public init(label: String, description: String? = nil) {
+    init(label: String, description: String? = nil) {
         self.label = label
         self.description = description
     }
@@ -60,21 +60,21 @@ public struct WorkflowQuestionOption: Codable, Equatable, Sendable {
 
 /// A question a step needs the user to decide. Steps never talk to the user: they record the question and stop
 /// with `PERGUNTA`; the orchestrating chat asks it and records the answer, and the step runs again reading it.
-public struct WorkflowQuestion: Codable, Equatable, Identifiable, Sendable {
-    public var number: Int
-    public var step: String
-    public var question: String
-    public var context: String?
-    public var options: [WorkflowQuestionOption]
-    public var multiple: Bool
-    public var answer: String?
-    public var createdAt: Date
-    public var answeredAt: Date?
+struct WorkflowQuestion: Codable, Equatable, Identifiable, Sendable {
+    var number: Int
+    var step: String
+    var question: String
+    var context: String?
+    var options: [WorkflowQuestionOption]
+    var multiple: Bool
+    var answer: String?
+    var createdAt: Date
+    var answeredAt: Date?
 
-    public var id: Int { number }
-    public var isOpen: Bool { answer == nil }
+    var id: Int { number }
+    var isOpen: Bool { answer == nil }
 
-    public init(
+    init(
         number: Int, step: String, question: String, context: String? = nil, options: [WorkflowQuestionOption] = [],
         multiple: Bool = false, now: Date = .now
     ) {
@@ -89,7 +89,7 @@ public struct WorkflowQuestion: Codable, Equatable, Identifiable, Sendable {
 
     enum CodingKeys: String, CodingKey { case number, step, question, context, options, multiple, answer, createdAt, answeredAt }
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         number = try c.decode(Int.self, forKey: .number)
         step = try c.decode(String.self, forKey: .step)
@@ -104,13 +104,13 @@ public struct WorkflowQuestion: Codable, Equatable, Identifiable, Sendable {
 }
 
 /// What a step sends to `ask`: a question, before it gets its number and step.
-public struct WorkflowQuestionDraft: Codable, Equatable, Sendable {
-    public var question: String
-    public var context: String?
-    public var options: [WorkflowQuestionOption]?
-    public var multiple: Bool?
+struct WorkflowQuestionDraft: Codable, Equatable, Sendable {
+    var question: String
+    var context: String?
+    var options: [WorkflowQuestionOption]?
+    var multiple: Bool?
 
-    public init(question: String, context: String? = nil, options: [WorkflowQuestionOption]? = nil, multiple: Bool? = nil) {
+    init(question: String, context: String? = nil, options: [WorkflowQuestionOption]? = nil, multiple: Bool? = nil) {
         self.question = question
         self.context = context
         self.options = options
@@ -121,26 +121,26 @@ public struct WorkflowQuestionDraft: Codable, Equatable, Sendable {
 /// An execution of a workflow, in `.vibedeck/runs/<workflow>/<run>/run.json`. The run's folder also holds what the
 /// steps write (plans, critiques, evaluations), so the next step picks up where the previous one stopped. Starting
 /// the same workflow with the same input again resumes it.
-public struct WorkflowRun: Codable, Equatable, Identifiable, Sendable {
-    public var schema: String?
-    public var id: UUID
+struct WorkflowRun: Codable, Equatable, Identifiable, Sendable {
+    var schema: String?
+    var id: UUID
     /// Slug of the workflow.
-    public var workflow: String
-    public var provider: AIProvider
-    public var input: String?
-    public var status: WorkflowRunStatus
+    var workflow: String
+    var provider: AIProvider
+    var input: String?
+    var status: WorkflowRunStatus
     /// Step to run next (nil once finished).
-    public var current: String?
+    var current: String?
     /// Why the run is waiting, finished or stopped.
-    public var reason: String?
-    public var cycle: Int
-    public var checkpoint: WorkflowStepCheckpoint?
-    public var history: [WorkflowRunEntry]
-    public var questions: [WorkflowQuestion]
-    public var createdAt: Date
-    public var updatedAt: Date
+    var reason: String?
+    var cycle: Int
+    var checkpoint: WorkflowStepCheckpoint?
+    var history: [WorkflowRunEntry]
+    var questions: [WorkflowQuestion]
+    var createdAt: Date
+    var updatedAt: Date
 
-    public init(workflow: String, input: String?, start: String?, provider: AIProvider = .claude, now: Date = .now) {
+    init(workflow: String, input: String?, start: String?, provider: AIProvider = .claude, now: Date = .now) {
         self.schema = SchemaURL.workflowRun
         self.id = UUID()
         self.workflow = workflow
@@ -161,7 +161,7 @@ public struct WorkflowRun: Codable, Equatable, Identifiable, Sendable {
         case schema = "$schema", id, workflow, provider, input, status, current, reason, cycle, checkpoint, history, questions, createdAt, updatedAt
     }
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         schema = try c.decodeIfPresent(String.self, forKey: .schema)
         id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
@@ -179,7 +179,7 @@ public struct WorkflowRun: Codable, Equatable, Identifiable, Sendable {
         updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
     }
 
-    public func encode(to encoder: Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encodeIfPresent(schema, forKey: .schema)
         try c.encode(id, forKey: .id)
@@ -197,32 +197,32 @@ public struct WorkflowRun: Codable, Equatable, Identifiable, Sendable {
         try c.encode(updatedAt, forKey: .updatedAt)
     }
 
-    public var openQuestions: [WorkflowQuestion] { questions.filter(\.isOpen) }
+    var openQuestions: [WorkflowQuestion] { questions.filter(\.isOpen) }
 
     /// Entries of the current cycle (what `maxSteps` and `maxVisits` count).
-    public var currentCycle: [WorkflowRunEntry] { history.filter { $0.cycle == cycle } }
+    var currentCycle: [WorkflowRunEntry] { history.filter { $0.cycle == cycle } }
 
-    public var isFinished: Bool { status == .done || status == .stopped }
+    var isFinished: Bool { status == .done || status == .stopped }
 
     /// A transition taken: from a step to the next one (`to` nil = the run ended there).
-    public struct Hop: Hashable, Sendable {
-        public var from: String
-        public var to: String?
-        public init(from: String, to: String?) { self.from = from; self.to = to }
+    struct Hop: Hashable, Sendable {
+        var from: String
+        var to: String?
+        init(from: String, to: String?) { self.from = from; self.to = to }
     }
 
     /// Transitions recorded in the history of the current cycle, loops and branches included.
-    public var traversed: Set<Hop> { Set(currentCycle.map { Hop(from: $0.step, to: $0.next) }) }
+    var traversed: Set<Hop> { Set(currentCycle.map { Hop(from: $0.step, to: $0.next) }) }
 
     /// Answers already given to a step (it reads them before starting, instead of asking again).
-    public func answers(for step: String) -> [WorkflowQuestion] {
+    func answers(for step: String) -> [WorkflowQuestion] {
         questions.filter { $0.step == step && !$0.isOpen }
     }
 }
 
 /// What the orchestrator does next, like `task_input --conduzir` in claude-kit: the engine decides, the chat obeys.
-public struct WorkflowRunAction: Codable, Equatable, Sendable {
-    public enum Kind: String, Codable, Sendable {
+struct WorkflowRunAction: Codable, Equatable, Sendable {
+    enum Kind: String, Codable, Sendable {
         /// Launch a subagent for `step`.
         case runStep = "run-step"
         /// Ask the user the open questions, record the answers, then call `next`.
@@ -235,22 +235,22 @@ public struct WorkflowRunAction: Codable, Equatable, Sendable {
         case stop
     }
 
-    public var action: Kind
+    var action: Kind
     /// `<workflow>/<run>`.
-    public var run: String
-    public var step: String?
-    public var title: String?
+    var run: String
+    var step: String?
+    var title: String?
     /// Model of the step's agent/command/skill (for the subagent).
-    public var model: String?
-    public var reason: String
+    var model: String?
+    var reason: String
     /// For `decide`: the step's conditional transitions to judge (in order).
-    public var candidates: [WorkflowTransition]?
+    var candidates: [WorkflowTransition]?
     /// For `decide`: the verdict to send back with `record`.
-    public var verdict: String?
+    var verdict: String?
     /// For `ask`: the open questions.
-    public var questions: [WorkflowQuestion]?
+    var questions: [WorkflowQuestion]?
 
-    public init(
+    init(
         action: Kind, run: String, step: String? = nil, title: String? = nil, model: String? = nil, reason: String,
         candidates: [WorkflowTransition]? = nil, verdict: String? = nil, questions: [WorkflowQuestion]? = nil
     ) {
@@ -267,9 +267,9 @@ public struct WorkflowRunAction: Codable, Equatable, Sendable {
 }
 
 /// Pure state machine over a `WorkflowRun` (no disk), so it can be tested and shared by app, CLI and MCP.
-public enum WorkflowRunEngine {
+enum WorkflowRunEngine {
     /// Explicit restart begins a fresh cycle, retaining the audit trail and closing old questions.
-    public static func restartFromBeginning(_ run: inout WorkflowRun, workflow: Workflow, now: Date = .now) throws {
+    static func restartFromBeginning(_ run: inout WorkflowRun, workflow: Workflow, now: Date = .now) throws {
         guard let first = workflow.steps.first?.id else {
             throw VibeDeckError.invalidWorkflow("o workflow não tem etapas.")
         }
@@ -283,7 +283,7 @@ public enum WorkflowRunEngine {
     }
 
     /// Restarts a finished run (a new cycle from `from`, or the start); keeps an unfinished one where it is.
-    public static func restart(_ run: inout WorkflowRun, workflow: Workflow, from: String? = nil, now: Date = .now) throws {
+    static func restart(_ run: inout WorkflowRun, workflow: Workflow, from: String? = nil, now: Date = .now) throws {
         let target = try from.map { try stepId($0, in: workflow) }
         guard run.isFinished || target != nil else { return }
         guard let first = target ?? workflow.steps.first?.id else {
@@ -298,7 +298,7 @@ public enum WorkflowRunEngine {
     }
 
     /// What to do now.
-    public static func next(_ run: WorkflowRun, ref: String, workflow: Workflow, resolve: (WorkflowStep) -> (title: String?, model: String?)) -> WorkflowRunAction {
+    static func next(_ run: WorkflowRun, ref: String, workflow: Workflow, resolve: (WorkflowStep) -> (title: String?, model: String?)) -> WorkflowRunAction {
         switch run.status {
         case .done: return WorkflowRunAction(action: .done, run: ref, reason: run.reason ?? "o workflow terminou")
         case .stopped: return WorkflowRunAction(action: .stop, run: ref, step: run.current, reason: run.reason ?? "execução parada")
@@ -325,7 +325,7 @@ public enum WorkflowRunEngine {
     /// Records the current step's result and moves on. Returns `decide` (nothing recorded) when only natural-language
     /// conditions can decide and `to`/`noneHolds` were not given.
     @discardableResult
-    public static func record(
+    static func record(
         _ run: inout WorkflowRun, workflow: Workflow, verdict: String?, summary: String?, to: String? = nil,
         noneHolds: Bool = false, ref: String, now: Date = .now
     ) throws -> WorkflowRunAction? {
@@ -385,7 +385,7 @@ public enum WorkflowRunEngine {
     }
 
     /// Records questions of the current step; the run waits for the answers.
-    public static func ask(_ run: inout WorkflowRun, drafts: [WorkflowQuestionDraft], now: Date = .now) throws -> [WorkflowQuestion] {
+    static func ask(_ run: inout WorkflowRun, drafts: [WorkflowQuestionDraft], now: Date = .now) throws -> [WorkflowQuestion] {
         guard let step = run.current, !run.isFinished else { throw VibeDeckError.invalidWorkflow("a execução não tem etapa em andamento.") }
         let drafts = drafts.filter { !$0.question.trimmed.isEmpty }
         guard !drafts.isEmpty else { throw VibeDeckError.invalidWorkflow("nenhuma pergunta recebida.") }
@@ -405,7 +405,7 @@ public enum WorkflowRunEngine {
     }
 
     /// Records the user's answer; with none left open the run goes back to running the same step.
-    public static func answer(_ run: inout WorkflowRun, number: Int, text: String, now: Date = .now) throws {
+    static func answer(_ run: inout WorkflowRun, number: Int, text: String, now: Date = .now) throws {
         guard let i = run.questions.firstIndex(where: { $0.number == number }) else {
             throw VibeDeckError.invalidWorkflow("pergunta não encontrada: \(number).")
         }
@@ -419,7 +419,7 @@ public enum WorkflowRunEngine {
         run.updatedAt = now
     }
 
-    public static func stop(_ run: inout WorkflowRun, reason: String?, now: Date = .now) {
+    static func stop(_ run: inout WorkflowRun, reason: String?, now: Date = .now) {
         run.status = .stopped
         run.reason = reason?.trimmed.nonEmpty ?? "parada pelo usuário"
         run.updatedAt = now
@@ -433,16 +433,16 @@ public enum WorkflowRunEngine {
 
 // MARK: - Prompts
 
-public enum WorkflowOrchestration {
+enum WorkflowOrchestration {
     /// Verdicts a step's transitions expect, for the step's prompt.
-    public static func expectedVerdicts(of step: WorkflowStep) -> [String] {
+    static func expectedVerdicts(of step: WorkflowStep) -> [String] {
         var seen = Set<String>()
         return step.transitions.compactMap(\.verdict).filter { seen.insert(WorkflowTransition.normalize($0)).inserted }
     }
 
     /// Everything the subagent running `step` needs: the resolved instructions, the run's folder and history, the
     /// user's answers to this step and the output protocol. The orchestrator passes only the run reference.
-    public static func stepPrompt(
+    static func stepPrompt(
         run: WorkflowRun, ref: String, workflow: Workflow, step: WorkflowStep, title: String?, instructions: String?,
         runDir: URL, cli: String = "vibedeck"
     ) -> String {
@@ -508,7 +508,7 @@ public enum WorkflowOrchestration {
     }
 
     /// Message that makes the chat the orchestrator of a run, like `/conduzir` + the `operador` of claude-kit.
-    public static func orchestratorPrompt(ref: String, title: String, input: String?, cli: String = "vibedeck", provider: AIProvider = .claude) -> String {
+    static func orchestratorPrompt(ref: String, title: String, input: String?, cli: String = "vibedeck", provider: AIProvider = .claude) -> String {
         let prompt = """
         Conduza a execução `\(ref)` do workflow "\(title)" do VibeDeck\(input.map { " (entrada: \($0))" } ?? ""). \
         Rodar o workflow autoriza o que as etapas fazem, no modo de permissão desta sessão.

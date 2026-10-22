@@ -4,7 +4,7 @@ import Synchronization
 // MARK: - JSON value
 
 /// Arbitrary JSON, so tool inputs can be shown and sent back to Claude Code unchanged.
-public enum JSONValue: Codable, Equatable, Sendable {
+enum JSONValue: Codable, Equatable, Sendable {
     case null
     case bool(Bool)
     case number(Double)
@@ -12,7 +12,7 @@ public enum JSONValue: Codable, Equatable, Sendable {
     case array([JSONValue])
     case object([String: JSONValue])
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let c = try decoder.singleValueContainer()
         if c.decodeNil() { self = .null }
         else if let b = try? c.decode(Bool.self) { self = .bool(b) }
@@ -22,7 +22,7 @@ public enum JSONValue: Codable, Equatable, Sendable {
         else { self = .object(try c.decode([String: JSONValue].self)) }
     }
 
-    public func encode(to encoder: Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         var c = encoder.singleValueContainer()
         switch self {
         case .null: try c.encodeNil()
@@ -34,21 +34,21 @@ public enum JSONValue: Codable, Equatable, Sendable {
         }
     }
 
-    public subscript(key: String) -> JSONValue? {
+    subscript(key: String) -> JSONValue? {
         if case .object(let o) = self { o[key] } else { nil }
     }
 
-    public var string: String? { if case .string(let s) = self { s } else { nil } }
-    public var bool: Bool? { if case .bool(let b) = self { b } else { nil } }
-    public var number: Double? { if case .number(let n) = self { n } else { nil } }
-    public var array: [JSONValue]? { if case .array(let a) = self { a } else { nil } }
-    public var object: [String: JSONValue]? { if case .object(let o) = self { o } else { nil } }
+    var string: String? { if case .string(let s) = self { s } else { nil } }
+    var bool: Bool? { if case .bool(let b) = self { b } else { nil } }
+    var number: Double? { if case .number(let n) = self { n } else { nil } }
+    var array: [JSONValue]? { if case .array(let a) = self { a } else { nil } }
+    var object: [String: JSONValue]? { if case .object(let o) = self { o } else { nil } }
 }
 
 // MARK: - Events (stdout)
 
 /// Claude Code's permission modes that the panel offers.
-public enum ClaudePermissionMode: String, CaseIterable, Sendable {
+enum ClaudePermissionMode: String, CaseIterable, Sendable {
     /// Asks before edits and commands.
     case `default`
     /// Read-only: Claude explores and proposes a plan for approval (ExitPlanMode).
@@ -60,20 +60,20 @@ public enum ClaudePermissionMode: String, CaseIterable, Sendable {
 }
 
 /// Model chosen in the panel, passed as `--model`. `.automatic` leaves Claude Code's own setting.
-public enum ClaudeModel: String, CaseIterable, Sendable {
+enum ClaudeModel: String, CaseIterable, Sendable {
     case automatic = ""
     case fable, opus, sonnet, haiku
 }
 
 /// Effort chosen in the panel, passed as `--effort`. `.automatic` leaves Claude Code's own setting.
-public enum ClaudeEffort: String, CaseIterable, Sendable {
+enum ClaudeEffort: String, CaseIterable, Sendable {
     case automatic = ""
     case low, medium, high, xhigh, max
 }
 
-public enum ClaudeLaunch {
+enum ClaudeLaunch {
     /// Arguments for a `claude -p` stream-json session with the panel's choices.
-    public static func arguments(mode: ClaudePermissionMode, model: ClaudeModel, effort: ClaudeEffort, resume sessionId: String?) -> [String] {
+    static func arguments(mode: ClaudePermissionMode, model: ClaudeModel, effort: ClaudeEffort, resume sessionId: String?) -> [String] {
         var arguments = [
             "-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
             "--include-partial-messages", "--permission-prompt-tool", "stdio",
@@ -86,7 +86,7 @@ public enum ClaudeLaunch {
         return arguments
     }
 
-    public static func arguments(mode: ClaudePermissionMode, settings: AIProviderSettings, resume sessionId: String?,
+    static func arguments(mode: ClaudePermissionMode, settings: AIProviderSettings, resume sessionId: String?,
                                  instructions: String = AIPromptPolicy.instructions) -> [String] {
         var result = arguments(mode: mode, model: .automatic, effort: .automatic, resume: sessionId)
         if let index = result.firstIndex(of: "--append-system-prompt") { result[index + 1] = instructions }
@@ -97,7 +97,7 @@ public enum ClaudeLaunch {
 
     /// Arguments for a one-shot background `claude -p` job (rule test generation): nobody answers permission
     /// prompts, so edits go through and the tools the job needs are pre-allowed.
-    public static func headlessArguments(prompt: String, model: ClaudeModel = .automatic, effort: ClaudeEffort = .automatic) -> [String] {
+    static func headlessArguments(prompt: String, model: ClaudeModel = .automatic, effort: ClaudeEffort = .automatic) -> [String] {
         var arguments = [
             "-p", prompt, "--output-format", "stream-json", "--verbose",
             "--permission-mode", ClaudePermissionMode.acceptEdits.rawValue,
@@ -110,7 +110,7 @@ public enum ClaudeLaunch {
         if effort != .automatic { arguments += ["--effort", effort.rawValue] }
         return arguments
     }
-    public static func headlessArguments(prompt: String, settings: AIProviderSettings) -> [String] {
+    static func headlessArguments(prompt: String, settings: AIProviderSettings) -> [String] {
         var result = headlessArguments(prompt: prompt)
         if let model = settings.model { result += ["--model", model] }
         if let effort = settings.effort { result += ["--effort", effort] }
@@ -119,40 +119,40 @@ public enum ClaudeLaunch {
 }
 
 /// A question asked through Claude Code's AskUserQuestion tool.
-public struct ClaudeQuestion: Equatable, Sendable {
-    public var id: String { key ?? question }
-    public var key: String? = nil
-    public struct Option: Equatable, Sendable {
-        public var label: String
-        public var description: String?
+struct ClaudeQuestion: Equatable, Sendable {
+    var id: String { key ?? question }
+    var key: String? = nil
+    struct Option: Equatable, Sendable {
+        var label: String
+        var description: String?
     }
 
-    public var question: String
-    public var header: String?
-    public var options: [Option]
-    public var multiSelect: Bool
+    var question: String
+    var header: String?
+    var options: [Option]
+    var multiSelect: Bool
 }
 
 /// `can_use_tool` control request: Claude Code asks the host to allow a tool call (or answer a question).
-public struct ClaudePermissionRequest: Equatable, Sendable, Identifiable {
-    public var requestId: String
-    public var toolName: String
-    public var input: [String: JSONValue]
-    public var description: String?
-    public var suggestions: [JSONValue]
-    public init(requestId: String, toolName: String, input: [String: JSONValue], description: String? = nil, suggestions: [JSONValue] = []) {
+struct ClaudePermissionRequest: Equatable, Sendable, Identifiable {
+    var requestId: String
+    var toolName: String
+    var input: [String: JSONValue]
+    var description: String?
+    var suggestions: [JSONValue]
+    init(requestId: String, toolName: String, input: [String: JSONValue], description: String? = nil, suggestions: [JSONValue] = []) {
         self.requestId = requestId; self.toolName = toolName; self.input = input; self.description = description; self.suggestions = suggestions
     }
-    public var id: String { requestId }
+    var id: String { requestId }
 
-    public var isQuestion: Bool { toolName == "AskUserQuestion" }
+    var isQuestion: Bool { toolName == "AskUserQuestion" }
 
     /// ExitPlanMode: Claude finished planning and asks to approve `plan` before executing it.
-    public var isPlanApproval: Bool { toolName == "ExitPlanMode" }
+    var isPlanApproval: Bool { toolName == "ExitPlanMode" }
 
-    public var plan: String? { input["plan"]?.string }
+    var plan: String? { input["plan"]?.string }
 
-    public var questions: [ClaudeQuestion] {
+    var questions: [ClaudeQuestion] {
         (input["questions"]?.array ?? []).compactMap { q in
             guard let text = q["question"]?.string else { return nil }
             let options = (q["options"]?.array ?? []).compactMap { o in
@@ -163,23 +163,23 @@ public struct ClaudePermissionRequest: Equatable, Sendable, Identifiable {
     }
 }
 
-public struct ClaudeToolUse: Equatable, Sendable {
-    public var id: String
-    public var name: String
-    public var input: [String: JSONValue]
+struct ClaudeToolUse: Equatable, Sendable {
+    var id: String
+    var name: String
+    var input: [String: JSONValue]
 }
 
-public struct ClaudeResult: Equatable, Sendable {
-    public var isError: Bool
-    public var text: String?
-    public var costUSD: Double?
-    public var tokens: AITokenUsage = .init()
-    public var isInterrupted: Bool = false
+struct ClaudeResult: Equatable, Sendable {
+    var isError: Bool
+    var text: String?
+    var costUSD: Double?
+    var tokens: AITokenUsage = .init()
+    var isInterrupted: Bool = false
 }
 
 /// One line of `claude -p --output-format stream-json`, reduced to what the panel shows.
 /// Events from subagents (`parent_tool_use_id` set) are ignored, except their start and end (`.agents`).
-public enum ClaudeEvent: Equatable, Sendable {
+enum ClaudeEvent: Equatable, Sendable {
     case initialized(sessionId: String, model: String?, slashCommands: [String] = [])
     /// The session's permission mode changed (e.g. back to default after a plan is approved).
     case permissionModeChanged(ClaudePermissionMode)
@@ -197,8 +197,8 @@ public enum ClaudeEvent: Equatable, Sendable {
     case ignored
 }
 
-public enum ClaudeStream {
-    public static func parse(_ line: String) -> ClaudeEvent {
+enum ClaudeStream {
+    static func parse(_ line: String) -> ClaudeEvent {
         guard let data = line.data(using: .utf8), let json = try? JSONDecoder().decode(JSONValue.self, from: data) else { return .ignored }
         if json["type"]?.string == "system", let event = agentEvent(json) { return .agents([event]) }
         if let parent = json["parent_tool_use_id"], parent != .null { return .ignored }
@@ -318,12 +318,12 @@ public enum ClaudeStream {
 // MARK: - Reading lines
 
 /// Splits a byte stream into UTF-8 lines. Bytes after the last newline wait for the next chunk.
-public struct LineBuffer: Sendable {
+struct LineBuffer: Sendable {
     private var pending = Data()
 
-    public init() {}
+    init() {}
 
-    public mutating func append(_ data: Data) -> [String] {
+    mutating func append(_ data: Data) -> [String] {
         pending.append(data)
         var lines: [String] = []
         while let newline = pending.firstIndex(of: UInt8(ascii: "\n")) {
@@ -335,7 +335,7 @@ public struct LineBuffer: Sendable {
     }
 
     /// Whatever is left when the stream ends without a trailing newline.
-    public mutating func finish() -> String? {
+    mutating func finish() -> String? {
         defer { pending.removeAll() }
         return pending.isEmpty ? nil : String(decoding: pending, as: UTF8.self)
     }
@@ -344,7 +344,7 @@ public struct LineBuffer: Sendable {
 extension ClaudeStream {
     /// Lines read from `handle` as they arrive. `FileHandle.bytes.lines` stalls on pipes after the first
     /// line, so this uses `readabilityHandler` instead.
-    public static func lines(from handle: FileHandle) -> AsyncStream<String> {
+    static func lines(from handle: FileHandle) -> AsyncStream<String> {
         AsyncStream { continuation in
             let buffer = Mutex(LineBuffer())
             handle.readabilityHandler = { h in
@@ -365,31 +365,31 @@ extension ClaudeStream {
 // MARK: - Messages (stdin)
 
 /// Lines written to `claude -p --input-format stream-json`.
-public enum ClaudeInput {
-    public enum RuleScope: String, Sendable {
+enum ClaudeInput {
+    enum RuleScope: String, Sendable {
         /// Until the Claude Code process ends.
         case session
         /// Saved by Claude Code in `.claude/settings.local.json`, so it also applies in the terminal.
         case localSettings
     }
 
-    public static func userMessage(_ text: String) -> Data {
+    static func userMessage(_ text: String) -> Data {
         line(["type": "user", "message": ["role": "user", "content": [["type": "text", "text": .string(text)]]]])
     }
 
-    public static func allow(_ request: ClaudePermissionRequest, input: [String: JSONValue]? = nil, always scope: RuleScope? = nil) -> Data {
+    static func allow(_ request: ClaudePermissionRequest, input: [String: JSONValue]? = nil, always scope: RuleScope? = nil) -> Data {
         var response: [String: JSONValue] = ["behavior": "allow", "updatedInput": .object(input ?? request.input)]
         if let scope { response["updatedPermissions"] = .array(alwaysAllowRules(for: request, scope: scope)) }
         return controlResponse(request.requestId, .object(response))
     }
 
-    public static func deny(_ request: ClaudePermissionRequest, message: String) -> Data {
+    static func deny(_ request: ClaudePermissionRequest, message: String) -> Data {
         controlResponse(request.requestId, ["behavior": "deny", "message": .string(message)])
     }
 
     /// Answers an AskUserQuestion call: the original input plus `answers` keyed by question text
     /// (several choices of a multi-select question are joined with ", ").
-    public static func answer(_ request: ClaudePermissionRequest, _ answers: [String: [String]]) -> Data {
+    static func answer(_ request: ClaudePermissionRequest, _ answers: [String: [String]]) -> Data {
         var input = request.input
         input["answers"] = .object(answers.mapValues { .string($0.joined(separator: ", ")) })
         return allow(request, input: input)
@@ -397,7 +397,7 @@ public enum ClaudeInput {
 
     /// Approves the plan of an ExitPlanMode request. With a `mode` (e.g. `.acceptEdits` or `.auto`), the
     /// session switches to it to carry out the plan; otherwise Claude Code returns to its default mode.
-    public static func approvePlan(_ request: ClaudePermissionRequest, then mode: ClaudePermissionMode?) -> Data {
+    static func approvePlan(_ request: ClaudePermissionRequest, then mode: ClaudePermissionMode?) -> Data {
         var response: [String: JSONValue] = ["behavior": "allow", "updatedInput": .object(request.input)]
         if let mode {
             response["updatedPermissions"] = [["type": "setMode", "mode": .string(mode.rawValue), "destination": "session"]]
@@ -406,21 +406,21 @@ public enum ClaudeInput {
     }
 
     /// Switches the running session's permission mode.
-    public static func setPermissionMode(_ mode: ClaudePermissionMode, requestId: String = UUID().uuidString) -> Data {
+    static func setPermissionMode(_ mode: ClaudePermissionMode, requestId: String = UUID().uuidString) -> Data {
         line(["type": "control_request", "request_id": .string(requestId), "request": ["subtype": "set_permission_mode", "mode": .string(mode.rawValue)]])
     }
 
-    public static func unsupported(requestId: String) -> Data {
+    static func unsupported(requestId: String) -> Data {
         line(["type": "control_response", "response": ["subtype": "error", "request_id": .string(requestId), "error": "Não suportado pelo VibeDeck"]])
     }
 
-    public static func interrupt(requestId: String = UUID().uuidString) -> Data {
+    static func interrupt(requestId: String = UUID().uuidString) -> Data {
         line(["type": "control_request", "request_id": .string(requestId), "request": ["subtype": "interrupt"]])
     }
 
     /// Claude Code's own `addRules` suggestion when it has one (e.g. the exact Bash command), otherwise a
     /// rule for the whole tool; rescoped to `scope`.
-    public static func alwaysAllowRules(for request: ClaudePermissionRequest, scope: RuleScope) -> [JSONValue] {
+    static func alwaysAllowRules(for request: ClaudePermissionRequest, scope: RuleScope) -> [JSONValue] {
         let suggested = request.suggestions.compactMap { suggestion -> JSONValue? in
             guard var o = suggestion.object, o["type"]?.string == "addRules" else { return nil }
             o["destination"] = .string(scope.rawValue)
@@ -431,7 +431,7 @@ public enum ClaudeInput {
     }
 
     /// Human-readable form of the rules `alwaysAllowRules` would add, e.g. `Bash(touch a.txt)`.
-    public static func ruleLabels(for request: ClaudePermissionRequest, scope: RuleScope) -> [String] {
+    static func ruleLabels(for request: ClaudePermissionRequest, scope: RuleScope) -> [String] {
         alwaysAllowRules(for: request, scope: scope).flatMap { $0["rules"]?.array ?? [] }.compactMap { rule in
             guard let tool = rule["toolName"]?.string else { return nil }
             return rule["ruleContent"]?.string.map { "\(tool)(\($0))" } ?? tool
@@ -450,8 +450,8 @@ public enum ClaudeInput {
 }
 
 extension JSONValue: ExpressibleByStringLiteral, ExpressibleByArrayLiteral, ExpressibleByDictionaryLiteral, ExpressibleByBooleanLiteral {
-    public init(stringLiteral value: String) { self = .string(value) }
-    public init(arrayLiteral elements: JSONValue...) { self = .array(elements) }
-    public init(dictionaryLiteral elements: (String, JSONValue)...) { self = .object(Dictionary(elements, uniquingKeysWith: { $1 })) }
-    public init(booleanLiteral value: Bool) { self = .bool(value) }
+    init(stringLiteral value: String) { self = .string(value) }
+    init(arrayLiteral elements: JSONValue...) { self = .array(elements) }
+    init(dictionaryLiteral elements: (String, JSONValue)...) { self = .object(Dictionary(elements, uniquingKeysWith: { $1 })) }
+    init(booleanLiteral value: Bool) { self = .bool(value) }
 }

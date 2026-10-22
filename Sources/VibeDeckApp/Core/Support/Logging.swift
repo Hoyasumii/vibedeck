@@ -6,13 +6,13 @@ import os
 
 // MARK: - Entry
 
-public enum LogLevel: String, Codable, CaseIterable, Comparable, Sendable {
+enum LogLevel: String, Codable, CaseIterable, Comparable, Sendable {
     case debug, info, warning, error, crash
 
     private var rank: Int { Self.allCases.firstIndex(of: self) ?? 0 }
-    public static func < (a: Self, b: Self) -> Bool { a.rank < b.rank }
+    static func < (a: Self, b: Self) -> Bool { a.rank < b.rank }
 
-    public var title: String {
+    var title: String {
         switch self {
         case .debug: "Depuração"
         case .info: "Info"
@@ -23,35 +23,35 @@ public enum LogLevel: String, Codable, CaseIterable, Comparable, Sendable {
     }
 }
 
-public enum LogComponent: String, Codable, CaseIterable, Sendable {
+enum LogComponent: String, Codable, CaseIterable, Sendable {
     case app, cli, mcp, core, rules, ai, hook
 }
 
 /// One line of the log. Only names, ids, sizes and codes go here: never the content of prompts,
 /// docs, ideas or tool arguments. Text fields are truncated on creation.
-public struct LogEntry: Codable, Equatable, Identifiable, Sendable {
-    public static let maxField = 500
-    public static let maxContext = 20
+struct LogEntry: Codable, Equatable, Identifiable, Sendable {
+    static let maxField = 500
+    static let maxContext = 20
     /// Crash stacks (`context["stack"]`) keep every frame: without them a layout loop can't be traced.
-    public static let maxStack = 16_000
+    static let maxStack = 16_000
 
     /// Stable across reloads (lists keep their selection); not stored.
-    public var id: String { "\(ts.timeIntervalSinceReferenceDate)|\(session ?? "")|\(pid ?? 0)|\(event)|\(message)" }
-    public var action: String? { context["action"] }
-    public var control: String? { context["control"] }
-    public var label: String? { context["label"] }
-    public var ts: Date
-    public var level: LogLevel
-    public var component: LogComponent
-    public var event: String
-    public var message: String
-    public var project: String?
-    public var session: String?
-    public var pid: Int32?
-    public var version: String?
-    public var context: [String: String]
+    var id: String { "\(ts.timeIntervalSinceReferenceDate)|\(session ?? "")|\(pid ?? 0)|\(event)|\(message)" }
+    var action: String? { context["action"] }
+    var control: String? { context["control"] }
+    var label: String? { context["label"] }
+    var ts: Date
+    var level: LogLevel
+    var component: LogComponent
+    var event: String
+    var message: String
+    var project: String?
+    var session: String?
+    var pid: Int32?
+    var version: String?
+    var context: [String: String]
 
-    public init(
+    init(
         ts: Date = .now, level: LogLevel, component: LogComponent, event: String, message: String,
         project: String? = nil, session: String? = nil, pid: Int32? = nil, version: String? = nil, context: [String: String] = [:]
     ) {
@@ -72,7 +72,7 @@ public struct LogEntry: Codable, Equatable, Identifiable, Sendable {
     }
 
     /// At most `maxContext` keys (sorted), keys and values truncated (`stack` up to `maxStack`).
-    public static func sanitized(_ context: [String: String]) -> [String: String] {
+    static func sanitized(_ context: [String: String]) -> [String: String] {
         var out: [String: String] = [:]
         for key in context.keys.sorted().prefix(maxContext) {
             out[clip(key, 60)] = clip(context[key] ?? "", key == "stack" ? maxStack : maxField)
@@ -84,7 +84,7 @@ public struct LogEntry: Codable, Equatable, Identifiable, Sendable {
         case ts, level, component, event, message, project, session, pid, version, context
     }
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         ts = try c.decodeIfPresent(Date.self, forKey: .ts) ?? .distantPast
         level = (try? c.decodeIfPresent(String.self, forKey: .level)).flatMap { $0 }.flatMap(LogLevel.init(rawValue:)) ?? .info
@@ -98,7 +98,7 @@ public struct LogEntry: Codable, Equatable, Identifiable, Sendable {
         context = Self.sanitized((try? c.decode([String: String].self, forKey: .context)) ?? [:])
     }
 
-    public func encode(to encoder: Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         // Fractional seconds: several entries per second must keep their order.
         try c.encode(ts.formatted(Date.ISO8601FormatStyle(includingFractionalSeconds: true)), forKey: .ts)
@@ -114,7 +114,7 @@ public struct LogEntry: Codable, Equatable, Identifiable, Sendable {
     }
 
     /// One readable line, used by the CLI and the report.
-    public var line: String {
+    var line: String {
         let stamp = ts.formatted(Date.ISO8601FormatStyle(includingFractionalSeconds: true))
         let extra = context.keys.sorted().map { "\($0)=\(context[$0] ?? "")" }.joined(separator: " ")
         return "\(stamp) [\(level.rawValue)] \(component.rawValue) \(event): \(message)" + (extra.isEmpty ? "" : "  {\(extra)}")
@@ -123,17 +123,17 @@ public struct LogEntry: Codable, Equatable, Identifiable, Sendable {
 
 // MARK: - Filter
 
-public struct LogFilter: Sendable, Equatable {
-    public var since: Date?
-    public var minLevel: LogLevel
-    public var components: Set<LogComponent>
+struct LogFilter: Sendable, Equatable {
+    var since: Date?
+    var minLevel: LogLevel
+    var components: Set<LogComponent>
     /// Project root path; entries without a project are kept only when this is nil.
-    public var project: String?
-    public var search: String?
-    public var action: String?
-    public var limit: Int
+    var project: String?
+    var search: String?
+    var action: String?
+    var limit: Int
 
-    public init(since: Date? = nil, minLevel: LogLevel = .debug, components: Set<LogComponent> = [], project: String? = nil, search: String? = nil, action: String? = nil, limit: Int = 200) {
+    init(since: Date? = nil, minLevel: LogLevel = .debug, components: Set<LogComponent> = [], project: String? = nil, search: String? = nil, action: String? = nil, limit: Int = 200) {
         self.since = since
         self.minLevel = minLevel
         self.components = components
@@ -143,7 +143,7 @@ public struct LogFilter: Sendable, Equatable {
         self.limit = limit
     }
 
-    public func matches(_ entry: LogEntry) -> Bool {
+    func matches(_ entry: LogEntry) -> Bool {
         if let action, entry.action != action { return false }
         if let since, entry.ts < since { return false }
         if entry.level < minLevel { return false }
@@ -157,7 +157,7 @@ public struct LogFilter: Sendable, Equatable {
     }
 
     /// `30m`, `24h`, `7d` (or a bare number of hours) before `now`.
-    public static func parseSince(_ text: String, now: Date = .now) throws -> Date {
+    static func parseSince(_ text: String, now: Date = .now) throws -> Date {
         let t = text.trimmingCharacters(in: .whitespaces).lowercased()
         let unit = t.last.flatMap { $0.isLetter ? $0 : nil }
         guard let n = Double(unit == nil ? t : String(t.dropLast())), n >= 0 else { throw VibeDeckError.invalidLogFilter(text) }
@@ -171,12 +171,12 @@ public struct LogFilter: Sendable, Equatable {
         return now.addingTimeInterval(-seconds)
     }
 
-    public static func parseLevel(_ text: String) throws -> LogLevel {
+    static func parseLevel(_ text: String) throws -> LogLevel {
         guard let level = LogLevel(rawValue: text.lowercased()) else { throw VibeDeckError.invalidLogFilter(text) }
         return level
     }
 
-    public static func parseComponents(_ values: [String]) throws -> Set<LogComponent> {
+    static func parseComponents(_ values: [String]) throws -> Set<LogComponent> {
         Set(try values.map { value in
             guard let c = LogComponent(rawValue: value.lowercased()) else { throw VibeDeckError.invalidLogFilter(value) }
             return c
@@ -189,19 +189,19 @@ public struct LogFilter: Sendable, Equatable {
 /// Logs of every VibeDeck process (app, CLI, MCP), one JSON Lines file per day (UTC), kept outside
 /// projects in Application Support. Unlike project data, lines are appended with O_APPEND instead
 /// of AtomicFile: each line goes out in a single write, so concurrent processes never interleave.
-public struct LogStore: Sendable {
-    public static let maxAgeDays = 14
-    public let dir: URL
+struct LogStore: Sendable {
+    static let maxAgeDays = 14
+    let dir: URL
     /// Past this size a day only accepts warnings, errors and crashes.
-    public let maxDailyBytes: Int
+    let maxDailyBytes: Int
 
-    public init(dir: URL, maxDailyBytes: Int = 5_000_000) {
+    init(dir: URL, maxDailyBytes: Int = 5_000_000) {
         self.dir = dir
         self.maxDailyBytes = maxDailyBytes
     }
 
     /// `~/Library/Application Support/VibeDeck/logs/`.
-    public static var `default`: LogStore {
+    static var `default`: LogStore {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? FileManager.default.homeDirectoryForCurrentUser.appending(path: ".local/share")
         return LogStore(dir: base.appending(path: "VibeDeck/logs", directoryHint: .isDirectory))
@@ -213,7 +213,7 @@ public struct LogStore: Sendable {
         date.formatted(Date.ISO8601FormatStyle().year().month().day())
     }
 
-    public func fileURL(for date: Date) -> URL { dir.appending(path: "\(Self.day(date)).jsonl") }
+    func fileURL(for date: Date) -> URL { dir.appending(path: "\(Self.day(date)).jsonl") }
 
     /// Day files, newest first.
     func files() -> [URL] {
@@ -221,7 +221,7 @@ public struct LogStore: Sendable {
         return all.filter { $0.pathExtension == "jsonl" }.sorted { $0.lastPathComponent > $1.lastPathComponent }
     }
 
-    public func append(_ entry: LogEntry) throws {
+    func append(_ entry: LogEntry) throws {
         var data = try VDJSON.compactEncoder.encode(entry)
         data.append(0x0A)
         let url = fileURL(for: entry.ts)
@@ -238,7 +238,7 @@ public struct LogStore: Sendable {
     }
 
     /// Matching entries, newest first. Unreadable lines are skipped.
-    public func entries(_ filter: LogFilter = LogFilter()) -> [LogEntry] {
+    func entries(_ filter: LogFilter = LogFilter()) -> [LogEntry] {
         let firstDay = filter.since.map(Self.day)
         var out: [LogEntry] = []
         for file in files() {
@@ -257,7 +257,7 @@ public struct LogStore: Sendable {
 
     /// Removes day files older than `maxAgeDays`. Returns how many were removed.
     @discardableResult
-    public func prune(now: Date = .now) -> Int {
+    func prune(now: Date = .now) -> Int {
         let cutoff = Self.day(now.addingTimeInterval(-Double(Self.maxAgeDays) * 86400))
         var removed = 0
         for file in files() where file.deletingPathExtension().lastPathComponent < cutoff {
@@ -267,7 +267,7 @@ public struct LogStore: Sendable {
     }
 
     /// Plain-text report (oldest first) to paste in an issue.
-    public func report(_ filter: LogFilter = LogFilter(minLevel: .warning), header: String? = nil) -> String {
+    func report(_ filter: LogFilter = LogFilter(minLevel: .warning), header: String? = nil) -> String {
         let entries = entries(filter)
         var lines = [header ?? "Relatório de diagnóstico do VibeDeck", "Gerado em \(Date.now.formatted(Date.ISO8601FormatStyle()))",
                      "Entradas: \(entries.count)", ""]
@@ -280,16 +280,16 @@ public struct LogStore: Sendable {
 
 /// Process-wide logger. Unconfigured processes (tests, libraries) only mirror to os.Logger and
 /// never touch the user's log directory. Writing never throws: failures fall back to stderr.
-public enum VDLog {
+enum VDLog {
     /// Task-local values follow child Tasks, without mixing actions from different windows.
-    @TaskLocal public static var actionID: String?
-    @TaskLocal public static var actionLabel: String?
-    @TaskLocal public static var projectRoot: URL?
-    @TaskLocal public static var undoName: String?
-    @TaskLocal public static var testStore: LogStore?
+    @TaskLocal static var actionID: String?
+    @TaskLocal static var actionLabel: String?
+    @TaskLocal static var projectRoot: URL?
+    @TaskLocal static var undoName: String?
+    @TaskLocal static var testStore: LogStore?
 
     @discardableResult
-    public static func withAction<T>(control: String, label: String, project: URL? = nil,
+    static func withAction<T>(control: String, label: String, project: URL? = nil,
                                      id: String = UUID().uuidString, _ body: () throws -> T) rethrows -> T {
         try $actionID.withValue(id) {
             try $actionLabel.withValue(label) {
@@ -304,7 +304,7 @@ public enum VDLog {
 
     /// Detached work keeps actor independence while explicitly inheriting correlation metadata.
     @discardableResult
-    public static func detached<T: Sendable>(priority: TaskPriority? = nil,
+    static func detached<T: Sendable>(priority: TaskPriority? = nil,
         operation: @escaping @Sendable () async throws -> T) -> Task<T, Error> {
         let action = actionID, label = actionLabel, root = projectRoot, undo = undoName, logs = testStore
         return Task.detached(priority: priority) {
@@ -321,7 +321,7 @@ public enum VDLog {
     }
 
     @discardableResult
-    public static func detached<T: Sendable>(priority: TaskPriority? = nil,
+    static func detached<T: Sendable>(priority: TaskPriority? = nil,
         operation: @escaping @Sendable () async -> T) -> Task<T, Never> {
         let action = actionID, label = actionLabel, root = projectRoot, undo = undoName, logs = testStore
         return Task.detached(priority: priority) {
@@ -338,10 +338,10 @@ public enum VDLog {
     }
 
     /// Explicitly carries correlation across native threads and callback queues as well as Tasks.
-    public struct Context: Sendable {
+    struct Context: Sendable {
         fileprivate let action: String?, label: String?, root: URL?, undo: String?
         fileprivate let logs: LogStore?
-        public func perform<T>(_ body: () throws -> T) rethrows -> T {
+        func perform<T>(_ body: () throws -> T) rethrows -> T {
             try VDLog.$actionID.withValue(action) {
                 try VDLog.$actionLabel.withValue(label) {
                     try VDLog.$projectRoot.withValue(root) {
@@ -353,12 +353,12 @@ public enum VDLog {
             }
         }
     }
-    public static func captureContext() -> Context {
+    static func captureContext() -> Context {
         Context(action: actionID, label: actionLabel, root: projectRoot, undo: undoName, logs: testStore)
     }
 
     /// Shared by ProjectModel's direct writes and the ProjectStore operations it invokes.
-    public static func fileWritten(_ url: URL, bytes: Int) {
+    static func fileWritten(_ url: URL, bytes: Int) {
         let config = state.withLock { $0 }
         guard config.component == .app || testStore != nil,
               let root = projectRoot ?? config.project.map({ URL(fileURLWithPath: $0) }) else { return }
@@ -381,7 +381,7 @@ public enum VDLog {
     private static let state = Mutex(Config())
     private static let queue = DispatchQueue(label: "vibedeck.log")
 
-    public static func configure(component: LogComponent, version: String?, store: LogStore? = .default, project: URL? = nil) {
+    static func configure(component: LogComponent, version: String?, store: LogStore? = .default, project: URL? = nil) {
         state.withLock {
             $0.component = component
             $0.store = store
@@ -391,17 +391,17 @@ public enum VDLog {
     }
 
     /// Default project for entries that don't name one (the CLI/MCP root).
-    public static func setProject(_ root: URL?) {
+    static func setProject(_ root: URL?) {
         state.withLock { $0.project = root.map(path) }
     }
 
-    public static var store: LogStore? { state.withLock { $0.store } }
-    public static var session: String { state.withLock { $0.session } }
+    static var store: LogStore? { state.withLock { $0.store } }
+    static var session: String { state.withLock { $0.session } }
 
     static func path(_ url: URL) -> String { url.standardizedFileURL.path }
 
     /// `sync` writes before returning (crash handlers, process exit).
-    public static func log(
+    static func log(
         _ level: LogLevel, _ event: String, _ message: String, project: URL? = nil,
         component: LogComponent? = nil, context: [String: String] = [:], sync: Bool = false
     ) {
@@ -421,31 +421,31 @@ public enum VDLog {
         if sync { queue.sync(execute: work) } else { queue.async(execute: work) }
     }
 
-    public static func debug(_ event: String, _ message: String, project: URL? = nil, component: LogComponent? = nil, context: [String: String] = [:]) {
+    static func debug(_ event: String, _ message: String, project: URL? = nil, component: LogComponent? = nil, context: [String: String] = [:]) {
         log(.debug, event, message, project: project, component: component, context: context)
     }
 
-    public static func info(_ event: String, _ message: String, project: URL? = nil, component: LogComponent? = nil, context: [String: String] = [:]) {
+    static func info(_ event: String, _ message: String, project: URL? = nil, component: LogComponent? = nil, context: [String: String] = [:]) {
         log(.info, event, message, project: project, component: component, context: context)
     }
 
-    public static func warning(_ event: String, _ message: String, project: URL? = nil, component: LogComponent? = nil, context: [String: String] = [:]) {
+    static func warning(_ event: String, _ message: String, project: URL? = nil, component: LogComponent? = nil, context: [String: String] = [:]) {
         log(.warning, event, message, project: project, component: component, context: context)
     }
 
-    public static func error(_ event: String, _ message: String, project: URL? = nil, component: LogComponent? = nil, context: [String: String] = [:]) {
+    static func error(_ event: String, _ message: String, project: URL? = nil, component: LogComponent? = nil, context: [String: String] = [:]) {
         log(.error, event, message, project: project, component: component, context: context)
     }
 
     /// Logs a thrown error with its description and type.
-    public static func error(_ error: Error, event: String, project: URL? = nil, component: LogComponent? = nil, context: [String: String] = [:]) {
+    static func error(_ error: Error, event: String, project: URL? = nil, component: LogComponent? = nil, context: [String: String] = [:]) {
         let message = "Falha na operação"
         log(.error, event, message, project: project, component: component,
             context: context.merging(["errorType": String(describing: type(of: error))]) { a, _ in a })
     }
 
     /// Waits for pending writes (tests, before exiting).
-    public static func flush() { queue.sync {} }
+    static func flush() { queue.sync {} }
 
     private static func mirror(_ entry: LogEntry) {
         #if canImport(os)
@@ -465,19 +465,19 @@ public enum VDLog {
 // MARK: - Crash detection
 
 /// What a previous run left behind when it didn't exit cleanly.
-public struct CrashInfo: Codable, Equatable, Sendable {
-    public var pid: Int32
-    public var startedAt: Date
-    public var version: String?
+struct CrashInfo: Codable, Equatable, Sendable {
+    var pid: Int32
+    var startedAt: Date
+    var version: String?
     /// macOS crash report (`.ips`) matched to the run, if any.
-    public var report: String?
-    public var summary: String?
+    var report: String?
+    var summary: String?
 }
 
 /// A running process leaves `running/<pid>.json`; a clean exit removes it. On the next launch,
 /// files of dead pids are unclean exits, matched to the crash report macOS wrote, if any.
 /// No signal handlers: they must be async-signal-safe, and macOS already writes the full report.
-public enum CrashSentinel {
+enum CrashSentinel {
     struct Marker: Codable {
         var pid: Int32
         var startedAt: Date
@@ -507,21 +507,21 @@ public enum CrashSentinel {
         private enum CodingKeys: String, CodingKey { case pid, startedAt, version, component }
     }
 
-    public static var diagnosticReportsDir: URL {
+    static var diagnosticReportsDir: URL {
         FileManager.default.homeDirectoryForCurrentUser.appending(path: "Library/Logs/DiagnosticReports", directoryHint: .isDirectory)
     }
 
-    public static func begin(store: LogStore, version: String?, component: LogComponent = .app, pid: Int32 = ProcessInfo.processInfo.processIdentifier, now: Date = .now) throws {
+    static func begin(store: LogStore, version: String?, component: LogComponent = .app, pid: Int32 = ProcessInfo.processInfo.processIdentifier, now: Date = .now) throws {
         let marker = Marker(pid: pid, startedAt: now, version: version, component: component)
         try AtomicFile.write(VDJSON.encode(marker), to: store.runningDir.appending(path: "\(pid).json"))
     }
 
-    public static func end(store: LogStore, pid: Int32 = ProcessInfo.processInfo.processIdentifier) {
+    static func end(store: LogStore, pid: Int32 = ProcessInfo.processInfo.processIdentifier) {
         try? FileManager.default.removeItem(at: store.runningDir.appending(path: "\(pid).json"))
     }
 
     /// Unclean exits since the last call; their markers are removed.
-    public static func detectUnclean(
+    static func detectUnclean(
         store: LogStore, reportsDir: URL = diagnosticReportsDir, isAlive: (Int32) -> Bool = { kill($0, 0) == 0 }
     ) -> [CrashInfo] {
         let fm = FileManager.default

@@ -1,10 +1,10 @@
 import Foundation
 
-public enum AIIntegrationError: LocalizedError, Sendable {
+enum AIIntegrationError: LocalizedError, Sendable {
     case unavailable(AIProvider), disconnected(AIProvider)
     case modelUnavailable(String, AIProvider), effortUnavailable(String, String)
     case invalidPlan, invalidTransition
-    public var errorDescription: String? {
+    var errorDescription: String? {
         switch self {
         case .unavailable(let provider): "\(provider.title) não está instalado."
         case .disconnected(let provider): "\(provider.title) encerrou a conexão. Retome a conversa para tentar novamente."
@@ -16,21 +16,21 @@ public enum AIIntegrationError: LocalizedError, Sendable {
     }
 }
 
-public enum AIFeature: String, CaseIterable, Sendable {
+enum AIFeature: String, CaseIterable, Sendable {
     case chat, planning, questions, workflows, discover, documents, graphAnalysis, ruleVerification, testGeneration
     case agents, commands, skills, mcp, rulesHook, cloud, compact, usage, claudeCollection
 }
-public enum AIFeatureSupport: Equatable, Sendable {
+enum AIFeatureSupport: Equatable, Sendable {
     case native, equivalent, unavailable(String)
-    public var isAvailable: Bool { if case .unavailable = self { false } else { true } }
+    var isAvailable: Bool { if case .unavailable = self { false } else { true } }
 }
-public struct AIProviderCapabilities: Sendable {
-    public let provider: AIProvider
-    public init(provider: AIProvider) { self.provider = provider }
-    public var permissionModes: [ClaudePermissionMode] {
+struct AIProviderCapabilities: Sendable {
+    let provider: AIProvider
+    init(provider: AIProvider) { self.provider = provider }
+    var permissionModes: [ClaudePermissionMode] {
         provider == .claude ? ClaudePermissionMode.allCases : [.plan, .default]
     }
-    public func title(for mode: ClaudePermissionMode) -> String {
+    func title(for mode: ClaudePermissionMode) -> String {
         switch mode {
         case .plan: "Planejar"
         case .default: provider == .codex ? "Editar projeto" : "Normal"
@@ -38,7 +38,7 @@ public struct AIProviderCapabilities: Sendable {
         case .auto: "Auto"
         }
     }
-    public func support(for feature: AIFeature) -> AIFeatureSupport {
+    func support(for feature: AIFeature) -> AIFeatureSupport {
         if feature == .claudeCollection, provider != .claude { return .unavailable("A coleção contém links de artefatos e documentos do Claude.") }
         if [.workflows, .agents, .commands].contains(feature) { return .equivalent }
         if feature == .planning, provider == .codex { return .equivalent }
@@ -46,12 +46,12 @@ public struct AIProviderCapabilities: Sendable {
     }
 }
 extension AIProvider {
-    public var capabilities: AIProviderCapabilities { .init(provider: self) }
+    var capabilities: AIProviderCapabilities { .init(provider: self) }
 }
 
-public enum AISettingsResolver {
+enum AISettingsResolver {
     /// A legacy model remains an explicit choice; incompatible choices are never replaced.
-    public static func resolve(provider: AIProvider, resource: AIProviderSettings? = nil, legacyModel: String? = nil,
+    static func resolve(provider: AIProvider, resource: AIProviderSettings? = nil, legacyModel: String? = nil,
                                session: AIProviderSettings = .init(), availableModels: [String]? = nil,
                                supportedEfforts: [String]? = nil) throws -> AIProviderSettings {
         let result = AIProviderSettings(model: resource?.model ?? legacyModel ?? session.model,
@@ -66,19 +66,19 @@ public enum AISettingsResolver {
     }
 }
 
-public enum AIPlan {
-    public static let instructions = "Em modo de planejamento, não execute alterações. Quando o plano estiver completo, apresente-o dentro de <proposed_plan> e </proposed_plan>. Aguarde aprovação explícita do usuário antes de executar."
-    public static func extract(_ text: String) -> String? {
+enum AIPlan {
+    static let instructions = "Em modo de planejamento, não execute alterações. Quando o plano estiver completo, apresente-o dentro de <proposed_plan> e </proposed_plan>. Aguarde aprovação explícita do usuário antes de executar."
+    static func extract(_ text: String) -> String? {
         guard let start = text.range(of: "<proposed_plan>"),
               let end = text.range(of: "</proposed_plan>", range: start.upperBound..<text.endIndex) else { return nil }
         let plan = text[start.upperBound..<end.lowerBound].trimmingCharacters(in: .whitespacesAndNewlines)
         return plan.isEmpty ? nil : plan
     }
-    public static func request(_ text: String, id: String) -> AIPermissionRequest? {
+    static func request(_ text: String, id: String) -> AIPermissionRequest? {
         extract(text).map { .init(requestId: id, toolName: "ExitPlanMode", input: ["plan": .string($0)]) }
     }
 }
 
-public enum AIPermissionDecision: Equatable, Sendable {
+enum AIPermissionDecision: Equatable, Sendable {
     case allowOnce, allowSession, allowAlways, deny
 }

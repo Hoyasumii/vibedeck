@@ -2,14 +2,14 @@ import Foundation
 
 /// Criar e editar agentes, comandos, skills e workflows com IA. Montar o prompt, validar o JSON e converter em
 /// proposta nunca grava no projeto; só o Core (`item_ai_apply`) grava, e só após o aceite.
-public enum ItemDiscover {
-    public static let maxContentLength = 40_000
-    public static let maxSteps = 30
+enum ItemDiscover {
+    static let maxContentLength = 40_000
+    static let maxSteps = 30
 
-    public enum Kind: String, CaseIterable, Codable, Sendable {
+    enum Kind: String, CaseIterable, Codable, Sendable {
         case agent, command, skill, workflow
 
-        public var title: String {
+        var title: String {
             switch self {
             case .agent: "agente"
             case .command: "comando"
@@ -19,23 +19,23 @@ public enum ItemDiscover {
         }
 
         /// "Novo agente", "Nova skill"…
-        public var newTitle: String { self == .skill ? "Nova skill" : "Novo \(title)" }
+        var newTitle: String { self == .skill ? "Nova skill" : "Novo \(title)" }
     }
 
     /// Conteúdo completo de um item, no que a IA pode propor. Ids, datas, próximos passos e provedor ficam fora.
-    public struct Proposal: Codable, Equatable, Sendable {
-        public var title: String
-        public var summary: String?
-        public var model: String?
-        public var argumentHint: String?
-        public var input: String?
-        public var maxSteps: Int?
-        public var tools: [String]
-        public var prompt: String
-        public var tags: [String]
-        public var steps: [WorkflowStep]
+    struct Proposal: Codable, Equatable, Sendable {
+        var title: String
+        var summary: String?
+        var model: String?
+        var argumentHint: String?
+        var input: String?
+        var maxSteps: Int?
+        var tools: [String]
+        var prompt: String
+        var tags: [String]
+        var steps: [WorkflowStep]
 
-        public init(
+        init(
             title: String, summary: String? = nil, model: String? = nil, argumentHint: String? = nil, input: String? = nil,
             maxSteps: Int? = nil, tools: [String] = [], prompt: String = "", tags: [String] = [], steps: [WorkflowStep] = []
         ) {
@@ -53,7 +53,7 @@ public enum ItemDiscover {
 
         enum CodingKeys: String, CodingKey { case title, summary, model, argumentHint, input, maxSteps, tools, prompt, tags, steps }
 
-        public init(from decoder: Decoder) throws {
+        init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             title = try c.decode(String.self, forKey: .title)
             summary = try c.decodeIfPresent(String.self, forKey: .summary)
@@ -67,7 +67,7 @@ public enum ItemDiscover {
             steps = try c.decodeIfPresent([WorkflowStep].self, forKey: .steps) ?? []
         }
 
-        public func encode(to encoder: Encoder) throws {
+        func encode(to encoder: Encoder) throws {
             var c = encoder.container(keyedBy: CodingKeys.self)
             try c.encode(title, forKey: .title)
             try c.encodeIfPresent(summary, forKey: .summary)
@@ -81,28 +81,28 @@ public enum ItemDiscover {
             try c.encode(steps, forKey: .steps)
         }
 
-        public init(_ agent: Agent) {
+        init(_ agent: Agent) {
             self.init(title: agent.title, summary: agent.summary, model: agent.model, tools: agent.tools, prompt: agent.prompt, tags: agent.tags)
         }
-        public init(_ command: Command) {
+        init(_ command: Command) {
             self.init(title: command.title, summary: command.summary, model: command.model, argumentHint: command.argumentHint,
                       tools: command.tools, prompt: command.prompt, tags: command.tags)
         }
-        public init(_ skill: Skill) {
+        init(_ skill: Skill) {
             self.init(title: skill.title, summary: skill.summary, model: skill.model, tools: skill.tools, prompt: skill.prompt, tags: skill.tags)
         }
-        public init(_ workflow: Workflow) {
+        init(_ workflow: Workflow) {
             self.init(title: workflow.title, summary: workflow.summary, input: workflow.input, maxSteps: workflow.maxSteps,
                       tags: workflow.tags, steps: workflow.steps)
         }
     }
 
     /// Slugs existentes que as etapas de um workflow podem referenciar.
-    public struct Refs: Sendable {
-        public var agents: Set<String>
-        public var commands: Set<String>
-        public var skills: Set<String>
-        public init(agents: [String] = [], commands: [String] = [], skills: [String] = []) {
+    struct Refs: Sendable {
+        var agents: Set<String>
+        var commands: Set<String>
+        var skills: Set<String>
+        init(agents: [String] = [], commands: [String] = [], skills: [String] = []) {
             self.agents = Set(agents); self.commands = Set(commands); self.skills = Set(skills)
         }
         func contains(_ kind: NextStepKind, _ ref: String) -> Bool {
@@ -114,18 +114,18 @@ public enum ItemDiscover {
         }
     }
 
-    public struct Existing: Sendable {
-        public var slug: String
-        public var title: String
-        public var summary: String?
-        public init(slug: String, title: String, summary: String? = nil) {
+    struct Existing: Sendable {
+        var slug: String
+        var title: String
+        var summary: String?
+        init(slug: String, title: String, summary: String? = nil) {
             self.slug = slug; self.title = title; self.summary = summary
         }
     }
 
     // MARK: Schema
 
-    public static func schema(_ kind: Kind) -> String {
+    static func schema(_ kind: Kind) -> String {
         let text: [String: Any] = ["type": "string"]
         let optional: [String: Any] = ["type": ["string", "null"]]
         let list: [String: Any] = ["type": "array", "items": text]
@@ -164,7 +164,7 @@ public enum ItemDiscover {
     // MARK: Prompt
 
     /// `current` é a proposta atual (ou o item que está sendo editado): o refinamento sempre parte dela.
-    public static func prompt(kind: Kind, request: String, current: Proposal? = nil, existing: [Existing] = [], refs: [String: [Existing]] = [:]) -> String {
+    static func prompt(kind: Kind, request: String, current: Proposal? = nil, existing: [Existing] = [], refs: [String: [Existing]] = [:]) -> String {
         var lines = [
             "Leia este repositório usando somente leitura e busca. Não altere arquivos nem execute comandos.",
             current == nil
@@ -204,7 +204,7 @@ public enum ItemDiscover {
     // MARK: Validation
 
     /// Aparado e normalizado por tipo; nil quando o nome ou o conteúdo ficam vazios, ou o conteúdo passa do limite.
-    public static func validated(_ kind: Kind, _ proposal: Proposal, refs: Refs? = nil) -> Proposal? {
+    static func validated(_ kind: Kind, _ proposal: Proposal, refs: Refs? = nil) -> Proposal? {
         var p = proposal
         p.title = p.title.trimmed
         p.summary = p.summary?.trimmed.nonEmpty
@@ -245,7 +245,7 @@ public enum ItemDiscover {
     }
 
     /// JSON da IA → proposta. Falha com `VibeDeckError` em pt-BR e nunca grava nada.
-    public static func parse(_ kind: Kind, _ data: Data, refs: Refs? = nil) throws -> Proposal {
+    static func parse(_ kind: Kind, _ data: Data, refs: Refs? = nil) throws -> Proposal {
         guard let proposal = try? VDJSON.decoder.decode(Proposal.self, from: data) else {
             throw VibeDeckError.discoverFailed("A resposta da IA não é um JSON válido para \(kind.title).")
         }
@@ -257,17 +257,17 @@ public enum ItemDiscover {
 
     // MARK: Apply (substitui o conteúdo, preservando id, datas, próximos passos e provedor)
 
-    public static func apply(_ p: Proposal, to agent: inout Agent) {
+    static func apply(_ p: Proposal, to agent: inout Agent) {
         (agent.title, agent.summary, agent.model, agent.tools, agent.prompt, agent.tags) = (p.title, p.summary, p.model, p.tools, p.prompt, p.tags)
     }
-    public static func apply(_ p: Proposal, to command: inout Command) {
+    static func apply(_ p: Proposal, to command: inout Command) {
         (command.title, command.summary, command.model, command.tools, command.prompt, command.tags) = (p.title, p.summary, p.model, p.tools, p.prompt, p.tags)
         command.argumentHint = p.argumentHint
     }
-    public static func apply(_ p: Proposal, to skill: inout Skill) {
+    static func apply(_ p: Proposal, to skill: inout Skill) {
         (skill.title, skill.summary, skill.model, skill.tools, skill.prompt, skill.tags) = (p.title, p.summary, p.model, p.tools, p.prompt, p.tags)
     }
-    public static func apply(_ p: Proposal, to workflow: inout Workflow) {
+    static func apply(_ p: Proposal, to workflow: inout Workflow) {
         (workflow.title, workflow.summary, workflow.input, workflow.maxSteps, workflow.tags, workflow.steps) = (p.title, p.summary, p.input, p.maxSteps, p.tags, p.steps)
     }
 }

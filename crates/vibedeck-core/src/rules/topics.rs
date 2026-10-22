@@ -139,41 +139,6 @@ pub fn delete_rule(store: &Store, reference: &str) -> Result<()> {
     Ok(())
 }
 
-/// Move a regra para o grupo (caminho aninhado dentro do tópico); vazio = raiz do tópico.
-pub fn move_rule_to_group(store: &Store, reference: &str, group: &str) -> Result<Rule> {
-    let path = paths::normalize_group_path(group, true)?;
-    update_rule(store, reference, |rule| {
-        rule.group = if path.is_empty() { None } else { Some(path) };
-    })
-}
-
-/// Renomeia/move um grupo de regras de um tópico (e os subgrupos). Nada é sobrescrito.
-pub fn rename_rule_group(store: &Store, topic_ref: &str, from: &str, to: &str) -> Result<()> {
-    let slug = resolve_topic_slug(store, topic_ref)?;
-    let mut topic = load_topic(store, &slug)?;
-    paths::normalize_group_path(from, false)?;
-    let target = paths::normalize_group_path(to, false)?;
-    if target == from || target.starts_with(&format!("{from}/")) {
-        return Err(Error::InvalidGroupPath(to.to_string()).into());
-    }
-    let inside = |g: &str, base: &str| g == base || g.starts_with(&format!("{base}/"));
-    if topic
-        .rules
-        .iter()
-        .any(|r| inside(r.group.as_deref().unwrap_or(""), &target))
-    {
-        return Err(Error::GroupConflict(target).into());
-    }
-    for rule in &mut topic.rules {
-        if let Some(group) = rule.group.clone()
-            && inside(&group, from)
-        {
-            rule.group = Some(format!("{target}{}", &group[from.len()..]));
-        }
-    }
-    save_topic(store, &topic, &slug)
-}
-
 /// Apaga o tópico e solta as ideias e padrões que tinham sido promovidos para ele (como `deleteTopic`).
 pub fn delete_topic(store: &Store, slug: &str) -> Result<()> {
     store.delete::<RuleTopic>(slug)?;
@@ -251,14 +216,12 @@ fn remove_generated_script(store: &Store, rule: &Rule) {
 
 // ---- escopo de uma tarefa -------------------------------------------------------------------------
 
-/// Caminhos absolutos dentro do projeto viram relativos à raiz; `./` inicial sai.
-pub fn relative_path(store: &Store, file: &str) -> String {
-    let root = store.root().to_string_lossy().into_owned();
-    let root_prefix = if root.ends_with('/') {
-        root
-    } else {
-        format!("{root}/")
-    };
+/// Caminhos absolutos dentro de `root` viram relativos à raiz; `./` inicial sai.
+pub fn relative_to_root(root: &Path, file: &str) -> String {
+    let mut root_prefix = root.to_string_lossy().into_owned();
+    if !root_prefix.ends_with('/') {
+        root_prefix.push('/');
+    }
     let mut path = if file.starts_with('/') {
         paths::lexical_normalize(Path::new(file))
             .to_string_lossy()
@@ -273,6 +236,11 @@ pub fn relative_path(store: &Store, file: &str) -> String {
         path = rest.to_string();
     }
     path
+}
+
+/// [`relative_to_root`] com a raiz do projeto.
+pub fn relative_path(store: &Store, file: &str) -> String {
+    relative_to_root(store.root(), file)
 }
 
 /// Tópicos que valem para uma tarefa: globais (sem `paths`), citados (slug, id ou título) e os que casam

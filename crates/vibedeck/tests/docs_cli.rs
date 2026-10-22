@@ -100,6 +100,8 @@ fn cli_e_mcp_docs_vinculados() {
     assert_eq!(v[0]["slug"], "readme");
     assert_eq!(v[0]["linked"], true);
     assert_eq!(v[0]["target"], "README.md");
+    let (_, out, _) = run(&["docs", "list"], d, "");
+    assert_eq!(out, "readme\tLeia-me → README.md\n");
     let r = mcp(
         d,
         &[

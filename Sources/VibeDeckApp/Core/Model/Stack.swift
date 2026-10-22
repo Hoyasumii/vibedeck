@@ -7,18 +7,18 @@ import FoundationNetworking
 
 /// A highlighted technology of the project, kept in `vibedeck.json` under `stack`. `icon` is a Skill Icons id:
 /// it identifies the item, and the array order is the display order.
-public struct StackItem: Codable, Equatable, Hashable, Identifiable, Sendable {
-    public var icon: String
-    public var name: String
-    public var category: String?
+struct StackItem: Codable, Equatable, Hashable, Identifiable, Sendable {
+    var icon: String
+    var name: String
+    var category: String?
     /// How the project uses it ("Swift 6, strict concurrency"); handed to the AI with the stack.
-    public var note: String?
-    public var tags: [String]
-    public var author: Author
+    var note: String?
+    var tags: [String]
+    var author: Author
 
-    public var id: String { icon }
+    var id: String { icon }
 
-    public init(icon: String, name: String, category: String? = nil, note: String? = nil, tags: [String] = [], author: Author = .human) {
+    init(icon: String, name: String, category: String? = nil, note: String? = nil, tags: [String] = [], author: Author = .human) {
         self.icon = icon
         self.name = name
         self.category = category
@@ -27,13 +27,13 @@ public struct StackItem: Codable, Equatable, Hashable, Identifiable, Sendable {
         self.author = author
     }
 
-    public init(_ icon: SkillIcon, note: String? = nil, author: Author = .human) {
+    init(_ icon: SkillIcon, note: String? = nil, author: Author = .human) {
         self.init(icon: icon.id, name: icon.name, category: icon.category, note: note, author: author)
     }
 
     enum CodingKeys: String, CodingKey { case icon, name, category, note, tags, author }
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         icon = try c.decode(String.self, forKey: .icon)
         name = try c.decodeIfPresent(String.self, forKey: .name) ?? icon
@@ -43,7 +43,7 @@ public struct StackItem: Codable, Equatable, Hashable, Identifiable, Sendable {
         author = try c.decodeIfPresent(Author.self, forKey: .author) ?? .human
     }
 
-    public func encode(to encoder: Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(icon, forKey: .icon)
         try c.encode(name, forKey: .name)
@@ -57,15 +57,15 @@ public struct StackItem: Codable, Equatable, Hashable, Identifiable, Sendable {
 // MARK: - Skill Icons
 
 /// An icon of the Skill Icons catalog, as `skill_icons_search` returns it.
-public struct SkillIcon: Codable, Equatable, Hashable, Identifiable, Sendable {
-    public var id: String
-    public var name: String
-    public var category: String?
+struct SkillIcon: Codable, Equatable, Hashable, Identifiable, Sendable {
+    var id: String
+    var name: String
+    var category: String?
     /// Has dark and light variants.
-    public var themed: Bool
-    public var aliases: [String]
+    var themed: Bool
+    var aliases: [String]
 
-    public init(id: String, name: String, category: String? = nil, themed: Bool = false, aliases: [String] = []) {
+    init(id: String, name: String, category: String? = nil, themed: Bool = false, aliases: [String] = []) {
         self.id = id
         self.name = name
         self.category = category
@@ -75,7 +75,7 @@ public struct SkillIcon: Codable, Equatable, Hashable, Identifiable, Sendable {
 
     enum CodingKeys: String, CodingKey { case id, name, category, themed, aliases }
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(String.self, forKey: .id)
         name = try c.decodeIfPresent(String.self, forKey: .name) ?? id
@@ -85,13 +85,13 @@ public struct SkillIcon: Codable, Equatable, Hashable, Identifiable, Sendable {
     }
 
     /// True when `text` names this icon: its id, brand name or an alias (case- and accent-insensitive).
-    public func matches(exactly text: String) -> Bool {
+    func matches(exactly text: String) -> Bool {
         let key = SkillIcon.normalize(text)
         return ([id, name] + aliases).contains { SkillIcon.normalize($0) == key }
     }
 
     /// True when `text` is part of the id, brand name or an alias.
-    public func matches(containing text: String) -> Bool {
+    func matches(containing text: String) -> Bool {
         let key = SkillIcon.normalize(text)
         guard !key.isEmpty else { return true }
         return ([id, name] + aliases).contains { SkillIcon.normalize($0).contains(key) }
@@ -103,34 +103,34 @@ public struct SkillIcon: Codable, Equatable, Hashable, Identifiable, Sendable {
     }
 }
 
-public enum SkillIconTheme: String, CaseIterable, Sendable {
+enum SkillIconTheme: String, CaseIterable, Sendable {
     case dark, light
 }
 
 /// What `skill_icons_badge` returns: the image URL plus Markdown/HTML ready to paste.
-public struct SkillBadge: Codable, Equatable, Sendable {
-    public struct Unknown: Codable, Equatable, Sendable {
-        public var name: String
-        public var suggestions: [String]
+struct SkillBadge: Codable, Equatable, Sendable {
+    struct Unknown: Codable, Equatable, Sendable {
+        var name: String
+        var suggestions: [String]
 
         enum CodingKeys: String, CodingKey { case name, suggestions }
 
-        public init(from decoder: Decoder) throws {
+        init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             name = try c.decode(String.self, forKey: .name)
             suggestions = try c.decodeIfPresent([String].self, forKey: .suggestions) ?? []
         }
     }
 
-    public var url: String
-    public var markdown: String
-    public var html: String
-    public var icons: [String]
-    public var unknown: [Unknown]
+    var url: String
+    var markdown: String
+    var html: String
+    var icons: [String]
+    var unknown: [Unknown]
 
     enum CodingKeys: String, CodingKey { case url, markdown, html, icons, unknown }
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         url = try c.decode(String.self, forKey: .url)
         markdown = try c.decodeIfPresent(String.self, forKey: .markdown) ?? "![Stack](\(url))"
@@ -141,13 +141,13 @@ public struct SkillBadge: Codable, Equatable, Sendable {
 }
 
 /// The Skill Icons MCP server; a protocol so tests can swap the network for a fake.
-public protocol SkillIconsAPI: Sendable {
+protocol SkillIconsAPI: Sendable {
     func search(query: String?, category: String?, limit: Int?) async throws -> [SkillIcon]
     func badge(icons: [String], theme: SkillIconTheme?, perLine: Int?) async throws -> SkillBadge
     func image(url: String) async throws -> Data
 }
 
-public extension SkillIconsAPI {
+extension SkillIconsAPI {
     /// The whole catalog (one call).
     func catalog() async throws -> [SkillIcon] {
         try await search(query: nil, category: nil, limit: SkillIcons.catalogLimit)
@@ -156,23 +156,23 @@ public extension SkillIconsAPI {
 
 /// Client for the Skill Icons MCP server (stateless JSON-RPC over HTTP): the catalog and the rendered icons
 /// both come from it, never from hand-written URLs.
-public struct SkillIcons: SkillIconsAPI {
-    public static let endpoint = URL(string: "https://skill-icons.alanreisanjo.workers.dev/mcp")!
-    public static let categories = [
+struct SkillIcons: SkillIconsAPI {
+    static let endpoint = URL(string: "https://skill-icons.alanreisanjo.workers.dev/mcp")!
+    static let categories = [
         "language", "frontend", "backend", "database", "cloud", "devops", "tooling", "testing", "observability",
         "auth", "ide", "ai", "design", "game", "payments", "os", "social", "productivity",
     ]
     static let catalogLimit = 631
 
-    public var endpoint: URL
-    public var session: URLSession
+    var endpoint: URL
+    var session: URLSession
 
-    public init(endpoint: URL = SkillIcons.endpoint, session: URLSession = .shared) {
+    init(endpoint: URL = SkillIcons.endpoint, session: URLSession = .shared) {
         self.endpoint = endpoint
         self.session = session
     }
 
-    public func search(query: String?, category: String?, limit: Int?) async throws -> [SkillIcon] {
+    func search(query: String?, category: String?, limit: Int?) async throws -> [SkillIcon] {
         var args: [String: Any] = [:]
         if let query, !query.isEmpty { args["query"] = query }
         if let category, !category.isEmpty { args["category"] = category }
@@ -181,14 +181,14 @@ public struct SkillIcons: SkillIconsAPI {
         return try Self.decodeToolText(Result.self, from: await callTool("skill_icons_search", args)).icons
     }
 
-    public func badge(icons: [String], theme: SkillIconTheme?, perLine: Int?) async throws -> SkillBadge {
+    func badge(icons: [String], theme: SkillIconTheme?, perLine: Int?) async throws -> SkillBadge {
         var args: [String: Any] = ["icons": icons]
         if let theme { args["theme"] = theme.rawValue }
         if let perLine { args["perLine"] = perLine }
         return try Self.decodeToolText(SkillBadge.self, from: await callTool("skill_icons_badge", args))
     }
 
-    public func image(url: String) async throws -> Data {
+    func image(url: String) async throws -> Data {
         guard let url = URL(string: url) else { throw VibeDeckError.skillIconsUnavailable("URL inválida: \(url)") }
         do {
             let (data, response) = try await session.data(from: url)
@@ -258,7 +258,7 @@ public struct SkillIcons: SkillIconsAPI {
 
     /// Resolves ids, brand names or aliases ("k8s", "Next.js") against the catalog, in order and without
     /// duplicates. Throws `unknownStackIcons` with suggestions when any name matches nothing.
-    public static func resolve(_ refs: [String], in catalog: [SkillIcon]) throws -> [SkillIcon] {
+    static func resolve(_ refs: [String], in catalog: [SkillIcon]) throws -> [SkillIcon] {
         var resolved: [SkillIcon] = []
         var unknown: [String: [String]] = [:]
         for ref in refs.map({ $0.trimmingCharacters(in: .whitespaces) }) where !ref.isEmpty {
@@ -276,13 +276,13 @@ public struct SkillIcons: SkillIconsAPI {
 // MARK: - README block
 
 /// The `<!-- vibedeck:stack -->` block VibeDeck keeps in the repo's README.md with the stack badge.
-public enum ReadmeStack {
-    public static let start = "<!-- vibedeck:stack:start -->"
-    public static let end = "<!-- vibedeck:stack:end -->"
+enum ReadmeStack {
+    static let start = "<!-- vibedeck:stack:start -->"
+    static let end = "<!-- vibedeck:stack:end -->"
 
     /// `text` with the block set to `badge` (nil removes it). A new block goes right after the first `# ` heading,
     /// or at the top when there is none.
-    public static func apply(_ badge: String?, to text: String) -> String {
+    static func apply(_ badge: String?, to text: String) -> String {
         var text = text
         if let s = markerLine(start, in: text, from: text.startIndex),
            let e = markerLine(end, in: text, from: s.upperBound) {

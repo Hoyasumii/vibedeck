@@ -58,7 +58,7 @@ struct PatternsView: View {
             "Remover o padrão \"\(removing?.name ?? "")\"?", isPresented: Binding { removing != nil } set: { if !$0 { removing = nil } }
         ) {
             LoggedButton("Remover", role: .destructive) {
-                if let id = removing?.id { model.changePatterns("Remover padrão", undo: undo) { try $0.removePatterns([id]) } }
+                if let id = removing?.id { model.changePatterns("Remover padrão", undo: undo) { _ = try await $0.removePatterns([id]) } }
                 removing = nil
             }.loggedControl(control: "patterns_view.button_3", label: "Remover")
         } message: {
@@ -245,14 +245,17 @@ private struct PatternPicker: View {
 
     private func add() {
         let scope = parsePaths(paths)
-        let ok: Void? = if custom {
+        let name = self.name, summary = self.summary, note = self.note, rules = parseRules, picked = self.picked
+        if custom {
             model.changePatterns("Adicionar padrão", undo: undo) {
-                _ = try $0.addCustomPattern(name: name, summary: summary, rules: parseRules, note: note, paths: scope, author: .human)
+                _ = try await $0.addCustomPattern(name: name, summary: summary, rules: rules, note: note, paths: scope, author: .human)
             }
         } else {
-            model.changePatterns("Adicionar padrões", undo: undo) { _ = try $0.addPatterns(picked, note: note.isEmpty ? nil : note, paths: scope, author: .human) }
+            model.changePatterns("Adicionar padrões", undo: undo) {
+                _ = try await $0.addPatterns(Array(picked), note: note.isEmpty ? nil : note, paths: scope, author: .human)
+            }
         }
-        if ok != nil { dismiss() }
+        dismiss()
     }
 }
 
@@ -287,7 +290,7 @@ private struct PatternEditor: View {
             Text("A nota vai para a descrição do tópico de regras; o escopo define em quais arquivos as regras são cobradas.")
                 .font(.caption).foregroundStyle(.secondary)
             TagsField(tags: model.project.patterns.first { $0.id == pattern.id }?.tags ?? pattern.tags) { tags in
-                model.changePatterns("Editar tags do padrão", undo: undo) { try $0.setPatternTags(pattern.id, tags) }
+                model.changePatterns("Editar tags do padrão", undo: undo) { try await $0.setPatternTags(pattern.id, tags) }
             }
         }
         .formStyle(.grouped)
@@ -310,11 +313,12 @@ private struct PatternEditor: View {
     private func commitNote() {
         let value = note.trimmingCharacters(in: .whitespacesAndNewlines)
         guard value != (model.project.patterns.first { $0.id == pattern.id }?.note ?? "") else { return }
-        model.changePatterns("Editar nota do padrão", undo: undo) { try $0.setPatternNote(pattern.id, value) }
+        model.changePatterns("Editar nota do padrão", undo: undo) { _ = try await $0.setPatternNote(pattern.id, value) }
     }
 
     private func commitPaths() {
         guard pattern.topic != nil, parsePaths(paths) != parsePaths(currentPaths) else { return }
-        model.changePatterns("Editar escopo do padrão", undo: undo) { try $0.setPatternPaths(pattern.id, parsePaths(paths)) }
+        let newPaths = parsePaths(paths)
+        model.changePatterns("Editar escopo do padrão", undo: undo) { _ = try await $0.setPatternPaths(pattern.id, newPaths) }
     }
 }

@@ -4,20 +4,20 @@ import Foundation
 
 /// Watches a project's vibedeck.json and .vibedeck/ tree with FSEvents and reports changed paths.
 /// Changes made by the app itself are reported too; callers compare against what they wrote.
-public final class FileWatcher: @unchecked Sendable {
+final class FileWatcher: @unchecked Sendable {
     private var stream: FSEventStreamRef?
     private let root: URL
     private let handler: @Sendable ([URL]) -> Void
     private let queue = DispatchQueue(label: "vibedeck.filewatcher")
 
-    public init(root: URL, handler: @escaping @Sendable ([URL]) -> Void) {
+    init(root: URL, handler: @escaping @Sendable ([URL]) -> Void) {
         self.root = root.standardizedFileURL.resolvingSymlinksInPath()
         self.handler = handler
     }
 
     deinit { stop() }
 
-    public func start() {
+    func start() {
         guard stream == nil else { return }
         var context = FSEventStreamContext(
             version: 0, info: Unmanaged.passUnretained(self).toOpaque(), retain: nil, release: nil, copyDescription: nil
@@ -38,7 +38,7 @@ public final class FileWatcher: @unchecked Sendable {
         stream = s
     }
 
-    public func stop() {
+    func stop() {
         guard let s = stream else { return }
         FSEventStreamStop(s)
         FSEventStreamInvalidate(s)

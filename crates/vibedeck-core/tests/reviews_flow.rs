@@ -3,8 +3,9 @@
 use vibedeck_core::Store;
 use vibedeck_core::error::Error;
 use vibedeck_core::model::*;
-use vibedeck_core::reviews::gate::{self, rule_content_hash};
+use vibedeck_core::reviews::gate;
 use vibedeck_core::reviews::{self, ItemUpdate, NewItem, ReviewError};
+use vibedeck_core::rules::{self, RuleExt};
 
 fn fresh() -> (tempfile::TempDir, Store) {
     let tmp = tempfile::tempdir().unwrap();
@@ -30,7 +31,7 @@ fn script_rule(text: &str) -> Rule {
         mode: RuleTestMode::Script,
         command: Some("true".into()),
         reason: None,
-        rule_hash: rule_content_hash(&r),
+        rule_hash: r.content_hash(),
         generated_at: Timestamp::now(),
     });
     r
@@ -251,7 +252,7 @@ fn gate_por_paths_do_topico() {
     store
         .save_check(&check(Some(item.id), false, &[], &["regra X"]))
         .unwrap();
-    let problems = gate::verification_problems(&store, &item_of(&store, &r)).unwrap();
+    let problems = rules::verification_problems(&store, &item_of(&store, &r)).unwrap();
     assert_eq!(problems, ["Falhou no último check: regra X"]);
 
     // check aprovado e posterior
@@ -320,7 +321,7 @@ fn gate_regra_nova_e_manual_must() {
     store
         .save_check(&check(Some(item.id), true, &[&scripted], &[]))
         .unwrap();
-    let problems = gate::verification_problems(&store, &item_of(&store, &r)).unwrap();
+    let problems = rules::verification_problems(&store, &item_of(&store, &r)).unwrap();
     assert_eq!(
         problems,
         [
@@ -334,7 +335,7 @@ fn gate_regra_nova_e_manual_must() {
         .save_check(&check(Some(item.id), true, &[&scripted, &manual], &[]))
         .unwrap();
     assert!(
-        gate::verification_problems(&store, &item_of(&store, &r))
+        rules::verification_problems(&store, &item_of(&store, &r))
             .unwrap()
             .is_empty()
     );
@@ -344,7 +345,7 @@ fn gate_regra_nova_e_manual_must() {
     let mut t: RuleTopic = store.load("geral").unwrap();
     t.rules.push(newer);
     store.save_rule_topic("geral", &t).unwrap();
-    let problems = gate::verification_problems(&store, &item_of(&store, &r)).unwrap();
+    let problems = rules::verification_problems(&store, &item_of(&store, &r)).unwrap();
     assert_eq!(
         problems,
         ["Regra nova desde o último check: [geral] script novo"]

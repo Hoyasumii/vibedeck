@@ -1,15 +1,15 @@
 import Foundation
 
 /// Compact discovery is opt-in; existing list APIs retain their wire format.
-public struct AICatalogPage: Codable, Sendable {
-    public struct Item: Codable, Sendable {
-        public let ref: String
-        public let title: String
-        public let summary: String?
-        public let paths: [String]?
+struct AICatalogPage: Codable, Sendable {
+    struct Item: Codable, Sendable {
+        let ref: String
+        let title: String
+        let summary: String?
+        let paths: [String]?
     }
-    public let items: [Item]
-    public let nextOffset: Int?
-    public let total: Int
+    let items: [Item]
+    let nextOffset: Int?
+    let total: Int
 }
 

@@ -7,6 +7,7 @@ use std::io::Read;
 
 use clap::{Args, Subcommand, ValueEnum};
 use vibedeck_core::model::{AiProvider, Author, NextStepKind, WorkflowRunStatus};
+use vibedeck_core::project::links::hashtags;
 use vibedeck_core::workflows::{
     self as wf, RunAction, WorkflowError, WorkflowQuestionDraft, kind_str, status_str,
 };
@@ -356,14 +357,6 @@ pub enum RunsCommand {
 }
 
 // ---- helpers ----------------------------------------------------------------------------------------
-
-fn hashtags(tags: &[String]) -> String {
-    if tags.is_empty() {
-        String::new()
-    } else {
-        format!("  #{}", tags.join(" #"))
-    }
-}
 
 /// Texto não vazio (depois de aparar) é mantido como veio; em branco vira `None` (`nonEmptyOrNil`).
 fn non_empty_or_none(s: String) -> Option<String> {

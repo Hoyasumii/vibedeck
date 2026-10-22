@@ -2,18 +2,18 @@ import Foundation
 
 // MARK: - Agents
 
-public enum NextStepKind: String, Codable, CaseIterable, Sendable {
+enum NextStepKind: String, Codable, CaseIterable, Sendable {
     case agent, command, skill
 }
 
 /// Link in a flow: after this agent/command/skill runs, another VibeDeck agent, command or skill acts on its result.
-public struct NextStep: Codable, Equatable, Sendable {
-    public var kind: NextStepKind
+struct NextStep: Codable, Equatable, Sendable {
+    var kind: NextStepKind
     /// Slug of a VibeDeck agent, command or skill, never of the AI provider's.
-    public var ref: String
-    public var note: String?
+    var ref: String
+    var note: String?
 
-    public init(kind: NextStepKind = .agent, ref: String, note: String? = nil) {
+    init(kind: NextStepKind = .agent, ref: String, note: String? = nil) {
         self.kind = kind
         self.ref = ref
         self.note = note
@@ -21,14 +21,14 @@ public struct NextStep: Codable, Equatable, Sendable {
 
     enum CodingKeys: String, CodingKey { case kind, ref, note }
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         kind = try c.decodeIfPresent(NextStepKind.self, forKey: .kind) ?? .agent
         ref = try c.decode(String.self, forKey: .ref)
         note = try c.decodeIfPresent(String.self, forKey: .note)
     }
 
-    public func encode(to encoder: Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(kind, forKey: .kind)
         try c.encode(ref, forKey: .ref)
@@ -37,22 +37,22 @@ public struct NextStep: Codable, Equatable, Sendable {
 }
 
 /// A file per agent in `.vibedeck/agents/`: name, model, prompt and the next steps that form a flow.
-public struct Agent: Codable, Equatable, Identifiable, Sendable {
-    public var schema: String?
-    public var id: UUID
-    public var title: String
-    public var summary: String?
-    public var model: String?
-    public var providerSettings: [String: AIProviderSettings]?
-    public var tools: [String]
-    public var prompt: String
-    public var nextSteps: [NextStep]
-    public var tags: [String]
-    public var author: Author
-    public var createdAt: Date
-    public var updatedAt: Date
+struct Agent: Codable, Equatable, Identifiable, Sendable {
+    var schema: String?
+    var id: UUID
+    var title: String
+    var summary: String?
+    var model: String?
+    var providerSettings: [String: AIProviderSettings]?
+    var tools: [String]
+    var prompt: String
+    var nextSteps: [NextStep]
+    var tags: [String]
+    var author: Author
+    var createdAt: Date
+    var updatedAt: Date
 
-    public init(
+    init(
         title: String, summary: String? = nil, model: String? = nil, tools: [String] = [], prompt: String = "",
         tags: [String] = [], author: Author = .human, now: Date = .now
     ) {
@@ -75,7 +75,7 @@ public struct Agent: Codable, Equatable, Identifiable, Sendable {
         case schema = "$schema", id, title, summary, model, providerSettings, tools, prompt, nextSteps, tags, author, createdAt, updatedAt
     }
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         schema = try c.decodeIfPresent(String.self, forKey: .schema)
         id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
@@ -92,7 +92,7 @@ public struct Agent: Codable, Equatable, Identifiable, Sendable {
         updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
     }
 
-    public func encode(to encoder: Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encodeIfPresent(schema, forKey: .schema)
         try c.encode(id, forKey: .id)
@@ -167,16 +167,16 @@ enum Frontmatter {
 
 /// Parses a Claude Code agent file: Markdown with YAML frontmatter (`name`, `description`, `model`, `tools`)
 /// whose body is the system prompt. Tolerant of multi-line `|`/`>` descriptions and comma/list `tools`.
-public enum ClaudeAgentFile {
-    public struct Parsed: Equatable, Sendable {
-        public var name: String
-        public var description: String?
-        public var model: String?
-        public var tools: [String]
-        public var prompt: String
+enum ClaudeAgentFile {
+    struct Parsed: Equatable, Sendable {
+        var name: String
+        var description: String?
+        var model: String?
+        var tools: [String]
+        var prompt: String
     }
 
-    public static func parse(_ text: String, fallbackName: String) -> Parsed {
+    static func parse(_ text: String, fallbackName: String) -> Parsed {
         let (fields, body) = Frontmatter.parse(text)
         return Parsed(
             name: Frontmatter.value(fields, "name") ?? fallbackName,
@@ -191,30 +191,30 @@ public enum ClaudeAgentFile {
 // MARK: - Flow (JSON that orchestrates the AI)
 
 /// A VibeDeck agent, command or skill resolved inside a flow.
-public struct AgentFlowNode: Codable, Equatable, Sendable {
-    public var kind: NextStepKind
+struct AgentFlowNode: Codable, Equatable, Sendable {
+    var kind: NextStepKind
     /// Slug of the VibeDeck agent/command/skill.
-    public var ref: String
-    public var title: String
-    public var model: String?
-    public var providerSettings: [String: AIProviderSettings]?
+    var ref: String
+    var title: String
+    var model: String?
+    var providerSettings: [String: AIProviderSettings]?
     /// Commands only: what goes in `$ARGUMENTS`.
-    public var argumentHint: String?
-    public var prompt: String
-    public var next: [AgentFlowStep]
+    var argumentHint: String?
+    var prompt: String
+    var next: [AgentFlowStep]
 }
 
-public struct AgentFlowStep: Codable, Equatable, Sendable {
-    public var kind: NextStepKind
-    public var ref: String
-    public var note: String?
+struct AgentFlowStep: Codable, Equatable, Sendable {
+    var kind: NextStepKind
+    var ref: String
+    var note: String?
     /// Resolved agent/command/skill (nil for cycles already expanded above or missing refs).
-    public var node: AgentFlowNode?
-    public var warning: String?
+    var node: AgentFlowNode?
+    var warning: String?
 }
 
-public enum AgentFlow {
-    public static func build(
+enum AgentFlow {
+    static func build(
         kind: NextStepKind = .agent, from slug: String,
         agents: [(slug: String, agent: Agent)], commands: [(slug: String, command: Command)] = [],
         skills: [(slug: String, skill: Skill)] = []
@@ -258,7 +258,7 @@ public enum AgentFlow {
     }
 
     /// Pretty JSON of the flow, meant to be pasted into / sent in a prompt.
-    public static func json(
+    static func json(
         kind: NextStepKind = .agent, from slug: String,
         agents: [(slug: String, agent: Agent)], commands: [(slug: String, command: Command)] = [],
         skills: [(slug: String, skill: Skill)] = []

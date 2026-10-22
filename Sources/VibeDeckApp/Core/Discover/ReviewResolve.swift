@@ -4,41 +4,41 @@ import Foundation
 /// it, and only then the AI may write. This file holds what doesn't depend on the UI: which items take part,
 /// the prompts, the validated plan, the one-item-at-a-time loop and the check that lets an item reach `done`.
 /// Nothing here removes an item or writes `wontfix`.
-public enum ReviewResolve {
+enum ReviewResolve {
     /// Read-only phase: same tools as `ReviewDiscover`.
-    public static let planTools = ReviewDiscover.tools
+    static let planTools = ReviewDiscover.tools
     /// Questions the AI may ask before it must deliver a plan (one round; the next answer has to be a plan).
-    public static let maxQuestions = 5
+    static let maxQuestions = 5
 
     /// Only `open` and `in_progress` items go to the AI; `done` and `wontfix` are never sent or touched.
-    public static func eligible(_ items: [ReviewItem]) -> [ReviewItem] {
+    static func eligible(_ items: [ReviewItem]) -> [ReviewItem] {
         items.filter { $0.status == .open || $0.status == .inProgress }
     }
 
-    public struct Plan: Decodable, Equatable, Sendable {
-        public var summary: String
-        public var steps: [String]
+    struct Plan: Decodable, Equatable, Sendable {
+        var summary: String
+        var steps: [String]
         /// Project-relative paths the AI expects to change; they scope the check.
-        public var files: [String]
+        var files: [String]
     }
 
-    public struct Question: Equatable, Identifiable, Sendable {
-        public var id: Int
-        public var text: String
+    struct Question: Equatable, Identifiable, Sendable {
+        var id: Int
+        var text: String
     }
 
-    public enum Reply: Equatable, Sendable {
+    enum Reply: Equatable, Sendable {
         case questions([Question])
         case plan(Plan)
     }
 
-    public struct Answered: Equatable, Sendable {
-        public var question: String
-        public var answer: String
-        public init(question: String, answer: String) { self.question = question; self.answer = answer }
+    struct Answered: Equatable, Sendable {
+        var question: String
+        var answer: String
+        init(question: String, answer: String) { self.question = question; self.answer = answer }
     }
 
-    public static let schema = #"""
+    static let schema = #"""
     {"type":"object","properties":{"questions":{"type":"array","items":{"type":"string"}},"summary":{"type":"string"},"steps":{"type":"array","items":{"type":"string"}},"files":{"type":"array","items":{"type":"string"}}},"required":["questions","summary","steps","files"]}
     """#
 
@@ -52,7 +52,7 @@ public enum ReviewResolve {
     /// Validates the AI answer. With questions it is a `.questions` reply (only when `allowQuestions`); otherwise
     /// it needs a summary and at least one step. Malformed JSON, empty fields and paths outside the project throw
     /// `discoverInvalidAnswer` without side effects.
-    public static func parse(_ data: Data, allowQuestions: Bool) throws -> Reply {
+    static func parse(_ data: Data, allowQuestions: Bool) throws -> Reply {
         guard let raw = try? VDJSON.decoder.decode(Raw.self, from: data) else { throw VibeDeckError.discoverInvalidAnswer }
         let questions = (raw.questions ?? []).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
         if !questions.isEmpty {
@@ -86,7 +86,7 @@ public enum ReviewResolve {
     }
 
     /// Planning prompt. Without `answers` the AI may ask questions; with them it must deliver the plan.
-    public static func planPrompt(item: ReviewItem, kind: String, answers: [Answered] = []) -> String {
+    static func planPrompt(item: ReviewItem, kind: String, answers: [Answered] = []) -> String {
         var lines = [
             "Você vai planejar a resolução de um item de revisão do VibeDeck neste repositório (o diretório atual).",
             "Use só leitura e busca. Não altere nada nesta etapa.",
@@ -112,7 +112,7 @@ public enum ReviewResolve {
     }
 
     /// Execution prompt, sent only after the user accepted `plan`.
-    public static func executionPrompt(item: ReviewItem, kind: String, plan: Plan, answers: [Answered] = []) -> String {
+    static func executionPrompt(item: ReviewItem, kind: String, plan: Plan, answers: [Answered] = []) -> String {
         var lines = [
             "Resolva o item de revisão abaixo neste repositório (o diretório atual), seguindo o plano aceito pelo usuário.",
             "", "## Item",
@@ -141,7 +141,7 @@ public enum ReviewResolve {
 
     // MARK: Group loop
 
-    public enum Outcome: Equatable, Sendable {
+    enum Outcome: Equatable, Sendable {
         case resolved
         case failed(String)
         case cancelled
@@ -151,7 +151,7 @@ public enum ReviewResolve {
 
     /// Items one at a time. A failure (thrown error or `.failed`) doesn't stop the next ones nor undo finished
     /// ones; cancellation stops the loop and leaves the remaining items `.skipped`.
-    public static func resolveSequentially(
+    static func resolveSequentially(
         _ items: [ReviewItem], attempt: (ReviewItem) async throws -> Outcome
     ) async -> [(id: ReviewItem.ID, outcome: Outcome)] {
         var results: [(id: ReviewItem.ID, outcome: Outcome)] = []
@@ -175,7 +175,7 @@ public enum ReviewResolve {
 
     /// Roda de novo os scripts das regras do item no Core (`submit_rule_check`), mantendo só a evidência manual desta execução.
     /// Resultado vazio = check aprovado e o chamador pode marcar o item como `done`.
-    public static func verify(
+    static func verify(
         store: CoreStore, item: ReviewItem, files: [String], verifiedSince: Date? = nil, checks: [RuleCheck] = [], topics: [RuleTopic] = []
     ) async -> [String] {
         let recent = checks.first { $0.reviewItem == item.id }

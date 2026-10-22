@@ -203,15 +203,14 @@ struct RuleListEditor: View {
         .sheet(item: $movingRule) { rule in
             NamePromptSheet(title: "Mover regra para grupo", placeholder: "Grupo/subgrupo") { name in
                 let storePath = name
-                guard let group = try? CoreStore(root: URL(fileURLWithPath: "/")).normalizedGroupPath(storePath, allowRoot: true) else { return }
+                guard let group = try? CoreStore.normalizedGroupPath(storePath, allowRoot: true) else { return }
                 update(rule.id, "Mover regra") { $0.group = group.isEmpty ? nil : group }
             }
         }
         .sheet(item: $movingRuleGroup) { p in
             NamePromptSheet(title: "Mover ou renomear grupo de regras", placeholder: "Novo caminho grupo/subgrupo") { destination in
                 do {
-                    let store = CoreStore(root: logProject ?? URL(fileURLWithPath: "/"))
-                    let updated = try store.ruleGroupRenamed(rules, from: p.path, to: destination)
+                    let updated = try CoreStore.ruleGroupRenamed(rules, from: p.path, to: destination)
                     mutate("Mover grupo de regras") { $0 = updated }
                 } catch { groupError = error.localizedDescription }
             }

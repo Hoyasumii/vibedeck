@@ -1,13 +1,13 @@
 import Foundation
 
 /// Graphify node-link JSON. Unknown attributes survive round trips, including provenance.
-public struct ProjectGraph: Sendable {
-    public let value: JSONValue
-    public let nodes: [JSONValue]
-    public let links: [JSONValue]
-    public static let maxBytes = 64 * 1024 * 1024
+struct ProjectGraph: Sendable {
+    let value: JSONValue
+    let nodes: [JSONValue]
+    let links: [JSONValue]
+    static let maxBytes = 64 * 1024 * 1024
 
-    public init(data: Data) throws {
+    init(data: Data) throws {
         guard data.count <= Self.maxBytes else { throw VibeDeckError.graph("O grafo excede 64 MB. Gere um grafo de uma pasta menor.") }
         guard let value = try? VDJSON.decoder.decode(JSONValue.self, from: data) else {
             throw VibeDeckError.graph("JSON inválido. Gere novamente o grafo.")
@@ -24,7 +24,7 @@ public struct ProjectGraph: Sendable {
         self.value = value; self.nodes = nodes; self.links = links
     }
 
-    public static func load(root: URL) throws -> ProjectGraph {
+    static func load(root: URL) throws -> ProjectGraph {
         let url = root.appending(path: "graphify-out/graph.json")
         guard let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize, size <= maxBytes else {
             throw VibeDeckError.graph("O grafo excede 64 MB. Gere um grafo de uma pasta menor.")
@@ -32,7 +32,7 @@ public struct ProjectGraph: Sendable {
         return try ProjectGraph(data: Data(contentsOf: url))
     }
 
-    public static func sourceURL(_ path: String, root: URL) -> URL? {
+    static func sourceURL(_ path: String, root: URL) -> URL? {
         guard !path.isEmpty, !path.contains("\0") else { return nil }
         let base = root.standardizedFileURL.resolvingSymlinksInPath()
         let url = (path.hasPrefix("/") ? URL(fileURLWithPath: path) : base.appending(path: path))
@@ -42,7 +42,7 @@ public struct ProjectGraph: Sendable {
         return url
     }
 
-    public func merging(_ semantic: JSONValue) throws -> ProjectGraph {
+    func merging(_ semantic: JSONValue) throws -> ProjectGraph {
         guard let extraNodes = semantic["nodes"]?.array, let extraLinks = semantic["links"]?.array else {
             throw VibeDeckError.graph("A IA respondeu sem nós e relações. Tente novamente.")
         }
@@ -62,14 +62,14 @@ public struct ProjectGraph: Sendable {
     }
 
     /// Generation metadata records an actual completed operation, never a file's modification date.
-    public func generated(at date: Date, provider: AIProvider) throws -> ProjectGraph {
+    func generated(at date: Date, provider: AIProvider) throws -> ProjectGraph {
         var object = value.object ?? [:]
         object["vibedeck_generated_at"] = .string(date.ISO8601Format())
         object["vibedeck_provider"] = .string(provider.rawValue)
         return try ProjectGraph(data: VDJSON.encode(JSONValue.object(object)))
     }
 
-    public var summary: JSONValue {
+    var summary: JSONValue {
         .object(["nodes": .number(Double(nodes.count)), "links": .number(Double(links.count)),
                  "generatedAt": value["vibedeck_generated_at"] ?? .null,
                  "provider": value["vibedeck_provider"] ?? .null])

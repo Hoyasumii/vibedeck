@@ -1,22 +1,22 @@
 import Foundation
 
-public struct AIImportResult: Sendable {
-    public var slugs: [String] = []
-    public var warnings: [String] = []
-    public init() {}
+struct AIImportResult: Sendable {
+    var slugs: [String] = []
+    var warnings: [String] = []
+    init() {}
 }
 
 /// Reads the string fields used by Codex agent TOML, including multiline basic/literal strings.
 /// Other settings remain in the original file and are never interpreted as VibeDeck permissions.
-public enum CodexAgentFile {
-    public struct Parsed: Equatable, Sendable {
-        public var name: String
-        public var description: String?
-        public var model: String?
-        public var effort: String?
-        public var prompt: String
+enum CodexAgentFile {
+    struct Parsed: Equatable, Sendable {
+        var name: String
+        var description: String?
+        var model: String?
+        var effort: String?
+        var prompt: String
     }
-    public static func parse(_ text: String, fallbackName: String) throws -> Parsed {
+    static func parse(_ text: String, fallbackName: String) throws -> Parsed {
         let wanted: Set<String> = ["name", "description", "model", "model_reasoning_effort", "developer_instructions"]
         let chars = Array(text); var i = 0, fields: [String: String] = [:]
         func skipLine() { while i < chars.count, chars[i] != "\n" { i += 1 } }

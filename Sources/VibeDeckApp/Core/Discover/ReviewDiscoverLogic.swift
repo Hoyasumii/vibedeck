@@ -3,16 +3,16 @@ import Foundation
 /// "Descubra" in a review item: asks Claude Code, with read-only tools, where the item lives in the code and
 /// which rule topics it touches, then turns the answer into a proposal the user accepts field by field.
 /// Nothing here writes: `ReviewDiscoverProposal.apply` is the only way the answer reaches an item.
-public enum ReviewDiscover {
+enum ReviewDiscover {
     /// Tools the call may use. Anything else (Edit, Write, Bash, MCP servers) is unavailable.
-    public static let tools = ["Read", "Grep", "Glob"]
+    static let tools = ["Read", "Grep", "Glob"]
 
-    public static let timeout: Duration = .seconds(180)
+    static let timeout: Duration = .seconds(180)
 
-    public enum Field: String, CaseIterable, Codable, Sendable {
+    enum Field: String, CaseIterable, Codable, Sendable {
         case file, route, component, selector
 
-        public var label: String {
+        var label: String {
             switch self {
             case .file: "Arquivo"
             case .route: "Rota / tela"
@@ -21,7 +21,7 @@ public enum ReviewDiscover {
             }
         }
 
-        public var keyPath: WritableKeyPath<ReviewTarget, String?> {
+        var keyPath: WritableKeyPath<ReviewTarget, String?> {
             switch self {
             case .file: \.file
             case .route: \.route
@@ -32,36 +32,36 @@ public enum ReviewDiscover {
     }
 
     /// What Claude answers, enforced by `--json-schema`.
-    public struct Answer: Decodable, Equatable, Sendable {
-        public struct FieldSuggestion: Decodable, Equatable, Sendable {
-            public var field: Field
-            public var value: String
-            public var reason: String?
+    struct Answer: Decodable, Equatable, Sendable {
+        struct FieldSuggestion: Decodable, Equatable, Sendable {
+            var field: Field
+            var value: String
+            var reason: String?
         }
 
-        public struct TopicSuggestion: Decodable, Equatable, Sendable {
-            public var slug: String
-            public var reason: String?
+        struct TopicSuggestion: Decodable, Equatable, Sendable {
+            var slug: String
+            var reason: String?
         }
 
-        public var fields: [FieldSuggestion]
-        public var rules: [TopicSuggestion]
+        var fields: [FieldSuggestion]
+        var rules: [TopicSuggestion]
 
-        public init(fields: [FieldSuggestion] = [], rules: [TopicSuggestion] = []) {
+        init(fields: [FieldSuggestion] = [], rules: [TopicSuggestion] = []) {
             self.fields = fields
             self.rules = rules
         }
 
         enum CodingKeys: String, CodingKey { case fields, rules }
 
-        public init(from decoder: Decoder) throws {
+        init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             fields = try c.decodeIfPresent([FieldSuggestion].self, forKey: .fields) ?? []
             rules = try c.decodeIfPresent([TopicSuggestion].self, forKey: .rules) ?? []
         }
     }
 
-    public static let schema = #"""
+    static let schema = #"""
     {"type":"object","properties":{"fields":{"type":"array","items":{"type":"object","properties":{"field":{"type":"string","enum":["file","route","component","selector"]},"value":{"type":"string"},"reason":{"type":"string"}},"required":["field","value","reason"]}},"rules":{"type":"array","items":{"type":"object","properties":{"slug":{"type":"string"},"reason":{"type":"string"}},"required":["slug","reason"]}}},"required":["fields","rules"]}
     """#
 
@@ -69,7 +69,7 @@ public enum ReviewDiscover {
 
     /// `claude -p` arguments; the prompt goes on stdin (the variadic `--tools` would swallow a trailing one).
     /// `--strict-mcp-config` without a config leaves out every MCP server, the project's own included.
-    public static func arguments() -> [String] {
+    static func arguments() -> [String] {
         let tools = tools.joined(separator: ",")
         return [
             "-p", "--output-format", "json", "--json-schema", schema,
@@ -80,13 +80,13 @@ public enum ReviewDiscover {
     }
 
     /// Topics worth suggesting: global ones, linked ones and those matching the item's file already apply.
-    public static func candidateTopics(_ topics: [(slug: String, topic: RuleTopic)], item: ReviewItem) -> [(slug: String, topic: RuleTopic)] {
+    static func candidateTopics(_ topics: [(slug: String, topic: RuleTopic)], item: ReviewItem) -> [(slug: String, topic: RuleTopic)] {
         topics.filter { slug, topic in
             !topic.isGlobal && !item.rules.contains(slug) && !(item.target?.file.map(topic.matches(file:)) ?? false)
         }
     }
 
-    public static func prompt(item: ReviewItem, kind: String, topics: [(slug: String, topic: RuleTopic)]) -> String {
+    static func prompt(item: ReviewItem, kind: String, topics: [(slug: String, topic: RuleTopic)]) -> String {
         var lines = [
             "Você está preenchendo um item de revisão do VibeDeck neste repositório (o diretório atual).",
             "Use leitura e busca para encontrar no código onde o item se aplica. Não altere nada.",
@@ -121,7 +121,7 @@ public enum ReviewDiscover {
 
     /// Reads the `--output-format json` result from stdout. Throws without touching anything when the call
     /// failed or the answer doesn't decode.
-    public static func parse(_ output: Data) throws -> Answer {
+    static func parse(_ output: Data) throws -> Answer {
         let text = String(decoding: output, as: UTF8.self)
         let result = text.split(whereSeparator: \.isNewline).reversed().lazy
             .compactMap { try? JSONDecoder().decode(JSONValue.self, from: Data($0.utf8)) }
@@ -144,7 +144,7 @@ public enum ReviewDiscover {
 
     /// Keeps only what can be applied safely: existing files inside the project, known topic slugs not
     /// already on the item, and values that differ from the current ones.
-    public static func proposal(
+    static func proposal(
         _ answer: Answer, item: ReviewItem, topics: [(slug: String, topic: RuleTopic)], store: CoreStore
     ) -> ReviewDiscoverProposal {
         var proposal = ReviewDiscoverProposal()
@@ -193,38 +193,38 @@ public enum ReviewDiscover {
 }
 
 /// Validated suggestions waiting for the user's choice.
-public struct ReviewDiscoverProposal: Equatable, Sendable {
-    public struct FieldChange: Equatable, Identifiable, Sendable {
-        public var field: ReviewDiscover.Field
+struct ReviewDiscoverProposal: Equatable, Sendable {
+    struct FieldChange: Equatable, Identifiable, Sendable {
+        var field: ReviewDiscover.Field
         /// Value the item has now; non-nil means accepting replaces it.
-        public var current: String?
-        public var suggested: String
-        public var reason: String?
-        public var id: ReviewDiscover.Field { field }
-        public var replaces: Bool { current != nil }
+        var current: String?
+        var suggested: String
+        var reason: String?
+        var id: ReviewDiscover.Field { field }
+        var replaces: Bool { current != nil }
     }
 
-    public struct TopicAddition: Equatable, Identifiable, Sendable {
-        public var slug: String
-        public var title: String
-        public var reason: String?
-        public var id: String { slug }
+    struct TopicAddition: Equatable, Identifiable, Sendable {
+        var slug: String
+        var title: String
+        var reason: String?
+        var id: String { slug }
     }
 
-    public var fields: [FieldChange] = []
-    public var topics: [TopicAddition] = []
+    var fields: [FieldChange] = []
+    var topics: [TopicAddition] = []
     /// Suggestions dropped by validation, shown so the user knows they existed.
-    public var discarded: [String] = []
+    var discarded: [String] = []
 
-    public init() {}
+    init() {}
 
-    public var isEmpty: Bool { fields.isEmpty && topics.isEmpty }
+    var isEmpty: Bool { fields.isEmpty && topics.isEmpty }
 
     /// Fields that start checked: empty ones. Replacing a value is opt-in.
-    public var defaultFields: Set<ReviewDiscover.Field> { Set(fields.filter { !$0.replaces }.map(\.field)) }
+    var defaultFields: Set<ReviewDiscover.Field> { Set(fields.filter { !$0.replaces }.map(\.field)) }
 
     /// Writes the chosen fields and appends the chosen topics. Topics are only ever added.
-    public func apply(fields chosen: Set<ReviewDiscover.Field>, topics chosenTopics: Set<String>, to item: inout ReviewItem) {
+    func apply(fields chosen: Set<ReviewDiscover.Field>, topics chosenTopics: Set<String>, to item: inout ReviewItem) {
         var target = item.target ?? ReviewTarget()
         for change in fields where chosen.contains(change.field) {
             target[keyPath: change.field.keyPath] = change.suggested

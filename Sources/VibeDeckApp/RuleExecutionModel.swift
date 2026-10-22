@@ -30,7 +30,8 @@ final class RuleExecutionModel {
     let id = UUID()
     let started: Date
     let concurrency: Int
-    let cancellation = ShellCancellation()
+    /// Cancelar para de esperar e descarta o resultado; o Core termina o que já começou (PEDIDO-CORE: cancelamento por requisição).
+    var onCancel: (() -> Void)?
     private(set) var cancelled = false
     let withAI: Bool
     let provider: AIProvider
@@ -79,7 +80,7 @@ final class RuleExecutionModel {
     func cancel() {
         guard active, !cancelled else { return }
         cancelled = true
-        cancellation.cancel()
+        onCancel?()
     }
 
     /// Closes an interrupted execution: steps that never started are marked as not executed, none stays running.
@@ -133,19 +134,26 @@ final class RuleExecutionModel {
     }
 }
 
+/// Uma linha de `run_rule_tests`.
+private struct ScriptRow: Decodable {
+    var topic: String
+    var ruleId: UUID
+    var command: String
+    var verdict: RuleVerdict
+    var exitCode: Int32
+    var output: String
+}
+
 extension ProjectModel {
+    /// Roda os scripts das regras no Core (`run_rule_tests`: uma chamada, sem progresso por regra) e, com IA, verifica as
+    /// regras manuais por tópico e grava o check (`submit_rule_check`).
     func startRuleExecution(topic: String? = nil, withAI: Bool = false, provider: AIProvider = .claude,
-                            runner: RuleTestRunner = .live, concurrency: Int? = RuleExecutionModel.configuredConcurrency,
+                            concurrency: Int? = RuleExecutionModel.configuredConcurrency,
                             providerAvailable: (AIProvider) -> Bool = { $0.isInstalled },
                             verify: @escaping @MainActor (URL, AIProvider, RuleTopic, String, [Rule], [RuleResult]) async throws -> [RuleResult] = RuleVerificationAI.run) {
         guard ruleExecution?.active != true, !isGeneratingTests, runningTests.isEmpty else { return }
         guard !withAI || RemoteWorkspace.existing(at: store.root) != nil || providerAvailable(provider) else { errorMessage = "\(provider.title) não está instalado."; return }
-        do { try RemoteWorkspace.existing(at: store.root)?.requireSynchronized() }
-        catch { errorMessage = error.localizedDescription; return }
-        let snapshot: [(slug: String, topic: RuleTopic)]
-        do {
-            snapshot = try store.listTopics().filter { topic == nil || $0.slug == topic }
-        } catch { errorMessage = error.localizedDescription; return }
+        let snapshot: [(slug: String, topic: RuleTopic)] = topics.filter { topic == nil || $0.slug == topic }.map { (slug: $0.slug, topic: $0.value) }
         let execution = RuleExecutionModel(snapshot: snapshot, withAI: withAI, provider: provider, root: store.root, concurrency: concurrency)
         ruleExecution = execution
         guard !execution.steps.isEmpty else {
@@ -155,30 +163,34 @@ extension ProjectModel {
         }
         runningTests = Set(snapshot.map(\.slug) + ["*"])
         let store = store
-        Task {
+        let work = Task {
             defer { runningTests = []; execution.ended = .now }
-            let concurrency = execution.concurrency
-            let cancellation = execution.cancellation
-            let events = AsyncStream<RuleScriptEvent> { continuation in
-                VDLog.detached {
-                    _ = store.runRuleScripts(snapshot: snapshot, runner: runner, concurrency: concurrency,
-                                             cancellation: cancellation, stopOnMustFailure: true) { continuation.yield($0) }
-                    continuation.finish()
-                }
-            }
-            // Scripts run in parallel: several steps can be running at once, each with its own start and end.
-            for await event in events {
-                switch event {
-                case .started(_, let rule, let date): execution.begin([rule.id], now: date)
-                case .finished(let run, let date):
+            let scriptIDs = execution.steps.filter { !$0.ai }.map(\.id)
+            if !scriptIDs.isEmpty {
+                execution.begin(scriptIDs)
+                do {
+                    let reply = try await store.call("run_rule_tests", ["topics": snapshot.map(\.slug)], timeout: 1800)
+                    var rows: [ScriptRow] = []
+                    if reply.hasPrefix("[") { rows = try CoreStore.decode([ScriptRow].self, from: reply, what: "run_rule_tests") }
                     if execution.cancelled {
-                        execution.finish([run.rule.id], error: "Cancelado.", now: date)
-                        continue
+                        execution.finish(scriptIDs, error: "Cancelado.")
+                        execution.interrupt("Execução cancelada. Nada foi salvo.")
+                        return
                     }
-                    testRuns[run.rule.id] = run.outcome
-                    execution.finish([run.rule.id], results: [RuleResult(topic: run.topic, ruleId: run.rule.id,
-                        verdict: run.outcome.verdict, note: "\(run.command) (exit \(run.outcome.exitCode))\n\(run.outcome.output)",
-                        source: .script, exitCode: run.outcome.exitCode)], now: date)
+                    for row in rows {
+                        let outcome = RuleTestOutcome(verdict: row.verdict, exitCode: row.exitCode, output: row.output)
+                        testRuns[row.ruleId] = outcome
+                        execution.finish([row.ruleId], results: [RuleResult(topic: row.topic, ruleId: row.ruleId,
+                            verdict: row.verdict, note: "\(row.command) (exit \(row.exitCode))\n\(row.output)",
+                            source: .script, exitCode: row.exitCode)])
+                    }
+                    // Scripts sem linha de resultado (stale ou sem script no Core) não ficam rodando para sempre.
+                    let answered = Set(rows.map(\.ruleId))
+                    execution.finish(scriptIDs.filter { !answered.contains($0) }, error: "Sem resultado do Core.")
+                } catch {
+                    execution.finish(scriptIDs, error: error.localizedDescription)
+                    execution.interrupt(error.localizedDescription)
+                    return
                 }
             }
             // The AI verification only starts after every script ended, and never after an interruption.
@@ -218,7 +230,17 @@ extension ProjectModel {
                 }
                 do {
                     guard execution.steps.allSatisfy({ $0.result != nil && $0.error == nil }) else { throw RuleExecutionError.incomplete }
-                    try store.completeRuleExecution(snapshot: snapshot, results: execution.steps.compactMap(\.result))
+                    var answers: [[String: Any]] = []
+                    for result in execution.steps.compactMap(\.result) where result.source != .script {
+                        var entry: [String: Any] = ["ruleId": result.ruleId.uuidString, "verdict": result.verdict.rawValue]
+                        if let note = result.note { entry["note"] = note }
+                        answers.append(entry)
+                    }
+                    // O Core roda os scripts de novo ao gravar o check; as respostas da IA entram como manuais.
+                    _ = try await store.call("submit_rule_check", [
+                        "task": "Verificação das regras no app", "topics": snapshot.map(\.slug),
+                        "results": answers, "verify_manual": true,
+                    ], timeout: 1800)
                     execution.saved = true
                     execution.message = "Verificação salva no histórico."
                     reloadChecks()
@@ -227,5 +249,6 @@ extension ProjectModel {
                 execution.message = "Scripts concluídos. \(execution.omitted) regra(s) precisam de IA."
             }
         }
+        execution.onCancel = { work.cancel() }
     }
 }

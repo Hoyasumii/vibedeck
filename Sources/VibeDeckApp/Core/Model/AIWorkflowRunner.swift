@@ -1,22 +1,22 @@
 import Foundation
 
 /// A durable result separates completing a step from judging its conditional transitions.
-public struct WorkflowStepCheckpoint: Codable, Equatable, Sendable {
-    public var step: String
-    public var verdict: String?
-    public var output: String
-    public var completed: Bool
-    public init(step: String, verdict: String? = nil, output: String, completed: Bool) {
+struct WorkflowStepCheckpoint: Codable, Equatable, Sendable {
+    var step: String
+    var verdict: String?
+    var output: String
+    var completed: Bool
+    init(step: String, verdict: String? = nil, output: String, completed: Bool) {
         self.step = step; self.verdict = verdict; self.output = output; self.completed = completed
     }
 }
 
 /// Both providers execute the same persisted state machine. The host supplies only AI calls and UI events.
-@MainActor public enum AIWorkflowRunner {
-    public typealias Execute = (String, AIProviderSettings, String) async throws -> String
-    public typealias Decide = (String, [WorkflowTransition]) async throws -> String?
+@MainActor enum AIWorkflowRunner {
+    typealias Execute = (String, AIProviderSettings, String) async throws -> String
+    typealias Decide = (String, [WorkflowTransition]) async throws -> String?
 
-    public static func run(ref: String, store: CoreStore, cli: String = "vibedeck",
+    static func run(ref: String, store: CoreStore, cli: String = "vibedeck",
                            settings: (String) async throws -> AIProviderSettings,
                            execute: Execute, decide: Decide,
                            onAction: (WorkflowRunAction) -> Void = { _ in }) async throws -> WorkflowRunAction {

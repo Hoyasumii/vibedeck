@@ -1,19 +1,19 @@
 import Foundation
 
 /// One entry of the composer's autocomplete list.
-public struct ClaudeSuggestion: Identifiable, Equatable, Sendable {
-    public enum Kind: Equatable, Sendable { case command, file, chat }
+struct ClaudeSuggestion: Identifiable, Equatable, Sendable {
+    enum Kind: Equatable, Sendable { case command, file, chat }
 
-    public var kind: Kind
+    var kind: Kind
     /// Text shown and inserted (`/review`, `Sources/App.swift`).
-    public var name: String
-    public var detail: String?
+    var name: String
+    var detail: String?
     /// Chats only.
-    public var chatId: UUID?
+    var chatId: UUID?
 
-    public var id: String { "\(kind)-\(name)-\(chatId?.uuidString ?? "")" }
+    var id: String { "\(kind)-\(name)-\(chatId?.uuidString ?? "")" }
 
-    public init(kind: Kind, name: String, detail: String? = nil, chatId: UUID? = nil) {
+    init(kind: Kind, name: String, detail: String? = nil, chatId: UUID? = nil) {
         self.kind = kind
         self.name = name
         self.detail = detail
@@ -22,18 +22,18 @@ public struct ClaudeSuggestion: Identifiable, Equatable, Sendable {
 }
 
 /// What the cursor is completing: a `/command` at the start of the draft or an `@mention` of the last word.
-public struct ClaudeTrigger: Equatable, Sendable {
-    public enum Kind: Equatable, Sendable { case command, mention }
+struct ClaudeTrigger: Equatable, Sendable {
+    enum Kind: Equatable, Sendable { case command, mention }
 
-    public var kind: Kind
-    public var query: String
+    var kind: Kind
+    var query: String
     /// Characters of the draft the accepted suggestion replaces (the `/` or `@` included).
-    public var range: Range<String.Index>
+    var range: Range<String.Index>
 }
 
-public enum ClaudeCompletion {
+enum ClaudeCompletion {
     /// Commands that work in headless mode, shown even before the session reports its own list.
-    public static let builtinCommands: [(name: String, detail: String)] = [
+    static let builtinCommands: [(name: String, detail: String)] = [
         ("clear", "Apaga esta conversa e começa do zero"),
         ("compact", "Resume a conversa para liberar contexto"),
         ("context", "Mostra o uso da janela de contexto"),
@@ -46,7 +46,7 @@ public enum ClaudeCompletion {
     // MARK: Trigger
 
     /// `/` only counts while the draft is a single word; `@` counts on the last word, at the start or after a space.
-    public static func trigger(in draft: String) -> ClaudeTrigger? {
+    static func trigger(in draft: String) -> ClaudeTrigger? {
         if draft.hasPrefix("/"), !draft.contains(where: \.isWhitespace) {
             return ClaudeTrigger(kind: .command, query: String(draft.dropFirst()), range: draft.startIndex..<draft.endIndex)
         }
@@ -61,7 +61,7 @@ public enum ClaudeCompletion {
 
     /// Case-insensitive match score (higher is better); nil when `query` doesn't match. Prefix and
     /// file-name matches beat plain subsequences.
-    public static func score(_ candidate: String, query: String) -> Int? {
+    static func score(_ candidate: String, query: String) -> Int? {
         if query.isEmpty { return 0 }
         let c = candidate.lowercased(), q = query.lowercased()
         let base = (c as NSString).lastPathComponent
@@ -76,7 +76,7 @@ public enum ClaudeCompletion {
         return 100 - c.count
     }
 
-    public static func rank(_ items: [ClaudeSuggestion], query: String, limit: Int = 8) -> [ClaudeSuggestion] {
+    static func rank(_ items: [ClaudeSuggestion], query: String, limit: Int = 8) -> [ClaudeSuggestion] {
         let scored = items.compactMap { item in score(item.name, query: query).map { (item, $0) } }
         return scored.sorted { $0.1 > $1.1 }.prefix(limit).map(\.0)
     }
@@ -84,7 +84,7 @@ public enum ClaudeCompletion {
     // MARK: Commands
 
     /// Built-ins, the session's reported commands (plugins included), and the custom commands and skills found on disk.
-    public static func commands(root: URL, home: URL = FileManager.default.homeDirectoryForCurrentUser, reported: [String] = []) -> [ClaudeSuggestion] {
+    static func commands(root: URL, home: URL = FileManager.default.homeDirectoryForCurrentUser, reported: [String] = []) -> [ClaudeSuggestion] {
         var found: [String: String?] = [:]
         for (name, detail) in builtinCommands { found[name] = detail }
         for name in reported where found[name] == nil { found[name] = .some(nil) }
@@ -137,7 +137,7 @@ public enum ClaudeCompletion {
     static let skippedDirectories: Set<String> = [".git", "node_modules", ".build", "build", "DerivedData", ".swiftpm", "dist", ".next", "Pods", "__pycache__", ".venv", "target"]
 
     /// Relative paths of the project's files (and folders, with a trailing `/`), without build/dependency output.
-    public static func projectFiles(root: URL, limit: Int = 8000) -> [String] {
+    static func projectFiles(root: URL, limit: Int = 8000) -> [String] {
         let fm = FileManager.default
         guard let walker = fm.enumerator(atPath: root.path) else { return [] }
         var out: [String] = []
@@ -158,7 +158,7 @@ public enum ClaudeCompletion {
 
 // MARK: - Terminal commands
 
-public enum ShellCommand {
+enum ShellCommand {
     /// Programs that take over the screen or wait for keyboard input, so `!` can't capture their output.
     static let interactivePrograms: Set<String> = [
         "vi", "vim", "nvim", "nano", "emacs", "pico", "micro", "hx",
@@ -169,7 +169,7 @@ public enum ShellCommand {
     static let repls: Set<String> = ["python", "python3", "node", "irb", "ruby", "swift", "bash", "zsh", "sh", "fish", "psql", "mysql", "sqlite3", "redis-cli"]
 
     /// Whether `command` needs a real terminal (pty) instead of having its output captured.
-    public static func isInteractive(_ command: String) -> Bool {
+    static func isInteractive(_ command: String) -> Bool {
         let words = command.split(whereSeparator: \.isWhitespace).map(String.init)
         // Skip env assignments and wrappers like `sudo`.
         guard let index = words.firstIndex(where: { !$0.contains("=") && $0 != "sudo" && $0 != "env" && $0 != "exec" }) else { return false }

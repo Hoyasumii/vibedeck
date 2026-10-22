@@ -484,7 +484,7 @@ pub fn read_tool_specs() -> Value {
     ])
 }
 
-pub use crate::ideas::{glob_matches, project_files};
+pub use crate::rules::{glob_matches, project_files};
 
 fn invalid(message: impl Into<String>) -> AiError {
     AiError::DiscoverFailed(message.into())

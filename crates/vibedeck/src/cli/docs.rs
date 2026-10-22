@@ -13,6 +13,7 @@ use vibedeck_core::docs::error::DocError;
 use vibedeck_core::docs::groups::{self as grp, ItemConcept};
 use vibedeck_core::docs::{self, DocInfo};
 use vibedeck_core::model::Author;
+use vibedeck_core::project::links::hashtags;
 
 impl From<DocError> for CliError {
     fn from(e: DocError) -> Self {
@@ -134,14 +135,6 @@ pub enum GroupsCommand {
     },
 }
 
-fn hashtags(tags: &[String]) -> String {
-    if tags.is_empty() {
-        String::new()
-    } else {
-        format!("  #{}", tags.join(" #"))
-    }
-}
-
 fn list(ctx: &Context, json: bool) -> Result<i32, CliError> {
     let store = ctx.store()?;
     let listing = docs::list_docs_detailed(&store)?;
@@ -153,7 +146,12 @@ fn list(ctx: &Context, json: bool) -> Result<i32, CliError> {
         print_json(&rows)?;
     } else {
         for d in &listing.docs {
-            println!("{}\t{}{}", d.slug, d.title, hashtags(&d.tags));
+            let link = match &d.link {
+                None => String::new(),
+                Some(l) if l.broken => format!(" → {} (vínculo quebrado)", l.target),
+                Some(l) => format!(" → {}", l.target),
+            };
+            println!("{}\t{}{}{}", d.slug, d.title, hashtags(&d.tags), link);
         }
     }
     Ok(0)

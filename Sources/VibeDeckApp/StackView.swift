@@ -190,12 +190,15 @@ struct StackView: View {
     }
 
     private func copyBadge() {
-        let service = StackService(store: model.store)
+        let store = model.store
         Task {
             do {
-                guard let badge = try await service.badge() else { return }
+                let reply = try await store.call("list_stack", idempotent: true)
+                guard let data = reply.data(using: .utf8),
+                      let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let url = object["badge"] as? String else { return }
                 NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(badge.markdown, forType: .string)
+                NSPasteboard.general.setString("![Stack](" + url + ")", forType: .string)
                 copied = true
                 try? await Task.sleep(for: .seconds(1.5))
                 copied = false

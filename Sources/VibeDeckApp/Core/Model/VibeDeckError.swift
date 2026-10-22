@@ -1,6 +1,6 @@
 import Foundation
 
-public enum VibeDeckError: LocalizedError, Equatable {
+enum VibeDeckError: LocalizedError, Equatable {
     case notAProject(String)
     case alreadyAProject(String)
     case docNotFound(String)
@@ -50,7 +50,7 @@ public enum VibeDeckError: LocalizedError, Equatable {
     case invalidLogFilter(String)
     case logUnavailable(String)
 
-    public var errorDescription: String? {
+    var errorDescription: String? {
         switch self {
         case .notAProject(let p): "Nenhum vibedeck.json encontrado em \(p) ou diretórios acima. Rode `vibedeck init`."
         case .alreadyAProject(let p): "\(p) já contém um vibedeck.json."

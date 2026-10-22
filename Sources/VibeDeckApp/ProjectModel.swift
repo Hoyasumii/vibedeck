@@ -1053,6 +1053,7 @@ final class ProjectModel {
         guard !jobs.isEmpty else { return }
         generatingTests = Dictionary(uniqueKeysWithValues: jobs.map { ($0.slug, .queued) })
         let root = store.root
+        let store = store
         generationTask = Task {
             await withTaskGroup(of: (String, String?).self) { group in
                 var queue = jobs[...]
@@ -1063,7 +1064,7 @@ final class ProjectModel {
                         active += 1
                         group.addTask {
                             do {
-                                try await RuleTestGenerator.run(root: root, prompt: job.prompt, provider: provider,
+                                try await RuleTestGenerator.run(root: root, store: store, prompt: job.prompt, provider: provider,
                                     operation: "Gerar testes · " + job.slug, topic: job.slug, expectedRules: job.rules)
                                 return (job.slug, nil)
                             }
@@ -2024,5 +2025,15 @@ extension ProjectModel {
         for (old, new) in moved { current[old] = new }
         latestPathMoves = current
         moveRevision += 1
+    }
+}
+
+extension ProjectModel {
+    /// Globs da ideia que já não casam com nenhum arquivo do projeto (renomeado ou apagado desde a sugestão).
+    /// Só projetos locais: em SSH a lista de arquivos não está disponível e nada é considerado obsoleto.
+    func unmatchedIdeaPaths(_ slug: String) -> [String] {
+        guard let idea = idea(slug), !idea.paths.isEmpty, !store.isRemote else { return [] }
+        let files = ClaudeCompletion.projectFiles(root: store.root, limit: RuleDiscover.fileLimit).filter { !$0.hasSuffix("/") }
+        return idea.paths.filter { glob in !files.contains { Glob.matches(glob, path: $0) } }
     }
 }

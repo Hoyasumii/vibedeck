@@ -22,7 +22,7 @@ pub use execution::{
     RuleExecutionTimings, RuleScriptEvent, RuleTestOutcome, RuleTestRun, RuleTestRunner,
     RuleVerificationAnswer, RunContext, RunOptions, script_concurrency,
 };
-pub use glob::matches as glob_matches;
+pub use glob::{matches as glob_matches, project_files};
 pub use hook::{
     HookAgent, HookScope, has_stop_hook, hook_file, install_stop_hook, uninstall_stop_hook,
 };
@@ -40,6 +40,6 @@ pub use tasks::{
 };
 pub use topics::{
     add_rule, applicable_topics, clear_rule_test, create_topic, delete_rule, delete_topic,
-    find_review_item, find_rule, list_topics, load_topic, move_rule_to_group, relative_path,
-    rename_rule_group, resolve_topic_slug, save_topic, set_rule_test, update_rule, update_topic,
+    find_review_item, find_rule, list_topics, load_topic, relative_path, relative_to_root,
+    resolve_topic_slug, save_topic, set_rule_test, update_rule, update_topic,
 };

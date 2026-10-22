@@ -5,6 +5,7 @@ use std::fs;
 
 use vibedeck_core::ideas::*;
 use vibedeck_core::model::*;
+use vibedeck_core::rules::{RuleExt, RuleTestState, project_files};
 use vibedeck_core::{Error, Record, Store};
 
 fn fresh() -> (tempfile::TempDir, Store) {
@@ -445,18 +446,18 @@ fn detail_json_has_derived_fields() {
 fn hashes_match_swift_algorithm() {
     // sha256("texto\n")[..8]
     let mut r = Rule::new("texto");
-    assert_eq!(rule_content_hash(&r), "ebbc029320093605");
-    assert_eq!(rule_test_state(&r), RuleTestState::None);
+    assert_eq!(r.content_hash(), "ebbc029320093605");
+    assert_eq!(r.test_state(), RuleTestState::None);
     r.test = Some(RuleTest {
         mode: RuleTestMode::Script,
         command: Some("true".into()),
         reason: None,
-        rule_hash: rule_content_hash(&r),
+        rule_hash: r.content_hash(),
         generated_at: Timestamp::now(),
     });
-    assert_eq!(rule_test_state(&r), RuleTestState::Script);
+    assert_eq!(r.test_state(), RuleTestState::Script);
     r.text = "mudou".into();
-    assert_eq!(rule_test_state(&r), RuleTestState::Stale);
+    assert_eq!(r.test_state(), RuleTestState::Stale);
 
     // sha256 de título, corpo, globs e regras unidos por "\n\u{1F}\n"
     let mut i = Idea::new("T");

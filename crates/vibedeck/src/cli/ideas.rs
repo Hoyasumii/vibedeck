@@ -5,10 +5,10 @@
 use std::collections::HashSet;
 
 use clap::{Args, Subcommand, ValueEnum};
-use vibedeck_core::ideas::{
-    GroupedIdea, IdeaStatusExt, RuleTestState, group_path, rule_test_state,
-};
+use vibedeck_core::ideas::{GroupedIdea, IdeaStatusExt, group_path};
 use vibedeck_core::model::{Author, Idea, IdeaStatus, Rule, RuleSeverity};
+use vibedeck_core::project::links::hashtags;
+use vibedeck_core::rules::{RuleExt, RuleTestState};
 
 use super::output::print_json;
 use super::{CliError, Context};
@@ -252,14 +252,6 @@ fn msg(e: vibedeck_core::ideas::IdeaError) -> CliError {
     CliError::new(e.to_string())
 }
 
-fn hashtags(tags: &[String]) -> String {
-    if tags.is_empty() {
-        String::new()
-    } else {
-        format!("  #{}", tags.join(" #"))
-    }
-}
-
 fn list(ctx: &Context, args: ListArgs) -> Result<i32, CliError> {
     let store = ctx.store()?;
     let wanted: Option<IdeaStatus> = args.status.map(Into::into);
@@ -300,7 +292,7 @@ fn print_rules(rules: &[Rule], indent: &str) {
         } else {
             "○"
         };
-        let test = match rule_test_state(r) {
+        let test = match r.test_state() {
             RuleTestState::None => String::new(),
             RuleTestState::Script => format!(
                 "  ⚙ {}",

@@ -4,20 +4,20 @@ import Foundation
 
 /// A code pattern the project follows (TDD, hexagonal architecture, CQRS…), kept in `vibedeck.json` under `patterns`.
 /// Its rules live in a real rule topic (`topic`, with `sourcePattern` pointing back), so `rules_for` enforces them.
-public struct ProjectPattern: Codable, Equatable, Hashable, Identifiable, Sendable {
+struct ProjectPattern: Codable, Equatable, Hashable, Identifiable, Sendable {
     /// Catalog id (`tdd`, `hexagonal`) or the slug of a custom pattern's name.
-    public var id: String
-    public var name: String
-    public var category: String?
-    public var summary: String?
+    var id: String
+    var name: String
+    var category: String?
+    var summary: String?
     /// How the project applies it ("hexagonal só no Core; a UI fala com casos de uso"); goes into the topic description.
-    public var note: String?
+    var note: String?
     /// Slug of the rule topic that enforces the pattern.
-    public var topic: String?
-    public var tags: [String]
-    public var author: Author
+    var topic: String?
+    var tags: [String]
+    var author: Author
 
-    public init(id: String, name: String, category: String? = nil, summary: String? = nil, note: String? = nil, topic: String? = nil, tags: [String] = [], author: Author = .human) {
+    init(id: String, name: String, category: String? = nil, summary: String? = nil, note: String? = nil, topic: String? = nil, tags: [String] = [], author: Author = .human) {
         self.id = id
         self.name = name
         self.category = category
@@ -30,7 +30,7 @@ public struct ProjectPattern: Codable, Equatable, Hashable, Identifiable, Sendab
 
     enum CodingKeys: String, CodingKey { case id, name, category, summary, note, topic, tags, author }
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(String.self, forKey: .id)
         name = try c.decodeIfPresent(String.self, forKey: .name) ?? id
@@ -42,7 +42,7 @@ public struct ProjectPattern: Codable, Equatable, Hashable, Identifiable, Sendab
         author = try c.decodeIfPresent(Author.self, forKey: .author) ?? .human
     }
 
-    public func encode(to encoder: Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(id, forKey: .id)
         try c.encode(name, forKey: .name)
@@ -55,16 +55,16 @@ public struct ProjectPattern: Codable, Equatable, Hashable, Identifiable, Sendab
     }
 
     /// Description of the pattern's rule topic: what the pattern is, plus the project's note.
-    public var topicDescription: String {
+    var topicDescription: String {
         let parts = [summary?.trimmed.nonEmpty, note?.trimmed.nonEmpty.map { "No projeto: \($0)" }].compactMap { $0 }
         return (parts.isEmpty ? ["Padrão de projeto \(name)."] : parts).joined(separator: "\n\n")
     }
 }
 
-public enum PatternCategory {
-    public static let all = ["practices", "architecture", "domain", "design", "custom"]
+enum PatternCategory {
+    static let all = ["practices", "architecture", "domain", "design", "custom"]
 
-    public static func label(_ id: String?) -> String {
+    static func label(_ id: String?) -> String {
         switch id {
         case "practices": "Práticas"
         case "architecture": "Arquitetura"
@@ -78,12 +78,12 @@ public enum PatternCategory {
 }
 
 /// A rule a catalog pattern brings to its topic.
-public struct PatternRule: Codable, Equatable, Hashable, Sendable {
-    public var text: String
-    public var details: String?
-    public var severity: RuleSeverity
+struct PatternRule: Codable, Equatable, Hashable, Sendable {
+    var text: String
+    var details: String?
+    var severity: RuleSeverity
 
-    public init(_ text: String, _ details: String? = nil, severity: RuleSeverity = .must) {
+    init(_ text: String, _ details: String? = nil, severity: RuleSeverity = .must) {
         self.text = text
         self.details = details
         self.severity = severity
@@ -91,15 +91,15 @@ public struct PatternRule: Codable, Equatable, Hashable, Sendable {
 }
 
 /// A pattern from the built-in catalog, with ready-made rules.
-public struct PatternTemplate: Codable, Equatable, Identifiable, Sendable {
-    public var id: String
-    public var name: String
-    public var category: String
-    public var summary: String
-    public var aliases: [String]
-    public var rules: [PatternRule]
+struct PatternTemplate: Codable, Equatable, Identifiable, Sendable {
+    var id: String
+    var name: String
+    var category: String
+    var summary: String
+    var aliases: [String]
+    var rules: [PatternRule]
 
-    public init(id: String, name: String, category: String, summary: String, aliases: [String] = [], rules: [PatternRule]) {
+    init(id: String, name: String, category: String, summary: String, aliases: [String] = [], rules: [PatternRule]) {
         self.id = id
         self.name = name
         self.category = category
@@ -109,29 +109,29 @@ public struct PatternTemplate: Codable, Equatable, Identifiable, Sendable {
     }
 
     /// Exact match on id, name or alias, ignoring case, accents and punctuation ("Ports & Adapters" = "ports-adapters").
-    public func matches(exactly ref: String) -> Bool {
+    func matches(exactly ref: String) -> Bool {
         let key = Slug.make(ref)
         return !key.isEmpty && ([id, name] + aliases).contains { Slug.make($0) == key }
     }
 
-    public func matches(containing ref: String) -> Bool {
+    func matches(containing ref: String) -> Bool {
         let key = Slug.make(ref)
         return !key.isEmpty && ([id, name, summary] + aliases).contains { Slug.make($0).contains(key) }
     }
 }
 
-public enum PatternCatalog {
-    public static func find(_ ref: String) -> PatternTemplate? {
+enum PatternCatalog {
+    static func find(_ ref: String) -> PatternTemplate? {
         all.first { $0.matches(exactly: ref) }
     }
 
-    public static func search(_ query: String?) -> [PatternTemplate] {
+    static func search(_ query: String?) -> [PatternTemplate] {
         guard let q = query?.trimmed.nonEmpty else { return all }
         return all.filter { $0.matches(containing: q) }
     }
 
     /// Resolves every ref or throws (resolving nothing) with suggestions for the unknown ones.
-    public static func resolve(_ refs: [String]) throws -> [PatternTemplate] {
+    static func resolve(_ refs: [String]) throws -> [PatternTemplate] {
         var found: [PatternTemplate] = []
         var unknown: [String: [String]] = [:]
         for ref in refs {
@@ -145,7 +145,7 @@ public enum PatternCatalog {
         return found
     }
 
-    public static let all: [PatternTemplate] = [
+    static let all: [PatternTemplate] = [
         // Práticas
         PatternTemplate(
             id: "tdd", name: "TDD", category: "practices",

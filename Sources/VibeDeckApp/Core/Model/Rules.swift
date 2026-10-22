@@ -5,10 +5,10 @@ import Foundation
 
 // MARK: - Rules
 
-public enum RuleSeverity: String, Codable, CaseIterable, Sendable {
+enum RuleSeverity: String, Codable, CaseIterable, Sendable {
     case must, should
 
-    public var label: String {
+    var label: String {
         switch self {
         case .must: "Obrigatória"
         case .should: "Recomendada"
@@ -17,19 +17,19 @@ public enum RuleSeverity: String, Codable, CaseIterable, Sendable {
 }
 
 /// A behavior that a topic (or idea) must have, checked by agents before calling a task done.
-public struct Rule: Codable, Equatable, Hashable, Identifiable, Sendable {
-    public var id: UUID
-    public var text: String
+struct Rule: Codable, Equatable, Hashable, Identifiable, Sendable {
+    var id: UUID
+    var text: String
     /// Nested organizational path within this topic; it never changes rule identity or applicability.
-    public var group: String?
-    public var details: String?
-    public var severity: RuleSeverity
-    public var author: Author
-    public var createdAt: Date
+    var group: String?
+    var details: String?
+    var severity: RuleSeverity
+    var author: Author
+    var createdAt: Date
     /// How the rule is verified: a script (decided by its exit code) or by the agent (`manual`).
-    public var test: RuleTest?
+    var test: RuleTest?
 
-    public init(text: String, details: String? = nil, severity: RuleSeverity = .must, author: Author = .human, now: Date = .now) {
+    init(text: String, details: String? = nil, severity: RuleSeverity = .must, author: Author = .human, now: Date = .now) {
         self.id = UUID()
         self.text = text
         self.details = details
@@ -40,7 +40,7 @@ public struct Rule: Codable, Equatable, Hashable, Identifiable, Sendable {
 
     enum CodingKeys: String, CodingKey { case id, text, details, severity, author, createdAt, test, group }
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
         text = try c.decode(String.self, forKey: .text)
@@ -52,7 +52,7 @@ public struct Rule: Codable, Equatable, Hashable, Identifiable, Sendable {
         test = try c.decodeIfPresent(RuleTest.self, forKey: .test)
     }
 
-    public func encode(to encoder: Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(id, forKey: .id)
         try c.encode(text, forKey: .text)
@@ -65,7 +65,7 @@ public struct Rule: Codable, Equatable, Hashable, Identifiable, Sendable {
     }
 
     /// Fingerprint of what the rule asks (`text` + `details`): a test generated for another fingerprint is stale.
-    public var contentHash: String {
+    var contentHash: String {
         let data = Data((text + "\n" + (details ?? "")).utf8)
         #if canImport(CryptoKit)
         let digest = Array(SHA256.hash(data: data))
@@ -75,35 +75,35 @@ public struct Rule: Codable, Equatable, Hashable, Identifiable, Sendable {
         return digest.prefix(8).map { String(format: "%02x", $0) }.joined()
     }
 
-    public var testState: RuleTestState {
+    var testState: RuleTestState {
         guard let test else { return .none }
         if test.ruleHash != contentHash { return .stale }
         return test.mode == .script && test.command?.trimmed.nonEmpty != nil ? .script : .manual
     }
 
     /// The command to run when the rule is decided by a script (nil when manual, untested or stale).
-    public var scriptCommand: String? {
+    var scriptCommand: String? {
         testState == .script ? test?.command?.trimmed.nonEmpty : nil
     }
 }
 
 // MARK: - Rule tests
 
-public enum RuleTestMode: String, Codable, CaseIterable, Sendable {
+enum RuleTestMode: String, Codable, CaseIterable, Sendable {
     case script, manual
 }
 
 /// A rule translated into a check: `script` runs `command` (exit 0 = pass, 77 = n/a, else fail);
 /// `manual` means the rule isn't objectively testable and stays with the agent.
-public struct RuleTest: Codable, Equatable, Hashable, Sendable {
-    public var mode: RuleTestMode
-    public var command: String?
-    public var reason: String?
+struct RuleTest: Codable, Equatable, Hashable, Sendable {
+    var mode: RuleTestMode
+    var command: String?
+    var reason: String?
     /// `Rule.contentHash` when the test was written.
-    public var ruleHash: String
-    public var generatedAt: Date
+    var ruleHash: String
+    var generatedAt: Date
 
-    public init(mode: RuleTestMode, command: String? = nil, reason: String? = nil, ruleHash: String, now: Date = .now) {
+    init(mode: RuleTestMode, command: String? = nil, reason: String? = nil, ruleHash: String, now: Date = .now) {
         self.mode = mode
         self.command = command
         self.reason = reason
@@ -114,7 +114,7 @@ public struct RuleTest: Codable, Equatable, Hashable, Sendable {
     enum CodingKeys: String, CodingKey { case mode, command, reason, ruleHash, generatedAt }
 
     /// Hand-written tests: `mode` follows `command`; without `ruleHash` the test reads as stale until regenerated.
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         command = try c.decodeIfPresent(String.self, forKey: .command)
         mode = try c.decodeIfPresent(RuleTestMode.self, forKey: .mode) ?? (command == nil ? .manual : .script)
@@ -124,10 +124,10 @@ public struct RuleTest: Codable, Equatable, Hashable, Sendable {
     }
 }
 
-public enum RuleTestState: String, Sendable {
+enum RuleTestState: String, Sendable {
     case none, script, manual, stale
 
-    public var label: String {
+    var label: String {
         switch self {
         case .none: "Sem teste"
         case .script: "Script"
@@ -137,26 +137,26 @@ public enum RuleTestState: String, Sendable {
     }
 
     /// True when the agent has to answer the rule in a check.
-    public var needsAgent: Bool { self != .script }
+    var needsAgent: Bool { self != .script }
 }
 
 /// A file per topic in `.vibedeck/rules/`. Topics without `paths` apply to every task;
 /// topics with `paths` (globs relative to the project root) apply when a touched file matches.
-public struct RuleTopic: Codable, Equatable, Identifiable, Sendable {
-    public var schema: String?
-    public var id: UUID
-    public var title: String
-    public var author: Author
-    public var description: String?
-    public var tags: [String]
-    public var paths: [String]
-    public var rules: [Rule]
-    public var sourceIdea: UUID?
+struct RuleTopic: Codable, Equatable, Identifiable, Sendable {
+    var schema: String?
+    var id: UUID
+    var title: String
+    var author: Author
+    var description: String?
+    var tags: [String]
+    var paths: [String]
+    var rules: [Rule]
+    var sourceIdea: UUID?
     /// Id of the project pattern (`vibedeck.json` `patterns`) this topic enforces.
-    public var sourcePattern: String?
-    public var createdAt: Date
+    var sourcePattern: String?
+    var createdAt: Date
 
-    public init(title: String, description: String? = nil, tags: [String] = [], paths: [String] = [], rules: [Rule] = [], sourceIdea: UUID? = nil, sourcePattern: String? = nil, author: Author = .human, now: Date = .now) {
+    init(title: String, description: String? = nil, tags: [String] = [], paths: [String] = [], rules: [Rule] = [], sourceIdea: UUID? = nil, sourcePattern: String? = nil, author: Author = .human, now: Date = .now) {
         self.schema = SchemaURL.ruleTopic
         self.id = UUID()
         self.title = title
@@ -174,7 +174,7 @@ public struct RuleTopic: Codable, Equatable, Identifiable, Sendable {
         case schema = "$schema", id, title, author, description, tags, paths, rules, sourceIdea, sourcePattern, createdAt
     }
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         schema = try c.decodeIfPresent(String.self, forKey: .schema)
         id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
@@ -189,7 +189,7 @@ public struct RuleTopic: Codable, Equatable, Identifiable, Sendable {
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? .now
     }
 
-    public func encode(to encoder: Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encodeIfPresent(schema, forKey: .schema)
         try c.encode(id, forKey: .id)
@@ -205,19 +205,19 @@ public struct RuleTopic: Codable, Equatable, Identifiable, Sendable {
     }
 
     /// True when the topic applies to every task (no path scope).
-    public var isGlobal: Bool { paths.isEmpty }
+    var isGlobal: Bool { paths.isEmpty }
 
-    public func matches(file: String) -> Bool {
+    func matches(file: String) -> Bool {
         paths.contains { Glob.matches($0, path: file) }
     }
 }
 
 // MARK: - Ideas
 
-public enum IdeaStatus: String, Codable, CaseIterable, Sendable {
+enum IdeaStatus: String, Codable, CaseIterable, Sendable {
     case new, exploring, approved, discarded, done
 
-    public var label: String {
+    var label: String {
         switch self {
         case .new: "Nova"
         case .exploring: "Explorando"
@@ -227,7 +227,7 @@ public enum IdeaStatus: String, Codable, CaseIterable, Sendable {
         }
     }
 
-    public var symbol: String {
+    var symbol: String {
         switch self {
         case .new: "sparkle"
         case .exploring: "magnifyingglass"
@@ -237,32 +237,32 @@ public enum IdeaStatus: String, Codable, CaseIterable, Sendable {
         }
     }
 
-    public var isClosed: Bool { self == .discarded || self == .done }
+    var isClosed: Bool { self == .discarded || self == .done }
 }
 
 /// A file per idea in `.vibedeck/ideas/`: brainstorm for the project's future, with its own draft rules.
-public struct Idea: Codable, Equatable, Identifiable, Sendable {
-    public var schema: String?
-    public var id: UUID
-    public var title: String
-    public var body: String?
-    public var status: IdeaStatus
-    public var tags: [String]
+struct Idea: Codable, Equatable, Identifiable, Sendable {
+    var schema: String?
+    var id: UUID
+    var title: String
+    var body: String?
+    var status: IdeaStatus
+    var tags: [String]
     /// Suggested globs (like `RuleTopic.paths`); promotion copies them into the topic.
-    public var paths: [String]
-    public var rules: [Rule]
+    var paths: [String]
+    var rules: [Rule]
     /// Slug of the rule topic created when the idea was promoted.
-    public var promotedTopic: String?
+    var promotedTopic: String?
     /// Last AI verdict on whether the idea is ready to implement (Descubra / Verificar).
-    public var readiness: IdeaReadiness?
+    var readiness: IdeaReadiness?
     /// UUIDs of other ideas of the project that must be `done` before this one can be implemented. Dependents are
     /// derived from the other ideas' lists; no inverse list is stored. Validated by o Core (`update_idea`).
-    public var dependencies: [UUID]
-    public var author: Author
-    public var createdAt: Date
-    public var updatedAt: Date
+    var dependencies: [UUID]
+    var author: Author
+    var createdAt: Date
+    var updatedAt: Date
 
-    public init(title: String, body: String? = nil, tags: [String] = [], author: Author = .human, now: Date = .now) {
+    init(title: String, body: String? = nil, tags: [String] = [], author: Author = .human, now: Date = .now) {
         self.schema = SchemaURL.idea
         self.id = UUID()
         self.title = title
@@ -281,7 +281,7 @@ public struct Idea: Codable, Equatable, Identifiable, Sendable {
         case schema = "$schema", id, title, body, status, tags, paths, rules, promotedTopic, readiness, dependencies, author, createdAt, updatedAt
     }
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         schema = try c.decodeIfPresent(String.self, forKey: .schema)
         id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
@@ -300,7 +300,7 @@ public struct Idea: Codable, Equatable, Identifiable, Sendable {
         updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
     }
 
-    public func encode(to encoder: Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encodeIfPresent(schema, forKey: .schema)
         try c.encode(id, forKey: .id)
@@ -322,7 +322,7 @@ public struct Idea: Codable, Equatable, Identifiable, Sendable {
 extension Idea {
     /// Fingerprint of what the AI judged (title, body, globs, rules). Status, tags, dependencies and promotion stay out,
     /// so promoting or linking doesn't invalidate the verdict; any other edit (app, CLI, MCP) does.
-    public var contentFingerprint: String {
+    var contentFingerprint: String {
         let rules = rules.map { "\($0.severity.rawValue)\t\($0.text)\t\($0.details ?? "")" }
         let text = ([title, body ?? "", paths.joined(separator: "\n")] + rules).joined(separator: "\n\u{1F}\n")
         let data = Data(text.utf8)
@@ -336,9 +336,9 @@ extension Idea {
 
     /// Why "Implementar" is unavailable, or nil when the idea is viable: has rules, was verified by the AI with
     /// the current content and judged complete.
-    public var canRequestImplementation: Bool { !status.isClosed && !rules.isEmpty }
+    var canRequestImplementation: Bool { !status.isClosed && !rules.isEmpty }
 
-    public var implementBlocker: String? {
+    var implementBlocker: String? {
         if status.isClosed { return "Ideia \(status.label.lowercased())." }
         if rules.isEmpty { return "Sem regras: rode o Descubra para gerar as regras." }
         guard let readiness else { return "Ainda não verificada pela IA: rode o Descubra ou Verificar." }
@@ -352,15 +352,15 @@ extension Idea {
 }
 
 /// AI verdict on an idea: viable = description + rules are enough for an agent to implement it.
-public struct IdeaReadiness: Codable, Equatable, Sendable {
-    public var viable: Bool
+struct IdeaReadiness: Codable, Equatable, Sendable {
+    var viable: Bool
     /// Concrete gaps the AI found (empty when viable).
-    public var missing: [String]
-    public var checkedAt: Date
+    var missing: [String]
+    var checkedAt: Date
     /// `Idea.contentFingerprint` when checked; a different one means the verdict is stale.
-    public var fingerprint: String
+    var fingerprint: String
 
-    public init(viable: Bool, missing: [String] = [], checkedAt: Date = .now, fingerprint: String) {
+    init(viable: Bool, missing: [String] = [], checkedAt: Date = .now, fingerprint: String) {
         self.viable = viable
         self.missing = missing
         self.checkedAt = checkedAt
@@ -369,7 +369,7 @@ public struct IdeaReadiness: Codable, Equatable, Sendable {
 
     enum CodingKeys: String, CodingKey { case viable, missing, checkedAt, fingerprint }
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         viable = try c.decodeIfPresent(Bool.self, forKey: .viable) ?? false
         missing = try c.decodeIfPresent([String].self, forKey: .missing) ?? []
@@ -377,7 +377,7 @@ public struct IdeaReadiness: Codable, Equatable, Sendable {
         fingerprint = try c.decodeIfPresent(String.self, forKey: .fingerprint) ?? ""
     }
 
-    public func encode(to encoder: Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(viable, forKey: .viable)
         if !missing.isEmpty { try c.encode(missing, forKey: .missing) }
@@ -387,13 +387,13 @@ public struct IdeaReadiness: Codable, Equatable, Sendable {
 }
 
 /// An idea referenced by another one (a dependency or a dependent), as shown by the app, the CLI and the MCP.
-public struct IdeaLink: Codable, Equatable, Sendable {
-    public var id: UUID
-    public var slug: String
-    public var title: String
-    public var status: IdeaStatus
+struct IdeaLink: Codable, Equatable, Sendable {
+    var id: UUID
+    var slug: String
+    var title: String
+    var status: IdeaStatus
 
-    public init(slug: String, idea: Idea) {
+    init(slug: String, idea: Idea) {
         self.id = idea.id
         self.slug = slug
         self.title = idea.title
@@ -402,12 +402,12 @@ public struct IdeaLink: Codable, Equatable, Sendable {
 }
 
 /// A dependency that keeps an idea from being implemented: not `done`, or missing from the project (`idea == nil`).
-public struct IdeaDependencyBlocker: Codable, Equatable, Sendable {
-    public var id: UUID
-    public var idea: IdeaLink?
-    public var message: String
+struct IdeaDependencyBlocker: Codable, Equatable, Sendable {
+    var id: UUID
+    var idea: IdeaLink?
+    var message: String
 
-    public init(id: UUID, idea: IdeaLink?) {
+    init(id: UUID, idea: IdeaLink?) {
         self.id = id
         self.idea = idea
         self.message = idea.map { "Depende de \"\($0.title)\" (\($0.status.label.lowercased()))." }
@@ -416,15 +416,15 @@ public struct IdeaDependencyBlocker: Codable, Equatable, Sendable {
 }
 
 /// Detail of an idea for `ideas show --json` and `get_idea`: the idea's own fields plus the derived links.
-public struct IdeaDetail: Encodable, Sendable {
-    public var slug: String
-    public var idea: Idea
-    public var dependents: [IdeaLink]
-    public var dependencyBlockers: [IdeaDependencyBlocker]
+struct IdeaDetail: Encodable, Sendable {
+    var slug: String
+    var idea: Idea
+    var dependents: [IdeaLink]
+    var dependencyBlockers: [IdeaDependencyBlocker]
 
     enum Key: String, CodingKey { case slug, dependents, dependencyBlockers }
 
-    public func encode(to encoder: Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         try idea.encode(to: encoder)
         var c = encoder.container(keyedBy: Key.self)
         try c.encode(slug, forKey: .slug)
@@ -434,10 +434,10 @@ public struct IdeaDetail: Encodable, Sendable {
 }
 
 /// Prompt sent to the chat by "Implementar" on a viable idea (already promoted, so its rules are enforced).
-public enum IdeaImplementation {
+enum IdeaImplementation {
     /// Every dependency of `idea` that is not `done` in `ideas` (the project's ideas, read from disk), in order.
     /// A UUID that matches no idea blocks too.
-    public static func dependencyBlockers(of idea: Idea, in ideas: [(slug: String, idea: Idea)]) -> [IdeaDependencyBlocker] {
+    static func dependencyBlockers(of idea: Idea, in ideas: [(slug: String, idea: Idea)]) -> [IdeaDependencyBlocker] {
         let byID = Dictionary(ideas.map { ($0.idea.id, $0) }, uniquingKeysWith: { first, _ in first })
         return idea.dependencies.compactMap { id in
             guard let found = byID[id] else { return IdeaDependencyBlocker(id: id, idea: nil) }
@@ -446,12 +446,12 @@ public enum IdeaImplementation {
     }
 
     /// Ideas that list `id` directly among their dependencies.
-    public static func dependents(of id: UUID, in ideas: [(slug: String, idea: Idea)]) -> [IdeaLink] {
+    static func dependents(of id: UUID, in ideas: [(slug: String, idea: Idea)]) -> [IdeaLink] {
         ideas.filter { $0.idea.dependencies.contains(id) }.map { IdeaLink(slug: $0.slug, idea: $0.idea) }
     }
 
     /// Why `dependencies` can't be set on the idea `id`: itself, a new unknown UUID or a cycle. Nil when valid.
-    public static func dependencyProblem(_ id: UUID, _ dependencies: [UUID], in ideas: [(slug: String, idea: Idea)]) -> String? {
+    static func dependencyProblem(_ id: UUID, _ dependencies: [UUID], in ideas: [(slug: String, idea: Idea)]) -> String? {
         if dependencies.contains(id) { return "uma ideia não pode depender de si mesma." }
         var graph = Dictionary(ideas.map { ($0.idea.id, $0.idea.dependencies) }, uniquingKeysWith: { first, _ in first })
         // A link already stored to an idea removed since then may stay (it keeps blocking); new ones must exist.
@@ -473,27 +473,27 @@ public enum IdeaImplementation {
     }
 
 
-    public static func isEligible(_ idea: Idea) -> Bool {
+    static func isEligible(_ idea: Idea) -> Bool {
         idea.status == .approved && idea.readiness?.viable == true
             && idea.readiness?.fingerprint == idea.contentFingerprint
     }
 
     /// Stable, recoverable input: neither title nor description participates in run identity.
-    public static func workflowInput(_ idea: Idea) -> String {
+    static func workflowInput(_ idea: Idea) -> String {
         "Ideia \(idea.id.uuidString). Implemente consultando get_idea pelo UUID; leia a descrição e as regras e siga o tópico promovido, quando houver."
     }
 
-    public struct ChatIntent: Codable, Equatable, Sendable {
-        public enum Mode: String, Codable, Sendable { case none, ask, standard, workflow }
-        public var mode: Mode
-        public var idea: String?
-        public var workflow: String?
+    struct ChatIntent: Codable, Equatable, Sendable {
+        enum Mode: String, Codable, Sendable { case none, ask, standard, workflow }
+        var mode: Mode
+        var idea: String?
+        var workflow: String?
     }
 
-    public static let intentSchema = #"{"type":"object","properties":{"mode":{"type":"string","enum":["none","ask","standard","workflow"]},"idea":{"type":["string","null"]},"workflow":{"type":["string","null"]}},"required":["mode","idea","workflow"],"additionalProperties":false}"#
+    static let intentSchema = #"{"type":"object","properties":{"mode":{"type":"string","enum":["none","ask","standard","workflow"]},"idea":{"type":["string","null"]},"workflow":{"type":["string","null"]}},"required":["mode","idea","workflow"],"additionalProperties":false}"#
 
     /// Classification is read-only and restricted to the supplied references; never execute the user's text here.
-    public static func intentPrompt(_ text: String, context: String, ideas: [(slug: String, idea: Idea)], workflows: [(slug: String, workflow: Workflow)]) -> String {
+    static func intentPrompt(_ text: String, context: String, ideas: [(slug: String, idea: Idea)], workflows: [(slug: String, workflow: Workflow)]) -> String {
         let candidates = ideas.map { "\($0.idea.id.uuidString) | \($0.slug) | \($0.idea.title)" }.joined(separator: "\n")
         let flows = workflows.map { "\($0.slug) | \($0.workflow.title)" }.joined(separator: "\n")
         return """
@@ -511,7 +511,7 @@ public enum IdeaImplementation {
         """
     }
 
-    public static func prompt(slug: String, idea: Idea, topic: String?) -> String {
+    static func prompt(slug: String, idea: Idea, topic: String?) -> String {
         var lines = [
             "Implemente a ideia \"\(idea.title)\" deste projeto.",
             "",
@@ -534,23 +534,23 @@ public enum IdeaImplementation {
 
 // MARK: - Checks
 
-public enum RuleVerdict: String, Codable, CaseIterable, Sendable {
+enum RuleVerdict: String, Codable, CaseIterable, Sendable {
     case pass, fail, na
 }
 
-public enum RuleResultSource: String, Codable, Sendable {
+enum RuleResultSource: String, Codable, Sendable {
     case agent, script
 }
 
-public struct RuleResult: Codable, Equatable, Hashable, Sendable {
-    public var topic: String
-    public var ruleId: UUID
-    public var verdict: RuleVerdict
-    public var note: String?
-    public var source: RuleResultSource
-    public var exitCode: Int32?
+struct RuleResult: Codable, Equatable, Hashable, Sendable {
+    var topic: String
+    var ruleId: UUID
+    var verdict: RuleVerdict
+    var note: String?
+    var source: RuleResultSource
+    var exitCode: Int32?
 
-    public init(topic: String, ruleId: UUID, verdict: RuleVerdict, note: String? = nil, source: RuleResultSource = .agent, exitCode: Int32? = nil) {
+    init(topic: String, ruleId: UUID, verdict: RuleVerdict, note: String? = nil, source: RuleResultSource = .agent, exitCode: Int32? = nil) {
         self.topic = topic
         self.ruleId = ruleId
         self.verdict = verdict
@@ -561,7 +561,7 @@ public struct RuleResult: Codable, Equatable, Hashable, Sendable {
 
     enum CodingKeys: String, CodingKey { case topic, ruleId, verdict, note, source, exitCode }
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         topic = try c.decode(String.self, forKey: .topic)
         ruleId = try c.decode(UUID.self, forKey: .ruleId)
@@ -571,7 +571,7 @@ public struct RuleResult: Codable, Equatable, Hashable, Sendable {
         exitCode = try c.decodeIfPresent(Int32.self, forKey: .exitCode)
     }
 
-    public func encode(to encoder: Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(topic, forKey: .topic)
         try c.encode(ruleId, forKey: .ruleId)
@@ -583,29 +583,29 @@ public struct RuleResult: Codable, Equatable, Hashable, Sendable {
 }
 
 /// A verification an agent submitted against the applicable rules, kept in `.vibedeck/checks/`.
-public struct RuleCheck: Codable, Equatable, Identifiable, Sendable {
-    public var schema: String?
-    public var id: UUID
-    public var task: String
-    public var files: [String]
-    public var topics: [String]
-    public var reviewItem: UUID?
-    public var results: [RuleResult]
-    public var passed: Bool
+struct RuleCheck: Codable, Equatable, Identifiable, Sendable {
+    var schema: String?
+    var id: UUID
+    var task: String
+    var files: [String]
+    var topics: [String]
+    var reviewItem: UUID?
+    var results: [RuleResult]
+    var passed: Bool
     /// Texts of `should` rules that failed (don't block, but are reported).
-    public var warnings: [String]
+    var warnings: [String]
     /// Texts of `must` rules that failed.
-    public var failures: [String]
+    var failures: [String]
     /// Texts of manual rules this check left unverified (scripts-only check): `passed` doesn't cover them.
-    public var pending: [String]
-    public var author: Author
-    public var createdAt: Date
+    var pending: [String]
+    var author: Author
+    var createdAt: Date
 
     enum CodingKeys: String, CodingKey {
         case schema = "$schema", id, task, files, topics, reviewItem, results, passed, warnings, failures, pending, author, createdAt
     }
 
-    public init(task: String, files: [String], topics: [String], reviewItem: UUID?, results: [RuleResult],
+    init(task: String, files: [String], topics: [String], reviewItem: UUID?, results: [RuleResult],
                 passed: Bool, warnings: [String], failures: [String], pending: [String] = [], author: Author, now: Date = .now) {
         self.schema = SchemaURL.ruleCheck
         self.id = UUID()
@@ -622,7 +622,7 @@ public struct RuleCheck: Codable, Equatable, Identifiable, Sendable {
         self.createdAt = now
     }
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         schema = try c.decodeIfPresent(String.self, forKey: .schema)
         id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
@@ -641,7 +641,7 @@ public struct RuleCheck: Codable, Equatable, Identifiable, Sendable {
 
     /// `createdAt` keeps fractional seconds: "latest check" must be unambiguous even when an agent
     /// resubmits within the same second.
-    public func encode(to encoder: Encoder) throws {
+    func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encodeIfPresent(schema, forKey: .schema)
         try c.encode(id, forKey: .id)
@@ -660,12 +660,12 @@ public struct RuleCheck: Codable, Equatable, Identifiable, Sendable {
 }
 
 /// An answer to one rule, as sent by an agent: `ruleId` may be a full id or a unique prefix (>= 4 chars).
-public struct RuleAnswer: Decodable, Sendable {
-    public var ruleId: String
-    public var verdict: RuleVerdict
-    public var note: String?
+struct RuleAnswer: Decodable, Sendable {
+    var ruleId: String
+    var verdict: RuleVerdict
+    var note: String?
 
-    public init(ruleId: String, verdict: RuleVerdict, note: String? = nil) {
+    init(ruleId: String, verdict: RuleVerdict, note: String? = nil) {
         self.ruleId = ruleId
         self.verdict = verdict
         self.note = note
@@ -673,7 +673,7 @@ public struct RuleAnswer: Decodable, Sendable {
 
     enum CodingKeys: String, CodingKey { case ruleId, rule_id, verdict, note }
 
-    public init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         guard let id = try c.decodeIfPresent(String.self, forKey: .ruleId) ?? c.decodeIfPresent(String.self, forKey: .rule_id) else {
             throw DecodingError.keyNotFound(CodingKeys.ruleId, .init(codingPath: c.codingPath, debugDescription: "ruleId ausente"))
@@ -688,8 +688,8 @@ public struct RuleAnswer: Decodable, Sendable {
 
 /// Minimal gitignore-like globs: `*` (within a segment), `?`, `**` (any depth).
 /// A pattern without `/` matches the file name at any depth; a trailing `/` matches everything below.
-public enum Glob {
-    public static func matches(_ pattern: String, path: String) -> Bool {
+enum Glob {
+    static func matches(_ pattern: String, path: String) -> Bool {
         var pattern = pattern.trimmingCharacters(in: .whitespaces)
         guard !pattern.isEmpty else { return false }
         if pattern.hasPrefix("./") { pattern.removeFirst(2) }

@@ -4,6 +4,7 @@ use super::output::print_json;
 use super::{CliError, Context};
 use clap::{Args, Subcommand};
 use vibedeck_core::model::{Author, ReviewPriority, ReviewTarget};
+use vibedeck_core::project::links::hashtags;
 use vibedeck_core::reviews::{self, ItemUpdate, NewItem, ReviewError};
 
 const STATUSES: [&str; 4] = ["open", "in_progress", "done", "wontfix"];
@@ -117,14 +118,6 @@ fn fail(e: ReviewError) -> CliError {
 
 fn id8(id: &vibedeck_core::model::Id) -> String {
     id.to_string().chars().take(8).collect()
-}
-
-fn hashtags(tags: &[String]) -> String {
-    if tags.is_empty() {
-        String::new()
-    } else {
-        format!("  #{}", tags.join(" #"))
-    }
 }
 
 pub fn run(command: Command, ctx: &Context) -> Result<i32, CliError> {

@@ -394,3 +394,16 @@ final class CoreStore: @unchecked Sendable {
         return .ssh(arguments: connection.commandArguments(login), remoteRoot: workspace.destination.directory)
     }
 }
+
+// Leitura de um registro pelo slug (arquivo cru do disco).
+extension CoreStore {
+    func loadRecord<T: Decodable>(_ kind: CoreRecordKind, slug: String, as type: T.Type = T.self) async throws -> T {
+        let text = try await client.readResource(kind.resourcePrefix + slug)
+        return try CoreStore.decode(type, from: text, what: kind.rawValue + "/" + slug)
+    }
+
+    func loadTopic(_ slug: String) async throws -> RuleTopic { try await loadRecord(.rule, slug: slug) }
+    func loadIdea(_ slug: String) async throws -> Idea { try await loadRecord(.idea, slug: slug) }
+    func loadWorkflow(_ slug: String) async throws -> Workflow { try await loadRecord(.workflow, slug: slug) }
+    func loadGroup(_ slug: String) async throws -> ReviewGroup { try await loadRecord(.review, slug: slug) }
+}

@@ -1,19 +1,19 @@
 import Foundation
 
 // Compatibility aliases keep existing clients and persisted chat formats unchanged.
-public typealias AIEvent = ClaudeEvent
-public typealias AIPermissionRequest = ClaudePermissionRequest
-public typealias AIResult = ClaudeResult
+typealias AIEvent = ClaudeEvent
+typealias AIPermissionRequest = ClaudePermissionRequest
+typealias AIResult = ClaudeResult
 
-public struct AIConversationConfiguration: Sendable {
-    public var root: URL
-    public var sessionID: String?
-    public var settings: AIProviderSettings
-    public var mode: ClaudePermissionMode
-    public var instructions: String
-    public var config: [String: JSONValue]
-    public var autoReview: Bool
-    public init(root: URL, sessionID: String? = nil, settings: AIProviderSettings = .init(), mode: ClaudePermissionMode = .default,
+struct AIConversationConfiguration: Sendable {
+    var root: URL
+    var sessionID: String?
+    var settings: AIProviderSettings
+    var mode: ClaudePermissionMode
+    var instructions: String
+    var config: [String: JSONValue]
+    var autoReview: Bool
+    init(root: URL, sessionID: String? = nil, settings: AIProviderSettings = .init(), mode: ClaudePermissionMode = .default,
                 instructions: String = AIPromptPolicy.instructions, config: [String: JSONValue] = [:], autoReview: Bool = false) {
         self.root = root; self.sessionID = sessionID; self.settings = settings; self.mode = mode
         self.instructions = instructions; self.config = config; self.autoReview = autoReview
@@ -21,7 +21,7 @@ public struct AIConversationConfiguration: Sendable {
 }
 
 /// Provider-specific wire formats stay behind these lifecycle operations.
-@MainActor public protocol AIConversationTransport: AnyObject {
+@MainActor protocol AIConversationTransport: AnyObject {
     var provider: AIProvider { get }
     var onEvent: ((AIEvent) -> Void)? { get set }
     var onDisconnect: ((String) -> Void)? { get set }
@@ -34,12 +34,12 @@ public struct AIConversationConfiguration: Sendable {
     func stop()
 }
 
-@MainActor public final class ClaudeConversationTransport: AIConversationTransport {
-    public let provider = AIProvider.claude
-    public var onEvent: ((AIEvent) -> Void)?
-    public var onDisconnect: ((String) -> Void)?
-    public var isConnected: Bool { process != nil }
-    public private(set) var resumeFailed = false
+@MainActor final class ClaudeConversationTransport: AIConversationTransport {
+    let provider = AIProvider.claude
+    var onEvent: ((AIEvent) -> Void)?
+    var onDisconnect: ((String) -> Void)?
+    var isConnected: Bool { process != nil }
+    private(set) var resumeFailed = false
     private var initialized = false
     private var process: Process?
     private var input: FileHandle?
@@ -48,11 +48,11 @@ public struct AIConversationConfiguration: Sendable {
     private var configuration: AIConversationConfiguration?
     private let executable: URL?
     private let launchArguments: [String]?
-    public init(executable: URL? = ClaudeCode.executable, launchArguments: [String]? = nil) {
+    init(executable: URL? = ClaudeCode.executable, launchArguments: [String]? = nil) {
         self.executable = executable; self.launchArguments = launchArguments
     }
 
-    public func prepare(_ configuration: AIConversationConfiguration) async throws -> String? {
+    func prepare(_ configuration: AIConversationConfiguration) async throws -> String? {
         if process != nil { return self.configuration?.sessionID }
         guard let executable = (RemoteWorkspace.existing(at: configuration.root) != nil ? RemoteExecution.executable(provider, root: configuration.root) : executable) else { throw AIIntegrationError.unavailable(provider) }
         let path = await Task.detached { ClaudeCode.childPATH() }.value
@@ -92,18 +92,18 @@ public struct AIConversationConfiguration: Sendable {
         guard process === self.process else { return }
         stderrTail = String((stderrTail + line + "\n").suffix(2000))
     }
-    public func send(_ text: String, configuration: AIConversationConfiguration, schema: JSONValue? = nil) async throws -> String? {
+    func send(_ text: String, configuration: AIConversationConfiguration, schema: JSONValue? = nil) async throws -> String? {
         try Task.checkCancellation()
         try RemoteWorkspace.existing(at: configuration.root)?.requireSynchronized()
         try write(ClaudeInput.userMessage(try await RemoteExecution.prepareContext(text, root: configuration.root))); return nil
     }
-    public func write(_ data: Data) throws {
+    func write(_ data: Data) throws {
         guard let input else { throw AIIntegrationError.disconnected(provider) }
         try input.write(contentsOf: data)
     }
-    public func interrupt() async throws { try write(ClaudeInput.interrupt()) }
-    public func decisions(for request: AIPermissionRequest) -> [AIPermissionDecision] { [.allowOnce, .allowSession, .allowAlways, .deny] }
-    public func respond(to request: AIPermissionRequest, decision: AIPermissionDecision) throws {
+    func interrupt() async throws { try write(ClaudeInput.interrupt()) }
+    func decisions(for request: AIPermissionRequest) -> [AIPermissionDecision] { [.allowOnce, .allowSession, .allowAlways, .deny] }
+    func respond(to request: AIPermissionRequest, decision: AIPermissionDecision) throws {
         switch decision {
         case .allowOnce: try write(ClaudeInput.allow(request))
         case .allowSession: try write(ClaudeInput.allow(request, always: .session))
@@ -111,7 +111,7 @@ public struct AIConversationConfiguration: Sendable {
         case .deny: try write(ClaudeInput.deny(request, message: "O usuário negou esta ação no VibeDeck."))
         }
     }
-    public func answer(_ request: AIPermissionRequest, answers: [String: [String]]) throws { try write(ClaudeInput.answer(request, answers)) }
+    func answer(_ request: AIPermissionRequest, answers: [String: [String]]) throws { try write(ClaudeInput.answer(request, answers)) }
     private func ended(_ ended: Process) {
         guard ended === process else { return }
         resumeFailed = !initialized && configuration?.sessionID != nil
@@ -119,7 +119,7 @@ public struct AIConversationConfiguration: Sendable {
         let message = "Claude encerrou a conexão (\(ended.terminationStatus))." + (detail.isEmpty ? "" : "\n" + detail)
         stop(); onDisconnect?(message)
     }
-    public func stop() {
+    func stop() {
         let p = process; process = nil; p?.terminationHandler = nil
         try? input?.close(); input = nil
         if p?.isRunning == true { p?.terminate() }
@@ -127,12 +127,12 @@ public struct AIConversationConfiguration: Sendable {
     }
 }
 
-@MainActor public final class CodexConversationTransport: AIConversationTransport {
-    public let provider = AIProvider.codex
-    public let rpc: CodexRPC
-    public var onEvent: ((AIEvent) -> Void)?
-    public var onDisconnect: ((String) -> Void)?
-    public var onNotification: ((String, JSONValue) -> Void)?
+@MainActor final class CodexConversationTransport: AIConversationTransport {
+    let provider = AIProvider.codex
+    let rpc: CodexRPC
+    var onEvent: ((AIEvent) -> Void)?
+    var onDisconnect: ((String) -> Void)?
+    var onNotification: ((String, JSONValue) -> Void)?
     private var thread: String?
     private var turn: String?
     private var stream = CodexEventStream()
@@ -140,7 +140,7 @@ public struct AIConversationConfiguration: Sendable {
     private var requests: [String: (id: JSONValue, method: String, params: JSONValue)] = [:]
     private var items: [String: JSONValue] = [:]
     private var completedTurns = Set<String>()
-    public init(rpc: CodexRPC = CodexRPC()) {
+    init(rpc: CodexRPC = CodexRPC()) {
         self.rpc = rpc
         rpc.onNotification = { [weak self] method, params in
             guard let self else { return }
@@ -176,7 +176,7 @@ public struct AIConversationConfiguration: Sendable {
         }
         rpc.onDisconnect = { [weak self] message in self?.onDisconnect?(message) }
     }
-    public func prepare(_ configuration: AIConversationConfiguration) async throws -> String? {
+    func prepare(_ configuration: AIConversationConfiguration) async throws -> String? {
         try await rpc.start(root: configuration.root)
         var params = CodexProtocol.threadParameters(root: configuration.root, mode: configuration.mode,
                                                    model: configuration.settings.model, autoReview: configuration.autoReview)
@@ -191,7 +191,7 @@ public struct AIConversationConfiguration: Sendable {
         onEvent?(.initialized(sessionId: id, model: result["model"]?.string))
         return id
     }
-    public func send(_ text: String, configuration: AIConversationConfiguration, schema: JSONValue? = nil) async throws -> String? {
+    func send(_ text: String, configuration: AIConversationConfiguration, schema: JSONValue? = nil) async throws -> String? {
         try RemoteWorkspace.existing(at: configuration.root)?.requireSynchronized()
         guard let thread else { throw AIIntegrationError.disconnected(provider) }
         stream = CodexEventStream(); turn = nil; finishedDuringSend = false
@@ -202,35 +202,35 @@ public struct AIConversationConfiguration: Sendable {
         if !finishedDuringSend { turn = response["turn"]?["id"]?.string }
         return turn
     }
-    public func interrupt() async throws {
+    func interrupt() async throws {
         guard let thread, let turn else { stop(); return }
         _ = try await rpc.request("turn/interrupt", params: ["threadId": .string(thread), "turnId": .string(turn)])
     }
-    public func decisions(for request: AIPermissionRequest) -> [AIPermissionDecision] {
+    func decisions(for request: AIPermissionRequest) -> [AIPermissionDecision] {
         guard let original = requests[request.id] else { return [] }
         return CodexProtocol.decisions(method: original.method, params: original.params)
     }
-    public func respond(to request: AIPermissionRequest, decision: AIPermissionDecision) throws {
+    func respond(to request: AIPermissionRequest, decision: AIPermissionDecision) throws {
         guard let original = requests[request.id] else { throw CodexRPCError.invalidResponse }
         let result = try CodexProtocol.approval(method: original.method, params: original.params, decision: decision)
         try rpc.respond(id: original.id, result: result); requests[request.id] = nil
     }
-    public func answer(_ request: AIPermissionRequest, answers: [String: [String]]) throws {
+    func answer(_ request: AIPermissionRequest, answers: [String: [String]]) throws {
         guard let original = requests[request.id] else { throw CodexRPCError.invalidResponse }
         try rpc.respond(id: original.id, result: CodexProtocol.answer(params: original.params, answers: answers))
         requests[request.id] = nil
     }
-    public func stop() { rpc.stop(); thread = nil; turn = nil; requests = [:]; items = [:]; stream = CodexEventStream() }
+    func stop() { rpc.stop(); thread = nil; turn = nil; requests = [:]; items = [:]; stream = CodexEventStream() }
 
 }
 
 /// Complete messages can arrive without deltas, or repeat text already streamed.
-public struct CodexEventStream: Sendable {
+struct CodexEventStream: Sendable {
     private var texts: [String: String] = [:]
     private var completed = Set<String>()
-    public private(set) var finalText: String?
-    public init() {}
-    public mutating func event(_ method: String, _ params: JSONValue) -> AIEvent {
+    private(set) var finalText: String?
+    init() {}
+    mutating func event(_ method: String, _ params: JSONValue) -> AIEvent {
         let item = params["item"] ?? .null
         let id = params["itemId"]?.string ?? item["id"]?.string ?? ""
         if method == "item/agentMessage/delta" {

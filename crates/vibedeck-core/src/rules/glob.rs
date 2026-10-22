@@ -1,5 +1,7 @@
 //! `Glob.matches`: globs minimalistas estilo gitignore (`*`, `?`, `**`), ancorados e sensíveis a caixa.
 
+use std::path::Path;
+
 use regex::Regex;
 
 /// Casa `path` (relativo à raiz) com `pattern`. Padrão sem `/` casa o nome em qualquer profundidade; `/`
@@ -54,6 +56,48 @@ fn to_regex(pattern: &str) -> String {
         }
     }
     out.push('$');
+    out
+}
+
+const SKIPPED_DIRS: [&str; 12] = [
+    ".git",
+    "node_modules",
+    ".build",
+    "build",
+    "DerivedData",
+    ".swiftpm",
+    "dist",
+    ".next",
+    "Pods",
+    "__pycache__",
+    ".venv",
+    "target",
+];
+
+/// Arquivos do projeto (relativos), sem ocultos nem saída de build/dependências; até `limit` entradas
+/// (pastas contam, com `/` final, e saem do resultado).
+pub fn project_files(root: &Path, limit: usize) -> Vec<String> {
+    let mut out = Vec::new();
+    let walker = walkdir::WalkDir::new(root)
+        .min_depth(1)
+        .sort_by_file_name()
+        .into_iter()
+        .filter_entry(|e| {
+            let name = e.file_name().to_string_lossy();
+            e.depth() == 0 || !(name.starts_with('.') || SKIPPED_DIRS.contains(&name.as_ref()))
+        });
+    let mut seen = 0usize;
+    for entry in walker.flatten() {
+        seen += 1;
+        if !entry.file_type().is_dir()
+            && let Ok(rel) = entry.path().strip_prefix(root)
+        {
+            out.push(rel.to_string_lossy().replace('\\', "/"));
+        }
+        if seen >= limit {
+            break;
+        }
+    }
     out
 }
 

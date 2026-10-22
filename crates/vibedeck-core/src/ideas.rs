@@ -5,15 +5,14 @@
 
 use std::collections::{HashMap, HashSet};
 use std::fmt;
-use std::path::Path;
 use std::str::FromStr;
 
-use regex::Regex;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
 use crate::error::Error;
 use crate::model::*;
+use crate::rules::{glob_matches, project_files, trimmed_non_empty};
 use crate::store::{Record, Store};
 
 /// Erro dos casos de uso de ideias: os do Core mais os dois que só existem aqui.
@@ -115,38 +114,6 @@ fn hex8(bytes: &[u8]) -> String {
         .iter()
         .map(|b| format!("{b:02x}"))
         .collect()
-}
-
-/// `Rule.contentHash`: 16 hex de SHA-256 de `text + "\n" + details`.
-pub fn rule_content_hash(rule: &Rule) -> String {
-    hex8(format!("{}\n{}", rule.text, rule.details.as_deref().unwrap_or("")).as_bytes())
-}
-
-/// Estado do teste de uma regra, como `Rule.testState`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RuleTestState {
-    None,
-    Script,
-    Manual,
-    Stale,
-}
-
-pub fn rule_test_state(rule: &Rule) -> RuleTestState {
-    let Some(test) = &rule.test else {
-        return RuleTestState::None;
-    };
-    if test.rule_hash != rule_content_hash(rule) {
-        return RuleTestState::Stale;
-    }
-    let has_command = test
-        .command
-        .as_deref()
-        .is_some_and(|c| !c.trim().is_empty());
-    if test.mode == RuleTestMode::Script && has_command {
-        RuleTestState::Script
-    } else {
-        RuleTestState::Manual
-    }
 }
 
 impl IdeaFingerprint for Idea {
@@ -390,112 +357,9 @@ pub fn implementation_prompt(slug: &str, idea: &Idea, topic: Option<&str>) -> St
     lines.join("\n")
 }
 
-// ---- globs e arquivos do projeto -----------------------------------------------------------------
-
 const FILE_LIMIT: usize = 20000;
-const SKIPPED_DIRS: [&str; 12] = [
-    ".git",
-    "node_modules",
-    ".build",
-    "build",
-    "DerivedData",
-    ".swiftpm",
-    "dist",
-    ".next",
-    "Pods",
-    "__pycache__",
-    ".venv",
-    "target",
-];
-
-fn glob_regex(pattern: &str) -> String {
-    let mut out = String::from("^");
-    let chars: Vec<char> = pattern.chars().collect();
-    let mut i = 0;
-    while i < chars.len() {
-        let ch = chars[i];
-        i += 1;
-        match ch {
-            '*' => {
-                if chars.get(i) == Some(&'*') {
-                    i += 1;
-                    if chars.get(i) == Some(&'/') {
-                        i += 1;
-                        out.push_str("(?:.*/)?");
-                    } else {
-                        out.push_str(".*");
-                    }
-                } else {
-                    out.push_str("[^/]*");
-                }
-            }
-            '?' => out.push_str("[^/]"),
-            '.' | '+' | '(' | ')' | '^' | '$' | '|' | '[' | ']' | '{' | '}' | '\\' => {
-                out.push('\\');
-                out.push(ch);
-            }
-            c => out.push(c),
-        }
-    }
-    out.push('$');
-    out
-}
-
-/// Globs estilo gitignore: `*` (dentro do segmento), `?`, `**` (qualquer profundidade). Sem `/` casa o nome
-/// em qualquer profundidade; `/` final casa tudo abaixo.
-pub fn glob_matches(pattern: &str, path: &str) -> bool {
-    let mut pattern = pattern.trim().to_string();
-    if pattern.is_empty() {
-        return false;
-    }
-    if let Some(rest) = pattern.strip_prefix("./") {
-        pattern = rest.to_string();
-    }
-    if let Some(rest) = pattern.strip_prefix('/') {
-        pattern = rest.to_string();
-    } else if !pattern.contains('/') {
-        pattern = format!("**/{pattern}");
-    }
-    if pattern.ends_with('/') {
-        pattern.push_str("**");
-    }
-    let path = path.strip_prefix("./").unwrap_or(path);
-    Regex::new(&format!("(?s){}", glob_regex(&pattern))).is_ok_and(|re| re.is_match(path))
-}
-
-/// Arquivos do projeto (relativos), sem ocultos nem saída de build/dependências; até `limit` entradas
-/// (pastas contam, com `/` final, e saem do resultado).
-pub fn project_files(root: &Path, limit: usize) -> Vec<String> {
-    let mut out = Vec::new();
-    let walker = walkdir::WalkDir::new(root)
-        .min_depth(1)
-        .sort_by_file_name()
-        .into_iter()
-        .filter_entry(|e| {
-            let name = e.file_name().to_string_lossy();
-            e.depth() == 0 || !(name.starts_with('.') || SKIPPED_DIRS.contains(&name.as_ref()))
-        });
-    let mut seen = 0usize;
-    for entry in walker.flatten() {
-        seen += 1;
-        if !entry.file_type().is_dir()
-            && let Ok(rel) = entry.path().strip_prefix(root)
-        {
-            out.push(rel.to_string_lossy().replace('\\', "/"));
-        }
-        if seen >= limit {
-            break;
-        }
-    }
-    out
-}
 
 // ---- casos de uso --------------------------------------------------------------------------------
-
-fn trimmed_non_empty(s: &str) -> Option<String> {
-    let t = s.trim();
-    (!t.is_empty()).then(|| t.to_string())
-}
 
 impl Store {
     /// `(slug, ideia)` de todas as ideias, por `(createdAt, slug)`.
@@ -812,18 +676,6 @@ mod tests {
         assert_eq!(group_path("a/b/x"), "a/b");
         assert_eq!(group_path("x"), "");
         assert_eq!(group_path(""), "");
-    }
-
-    #[test]
-    fn glob_cases() {
-        assert!(glob_matches("Sources/App/**", "Sources/App/View.swift"));
-        assert!(!glob_matches("Sources/Gone/**", "Sources/App/View.swift"));
-        assert!(glob_matches("*.rs", "a/b/c.rs"));
-        assert!(glob_matches("docs/", "docs/x/y.md"));
-        assert!(glob_matches("/Package.swift", "Package.swift"));
-        assert!(glob_matches("**/x.rs", "x.rs"));
-        assert!(!glob_matches("", "x"));
-        assert!(!glob_matches("a?c", "a/c"));
     }
 
     #[test]

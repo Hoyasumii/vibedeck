@@ -151,10 +151,11 @@ final class ReviewResolveRunner {
         guard isUnchanged(item) else { return .failed("O item mudou antes da execução; nada foi alterado.") }
         let prompt = ReviewResolve.executionPrompt(item: item, kind: entries[index].kind, plan: plan, answers: entries[index].answered)
         let started = Date.now
-        try await RuleTestGenerator.run(root: model.store.root, prompt: prompt, provider: provider, operation: "Resolver")
+        try await RuleTestGenerator.run(root: model.store.root, store: model.store, prompt: prompt, provider: provider, operation: "Resolver")
         try Task.checkCancellation()
         let store = model.store
-        let problems = await VDLog.detached { ReviewResolve.verify(store: store, item: item, files: plan.files, verifiedSince: started) }.value
+        let problems = await ReviewResolve.verify(store: store, item: item, files: plan.files, verifiedSince: started,
+                                                  checks: model.checks, topics: model.topics.map(\.value))
         try Task.checkCancellation()
         guard problems.isEmpty else {
             return .failed("Check não aprovado; o item continua como estava.\n" + problems.joined(separator: "\n"))

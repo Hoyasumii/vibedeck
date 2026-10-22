@@ -7,9 +7,9 @@ use std::path::Path;
 use serde::Deserialize;
 use serde_json::Value;
 
-use super::gate::{relative_path, topic_matches_file};
 use crate::model::*;
 use crate::paths;
+use crate::rules::{TopicExt, relative_to_root};
 use crate::store::{Record, Store};
 
 /// Ferramentas permitidas na chamada. Qualquer outra (Edit, Write, Bash, servidores MCP) fica indisponível.
@@ -145,7 +145,7 @@ pub fn candidate_topics<'a>(
         .filter(|t| {
             !t.value.is_global()
                 && !item.rules.contains(&t.slug)
-                && !file.is_some_and(|f| topic_matches_file(&t.value, f))
+                && !file.is_some_and(|f| t.value.matches_file(f))
         })
         .collect()
 }
@@ -365,7 +365,7 @@ pub fn proposal(
 
 /// Caminho relativo à raiz de um arquivo regular dentro do projeto, ou `None`.
 pub fn existing_file(path: &str, root: &Path) -> Option<String> {
-    let relative = relative_path(root, path);
+    let relative = relative_to_root(root, path);
     if relative.starts_with('/') {
         return None;
     }

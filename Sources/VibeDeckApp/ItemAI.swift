@@ -48,9 +48,10 @@ final class ItemAIRunner {
             do {
                 var refs: ItemDiscover.Refs?
                 var listing: [String: [ItemDiscover.Existing]] = [:]
-                if kind == .workflow { let found = try store.itemRefs(); refs = found.refs; listing = found.listing }
+                if kind == .workflow { let found = try await store.itemRefs(); refs = found.refs; listing = found.listing }
+                let existingItems = try await store.existingItems(kind)
                 let prompt = ItemDiscover.prompt(kind: kind, request: request, current: current,
-                                                 existing: try store.existingItems(kind), refs: listing)
+                                                 existing: existingItems, refs: listing)
                 let proposal = try await AIReadOnlyOperation.run(
                     root: store.root, provider: provider, operation: current == nil ? "Criar \(kind.title) com IA" : "Editar \(kind.title) com IA",
                     prompt: prompt, schema: ItemDiscover.schema(kind), request: send,

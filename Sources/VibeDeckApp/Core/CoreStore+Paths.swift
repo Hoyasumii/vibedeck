@@ -4,6 +4,10 @@ import Foundation
 extension CoreStore {
     /// Valida e normaliza um caminho de grupo (`a/b`); vazio só é aceito com `allowRoot`.
     func normalizedGroupPath(_ path: String, allowRoot: Bool = false) throws -> String {
+        try Self.normalizedGroupPath(path, allowRoot: allowRoot)
+    }
+
+    static func normalizedGroupPath(_ path: String, allowRoot: Bool = false) throws -> String {
         if path.isEmpty, allowRoot { return "" }
         let parts = path.split(separator: "/", omittingEmptySubsequences: false)
         guard !path.isEmpty, !path.hasPrefix("/"), !path.contains("\\"),
@@ -48,6 +52,10 @@ extension CoreStore {
 
     /// Reescreve o grupo de regras `from` para `to` nas regras dadas (valida colisões).
     func ruleGroupRenamed(_ rules: [Rule], from: String, to: String) throws -> [Rule] {
+        try Self.ruleGroupRenamed(rules, from: from, to: to)
+    }
+
+    static func ruleGroupRenamed(_ rules: [Rule], from: String, to: String) throws -> [Rule] {
         _ = try normalizedGroupPath(from)
         let source = from
         let target = try normalizedGroupPath(to)

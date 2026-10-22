@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use clap::{Args, Subcommand};
 use vibedeck_core::Store;
 use vibedeck_core::model::{Agent, AiProvider, Author, Command as Cmd, NextStepKind, Skill};
+use vibedeck_core::project::links::hashtags;
 use vibedeck_core::resources::{
     self, NewPersona, Persona, flow_for, group_path, import_agents, import_commands, import_skills,
     kits, persona::View, with_slug_and_group,
@@ -321,14 +322,6 @@ fn kind_of(s: &str) -> NextStepKind {
         "command" => NextStepKind::Command,
         "skill" => NextStepKind::Skill,
         _ => NextStepKind::Agent,
-    }
-}
-
-fn hashtags(tags: &[String]) -> String {
-    if tags.is_empty() {
-        String::new()
-    } else {
-        format!("  #{}", tags.join(" #"))
     }
 }
 

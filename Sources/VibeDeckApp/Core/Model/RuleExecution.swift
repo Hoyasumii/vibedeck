@@ -1,13 +1,13 @@
 import Foundation
 
-public enum RuleScriptEvent: Sendable {
+enum RuleScriptEvent: Sendable {
     case started(topic: String, rule: Rule, at: Date)
     case finished(RuleTestRun, at: Date)
 }
 
-public enum RuleExecutionError: LocalizedError {
+enum RuleExecutionError: LocalizedError {
     case changed, incomplete, invalidAnswer
-    public var errorDescription: String? {
+    var errorDescription: String? {
         switch self {
         case .changed: "As regras mudaram durante a execução. Execute novamente para salvar a verificação."
         case .incomplete: "A verificação está incompleta e não foi salva."
@@ -17,20 +17,20 @@ public enum RuleExecutionError: LocalizedError {
 }
 
 /// Strict structured answers: omissions, duplicates and unexpected rules are errors, never passes.
-public enum RuleVerificationAnswer {
-    public struct Answer: Decodable, Sendable {
-        public struct Entry: Decodable, Sendable {
-            public var ruleId: UUID
-            public var verdict: RuleVerdict
-            public var note: String
+enum RuleVerificationAnswer {
+    struct Answer: Decodable, Sendable {
+        struct Entry: Decodable, Sendable {
+            var ruleId: UUID
+            var verdict: RuleVerdict
+            var note: String
         }
-        public var results: [Entry]
+        var results: [Entry]
     }
-    public static let schema = #"""
+    static let schema = #"""
     {"type":"object","additionalProperties":false,"properties":{"results":{"type":"array","items":{"type":"object","additionalProperties":false,"properties":{"ruleId":{"type":"string"},"verdict":{"type":"string","enum":["pass","fail","na"]},"note":{"type":"string"}},"required":["ruleId","verdict","note"]}}},"required":["results"]}
     """#
 
-    public static func parse(_ data: Data, rules: [Rule], topic: String) throws -> [RuleResult] {
+    static func parse(_ data: Data, rules: [Rule], topic: String) throws -> [RuleResult] {
         guard let answer = try? VDJSON.decoder.decode(Answer.self, from: data),
               answer.results.count == rules.count,
               Set(answer.results.map(\.ruleId)) == Set(rules.map(\.id)),
@@ -42,14 +42,14 @@ public enum RuleVerificationAnswer {
 }
 
 /// Bounded timing history; callers persist it outside the repository.
-public struct RuleExecutionTimings: Codable, Sendable {
-    public var samples: [String: [TimeInterval]] = [:]
-    public init() {}
-    public mutating func record(_ duration: TimeInterval, key: String) {
+struct RuleExecutionTimings: Codable, Sendable {
+    var samples: [String: [TimeInterval]] = [:]
+    init() {}
+    mutating func record(_ duration: TimeInterval, key: String) {
         guard duration.isFinite, duration >= 0 else { return }
         samples[key] = Array(((samples[key] ?? []) + [duration]).suffix(10))
     }
-    public func estimate(key: String, category: String) -> TimeInterval? {
+    func estimate(key: String, category: String) -> TimeInterval? {
         let exact = samples[key] ?? []
         let values = (exact.isEmpty ? samples.filter { $0.key.hasPrefix(category + ":") }.flatMap(\.value) : exact).sorted()
         guard !values.isEmpty else { return nil }

@@ -13,6 +13,7 @@ use vibedeck_core::Store;
 use vibedeck_core::model::{
     Author, Rule, RuleCheck, RuleResultSource, RuleSeverity, RuleTestMode, RuleTopic, RuleVerdict,
 };
+use vibedeck_core::project::links::hashtags;
 use vibedeck_core::rules::{
     self, HookAgent, HookScope, RuleAnswer, RuleError, RuleExt, RuleTestRunRow, RuleTestRunner,
     RuleTestState, SubmitParams, TaskSpec, TopicChecklist,
@@ -43,14 +44,6 @@ impl From<RuleError> for CliError {
 
 fn id8(id: &impl ToString) -> String {
     id.to_string().chars().take(8).collect()
-}
-
-fn hashtags(tags: &[String]) -> String {
-    if tags.is_empty() {
-        String::new()
-    } else {
-        format!("  #{}", tags.join(" #"))
-    }
 }
 
 fn scope_text(topic: &RuleTopic) -> String {

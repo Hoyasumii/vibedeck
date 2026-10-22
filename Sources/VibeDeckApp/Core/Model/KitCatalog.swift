@@ -1,10 +1,10 @@
 import Foundation
 
 /// Built-in starting points. Installed items use the ordinary project models and editors.
-public enum KitItemKind: String, Codable, CaseIterable, Sendable {
+enum KitItemKind: String, Codable, CaseIterable, Sendable {
     case agent, command, skill, workflow
 
-    public var title: String {
+    var title: String {
         switch self {
         case .agent: "Agente"
         case .command: "Comando"
@@ -14,30 +14,30 @@ public enum KitItemKind: String, Codable, CaseIterable, Sendable {
     }
 }
 
-public struct KitCatalogItem: Codable, Identifiable, Sendable {
-    public let id: String
-    public let kind: KitItemKind
-    public let title: String
-    public let summary: String
-    public let prompt: String
-    public let nextSteps: [NextStep]
-    public let steps: [WorkflowStep]
+struct KitCatalogItem: Codable, Identifiable, Sendable {
+    let id: String
+    let kind: KitItemKind
+    let title: String
+    let summary: String
+    let prompt: String
+    let nextSteps: [NextStep]
+    let steps: [WorkflowStep]
 
-    public var dependencies: [String] {
+    var dependencies: [String] {
         Array(Set(nextSteps.map(\.ref) + steps.map(\.ref))).sorted()
     }
 }
 
-public struct CatalogKit: Codable, Identifiable, Sendable {
-    public let id: String
-    public let title: String
-    public let summary: String
-    public let items: [KitCatalogItem]
+struct CatalogKit: Codable, Identifiable, Sendable {
+    let id: String
+    let title: String
+    let summary: String
+    let items: [KitCatalogItem]
 }
 
-public enum KitCatalog {
+enum KitCatalog {
     /// Kit ids explicitly select all their items; item ids select only that item.
-    public static func selection(_ refs: [String]) throws -> [KitCatalogItem] {
+    static func selection(_ refs: [String]) throws -> [KitCatalogItem] {
         let all = kits.flatMap(\.items)
         var ids = Set<String>()
         for ref in refs {
@@ -48,7 +48,7 @@ public enum KitCatalog {
         return all.filter { ids.contains($0.id) }
     }
 
-    public static func missingDependencies(_ refs: [String]) throws -> [String] {
+    static func missingDependencies(_ refs: [String]) throws -> [String] {
         let items = try selection(refs)
         let ids = Set(items.map(\.id))
         return Array(Set(items.flatMap(\.dependencies)).subtracting(ids)).sorted()
@@ -65,7 +65,7 @@ public enum KitCatalog {
     Respeite o provedor, o modelo, as permissões e os limites escolhidos; não os troque automaticamente.
     """
 
-    public static let kits: [CatalogKit] = [
+    static let kits: [CatalogKit] = [
         makeKit(id: "manutencao", title: "Manutenção de sistema",
                 summary: "Diagnosticar, corrigir, evoluir e revisar código existente.",
                 agent: "Revisor de manutenção", command: "Corrigir sistema", skill: "Diagnóstico de sistema",

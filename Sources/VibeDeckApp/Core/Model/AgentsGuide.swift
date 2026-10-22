@@ -1,20 +1,20 @@
 import Foundation
 
-public enum AgentsGuide {
-    public static var sections: [String] {
+enum AgentsGuide {
+    static var sections: [String] {
         referenceMarkdown.components(separatedBy: "\n## ").dropFirst().map { "## " + $0 }
     }
 
-    public static func section(_ index: Int) -> String? {
+    static func section(_ index: Int) -> String? {
         guard sections.indices.contains(index) else { return nil }
         return sections[index]
     }
 
-    public static var index: String {
+    static var index: String {
         sections.enumerated().map { "\($0.offset): \($0.element.components(separatedBy: "\n")[0].dropFirst(3))" }.joined(separator: "\n")
     }
 
-    public static var markdown: String {
+    static var markdown: String {
         let mandatory = referenceMarkdown.components(separatedBy: "\n## Stack")[0]
         return mandatory + """
 
@@ -38,7 +38,7 @@ public enum AgentsGuide {
         """
     }
 
-    public static let referenceMarkdown = """
+    static let referenceMarkdown = """
     # VibeDeck — guia para agentes de IA
 
     Este diretório é gerenciado pelo app **VibeDeck**: links, documentos, revisões, **regras**, **ideias**, **agentes**,

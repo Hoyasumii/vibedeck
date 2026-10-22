@@ -1,18 +1,18 @@
 import Foundation
 
 /// Repository documentation proposals. Parsing and editing never write to the project.
-public enum DocGenerate {
-    public static let maxDocuments = 8
-    public static let maxContentLength = 40_000
+enum DocGenerate {
+    static let maxDocuments = 8
+    static let maxContentLength = 40_000
 
-    public struct Document: Codable, Equatable, Identifiable, Sendable {
-        public var title: String
-        public var content: String
-        public var id = UUID()
+    struct Document: Codable, Equatable, Identifiable, Sendable {
+        var title: String
+        var content: String
+        var id = UUID()
         /// Local destination chosen in the app, never accepted from the AI response or serialized.
-        public var group: String? = nil
+        var group: String? = nil
 
-        public init(title: String, content: String) {
+        init(title: String, content: String) {
             self.title = title
             self.content = content
         }
@@ -22,11 +22,11 @@ public enum DocGenerate {
 
     private struct Answer: Decodable { var documents: [Document] }
 
-    public static let schema = #"""
+    static let schema = #"""
     {"type":"object","additionalProperties":false,"properties":{"documents":{"type":"array","maxItems":8,"items":{"type":"object","additionalProperties":false,"properties":{"title":{"type":"string"},"content":{"type":"string","maxLength":40000}},"required":["title","content"]}}},"required":["documents"]}
     """#
 
-    public static func prompt(existing: [DocInfo]) -> String {
+    static func prompt(existing: [DocInfo]) -> String {
         """
         Leia este repositório usando somente leitura e busca. Não altere arquivos nem execute comandos.
         Proponha documentos úteis em pt-BR sobre como rodar o projeto, dependências e regras de negócio.
@@ -42,7 +42,7 @@ public enum DocGenerate {
         """
     }
 
-    public static func parse(_ data: Data) throws -> [Document] {
+    static func parse(_ data: Data) throws -> [Document] {
         guard let answer = try? VDJSON.decoder.decode(Answer.self, from: data) else {
             throw VibeDeckError.docGenerationInvalidAnswer
         }
@@ -50,7 +50,7 @@ public enum DocGenerate {
     }
 
     /// Reused at acceptance so edited proposals obey the same limits.
-    public static func validated(_ documents: [Document]) -> [Document] {
+    static func validated(_ documents: [Document]) -> [Document] {
         Array(documents.compactMap { document -> Document? in
             var value = document
             value.title = value.title.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -1,8 +1,8 @@
 import Foundation
 
-public struct InstalledKitItem: Codable, Equatable, Sendable {
-    public let catalogID: String
-    public let kind: KitItemKind
-    public let slug: String
+struct InstalledKitItem: Codable, Equatable, Sendable {
+    let catalogID: String
+    let kind: KitItemKind
+    let slug: String
 }
 

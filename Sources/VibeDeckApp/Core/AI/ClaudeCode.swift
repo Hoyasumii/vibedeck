@@ -2,11 +2,11 @@ import Foundation
 
 /// Single detection of the local Claude Code install, reused by every AI feature: when it is missing,
 /// those features are hidden instead of shown disabled.
-public enum ClaudeCode {
+enum ClaudeCode {
     /// The `claude` executable, resolved once per process.
-    public static let executable: URL? = locate()
+    static let executable: URL? = locate()
 
-    public static var isInstalled: Bool { executable != nil }
+    static var isInstalled: Bool { executable != nil }
 
     /// Directories where installers put `claude`. GUI apps don't inherit the shell PATH, so these are
     /// checked explicitly before falling back to asking the login shell.
@@ -41,7 +41,7 @@ public enum ClaudeCode {
 
     /// PATH for child processes: the login shell's (so `git`, `node` and the `vibedeck` MCP server resolve
     /// as in the terminal), with the candidate directories appended as a fallback.
-    public static func childPATH() -> String {
+    static func childPATH() -> String {
         let home = FileManager.default.homeDirectoryForCurrentUser
         let base = loginShell(#"printf %s "$PATH""#) ?? ProcessInfo.processInfo.environment["PATH"]
         return candidateDirectories(home: home, path: base).joined(separator: ":")

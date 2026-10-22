@@ -23,7 +23,9 @@ final class GraphRunner {
     func start(root: URL, provider: AIProvider, available: (AIProvider) -> Bool = { $0.isInstalled },
                extract: Extract? = nil, analyze: Analyze? = nil) {
         guard state != .running else { return }
-        guard RemoteWorkspace.existing(at: root) != nil || available(provider) else { state = .failed("\(provider.title) não está disponível. Instale o provedor selecionado."); return }
+        // PEDIDO-CORE (graph_generate): o grafo semântico de projetos SSH precisa rodar no servidor; por ora só projetos locais.
+        guard RemoteWorkspace.existing(at: root) == nil else { state = .failed("O grafo ainda não está disponível em projetos SSH."); return }
+        guard available(provider) else { state = .failed("\(provider.title) não está disponível. Instale o provedor selecionado."); return }
         state = .running; cancelled = false; progress = "Preparando cópia do projeto…"
         task = Task {
             var snapshot: URL?

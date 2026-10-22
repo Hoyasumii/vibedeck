@@ -36,8 +36,9 @@ final class DocGenerateRunner {
         state = .running
         task = Task {
             do {
+                let existingDocs = try await store.listDocs()
                 let documents = try await AIReadOnlyOperation.run(root: store.root, provider: provider,
-                    operation: "Gerar documentos", prompt: DocGenerate.prompt(existing: try store.listDocs()),
+                    operation: "Gerar documentos", prompt: DocGenerate.prompt(existing: existingDocs),
                     schema: DocGenerate.schema, request: request, parse: DocGenerate.parse)
                 try Task.checkCancellation()
                 state = .ready(documents)

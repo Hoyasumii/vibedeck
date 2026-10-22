@@ -1,8 +1,8 @@
 import Foundation
 
-public enum CodexRPCError: LocalizedError, Sendable {
+enum CodexRPCError: LocalizedError, Sendable {
     case unavailable, disconnected, timeout(String), server(String), invalidResponse
-    public var errorDescription: String? {
+    var errorDescription: String? {
         switch self {
         case .unavailable: "Codex não encontrado. Instale o Codex CLI e reabra o VibeDeck."
         case .disconnected: "O Codex encerrou a conexão. Reabra a conversa para tentar novamente."
@@ -15,10 +15,10 @@ public enum CodexRPCError: LocalizedError, Sendable {
 
 /// A single local app-server connection. No network listener or API key is needed.
 /// Callbacks and continuations are isolated to the main actor; stdout/stderr drain concurrently.
-@MainActor public final class CodexRPC {
-    public var onNotification: ((String, JSONValue) -> Void)?
-    public var onRequest: ((JSONValue, String, JSONValue) -> Void)?
-    public var onDisconnect: ((String) -> Void)?
+@MainActor final class CodexRPC {
+    var onNotification: ((String, JSONValue) -> Void)?
+    var onRequest: ((JSONValue, String, JSONValue) -> Void)?
+    var onDisconnect: ((String) -> Void)?
     private var process: Process?
     private var input: FileHandle?
     private var readers: [Task<Void, Never>] = []
@@ -26,9 +26,9 @@ public enum CodexRPCError: LocalizedError, Sendable {
     private var timeouts: [Int: Task<Void, Never>] = [:]
     private var sequence = 0
     private var stderrTail = ""
-    public init() {}
+    init() {}
 
-    public func start(root: URL, executable: URL? = CodexCode.executable, arguments: [String] = ["app-server", "--stdio"]) async throws {
+    func start(root: URL, executable: URL? = CodexCode.executable, arguments: [String] = ["app-server", "--stdio"]) async throws {
         if process != nil { return }
         guard let executable = (RemoteWorkspace.existing(at: root) != nil ? RemoteExecution.executable(.codex, root: root) : executable) else { throw CodexRPCError.unavailable }
         let childPath = await Task.detached { ClaudeCode.childPATH() }.value
@@ -61,7 +61,7 @@ public enum CodexRPCError: LocalizedError, Sendable {
         } catch { stop(); throw error }
     }
 
-    public func request(_ method: String, params: [String: JSONValue] = [:], timeout: Duration = .seconds(30)) async throws -> JSONValue {
+    func request(_ method: String, params: [String: JSONValue] = [:], timeout: Duration = .seconds(30)) async throws -> JSONValue {
         guard input != nil else { throw CodexRPCError.disconnected }
         sequence += 1; let id = sequence
         return try await withTaskCancellationHandler {
@@ -78,11 +78,11 @@ public enum CodexRPCError: LocalizedError, Sendable {
         } onCancel: { Task { @MainActor [weak self] in self?.finish(id, result: .failure(CancellationError())) } }
     }
 
-    public func notify(_ method: String, params: [String: JSONValue] = [:]) throws {
+    func notify(_ method: String, params: [String: JSONValue] = [:]) throws {
         try write(.object(["method": .string(method), "params": .object(params)]))
     }
-    public func respond(id: JSONValue, result: JSONValue) throws { try write(.object(["id": id, "result": result])) }
-    public func reject(id: JSONValue, message: String) {
+    func respond(id: JSONValue, result: JSONValue) throws { try write(.object(["id": id, "result": result])) }
+    func reject(id: JSONValue, message: String) {
         try? write(.object(["id": id, "error": .object(["code": .number(-32601), "message": .string(message)])]))
     }
     private func write(_ value: JSONValue) throws {
@@ -117,7 +117,7 @@ public enum CodexRPCError: LocalizedError, Sendable {
         stop()
         onDisconnect?(detail.isEmpty ? "Codex encerrou a conexão (\(p.terminationStatus))." : detail)
     }
-    public func stop() {
+    func stop() {
         let p = process; process = nil
         p?.terminationHandler = nil
         try? input?.close(); input = nil
@@ -127,14 +127,14 @@ public enum CodexRPCError: LocalizedError, Sendable {
     }
 }
 
-public enum CodexProtocol {
-    public static func threadParameters(root: URL, mode: ClaudePermissionMode, model: String? = nil, autoReview: Bool = false) -> [String: JSONValue] {
+enum CodexProtocol {
+    static func threadParameters(root: URL, mode: ClaudePermissionMode, model: String? = nil, autoReview: Bool = false) -> [String: JSONValue] {
         var params: [String: JSONValue] = ["cwd": .string(RemoteExecution.path(for: root)), "approvalPolicy": .string("on-request"), "sandbox": .string(mode == .plan ? "read-only" : "workspace-write")]
         params["approvalsReviewer"] = .string(autoReview ? "auto_review" : "user")
         if let model, !model.isEmpty { params["model"] = .string(model) }
         return params
     }
-    public static func turnParameters(thread: String, text: String, mode: ClaudePermissionMode, model: String?, effort: String?, autoReview: Bool = false) -> [String: JSONValue] {
+    static func turnParameters(thread: String, text: String, mode: ClaudePermissionMode, model: String?, effort: String?, autoReview: Bool = false) -> [String: JSONValue] {
         var params: [String: JSONValue] = ["threadId": .string(thread), "input": .array([.object(["type": .string("text"), "text": .string(text), "text_elements": .array([])])]),
             "approvalPolicy": .string("on-request"),
             "sandboxPolicy": .object(["type": .string(mode == .plan ? "readOnly" : "workspaceWrite")])]
@@ -146,8 +146,8 @@ public enum CodexProtocol {
         }
         return params
     }
-    public static func key(_ id: JSONValue) -> String { String(decoding: (try? JSONEncoder().encode(id)) ?? Data(), as: UTF8.self) }
-    public static func permission(id: JSONValue, method: String, params: JSONValue) -> ClaudePermissionRequest? {
+    static func key(_ id: JSONValue) -> String { String(decoding: (try? JSONEncoder().encode(id)) ?? Data(), as: UTF8.self) }
+    static func permission(id: JSONValue, method: String, params: JSONValue) -> ClaudePermissionRequest? {
         var input = params.object ?? [:]
         let name: String
         switch method {
@@ -164,7 +164,7 @@ public enum CodexProtocol {
         }
         return ClaudePermissionRequest(requestId: key(id), toolName: name, input: input, description: params["reason"]?.string, suggestions: [])
     }
-    public static func decisions(method: String, params: JSONValue) -> [AIPermissionDecision] {
+    static func decisions(method: String, params: JSONValue) -> [AIPermissionDecision] {
         var result: [AIPermissionDecision] = [.allowOnce, .allowSession, .deny]
         if method == "item/commandExecution/requestApproval", params["proposedExecpolicyAmendment"]?.array?.isEmpty == false { result.insert(.allowAlways, at: 2) }
         if let offered = params["availableDecisions"]?.array {
@@ -179,7 +179,7 @@ public enum CodexProtocol {
         }
         return result
     }
-    public static func approval(method: String, params: JSONValue, decision: AIPermissionDecision) throws -> JSONValue {
+    static func approval(method: String, params: JSONValue, decision: AIPermissionDecision) throws -> JSONValue {
         guard decisions(method: method, params: params).contains(decision) else { throw CodexRPCError.invalidResponse }
         if method == "item/permissions/requestApproval" {
             return .object(["permissions": decision == .deny ? .object([:]) : params["permissions"] ?? .object([:]),
@@ -192,7 +192,7 @@ public enum CodexProtocol {
         return .object(["decision": .string(decision == .deny ? denial : decision == .allowSession ? "acceptForSession" : "accept")])
     }
 
-    public static func answer(params: JSONValue, answers: [String: [String]]) -> JSONValue {
+    static func answer(params: JSONValue, answers: [String: [String]]) -> JSONValue {
         var result: [String: JSONValue] = [:]
         for q in params["questions"]?.array ?? [] {
             if let id = q["id"]?.string, let text = q["question"]?.string {
@@ -201,7 +201,7 @@ public enum CodexProtocol {
         }
         return .object(["answers": .object(result)])
     }
-    public static func event(_ method: String, _ params: JSONValue) -> ClaudeEvent {
+    static func event(_ method: String, _ params: JSONValue) -> ClaudeEvent {
         let item = params["item"] ?? .null
         switch method {
         case "item/agentMessage/delta": return .textDelta(params["delta"]?.string ?? "")
