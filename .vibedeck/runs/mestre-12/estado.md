@@ -13,10 +13,11 @@ D5 nuvem: remover e limpar dados | D6 ícones reuso; só Claude/Codex
 D7 macOS universal + Linux musl x86_64/aarch64 | D8 sshd local em container
 D9 fronteira processo+JSON | D10 Site só schemas; Releases preparado sem publicar
 D11 paridade total de dados | D12 remover Core Swift após paridade | D13 Sonnet
+D-MERGE (usuário): ao terminar tudo, abrir PRs e mergear na main resolvendo conflitos (atenção: merge na main dispara deploy do worker)
 
 ## Trilhas
-- CORE: F01 pendente
-- APP: APP-1 pendente
+- CORE: F01 inventário CLI/MCP feito (f01/), dados em andamento; workspace+CI criados
+- APP: APP-1 escrito (DesignSystem/), aguardando CI macOS; D2 regras revisadas
 - SITE: SITE-1 pendente (depende F01)
 
 ## Donos
@@ -29,3 +30,6 @@ D11 paridade total de dados | D12 remover Core Swift após paridade | D13 Sonnet
 
 ## Próximo passo
 - F01 inventário + APP-1 tokens em paralelo
+
+## PR
+- Hoyasumii/vibedeck#11 (draft, CI)
