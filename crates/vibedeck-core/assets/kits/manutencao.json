@@ -1,0 +1,68 @@
+{
+  "id": "manutencao",
+  "title": "Manutenção de sistema",
+  "summary": "Diagnosticar, corrigir, evoluir e revisar código existente.",
+  "items": [
+    {
+      "kind": "agent",
+      "title": "Revisor de manutenção",
+      "summary": "Revisar mudanças, testes e aderência aos padrões.",
+      "prompt": "Revise a mudança e seus testes. Procure regressões, complexidade desnecessária e violações dos padrões. Informe evidências e problemas acionáveis. Termine com APROVADO ou AJUSTAR."
+    },
+    {
+      "kind": "command",
+      "title": "Corrigir sistema",
+      "summary": "Implementar uma mudança com validação e check.",
+      "prompt": "Corrija ou evolua o sistema conforme $ARGUMENTS. Reproduza o problema, investigue sua causa e implemente a menor mudança coesa. Termine com IMPLEMENTADO após testes e check aprovados."
+    },
+    {
+      "kind": "skill",
+      "title": "Diagnóstico de sistema",
+      "summary": "Investigar o contexto e preparar um plano verificável.",
+      "prompt": "Use ao investigar defeitos ou evolução de código existente. Reproduza o comportamento, siga o fluxo de dados, registre a causa e proponha uma correção com teste de regressão. Termine com DIAGNOSTICADO."
+    },
+    {
+      "kind": "workflow",
+      "title": "Manutenção com revisão",
+      "summary": "Planejar → implementar → revisar, com até três rodadas de ajustes.",
+      "prompt": "",
+      "steps": [
+        {
+          "id": "planejar",
+          "kind": "skill",
+          "ref": "manutencao:skill",
+          "transitions": [
+            {
+              "to": "implementar"
+            }
+          ]
+        },
+        {
+          "id": "implementar",
+          "kind": "command",
+          "ref": "manutencao:command",
+          "note": "Use o objetivo da execução e o plano da etapa anterior.",
+          "maxVisits": 3,
+          "transitions": [
+            {
+              "verdict": "IMPLEMENTADO",
+              "to": "revisar"
+            }
+          ]
+        },
+        {
+          "id": "revisar",
+          "kind": "agent",
+          "ref": "manutencao:agent",
+          "maxVisits": 3,
+          "transitions": [
+            {
+              "verdict": "AJUSTAR",
+              "to": "implementar"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

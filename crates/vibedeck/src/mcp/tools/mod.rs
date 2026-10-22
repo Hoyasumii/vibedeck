@@ -7,7 +7,7 @@ mod ai;
 mod docs;
 mod ideas;
 mod onboarding;
-mod project;
+pub mod project;
 mod resources;
 mod reviews;
 mod rules;

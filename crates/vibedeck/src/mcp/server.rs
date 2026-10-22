@@ -15,6 +15,7 @@ pub const METHOD_NOT_FOUND: i64 = -32601;
 pub const INVALID_PARAMS: i64 = -32602;
 pub const INTERNAL_ERROR: i64 = -32603;
 /// Código MCP para recurso inexistente.
+#[cfg(test)]
 pub const RESOURCE_NOT_FOUND: i64 = -32002;
 
 /// Erro JSON-RPC (código + mensagem).
@@ -41,8 +42,10 @@ pub trait ResourceProvider: Send + Sync {
     fn read(&self, uri: &str) -> Result<Value, RpcError>;
 }
 
+#[cfg(test)]
 pub struct NoResources;
 
+#[cfg(test)]
 impl ResourceProvider for NoResources {
     fn list(&self) -> Result<Vec<Value>, RpcError> {
         Ok(Vec::new())

@@ -1,0 +1,68 @@
+{
+  "id": "novas-ferramentas",
+  "title": "Desenvolvimento de novas ferramentas",
+  "summary": "Planejar, desenvolver e validar uma ferramenta seguindo os padrões do projeto.",
+  "items": [
+    {
+      "kind": "agent",
+      "title": "Revisor de ferramentas",
+      "summary": "Revisar mudanças, testes e aderência aos padrões.",
+      "prompt": "Revise a ferramenta contra o objetivo e os critérios de aceite. Verifique limites entre módulos, clareza das interfaces e cobertura dos cenários essenciais. Termine com APROVADO ou AJUSTAR."
+    },
+    {
+      "kind": "command",
+      "title": "Desenvolver ferramenta",
+      "summary": "Implementar uma mudança com validação e check.",
+      "prompt": "Implemente a ferramenta descrita em $ARGUMENTS a partir do plano aprovado. Organize responsabilidades e integre com os padrões existentes. Termine com IMPLEMENTADO após testes e check aprovados."
+    },
+    {
+      "kind": "skill",
+      "title": "Planejamento de ferramenta",
+      "summary": "Investigar o contexto e preparar um plano verificável.",
+      "prompt": "Use ao iniciar uma ferramenta. Defina usuários, entradas, saídas, restrições e critérios de aceite. Examine a arquitetura existente, proponha módulos coesos e esclareça decisões não especificadas com o usuário. Termine com PLANEJADO."
+    },
+    {
+      "kind": "workflow",
+      "title": "Ferramenta com revisão",
+      "summary": "Planejar → implementar → revisar, com até três rodadas de ajustes.",
+      "prompt": "",
+      "steps": [
+        {
+          "id": "planejar",
+          "kind": "skill",
+          "ref": "novas-ferramentas:skill",
+          "transitions": [
+            {
+              "to": "implementar"
+            }
+          ]
+        },
+        {
+          "id": "implementar",
+          "kind": "command",
+          "ref": "novas-ferramentas:command",
+          "note": "Use o objetivo da execução e o plano da etapa anterior.",
+          "maxVisits": 3,
+          "transitions": [
+            {
+              "verdict": "IMPLEMENTADO",
+              "to": "revisar"
+            }
+          ]
+        },
+        {
+          "id": "revisar",
+          "kind": "agent",
+          "ref": "novas-ferramentas:agent",
+          "maxVisits": 3,
+          "transitions": [
+            {
+              "verdict": "AJUSTAR",
+              "to": "implementar"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -66,9 +66,14 @@ pub fn tools() -> Vec<Tool> {
             |ctx, args| {
                 let kind = args.req("kind")?;
                 if kind == "kits" {
-                    return Err(ToolError::new(
-                        "Catálogo de kits indisponível: o módulo de kits ainda não está ligado ao ai_catalog.",
-                    ));
+                    let offset = args.int_strict("offset").unwrap_or(0).max(0) as usize;
+                    let limit = args.int_strict("limit").unwrap_or(20).clamp(1, 100) as usize;
+                    let page: Vec<_> = vibedeck_core::resources::kits::kits()
+                        .iter()
+                        .skip(offset)
+                        .take(limit)
+                        .collect();
+                    return json_text(&page);
                 }
                 let store = ctx.store()?;
                 let page = catalog::catalog(

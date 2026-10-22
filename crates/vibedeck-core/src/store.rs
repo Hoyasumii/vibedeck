@@ -257,7 +257,7 @@ impl Store {
 
     // ---- genérico por slug ---------------------------------------------------------------------
 
-    fn record_path<T: Stored>(&self, slug: &str) -> Result<PathBuf> {
+    pub fn record_path<T: Stored>(&self, slug: &str) -> Result<PathBuf> {
         paths::validated_record_path(&self.data_dir(), &self.dir::<T>(), slug, "json")
     }
 

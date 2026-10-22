@@ -5,27 +5,26 @@
 //! - resources: implemente `ResourceProvider` e passe a `Server::new`.
 
 // API de registro ainda sem consumidores no binário (tools entram nas próximas fatias).
-#![allow(dead_code, unused_imports)]
 
 pub mod args;
 pub mod instructions;
+pub mod resources;
 pub mod schema;
 pub mod server;
 pub mod tool;
 pub mod tools;
 pub mod transport;
 
-pub use server::{NoResources, ResourceProvider, Server};
-pub use tool::{Tool, ToolCtx, ToolError};
+pub use server::Server;
 
 use std::path::PathBuf;
 
 /// Inicia o servidor em stdin/stdout. Retorna o exit code (0 no EOF).
 pub fn serve(root: PathBuf) -> i32 {
     let server = Server::new(
-        root,
+        root.clone(),
         tools::all(),
-        Box::new(NoResources),
+        Box::new(resources::ProjectResources::new(root)),
         env!("CARGO_PKG_VERSION").to_string(),
     );
     let stdin = std::io::stdin().lock();

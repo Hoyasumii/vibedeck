@@ -85,7 +85,7 @@ fn handshake_completo_sai_0_no_eof() {
     assert!(replies[1]["result"]["tools"].is_array());
     assert_eq!(replies[2]["result"]["isError"], true);
     assert_eq!(replies[3]["result"], json!({}));
-    assert_eq!(replies[4]["result"]["resources"], json!([]));
+    assert!(replies[4]["result"]["resources"].is_array());
     assert!(replies[5]["error"]["code"].is_i64());
     assert_eq!(replies[6]["error"]["code"], -32601);
 }

@@ -7,7 +7,6 @@ use vibedeck_core::model::Author;
 use vibedeck_core::stack::icons::CATEGORIES;
 use vibedeck_core::stack::{PatternCatalog, SkillIcons, SkillIconsApi, StackError, StackService};
 
-use crate::mcp::args::Args;
 use crate::mcp::schema::{prop, schema};
 use crate::mcp::tool::{Tool, ToolCtx, ToolError, json_text};
 
