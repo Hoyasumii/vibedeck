@@ -9,6 +9,7 @@ struct V2ContentColumn: View {
     @Binding var filter: V2ListFilter
     let focusRequest: Int
     let onAdd: (SidebarSection) -> Void
+    let onOpenInNewTab: (SidebarItem) -> Void
 
     @Environment(ProjectModel.self) private var model
     @Environment(\.undoManager) private var undo
@@ -158,7 +159,7 @@ struct V2ContentColumn: View {
         if let grouped = section.groupedConcept {
             List {
                 GroupTreeView(concept: grouped, rows: rows, filtering: isFiltering, selected: selection,
-                              onOpen: { selection = $0 }, onOpenInNewTab: { selection = $0 })
+                              onOpen: { selection = $0 }, onOpenInNewTab: onOpenInNewTab)
             }
             .listStyle(.sidebar)
             .scrollContentBackground(.hidden)
@@ -193,6 +194,8 @@ struct V2ContentColumn: View {
     private func rowMenu(_ row: SectionRow) -> some View {
         LoggedButton("Abrir") { selection = row.id }
             .loggedControl(control: "v2_content_column.open", label: "Abrir")
+        LoggedButton("Abrir em Nova Aba") { onOpenInNewTab(row.id) }
+            .loggedControl(control: "v2_content_column.open_tab", label: "Abrir em Nova Aba")
         LoggedButton("Editar tags…") { editingTags = row }
             .loggedControl(control: "v2_content_column.edit_tags", label: "Editar tags")
             .disabled(model.isReadOnly)
@@ -256,10 +259,19 @@ struct V2ContentColumn: View {
                             .foregroundStyle(DesignTokens.Colors.inkMuted)
                     }
                 }
+                .contextMenu { pageMenu(page) }
             }
             .listStyle(.sidebar)
             .scrollContentBackground(.hidden)
             if concept == .project { projectFooter }
+        }
+    }
+
+    @ViewBuilder
+    private func pageMenu(_ page: V2Page) -> some View {
+        if let item = page.item {
+            LoggedButton("Abrir em Nova Aba") { onOpenInNewTab(item) }
+                .loggedControl(control: "v2_content_column.page_open_tab", label: "Abrir em Nova Aba")
         }
     }
 

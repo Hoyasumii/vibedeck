@@ -64,6 +64,10 @@ struct ProjectWindowV2Content: View {
     @State private var newName: ProjectWindow.NewNamePrompt?
     @State private var filterFocusRequest = 0
     @State private var listFilter = V2ListFilter()
+    @State private var onboarding: OnboardingReport?
+    /// Abas abertas (itens do detalhe). A barra só aparece com mais de uma; a aba ativa acompanha a seleção.
+    @State private var tabs: [SidebarItem] = []
+    @State private var activeTab = 0
     @State private var reconciledMoveRevision = 0
 
     init(root: URL, model: ProjectModel) {
@@ -99,6 +103,7 @@ struct ProjectWindowV2Content: View {
     var body: some View {
         withLifecycle
             .sheet(item: $newName) { prompt in createItem(prompt) }
+            .sheet(isPresented: onboardingPresented) { onboardingSheet }
             .sheet(item: ideaRequestBinding) { request in
                 IdeaImplementationSheet(request: request)
                     .environment(model)
@@ -109,6 +114,32 @@ struct ProjectWindowV2Content: View {
                 LoggedButton("OK") { model.errorMessage = nil }
                     .loggedControl(control: "v2_project_window.error_ok", label: "OK")
             } message: { Text(model.errorMessage ?? "") }
+    }
+
+    private var onboardingPresented: Binding<Bool> {
+        Binding(get: { onboarding != nil }, set: { if !$0 { onboarding = nil } })
+    }
+
+    @ViewBuilder
+    private var onboardingSheet: some View {
+        if let report = onboarding {
+            V2OnboardingSheet(report: report) { onboarding = nil }
+                .environment(model)
+                .environment(\.logProject, model.store.root)
+        }
+    }
+
+    /// Início guiado (D3): abre sozinho em projeto novo ou sem estado gravado; "Pular por agora" fica retomável na Visão geral.
+    private func checkOnboarding() async {
+        if model.isReadOnly { return }
+        guard let report = try? await model.store.onboardingStatus(), report.shouldPrompt else { return }
+        onboarding = report
+    }
+
+    /// Retoma o início guiado (Projeto › Visão geral).
+    private func resumeOnboarding() async {
+        guard let report = try? await model.store.onboardingStatus() else { return }
+        onboarding = report
     }
 
     private var ideaRequestBinding: Binding<AISession.IdeaRequest?> {
@@ -129,6 +160,7 @@ struct ProjectWindowV2Content: View {
             .focusedSceneValue(\.logProjectRoot, model.store.root)
             .focusedSceneValue(\.claudeSession, claude)
             .focusedSceneValue(\.aiPanelToggle, AIPanelToggle { toggleAI() })
+            .focusedSceneValue(\.closeActiveTab, closeTabAction)
     }
 
     private var withLifecycle: some View {
@@ -136,8 +168,12 @@ struct ProjectWindowV2Content: View {
             .task {
                 model.startWatching()
                 restoreState()
+                await checkOnboarding()
             }
-            .onChange(of: selection) { _, new in selectionChanged(new) }
+            .onChange(of: selection) { _, new in
+                selectionChanged(new)
+                syncActiveTab(new)
+            }
             .onChange(of: selectionExists) { _, _ in pruneSelection() }
             .onChange(of: model.moveRevision) { _, _ in reconcileMoves() }
             .onChange(of: concept) { _, new in UserDefaults.standard.set(new.rawValue, forKey: key("concept")) }
@@ -193,7 +229,8 @@ struct ProjectWindowV2Content: View {
 
     private var contentColumn: some View {
         V2ContentColumn(space: space, concept: conceptBinding, selection: $selection, filter: $listFilter,
-                        focusRequest: filterFocusRequest, onAdd: { newName = ProjectWindow.NewNamePrompt($0) })
+                        focusRequest: filterFocusRequest, onAdd: { newName = ProjectWindow.NewNamePrompt($0) },
+                        onOpenInNewTab: { openInNewTab($0) })
     }
 
     private var conceptBinding: Binding<V2Concept> {
@@ -203,13 +240,86 @@ struct ProjectWindowV2Content: View {
     // MARK: Detalhe e painel de IA
 
     private var detail: some View {
-        detailBody
+        detailStack
             .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
             .toolbar { aiToolbar }
             .inspector(isPresented: inspectorPresented) {
                 aiPanel
                     .inspectorColumnWidth(min: 300, ideal: 340, max: 460)
             }
+    }
+
+    private var detailStack: some View {
+        VStack(spacing: 0) {
+            if tabs.count > 1 {
+                TabBar(tabs: tabs, active: activeTab, onSelect: { selectTab($0) }, onClose: { closeTab($0) })
+            }
+            detailBody
+        }
+    }
+
+    // MARK: Abas (regra 3D22A05A)
+
+    private var closeTabAction: CloseTabAction? {
+        guard tabs.count > 1 else { return nil }
+        return CloseTabAction(tab: activeTab) { closeTab(activeTab) }
+    }
+
+    /// Item da primeira aba quando nada está selecionado: a página inicial do conceito atual.
+    private var fallbackTab: SidebarItem {
+        if let section = concept.section { return .section(section) }
+        return concept.pages.compactMap { $0.item }.first ?? .stack
+    }
+
+    private func openInNewTab(_ item: SidebarItem) {
+        if tabs.isEmpty { tabs = [selection ?? fallbackTab] }
+        tabs.append(item)
+        activeTab = tabs.count - 1
+        selection = item
+        saveTabs()
+    }
+
+    private func selectTab(_ index: Int) {
+        guard tabs.indices.contains(index) else { return }
+        activeTab = index
+        selection = tabs[index]
+        saveTabs()
+    }
+
+    private func closeTab(_ index: Int) {
+        guard tabs.count > 1, tabs.indices.contains(index) else { return }
+        tabs.remove(at: index)
+        if index < activeTab {
+            activeTab -= 1
+        } else {
+            activeTab = min(activeTab, tabs.count - 1)
+        }
+        selection = tabs[activeTab]
+        saveTabs()
+    }
+
+    /// A seleção troca o item da aba ativa (como num navegador); a aba acompanha a navegação.
+    private func syncActiveTab(_ item: SidebarItem?) {
+        guard let item, tabs.indices.contains(activeTab), tabs[activeTab] != item else { return }
+        tabs[activeTab] = item
+        saveTabs()
+    }
+
+    private func saveTabs() {
+        let defaults = UserDefaults.standard
+        let keys = tabs.filter { !$0.isTerminal }.map { $0.storageKey }
+        defaults.set(keys, forKey: key("tabs"))
+        defaults.set(activeTab, forKey: key("activeTab"))
+    }
+
+    private func restoreTabs() {
+        let defaults = UserDefaults.standard
+        let saved = (defaults.stringArray(forKey: key("tabs")) ?? []).compactMap { SidebarItem(storageKey: $0) }
+        let alive = saved.filter { exists($0) }
+        guard alive.count > 1 else { return }
+        tabs = alive
+        activeTab = min(max(0, defaults.integer(forKey: key("activeTab"))), alive.count - 1)
+        selection = tabs[activeTab]
     }
 
     private var inspectorPresented: Binding<Bool> {
@@ -315,12 +425,12 @@ struct ProjectWindowV2Content: View {
         } else if concept == .references {
             LinksView()
         } else {
-            V2OverviewView { open($0) }
+            V2OverviewView(onOpen: { open($0) }, onResumeOnboarding: { Task { await resumeOnboarding() } }, onboardingOpen: onboarding != nil)
         }
     }
 
     private func sectionTable(_ section: SidebarSection) -> some View {
-        SectionListView(section: section, filter: $listFilter) { open($0) } onOpenInNewTab: { open($0) } onAdd: { newName = ProjectWindow.NewNamePrompt(section) }
+        SectionListView(section: section, filter: $listFilter) { open($0) } onOpenInNewTab: { openInNewTab($0) } onAdd: { newName = ProjectWindow.NewNamePrompt(section) }
     }
 
     @ViewBuilder
@@ -484,6 +594,10 @@ struct ProjectWindowV2Content: View {
     private func pruneSelection() {
         reconcileMoves()
         if let current = selection, !exists(current) { selection = nil }
+        if !tabs.isEmpty {
+            tabs.removeAll { !exists($0) }
+            activeTab = min(activeTab, max(0, tabs.count - 1))
+        }
     }
 
     private func restoreState() {
@@ -503,6 +617,7 @@ struct ProjectWindowV2Content: View {
         } else if selection == nil, let fallback = concept.defaultSelection {
             selection = fallback
         }
+        restoreTabs()
     }
 }
 

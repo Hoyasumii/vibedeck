@@ -9,7 +9,10 @@ struct V2OverviewView: View {
     @State private var graphText: String?
     @State private var integrations: [V2Integration] = []
     @State private var usageText: String?
+    @State private var onboardingSkipped = false
     var onResumeOnboarding: (() -> Void)?
+    /// Muda quando o início guiado abre ou fecha: relê o estado dele.
+    var onboardingOpen = false
 
     private let columns = [GridItem(.adaptive(minimum: 140), spacing: DesignTokens.Space.s2, alignment: .leading)]
 
@@ -17,6 +20,7 @@ struct V2OverviewView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: DesignTokens.Space.s6) {
                 header
+                onboardingBanner
                 stackBlock
                 patternsBlock
                 graphBlock
@@ -28,10 +32,11 @@ struct V2OverviewView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .navigationTitle("Visão geral")
-        .task { await loadSummaries() }
+        .task(id: onboardingOpen) { await loadSummaries() }
     }
 
     private func loadSummaries() async {
+        if let report = try? await model.store.onboardingStatus() { onboardingSkipped = report.isSkipped }
         if model.store.isRemote { return }
         let root = model.store.root
         graphText = Self.graphSummary(root: root)
@@ -62,6 +67,30 @@ struct V2OverviewView: View {
             Text("O que a IA lê sobre este projeto antes de agir.")
                 .font(DesignTokens.Typography.body)
                 .foregroundStyle(DesignTokens.Colors.inkMuted)
+        }
+    }
+
+    @ViewBuilder
+    private var onboardingBanner: some View {
+        if onboardingSkipped, let resume = onResumeOnboarding {
+            HStack(spacing: DesignTokens.Space.s3) {
+                VStack(alignment: .leading, spacing: DesignTokens.Space.s1) {
+                    Text("Início guiado pulado").font(DesignTokens.Typography.headline)
+                    Text("Escolha a stack, os padrões e os recursos que já existem no projeto.")
+                        .font(DesignTokens.Typography.callout)
+                        .foregroundStyle(DesignTokens.Colors.inkMuted)
+                }
+                Spacer()
+                LoggedButton("Retomar") { resume() }
+                    .loggedControl(control: "v2_overview.resume_onboarding", label: "Retomar início guiado")
+                    .buttonStyle(VDButtonStyle(kind: .primary, size: .md))
+                    .disabled(model.isReadOnly)
+            }
+            .padding(DesignTokens.Space.s4)
+            .background(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)
+                    .fill(DesignTokens.Colors.brandSoft)
+            )
         }
     }
 

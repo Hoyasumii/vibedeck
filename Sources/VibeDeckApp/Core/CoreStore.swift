@@ -160,11 +160,19 @@ final class CoreStore: @unchecked Sendable {
         var tags: [String]?
         /// PEDIDO-CORE: `list_docs` ainda não devolve a data de modificação.
         var modified: Date?
+        /// Docs vinculados (MUD-002): `linked: true`, `target` (arquivo da raiz) e `broken` se a origem sumiu.
+        var linked: Bool?
+        var target: String?
+        var broken: Bool?
     }
 
     func listDocs() async throws -> [DocInfo] {
         let rows: [DocRow] = try await callJSON("list_docs", idempotent: true)
-        return rows.map { DocInfo(slug: $0.slug, title: $0.title, tags: $0.tags ?? [], modified: $0.modified ?? Date(timeIntervalSince1970: 0)) }
+        return rows.map { row in
+            var link: DocLink?
+            if row.linked == true { link = DocLink(target: row.target ?? "", broken: row.broken == true) }
+            return DocInfo(slug: row.slug, title: row.title, tags: row.tags ?? [], modified: row.modified ?? Date(timeIntervalSince1970: 0), link: link)
+        }
     }
 
     func readDoc(_ slug: String) async throws -> String {

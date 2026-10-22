@@ -564,7 +564,13 @@ final class ProjectModel {
 
     /// Eventos do FSEvents: o eco das gravações do próprio app (revisão igual à guardada) é ignorado e não vira log
     /// "external". Durante uma gravação o evento ainda é aplicado (a releitura espera), mas não é logado como externo.
-    private func handleExternalChanges(_ urls: [URL]) {
+    private func handleExternalChanges(_ allURLs: [URL]) {
+        // Origem de doc vinculado (.md na raiz): a revisão do Core só vê o link, então o texto é comparado direto.
+        let rootPath = store.root.resolvingSymlinksInPath().path
+        let rootMarkdown = allURLs.filter { FileWatcher.isRootMarkdown($0.resolvingSymlinksInPath().path, rootPath: rootPath) }
+        if !rootMarkdown.isEmpty { linkedOriginsChanged(rootMarkdown.map { $0.lastPathComponent }) }
+        let urls = allURLs.filter { !FileWatcher.isRootMarkdown($0.resolvingSymlinksInPath().path, rootPath: rootPath) }
+        if urls.isEmpty { return }
         if pendingWrites > 0 || capturingOwnRevision {
             applyExternalChanges(urls, logAsExternal: false)
             return
@@ -630,6 +636,15 @@ final class ProjectModel {
         if runsChanged { schedule(.runs) }
         if checksChanged { schedule(.checks) }
         if topicsChanged || ideasChanged || projectChanged { releaseOrphans() }
+    }
+
+    /// Um Markdown da raiz mudou: os docs vinculados a ele recebem o aviso de mudança externa (se o texto difere).
+    private func linkedOriginsChanged(_ names: [String]) {
+        let slugs = docs.filter { doc in
+            guard let target = doc.link?.target else { return false }
+            return names.contains(target)
+        }.map(\.slug)
+        for slug in slugs { noteExternalDocChange(slug) }
     }
 
     /// Ideias (e padrões) promovidos para um tópico que não existe mais voltam a rascunho: tool `release_orphaned` do Core.
@@ -1484,19 +1499,19 @@ final class ProjectModel {
                 var toggles: [(Bool) -> Void] = []
                 for entry in agents where !before.contains("agent/" + entry.slug) {
                     let slug = entry.slug, value = entry.value
-                    toggles.append { [weak self] remove in self?.toggleCreatedItem(.agent, slug, value, remove: remove, name: name, undo: nil) }
+                    toggles.append { [weak self] remove in self?.toggleCreatedItem(.agent, slug, value, remove: remove, name: name, undo: nil) }  // undo agrupado: o passo único é registrado pelo chamador
                 }
                 for entry in commands where !before.contains("command/" + entry.slug) {
                     let slug = entry.slug, value = entry.value
-                    toggles.append { [weak self] remove in self?.toggleCreatedItem(.command, slug, value, remove: remove, name: name, undo: nil) }
+                    toggles.append { [weak self] remove in self?.toggleCreatedItem(.command, slug, value, remove: remove, name: name, undo: nil) }  // undo agrupado: o passo único é registrado pelo chamador
                 }
                 for entry in skills where !before.contains("skill/" + entry.slug) {
                     let slug = entry.slug, value = entry.value
-                    toggles.append { [weak self] remove in self?.toggleCreatedItem(.skill, slug, value, remove: remove, name: name, undo: nil) }
+                    toggles.append { [weak self] remove in self?.toggleCreatedItem(.skill, slug, value, remove: remove, name: name, undo: nil) }  // undo agrupado: o passo único é registrado pelo chamador
                 }
                 for entry in workflows where !before.contains("workflow/" + entry.slug) {
                     let slug = entry.slug, value = entry.value
-                    toggles.append { [weak self] remove in self?.toggleCreatedItem(.workflow, slug, value, remove: remove, name: name, undo: nil) }
+                    toggles.append { [weak self] remove in self?.toggleCreatedItem(.workflow, slug, value, remove: remove, name: name, undo: nil) }  // undo agrupado: o passo único é registrado pelo chamador
                 }
                 if !toggles.isEmpty { registerKitUndo(toggles, remove: true, name: name, undo: undo) }
             } catch {
@@ -1769,7 +1784,7 @@ final class ProjectModel {
             await refreshTopics()
             await refreshIdeas()
             if !skippingPaths.isEmpty, topic(topicSlug) != nil {
-                mutateTopic(topicSlug, "Promover ideia", undo: nil) { $0.paths.removeAll { skippingPaths.contains($0) } }
+                mutateTopic(topicSlug, "Promover ideia", undo: nil) { $0.paths.removeAll { skippingPaths.contains($0) } }  // undo agrupado: o passo único é registrado pelo chamador
             }
             return topicSlug
         } catch {
@@ -1887,12 +1902,23 @@ final class ProjectModel {
         }
     }
 
+    /// Ícone do doc: vínculo (`link`), vínculo quebrado (aviso) ou doc comum.
+    private static func docSymbol(_ doc: DocInfo) -> String {
+        if doc.isBroken { return "exclamationmark.triangle" }
+        return doc.isLinked ? "link" : "doc.text"
+    }
+
+    private static func docDetail(_ doc: DocInfo) -> String {
+        guard let link = doc.link else { return doc.modified.formatted(.relative(presentation: .named)) }
+        return link.broken ? "Vínculo quebrado · \(link.target)" : "Vinculado · \(link.target)"
+    }
+
     func rows(for section: SidebarSection) -> [SectionRow] {
         switch section {
         case .docs:
-            docs.map {
-                SectionRow(id: .doc($0.slug), title: $0.title, symbol: "doc.text",
-                           detail: $0.modified.formatted(.relative(presentation: .named)), count: "", tags: $0.tags)
+            docs.map { doc in
+                SectionRow(id: .doc(doc.slug), title: doc.title, symbol: Self.docSymbol(doc),
+                           detail: Self.docDetail(doc), count: "", tags: doc.tags, dimmed: doc.isBroken)
             }
         case .groups:
             groups.map {

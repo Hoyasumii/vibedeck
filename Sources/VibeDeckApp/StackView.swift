@@ -211,7 +211,7 @@ struct StackView: View {
 
 /// Searchable grid of the whole Skill Icons catalog; toggling marks a draft that is applied on "Concluir"
 /// as a single undo step.
-private struct StackPicker: View {
+struct StackPicker: View {
     @Environment(\.logProject) private var logProject
     let current: [StackItem]
     let onDone: ([StackItem]) -> Void

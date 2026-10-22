@@ -302,12 +302,24 @@ struct ReviewGroup: Codable, Equatable, Identifiable, Sendable {
 
 // MARK: - Docs
 
+/// Vínculo de um doc com um Markdown da raiz do projeto (MUD-002): link simbólico em `.vibedeck/docs/`.
+struct DocLink: Equatable, Hashable, Codable, Sendable {
+    /// Arquivo de origem na raiz (ex.: `README.md`); editar o doc grava nele.
+    var target: String
+    /// A origem não existe mais: o doc não abre nem edita, só dá para remover o vínculo.
+    var broken: Bool
+}
+
 struct DocInfo: Equatable, Hashable, Identifiable, Codable, Sendable {
     var slug: String
     var title: String
     var tags: [String] = []
     var modified: Date
+    /// Só em docs vinculados (campos `linked`/`target`/`broken` de `list_docs`).
+    var link: DocLink? = nil
     var id: String { slug }
+    var isLinked: Bool { link != nil }
+    var isBroken: Bool { link?.broken == true }
     var group: String { CoreStore.groupPath(of: slug) }
 }
 

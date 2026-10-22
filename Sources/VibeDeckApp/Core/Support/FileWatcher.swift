@@ -46,12 +46,19 @@ final class FileWatcher: @unchecked Sendable {
         stream = nil
     }
 
+    /// `.md` direto na raiz do projeto: pode ser a origem de um doc vinculado (MUD-002).
+    static func isRootMarkdown(_ path: String, rootPath: String) -> Bool {
+        guard path.hasPrefix(rootPath + "/"), path.hasSuffix(".md") else { return false }
+        return !path.dropFirst(rootPath.count + 1).contains("/")
+    }
+
     private func dispatch(_ urls: [URL]) {
         let rootPath = root.path
         let relevant = urls.filter { url in
             let p = CoreStore.canonicalURL(url).path
             return p == rootPath + "/" + CoreStore.manifestName
                 || p.hasPrefix(rootPath + "/" + CoreStore.dataDirName + "/")
+                || Self.isRootMarkdown(p, rootPath: rootPath)
         }
         if !relevant.isEmpty { handler(relevant) }
     }
