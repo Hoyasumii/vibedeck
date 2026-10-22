@@ -21,8 +21,18 @@ if [ -f "$R" ]; then
 fi
 
 if [ -f "$W" ]; then
-  [ "$(grep -c '^    paths: \["worker/\*\*", "schema/\*\*", "\.github/workflows/worker\.yml"\]' "$W")" -eq 2 ] \
-    || bad "$W: push e pull_request devem ter paths: [\"worker/**\", \"schema/**\", \".github/workflows/worker.yml\"]"
+  # paths do worker: worker/**, schema/** e o próprio workflow são obrigatórios; vibedeck.json e .vibedeck/** são
+  # aceitos (o workflow também valida as regras do projeto). Qualquer outro caminho (crates/**, Sources/**) reprova.
+  wp=$(grep -E '^    paths: \[' "$W" || true)
+  [ "$(grep -c . <<<"$wp")" -eq 2 ] || bad "$W: push e pull_request devem ter cada um uma linha paths: [...]"
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    for need in '"worker/**"' '"schema/**"' '".github/workflows/worker.yml"'; do
+      grep -qF "$need" <<<"$line" || bad "$W: paths sem $need"
+    done
+    extra=$(grep -o '"[^"]*"' <<<"$line" | grep -vxF -e '"worker/**"' -e '"schema/**"' -e '".github/workflows/worker.yml"' -e '"vibedeck.json"' -e '".vibedeck/**"' || true)
+    [ -z "$extra" ] || bad "$W: paths com caminhos alheios ao worker: $(tr '\n' ' ' <<<"$extra")"
+  done <<<"$wp"
   grep -q '^  deploy:' "$W" || bad "$W: job deploy não encontrado"
   dep=$(awk '/^  deploy:/{f=1;next} f' "$W")
   grep -q 'needs: check' <<<"$dep" || bad "$W: deploy deve ter needs: check"

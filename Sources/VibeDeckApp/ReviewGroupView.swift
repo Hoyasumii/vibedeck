@@ -602,6 +602,7 @@ struct CommitTextField: View {
     @State private var draft = ""
     @State private var confirmedDraft: String?
     @FocusState private var focused: Bool
+    @State private var hostWindow: NSWindow?
 
     init(control: String, _ title: String, value: String, axis: Axis = .horizontal, commit: @escaping (String) -> Void) {
         self.control = control
@@ -624,8 +625,12 @@ struct CommitTextField: View {
             .onDisappear(perform: submit)
             // Closing the window or quitting (⌘Q) does not remove the view: commit the draft too.
             // `submit` is a no-op for fields without pending edits.
-            .onReceive(NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)) { _ in submit() }
+            // Only this field's own window counts: other windows closing must not commit a draft early.
+            .onReceive(NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)) { note in
+                if let closing = note.object as? NSWindow, let mine = hostWindow, closing === mine { submit() }
+            }
             .onReceive(NotificationCenter.default.publisher(for: .vibedeckFlushPendingSaves)) { _ in submit() }
+            .background(CommitFieldWindowReader(window: $hostWindow))
     }
 
     private func submit() {
@@ -633,5 +638,18 @@ struct CommitTextField: View {
         guard trimmed != value, trimmed != confirmedDraft else { return }
         confirmedDraft = trimmed
         VDLog.withAction(control: control, label: title, project: logProject) { commit(trimmed) }
+    }
+}
+
+/// Captures the NSWindow hosting a view so window-scoped notifications can be filtered.
+private struct CommitFieldWindowReader: NSViewRepresentable {
+    @Binding var window: NSWindow?
+
+    func makeNSView(context: Context) -> NSView { NSView(frame: .zero) }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        DispatchQueue.main.async {
+            if window !== view.window { window = view.window }
+        }
     }
 }
