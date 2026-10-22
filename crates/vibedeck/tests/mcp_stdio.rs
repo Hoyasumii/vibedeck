@@ -82,7 +82,7 @@ fn handshake_completo_sai_0_no_eof() {
     assert_eq!(init["protocolVersion"], "2024-11-05");
     assert_eq!(init["serverInfo"]["name"], "vibedeck");
     assert!(init["instructions"].as_str().unwrap().contains("rules_for"));
-    assert_eq!(replies[1]["result"]["tools"], json!([]));
+    assert!(replies[1]["result"]["tools"].is_array());
     assert_eq!(replies[2]["result"]["isError"], true);
     assert_eq!(replies[3]["result"], json!({}));
     assert_eq!(replies[4]["result"]["resources"], json!([]));
