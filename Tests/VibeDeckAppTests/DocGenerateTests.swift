@@ -1,11 +1,10 @@
 import Foundation
 import Testing
-import VibeDeckCore
 @testable import VibeDeckApp
 
 @Suite(.serialized) @MainActor struct DocGenerateAppTests {
     private func fixture() throws -> ProjectModel {
-        ProjectModel(store: try ProjectStore.initialize(at: FileManager.default.temporaryDirectory.appending(path: "doc-app-\(UUID())")))
+        ProjectModel(store: try CoreStore.initialize(at: FileManager.default.temporaryDirectory.appending(path: "doc-app-\(UUID())")))
     }
     private func wait(_ runner: DocGenerateRunner) async throws {
         for _ in 0..<300 {

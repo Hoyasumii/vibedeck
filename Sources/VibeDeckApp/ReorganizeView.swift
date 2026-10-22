@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 @MainActor @Observable
 final class ReorganizeRunner {
@@ -14,7 +13,7 @@ final class ReorganizeRunner {
     @ObservationIgnored private var task: Task<Void, Never>?
     @ObservationIgnored private var generation = UUID()
     var isRunning: Bool { state == .running }
-    func start(store: ProjectStore, provider: AIProvider,
+    func start(store: CoreStore, provider: AIProvider,
                available: (AIProvider) -> Bool = { $0.isInstalled },
                request: ((String, AIProviderSettings) async throws -> Data)? = nil) {
         guard state == .idle else { return }

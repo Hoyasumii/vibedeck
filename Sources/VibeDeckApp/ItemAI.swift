@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 /// Uma operação de IA por projeto por vez para criar/editar agentes, comandos, skills e workflows.
 /// Nunca grava: só `ProjectModel.acceptItemAI` grava, após o aceite do usuário.
@@ -27,7 +26,7 @@ final class ItemAIRunner {
     var isBusy: Bool { state == .running }
 
     /// `current` é a proposta atual (item editado ou proposta em refinamento); `isStale` é checado ao fim da chamada.
-    func start(owner: String, store: ProjectStore, kind: ItemDiscover.Kind, request: String, current: ItemDiscover.Proposal?,
+    func start(owner: String, store: CoreStore, kind: ItemDiscover.Kind, request: String, current: ItemDiscover.Proposal?,
                provider: AIProvider, isStale: @escaping () -> Bool = { false },
                available: (AIProvider) -> Bool = { $0.isInstalled },
                send: ((String, AIProviderSettings) async throws -> Data)? = nil) {

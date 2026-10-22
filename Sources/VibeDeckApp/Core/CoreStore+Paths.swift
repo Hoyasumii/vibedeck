@@ -45,4 +45,30 @@ extension CoreStore {
         style.locale = Locale(identifier: "en_US_POSIX")
         return "\(check.createdAt.formatted(style))-\(check.id.uuidString.prefix(8).lowercased()).json"
     }
+
+    /// Reescreve o grupo de regras `from` para `to` nas regras dadas (valida colisões).
+    func ruleGroupRenamed(_ rules: [Rule], from: String, to: String) throws -> [Rule] {
+        _ = try normalizedGroupPath(from)
+        let source = from
+        let target = try normalizedGroupPath(to)
+        guard target != source, !target.hasPrefix(source + "/") else { throw VibeDeckError.invalidGroupPath(to) }
+        guard !rules.contains(where: { ($0.group ?? "") == target || ($0.group ?? "").hasPrefix(target + "/") }) else { throw VibeDeckError.groupConflict(target) }
+        return rules.map { rule in
+            var moved = rule
+            if let group = rule.group, group == source || group.hasPrefix(source + "/") { moved.group = target + String(group.dropFirst(source.count)) }
+            return moved
+        }
+    }
+
+    /// Caminho de um anexo relativo à profundidade do dono (`../attachments/nome`).
+    static func attachmentPath(name: String, owner: String) -> String {
+        String(repeating: "../", count: owner.split(separator: "/").count) + "attachments/" + name
+    }
+
+    /// Scripts de regras rodando ao mesmo tempo no app.
+    static var defaultScriptConcurrency: Int { ProcessInfo.processInfo.activeProcessorCount }
+
+    static func scriptConcurrency(_ requested: Int?) -> Int {
+        min(max(requested ?? defaultScriptConcurrency, 1), defaultScriptConcurrency)
+    }
 }

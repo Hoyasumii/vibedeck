@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 /// Ação do atalho ⇧⌘C (alternar o painel de IA) da janela em foco. Sempre igual para o SwiftUI não republicar o valor.
 struct AIPanelToggle: Equatable {
@@ -28,7 +27,7 @@ struct ProjectWindowV2: View {
     @State private var reconciledMoveRevision = 0
 
     init(root: URL) {
-        let model = ProjectModel(store: ProjectStore(root: root))
+        let model = ProjectModel(store: CoreStore(root: root))
         _model = State(initialValue: model)
         _claude = State(initialValue: AISession(root: root, projectId: model.project.id))
         _workspace = State(initialValue: RemoteWorkspace.existing(at: root))

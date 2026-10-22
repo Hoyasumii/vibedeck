@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 /// Diagram of a workflow: steps stacked in order, with an arrow per transition labelled with its condition.
 /// Going to the next step is a straight arrow; skipping ahead runs on the right, going back (loops) on the left,

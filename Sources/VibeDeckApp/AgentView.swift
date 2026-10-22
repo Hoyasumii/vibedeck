@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 struct AgentView: View {
     @Environment(\.logProject) private var providerRoot

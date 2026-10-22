@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 struct SSHProjectSheet: View {
     let onOpen: (URL) -> Void
@@ -138,7 +137,7 @@ struct SSHProjectSheet: View {
             }
             if create {
                 guard snapshot["vibedeck.json"] == nil else { throw VibeDeckError.ssh("Já existe um projeto nessa pasta. Abra novamente.") }
-                try ProjectStore.initialize(at: workspace.root, name: name)
+                try CoreStore.initialize(at: workspace.root, name: name)
             }
             try await VDLog.detached { try workspace.synchronize(using: transport) }.value
             onOpen(workspace.root); dismiss()

@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 /// Barra de status inferior (prancha 19): uso da IA, tarefa em andamento, ambiente (Local / SSH),
 /// último check, terminal e branch.

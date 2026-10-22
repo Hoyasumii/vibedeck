@@ -1,6 +1,5 @@
 import Foundation
 import Testing
-import VibeDeckCore
 @testable import VibeDeckApp
 
 @Suite @MainActor struct AIRecoveryTests {
@@ -45,7 +44,7 @@ import VibeDeckCore
     @Test func generationChecksOnlySelectedRulesAndRejectsChangedRequirements() throws {
         let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
-        let store = try ProjectStore.initialize(at: root)
+        let store = try CoreStore.initialize(at: root)
         let (slug, selected) = try store.addRule(Rule(text: "Requer julgamento"), toTopic: "Geral")
         _ = try store.addRule(Rule(text: "Fora da seleção"), toTopic: slug)
         try store.setRuleTest(selected.id.uuidString, mode: .manual, reason: "Requer evidência humana")

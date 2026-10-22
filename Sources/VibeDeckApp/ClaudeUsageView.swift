@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 /// Limites do Claude Code (sessão de 5h e semana) no rodapé da sidebar. Só existe quando o Claude Code
 /// está na máquina; os números vêm da statusline dele, via `vibedeck usage record`.

@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 /// Projeto › Visão geral (prancha 17): o que a IA lê sobre o projeto antes de agir, com atalhos para as páginas.
 /// Integrações e consumo de IA ainda não têm página própria nesta fatia.

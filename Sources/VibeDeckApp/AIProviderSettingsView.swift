@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 struct AIProviderSettingsView: View {
     @Environment(\.logProject) private var providerRoot

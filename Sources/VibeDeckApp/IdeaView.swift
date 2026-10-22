@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 struct IdeaView: View {
     @Environment(\.logProject) private var providerRoot
@@ -132,7 +131,7 @@ struct IdeaView: View {
     }
 
     private var preview: some View {
-        MarkdownPreview(text: ProjectStore.markdownForGroupedRecord(text, reference: slug), baseURL: model.store.ideaURL(slug).deletingLastPathComponent())
+        MarkdownPreview(text: CoreStore.markdownForGroupedRecord(text, reference: slug), baseURL: model.store.ideaURL(slug).deletingLastPathComponent())
     }
 
     /// Files from the "Anexar" button go in through the editor (so ⌘Z undoes them): at the cursor, or

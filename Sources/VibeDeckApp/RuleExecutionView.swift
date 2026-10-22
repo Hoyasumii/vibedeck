@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 struct RuleExecutionControls: View {
     var topic: String? = nil

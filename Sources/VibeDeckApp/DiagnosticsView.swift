@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import VibeDeckCore
 
 /// Global window with the logs of every VibeDeck process (app, CLI, MCP): errors, failures and crashes.
 struct DiagnosticsView: View {

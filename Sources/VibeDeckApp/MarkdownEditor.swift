@@ -1,5 +1,4 @@
 #if canImport(VibeDeckCore)
-import VibeDeckCore
 #endif
 import AppKit
 import SwiftUI

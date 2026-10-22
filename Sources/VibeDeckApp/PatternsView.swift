@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 /// The code patterns the project follows (TDD, hexagonal, DDD…): what the AI reads (list_patterns /
 /// `vibedeck patterns`) before implementing, each one enforced by its own rule topic.

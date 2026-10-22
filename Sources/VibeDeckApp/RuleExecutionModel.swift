@@ -1,6 +1,5 @@
 import Foundation
 import Observation
-import VibeDeckCore
 
 @Observable @MainActor
 final class RuleExecutionModel {
@@ -51,7 +50,7 @@ final class RuleExecutionModel {
     init(snapshot: [(slug: String, topic: RuleTopic)], withAI: Bool, provider: AIProvider, root: URL,
          concurrency: Int? = RuleExecutionModel.configuredConcurrency, now: Date = .now) {
         self.started = now
-        self.concurrency = ProjectStore.scriptConcurrency(concurrency)
+        self.concurrency = CoreStore.scriptConcurrency(concurrency)
         self.withAI = withAI
         self.provider = provider
         scope = snapshot.map(\.slug)

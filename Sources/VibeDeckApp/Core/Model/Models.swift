@@ -24,7 +24,7 @@ public struct Project: Codable, Equatable, Sendable {
     public var id: UUID
     public var name: String
     public var description: String?
-    public var links: [Link]
+    public var links: [ProjectLink]
     public var claude: [ClaudeItem]
     /// The project's highlighted technologies (Skill Icons ids), in display order.
     public var stack: [StackItem]
@@ -58,7 +58,7 @@ public struct Project: Codable, Equatable, Sendable {
         id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
         name = try c.decode(String.self, forKey: .name)
         description = try c.decodeIfPresent(String.self, forKey: .description)
-        links = try c.decodeIfPresent([Link].self, forKey: .links) ?? []
+        links = try c.decodeIfPresent([ProjectLink].self, forKey: .links) ?? []
         claude = try c.decodeIfPresent([ClaudeItem].self, forKey: .claude) ?? []
         stack = try c.decodeIfPresent([StackItem].self, forKey: .stack) ?? []
         patterns = try c.decodeIfPresent([ProjectPattern].self, forKey: .patterns) ?? []
@@ -87,7 +87,7 @@ public struct Project: Codable, Equatable, Sendable {
     }
 }
 
-public struct Link: Codable, Equatable, Hashable, Identifiable, Sendable {
+public struct ProjectLink: Codable, Equatable, Hashable, Identifiable, Sendable {
     public var id: UUID
     public var title: String
     public var url: String

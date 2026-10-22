@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import VibeDeckCore
 
 /// Skill Icons catalog and rendered icons, shared by every window. Both come from the Skill Icons MCP server
 /// (the image URL from `skill_icons_badge`, never written by hand) and are kept in `~/Library/Caches` so the

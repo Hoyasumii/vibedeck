@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 /// Same page as `AgentView`, for a skill: `SKILL.md`-like instructions (triggered by the description) plus its flow.
 struct SkillView: View {

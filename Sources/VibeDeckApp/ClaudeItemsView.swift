@@ -1,6 +1,5 @@
 import SwiftUI
 import UniformTypeIdentifiers
-import VibeDeckCore
 
 struct ClaudeItemsView: View {
     @Environment(\.logProject) private var logProject

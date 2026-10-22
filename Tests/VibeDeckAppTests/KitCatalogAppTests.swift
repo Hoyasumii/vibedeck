@@ -1,13 +1,12 @@
 import Foundation
 import Testing
-@testable import VibeDeckCore
 @testable import VibeDeckApp
 
 @Suite @MainActor struct KitCatalogAppTests {
     @Test func entireSelectionIsLiveAndHasOneUndoWithRedo() throws {
         let root = FileManager.default.temporaryDirectory.appending(path: "vd-kit-app-\(UUID())")
         defer { try? FileManager.default.removeItem(at: root) }
-        let store = try ProjectStore.initialize(at: root)
+        let store = try CoreStore.initialize(at: root)
         let original = try store.createAgent(title: "Revisor de manutenção", prompt: "Preservar")
         let model = ProjectModel(store: store)
         let undo = UndoManager()
@@ -32,7 +31,7 @@ import Testing
     @Test func invalidSelectionDoesNotCreateOrRegisterUndo() throws {
         let root = FileManager.default.temporaryDirectory.appending(path: "vd-kit-app-\(UUID())")
         defer { try? FileManager.default.removeItem(at: root) }
-        let store = try ProjectStore.initialize(at: root)
+        let store = try CoreStore.initialize(at: root)
         let model = ProjectModel(store: store)
         let undo = UndoManager()
         #expect(!model.addKitItems(["manutencao:workflow"], undo: undo))
@@ -44,7 +43,7 @@ import Testing
     @Test func redoPreservesAnExternalItemAtTheSameSlug() throws {
         let root = FileManager.default.temporaryDirectory.appending(path: "vd-kit-app-\(UUID())")
         defer { try? FileManager.default.removeItem(at: root) }
-        let store = try ProjectStore.initialize(at: root)
+        let store = try CoreStore.initialize(at: root)
         let model = ProjectModel(store: store)
         let undo = UndoManager()
         undo.beginUndoGrouping()

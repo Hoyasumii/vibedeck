@@ -1,6 +1,5 @@
 import MarkdownUI
 import SwiftUI
-import VibeDeckCore
 
 /// Claude Code conversation, shown as a page (and tab) of the detail column.
 struct ClaudeChatPage: View {
@@ -9,7 +8,6 @@ struct ClaudeChatPage: View {
     @State private var pickingMention = false
     @State private var pickingFiles = false
     @State private var droppingFiles = false
-    @State private var launchingCloud = false
     @State private var showingUsage = false
     @State private var selection = 0
     /// Draft whose suggestions were dismissed with Esc.
@@ -67,14 +65,11 @@ struct ClaudeChatPage: View {
                     LoggedButton { claude.leaveChat() } label: { Label("Conversas", systemImage: "bubble.left.and.text.bubble.right") }.loggedControl(control: "claude_chat_page.button_3", label: "Conversas")
                         .help("Ver todas as conversas")
                 }
-                LoggedButton { launchingCloud = true } label: { Label("Sessão na nuvem", systemImage: "cloud") }.loggedControl(control: "claude_chat_page.button_4", label: "Sessão na nuvem")
-                    .help("Criar uma sessão na nuvem com o provedor selecionado")
                 LoggedButton { claude.newChat() } label: { Label("Nova conversa", systemImage: "square.and.pencil") }.loggedControl(control: "claude_chat_page.button_5", label: "Nova conversa")
                     .help("Começar uma nova conversa")
             }
         }
         .sheet(isPresented: $showingUsage) { AIUsageHistoryView(root: claude.root) }
-        .sheet(isPresented: $launchingCloud) { CloudLaunchSheet(root: claude.root, provider: claude.provider) }
         .onChange(of: claude.current?.id) { inputFocused = true }
     }
 

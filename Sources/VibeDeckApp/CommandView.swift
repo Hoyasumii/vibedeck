@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 /// Same page as `AgentView`, for a command: a slash-command-like prompt (with `$ARGUMENTS`) plus its flow.
 struct CommandView: View {

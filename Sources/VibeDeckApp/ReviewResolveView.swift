@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 /// Drives "Resolver": questions and plan with read-only tools, explicit acceptance, then writes one item at a time.
 /// One runner per project (owned by `ProjectModel`), so only one Resolver runs at once. Status changes go through

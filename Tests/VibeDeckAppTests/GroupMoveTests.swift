@@ -1,13 +1,12 @@
 import Foundation
 import SwiftUI
 import Testing
-@testable import VibeDeckCore
 @testable import VibeDeckApp
 
 @Suite @MainActor struct GroupMoveTests {
     @Test func restoringDeletedGroupLogsUndoAndPreservesContents() throws {
         let root = FileManager.default.temporaryDirectory.appending(path: "restore-group-\(UUID())")
-        let store = try ProjectStore.initialize(at: root)
+        let store = try CoreStore.initialize(at: root)
         let logs = LogStore(dir: root.appending(path: "test-logs"))
         defer { try? FileManager.default.removeItem(at: root) }
         let (_, idea) = try store.createIdea(title: "Ideia privada", reference: "a/x")
@@ -35,7 +34,7 @@ import Testing
 
     @Test func oneUndoMovesDiskAndKeepsSelectionMapping() throws {
         let root = FileManager.default.temporaryDirectory.appending(path: "app-groups-\(UUID())")
-        let store = try ProjectStore.initialize(at: root)
+        let store = try CoreStore.initialize(at: root)
         defer { try? FileManager.default.removeItem(at: root) }
         let (_, idea) = try store.createIdea(title: "Ideia", reference: "a/x")
         let model = ProjectModel(store: store)
@@ -57,7 +56,7 @@ import Testing
 
     @Test func externalRenameTracksIDsAndDocUndoManager() throws {
         let root = FileManager.default.temporaryDirectory.appending(path: "app-groups-\(UUID())")
-        let store = try ProjectStore.initialize(at: root)
+        let store = try CoreStore.initialize(at: root)
         defer { try? FileManager.default.removeItem(at: root) }
         _ = try store.createIdea(title: "Ideia", reference: "a/x")
         _ = try store.createDoc(title: "Doc", reference: "a/doc")

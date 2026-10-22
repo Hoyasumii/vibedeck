@@ -1,14 +1,13 @@
 import Foundation
 import SwiftUI
 import Testing
-@testable import VibeDeckCore
 @testable import VibeDeckApp
 
 @Suite @MainActor
 struct IdeaEvaluationTests {
     @Test func savedEvaluationUndoesStatusAndReadinessTogether() throws {
         let root = FileManager.default.temporaryDirectory.appending(path: "idea-evaluation-\(UUID())")
-        let store = try ProjectStore.initialize(at: root)
+        let store = try CoreStore.initialize(at: root)
         defer { try? FileManager.default.removeItem(at: root) }
         let (slug, _) = try store.createIdea(title: "Avaliação")
         try store.updateIdea(slug) { $0.status = .exploring; $0.rules = [Rule(text: "R")] }
@@ -59,7 +58,7 @@ extension IdeaEvaluationTests {
 extension IdeaEvaluationTests {
     @Test func implementationChoiceAndCancellationHaveNoProjectEffects() throws {
         let root = FileManager.default.temporaryDirectory.appending(path: "idea-choice-\(UUID())")
-        let store = try ProjectStore.initialize(at: root)
+        let store = try CoreStore.initialize(at: root)
         defer { try? FileManager.default.removeItem(at: root) }
         let (slug, _) = try store.createIdea(title: "Escolha")
         try store.updateIdea(slug) { $0.rules = [Rule(text: "R")]; RuleDiscoverVerdict(viable: true).apply(to: &$0) }
@@ -77,7 +76,7 @@ extension IdeaEvaluationTests {
 
     @Test func standardImplementationUsesSharedPromptAndUndoesPromotion() throws {
         let root = FileManager.default.temporaryDirectory.appending(path: "idea-standard-\(UUID())")
-        let store = try ProjectStore.initialize(at: root)
+        let store = try CoreStore.initialize(at: root)
         defer { try? FileManager.default.removeItem(at: root) }
         let (slug, _) = try store.createIdea(title: "Padrão")
         try store.updateIdea(slug) { $0.rules = [Rule(text: "R")]; RuleDiscoverVerdict(viable: true).apply(to: &$0) }
@@ -102,7 +101,7 @@ extension IdeaEvaluationTests {
 
     @Test func confirmationReadsDiskEvenBeforeWatcherDeliversExternalEdit() throws {
         let root = FileManager.default.temporaryDirectory.appending(path: "idea-external-\(UUID())")
-        let store = try ProjectStore.initialize(at: root)
+        let store = try CoreStore.initialize(at: root)
         defer { try? FileManager.default.removeItem(at: root) }
         let (slug, _) = try store.createIdea(title: "Atual")
         try store.updateIdea(slug) { $0.rules = [Rule(text: "R")]; RuleDiscoverVerdict(viable: true).apply(to: &$0) }
@@ -121,7 +120,7 @@ extension IdeaEvaluationTests {
 extension IdeaEvaluationTests {
     @Test func failedWorkflowCreationRollsBackPromotionWithoutCreatingUndo() throws {
         let root = FileManager.default.temporaryDirectory.appending(path: "idea-rollback-\(UUID())")
-        let store = try ProjectStore.initialize(at: root)
+        let store = try CoreStore.initialize(at: root)
         defer { try? FileManager.default.removeItem(at: root) }
         let (slug, _) = try store.createIdea(title: "Rollback")
         try store.updateIdea(slug) { $0.rules = [Rule(text: "R")]; RuleDiscoverVerdict(viable: true).apply(to: &$0) }
@@ -152,9 +151,9 @@ extension IdeaEvaluationTests {
 }
 
 extension IdeaEvaluationTests {
-    private func blockedProject(_ name: String) throws -> (store: ProjectStore, slug: String, idea: Idea) {
+    private func blockedProject(_ name: String) throws -> (store: CoreStore, slug: String, idea: Idea) {
         let root = FileManager.default.temporaryDirectory.appending(path: "idea-\(name)-\(UUID())")
-        let store = try ProjectStore.initialize(at: root)
+        let store = try CoreStore.initialize(at: root)
         let (slug, _) = try store.createIdea(title: "Bloqueada")
         try store.updateIdea(slug) { $0.rules = [Rule(text: "R")]; RuleDiscoverVerdict(viable: true).apply(to: &$0) }
         let (dep, _) = try store.createIdea(title: "Pré-requisito")
@@ -166,7 +165,7 @@ extension IdeaEvaluationTests {
         return (store, slug, try store.loadIdea(slug))
     }
 
-    private func snapshot(_ store: ProjectStore) throws -> [String] {
+    private func snapshot(_ store: CoreStore) throws -> [String] {
         try store.listIdeas().map { "\($0.slug)=\(String(decoding: try VDJSON.encode($0.idea), as: UTF8.self))" }
             + store.listTopics().map(\.slug) + store.listRuns().map(\.ref)
     }
@@ -234,7 +233,7 @@ extension IdeaEvaluationTests {
 
     @Test func dependencyEditsPersistImmediatelyAndUndo() throws {
         let root = FileManager.default.temporaryDirectory.appending(path: "idea-deps-undo-\(UUID())")
-        let store = try ProjectStore.initialize(at: root)
+        let store = try CoreStore.initialize(at: root)
         defer { try? FileManager.default.removeItem(at: root) }
         let (main, _) = try store.createIdea(title: "Principal")
         let ids = try ["A", "B", "C"].map { title -> UUID in

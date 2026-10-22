@@ -1,5 +1,4 @@
 import Foundation
-import VibeDeckCore
 
 /// Runs one background `claude -p` job that writes and registers the test scripts of a topic's rules.
 /// Several run side by side (see `ProjectModel.generateAllTests`); the chat panel stays free.
@@ -89,7 +88,7 @@ enum RuleTestGenerator {
     }
     static func validateGeneration(root: URL, topic: String?, expected: [Rule]) throws {
         guard let topic else { return }
-        let store = ProjectStore(root: root)
+        let store = CoreStore(root: root)
         let updated = try store.loadTopic(topic)
         for original in expected {
             guard let rule = updated.rules.first(where: { $0.id == original.id }),

@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import VibeDeckCore
 
 @main
 struct VibeDeckApp: App {
@@ -182,7 +181,7 @@ final class RecentProjects {
             var stale = false
             return try? URL(resolvingBookmarkData: data, options: [.withoutUI], bookmarkDataIsStale: &stale)
         }
-        .filter { ProjectStore.isProject($0) }
+        .filter { CoreStore.isProject($0) }
     }
 
     func add(_ url: URL) {
@@ -212,7 +211,7 @@ struct RootView: View {
             // `open -a VibeDeck <folder>` or dropping a folder on the Dock icon.
             .onOpenURL { url in
                 guard url.isFileURL else { return }
-                if root == nil, ProjectStore.isProject(url) { root = url } else { openWindow(value: url) }
+                if root == nil, CoreStore.isProject(url) { root = url } else { openWindow(value: url) }
             }
             .onReceive(NotificationCenter.default.publisher(for: .vibedeckOpenDiagnostics)) { _ in
                 openWindow(id: DiagnosticsView.windowID)
@@ -221,7 +220,7 @@ struct RootView: View {
 
     @ViewBuilder
     private var content: some View {
-        if let root, ProjectStore.isProject(root) {
+        if let root, CoreStore.isProject(root) {
             ProjectWindowV2(root: root)
                 .id(root)
                 .navigationTitle(RemoteWorkspace.existing(at: root)?.destination.title ?? root.lastPathComponent)

@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 /// Coluna de conteúdo de um espaço: título, seletor de conceito, filtro no topo (texto e #tag, chips de tag)
 /// e a lista do conceito. Os itens abrem no detalhe.

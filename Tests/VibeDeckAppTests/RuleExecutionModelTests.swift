@@ -1,7 +1,6 @@
 import Foundation
 import SwiftUI
 import Testing
-@testable import VibeDeckCore
 @testable import VibeDeckApp
 
 private final class Ran: @unchecked Sendable {
@@ -14,7 +13,7 @@ private final class Ran: @unchecked Sendable {
 @Suite(.serialized) @MainActor
 struct RuleExecutionModelTests {
     private func fixture(severity: RuleSeverity = .must) throws -> (ProjectModel, String, UUID, UUID) {
-        let store = try ProjectStore.initialize(at: FileManager.default.temporaryDirectory.appending(path: "rule-flow-\(UUID())"))
+        let store = try CoreStore.initialize(at: FileManager.default.temporaryDirectory.appending(path: "rule-flow-\(UUID())"))
         let (slug, script) = try store.addRule(Rule(text: "Script rule", severity: severity), toTopic: "Flow")
         _ = try store.setRuleTest(script.id.uuidString, mode: .script, command: "stub")
         let (_, manual) = try store.addRule(Rule(text: "Manual rule"), toTopic: slug)

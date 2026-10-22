@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 /// Shared across windows for one canonical project; only explicit acceptance writes Docs.
 @MainActor @Observable
@@ -21,7 +20,7 @@ final class DocGenerateRunner {
     var isRunning: Bool { state == .running }
     var isActive: Bool { state != .idle }
 
-    func start(store: ProjectStore, provider: AIProvider, available: (AIProvider) -> Bool = { $0.isInstalled },
+    func start(store: CoreStore, provider: AIProvider, available: (AIProvider) -> Bool = { $0.isInstalled },
                request: ((String, AIProviderSettings) async throws -> Data)? = nil) {
         if VDLog.actionID == nil {
             VDLog.withAction(control: LogControls.docsGenerate, label: "Gerar documentos", project: store.root) {

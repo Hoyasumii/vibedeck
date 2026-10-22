@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 /// Runs one "Descubra" call for a review item: a read-only `claude -p` with a timeout that can be cancelled.
 /// The answer only becomes a proposal; the inspector applies it after the user accepts.
@@ -16,7 +15,7 @@ final class ReviewDiscoverRunner {
 
     var isRunning: Bool { state == .running }
 
-    func start(item: ReviewItem, kind: String, topics: [(slug: String, topic: RuleTopic)], store: ProjectStore, provider: AIProvider = .claude) {
+    func start(item: ReviewItem, kind: String, topics: [(slug: String, topic: RuleTopic)], store: CoreStore, provider: AIProvider = .claude) {
         guard RemoteExecution.available(provider, root: store.root) else { state = .failed("\(provider.title) não está instalado."); return }
         cancel()
         state = .running

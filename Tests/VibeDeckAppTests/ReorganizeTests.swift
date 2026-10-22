@@ -1,11 +1,10 @@
 import Foundation
 import Testing
-import VibeDeckCore
 @testable import VibeDeckApp
 
 @Suite(.serialized) @MainActor struct ReorganizeAppTests {
     private func fixture() throws -> ProjectModel {
-        ProjectModel(store: try ProjectStore.initialize(at: FileManager.default.temporaryDirectory.appending(path: "reorganize-app-\(UUID())")))
+        ProjectModel(store: try CoreStore.initialize(at: FileManager.default.temporaryDirectory.appending(path: "reorganize-app-\(UUID())")))
     }
     private func wait(_ runner: ReorganizeRunner) async throws {
         for _ in 0..<300 {

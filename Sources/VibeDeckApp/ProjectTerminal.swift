@@ -2,7 +2,6 @@ import AppKit
 import Observation
 import SwiftTerm
 import SwiftUI
-import VibeDeckCore
 
 /// One interactive terminal of the project: the user's login shell in a pty, rooted at the project folder.
 /// Each lives in its own tab. The view is created once and reused, so switching tabs never kills the shell;

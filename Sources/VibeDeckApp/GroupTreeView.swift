@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 extension SidebarSection {
     var groupedConcept: ItemConcept? {
@@ -56,7 +55,7 @@ struct GroupTreeView: View {
         }
         .sheet(item: $prompt) { p in
             NamePromptSheet(title: p.item ? "Novo item" : p.rename ? "Renomear grupo" : "Novo grupo", placeholder: p.item ? "Título do item" : "Nome do grupo") { name in
-                let parent = p.rename ? ProjectStore.groupPath(of: p.path) : p.path
+                let parent = p.rename ? CoreStore.groupPath(of: p.path) : p.path
                 let target = (parent.isEmpty ? "" : parent + "/") + name
                 if p.item {
                     let ref = (p.path.isEmpty ? "" : p.path + "/") + Slug.make(name)
@@ -85,7 +84,7 @@ struct GroupTreeView: View {
 
     private func branch(_ parent: String) -> AnyView {
         AnyView(VStack(alignment: .leading, spacing: 3) {
-            ForEach(groups.filter { ProjectStore.groupPath(of: $0) == parent }, id: \.self) { group in
+            ForEach(groups.filter { CoreStore.groupPath(of: $0) == parent }, id: \.self) { group in
                 VStack(alignment: .leading, spacing: 3) {
                     let isExpanded = filtering || expanded.contains(group)
                     LoggedButton {
@@ -116,7 +115,7 @@ struct GroupTreeView: View {
                     if isExpanded { branch(group).padding(.leading, 16) }
                 }
             }
-            ForEach(rows.filter { ProjectStore.groupPath(of: $0.id.groupedReference ?? "") == parent }) { row in
+            ForEach(rows.filter { CoreStore.groupPath(of: $0.id.groupedReference ?? "") == parent }) { row in
                 LoggedButton { onOpen(row.id) } label: {
                     Label { HStack { Text(row.title).foregroundStyle(row.dimmed ? .secondary : .primary); if !row.count.isEmpty { Text(row.count).foregroundStyle(.secondary).font(.caption) } } } icon: { Image(systemName: row.symbol) }
                         .frame(maxWidth: .infinity, alignment: .leading)

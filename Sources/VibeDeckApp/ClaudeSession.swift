@@ -1,6 +1,5 @@
 import Foundation
 import Observation
-import VibeDeckCore
 
 /// Conversations for both providers. Wire protocols live in the Core transports; workflow transitions
 /// are driven by VibeDeck and saved on disk. Legacy chat storage remains compatible.
@@ -19,13 +18,13 @@ final class AISession {
     /// Same Core gate as the workflow path: an idea with pending dependencies never opens the mode choice.
     func requestIdeaImplementation(_ idea: Idea) {
         guard !isWorking, IdeaImplementation.isEligible(idea) else { return }
-        do { _ = try ProjectStore(root: root).implementableIdea(idea.id.uuidString) } catch { return fail(error.localizedDescription) }
+        do { _ = try CoreStore(root: root).implementableIdea(idea.id.uuidString) } catch { return fail(error.localizedDescription) }
         ideaRequest = IdeaRequest(ideaID: idea.id)
     }
 
     /// Resolve intent before sending anything to a writing-capable conversation.
     private func inspectIdeaRequest(_ text: String, mentions: [UUID], attachments: [URL]) {
-        let project = ProjectStore(root: root)
+        let project = CoreStore(root: root)
         isWorking = true
         ideaIntentTask = Task {
             defer { ideaIntentTask = nil }
@@ -135,7 +134,7 @@ final class AISession {
     }
 
     private var workflowRef: String?
-    private var workflowProject: ProjectStore?
+    private var workflowProject: CoreStore?
     /// Agents and subagents of the open chat, from provider events only.
     private(set) var processes = AgentProcessTracker()
     /// Run panel next to the chat: shown when a workflow starts or resumes, hidden or expanded by the user.
@@ -352,7 +351,7 @@ final class AISession {
         guard !text.isEmpty || !paths.isEmpty else { return }
         if inspectIdeas, !text.isEmpty {
             do {
-                if try !ProjectStore(root: root).listIdeas().isEmpty {
+                if try !CoreStore(root: root).listIdeas().isEmpty {
                     inspectIdeaRequest(text, mentions: mentions, attachments: attachments)
                     return
                 }
@@ -369,7 +368,7 @@ final class AISession {
         isWorking = true
         persist()
         let expanded: String
-        do { expanded = try ProjectStore(root: root).expandAICommand(text) }
+        do { expanded = try CoreStore(root: root).expandAICommand(text) }
         catch { fail(error.localizedDescription); return }
         var wire = ClaudeChat.wireText(expanded, mentioning: mentioned, attachments: paths, provider: provider, contextStore: AIContextStore(root: root), includeFullChats: includeFullMentions)
         if !shellContext.isEmpty {
@@ -387,7 +386,7 @@ final class AISession {
             codexTask = Task {
                 do {
                     try await connectCodex()
-                    let options = try ProjectStore(root: root).commandProviderSettings(wireCommand, provider: .codex, availableModels: codexModels.map(\.id), fallback: effectiveCodexModel)
+                    let options = try CoreStore(root: root).commandProviderSettings(wireCommand, provider: .codex, availableModels: codexModels.map(\.id), fallback: effectiveCodexModel)
                     if let warning = options?.warning { entries.append(Entry(kind: .notice(warning))) }
                     try await prepareCodexThread(settings: options?.settings)
                     guard current?.id == chatId else { return }
@@ -397,7 +396,7 @@ final class AISession {
         } else {
             starting = Task {
                 do {
-                    let options = try ProjectStore(root: root).commandProviderSettings(text, provider: .claude, availableModels: [], fallback: nil)
+                    let options = try CoreStore(root: root).commandProviderSettings(text, provider: .claude, availableModels: [], fallback: nil)
                     try await prepareClaude(settings: options?.settings)
                     guard current?.id == chatId else { return }
                     turnOutput = ""; acceptingEvents = true
@@ -954,7 +953,7 @@ extension AISession {
     private func registeredSuggestions() -> [ClaudeSuggestion] {
         var suggestions: [ClaudeSuggestion] = []
         do {
-            let store = ProjectStore(root: root)
+            let store = CoreStore(root: root)
             suggestions += ((try? store.listCommands()) ?? []).map { ClaudeSuggestion(kind: .command, name: "/" + $0.slug, detail: $0.command.summary) }
             suggestions += ((try? store.listSkills()) ?? []).map { ClaudeSuggestion(kind: .command, name: "/" + $0.slug, detail: $0.skill.summary) }
             suggestions += ((try? store.listAgents()) ?? []).map { ClaudeSuggestion(kind: .command, name: "/agent:" + $0.slug, detail: $0.agent.summary) }
@@ -979,14 +978,14 @@ extension AISession {
     }
 
     // The VibeDeck engine owns transitions for both providers; each step starts a clean session.
-    func executeWorkflow(_ workflow: String, input: String?, from: String? = nil, store: ProjectStore) {
+    func executeWorkflow(_ workflow: String, input: String?, from: String? = nil, store: CoreStore) {
         do {
             try RemoteWorkspace.existing(at: root)?.requireSynchronized()
             let (ref, run, _) = try store.startRun(workflow, input: input, from: from, provider: provider)
             resumeWorkflow(ref, run: run, store: store)
         } catch { fail(error.localizedDescription) }
     }
-    func resumeWorkflow(_ ref: String, run: WorkflowRun, store: ProjectStore) {
+    func resumeWorkflow(_ ref: String, run: WorkflowRun, store: CoreStore) {
         guard !isWorking else { return }
         if provider != run.provider { selectProvider(run.provider) }
         guard RemoteExecution.available(run.provider, root: root) else { fail("\(run.provider.title) não está instalado; esta execução pertence a ele."); return }
@@ -1026,7 +1025,7 @@ extension AISession {
         }
     }
 
-    private func continueWorkflow(_ ref: String, store: ProjectStore) async {
+    private func continueWorkflow(_ ref: String, store: CoreStore) async {
         do {
             isWorking = true
             try await RemoteExecution.synchronize(root: root)

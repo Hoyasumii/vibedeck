@@ -1,5 +1,4 @@
 import Foundation
-import VibeDeckCore
 
 /// Shared structured read-only calls. Only invalid answers receive one recovery, on the same model.
 @MainActor enum AIReadOnlyOperation {

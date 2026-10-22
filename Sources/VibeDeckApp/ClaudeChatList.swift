@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 /// The project's saved Claude conversations, shown when no chat is open.
 struct ClaudeChatList: View {

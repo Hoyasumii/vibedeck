@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 struct AIUsageHistoryView: View {
     let root: URL

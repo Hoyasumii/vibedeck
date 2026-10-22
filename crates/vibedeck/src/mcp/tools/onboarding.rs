@@ -16,21 +16,21 @@ pub fn tools() -> Vec<Tool> {
     vec![
         Tool::new(
             "onboarding_status",
-            "Início guiado: estado, etapa sugerida, stack, padrões e recursos detectados (.claude, .codex).",
+            "Início guiado: etapa, stack, padrões, recursos detectados.",
             schema(&[], &[], &[], &[]),
             |ctx, _| json_text(&onboarding::status_at(&ctx.root)),
         )
         .read_only(),
         Tool::new(
             "onboarding_apply",
-            "skip adia, complete conclui, import cadastra só os items escolhidos.",
+            "Início guiado: skip, complete ou import.",
             schema(
                 &[
                     prop("action", "string", ""),
                     prop(
                         "items",
                         "array",
-                        "Só para import: <tipo>:<nome> (agent|command|skill). Já cadastrados são mantidos.",
+                        "Só import: tipo:nome (agent|command|skill).",
                     ),
                 ],
                 &["action"],
@@ -52,8 +52,8 @@ pub fn tools() -> Vec<Tool> {
                             .map(|i| ItemRef::parse(i))
                             .collect::<Result<Vec<_>, _>>()
                             .map_err(err)?;
-                        let out = onboarding::import_selected(&store, &refs, Author::Ai)
-                            .map_err(err)?;
+                        let out =
+                            onboarding::import_selected(&store, &refs, Author::Ai).map_err(err)?;
                         json_text(&out)
                     }
                     other => Err(ToolError::invalid_params(format!(

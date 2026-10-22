@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 /// Inspector shared by agents, commands and skills: the next steps (VibeDeck agents/commands/skills) that act on the
 /// result of `owner`, forming a flow.

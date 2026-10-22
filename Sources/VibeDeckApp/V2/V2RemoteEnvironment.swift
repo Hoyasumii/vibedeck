@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 /// Indicador de ambiente SSH da barra de status (prancha 19): conectado, offline com pendências ou com conflito.
 /// Também executa o laço de sincronização do projeto remoto (uma única vez por janela) e abre o estado da conexão.

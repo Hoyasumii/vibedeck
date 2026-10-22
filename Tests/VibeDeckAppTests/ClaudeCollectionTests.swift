@@ -1,13 +1,12 @@
 import Foundation
 import Testing
-@testable import VibeDeckCore
 @testable import VibeDeckApp
 
 @Suite @MainActor struct ClaudeCollectionTests {
     @Test func collectionMutationsPersistAndUndoIncludingLastRemoval() throws {
         let root = FileManager.default.temporaryDirectory.appending(path: "claude-app-\(UUID())")
         defer { try? FileManager.default.removeItem(at: root) }
-        let store = try ProjectStore.initialize(at: root)
+        let store = try CoreStore.initialize(at: root)
         let model = ProjectModel(store: store)
         let undo = UndoManager()
         undo.groupsByEvent = false

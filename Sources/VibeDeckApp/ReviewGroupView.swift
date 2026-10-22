@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 struct ReviewGroupView: View {
     @Environment(\.logProject) private var providerRoot
@@ -432,7 +431,7 @@ struct ReviewItemInspector: View {
     let item: ReviewItem
     let kinds: [ReviewKind]
     let topics: [ProjectModel.Entry<RuleTopic>]
-    let store: ProjectStore
+    let store: CoreStore
     /// Topic slugs gating this item (explicit + global + matching target file).
     let required: [String]
     let problems: [String]

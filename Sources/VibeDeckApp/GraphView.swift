@@ -1,6 +1,5 @@
 import SwiftUI
 import WebKit
-import VibeDeckCore
 
 /// One runner per canonical project root, shared even across windows and reopened tabs.
 @MainActor @Observable

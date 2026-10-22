@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 /// A workflow: ordered steps (VibeDeck agents/commands/skills), each with conditional transitions to other steps
 /// (earlier ones included). The inspector shows the runs, the resulting map and what is broken; "Executar" starts a

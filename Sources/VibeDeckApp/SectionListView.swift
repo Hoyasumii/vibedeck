@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 /// List page for a sidebar section (Docs, Revisões, Regras, Ideias, Agentes): its children in a table,
 /// filterable by free text and by tags (`#tag` tokens or the tag bar).

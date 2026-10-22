@@ -1,6 +1,5 @@
 import SwiftUI
 import UniformTypeIdentifiers
-import VibeDeckCore
 
 /// pt-BR labels for the Skill Icons categories.
 enum StackCategory {

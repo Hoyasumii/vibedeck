@@ -1,7 +1,6 @@
 import AppKit
 import SwiftUI
 import Testing
-@testable import VibeDeckCore
 @testable import VibeDeckApp
 
 @Suite(.serialized) @MainActor struct CommitTextFieldTests {
@@ -167,7 +166,7 @@ import Testing
 
     @MainActor private class Fixture {
         let root: URL
-        let store: ProjectStore
+        let store: CoreStore
         let model: ProjectModel
         let slug: String
         let state = Screen()
@@ -177,7 +176,7 @@ import Testing
 
         init(axis: Axis = .vertical) throws {
             root = FileManager.default.temporaryDirectory.appending(path: "commit-field-\(UUID())")
-            store = try ProjectStore.initialize(at: root)
+            store = try CoreStore.initialize(at: root)
             let created = try store.createGroup(title: "Revisão")
             slug = created.slug
             var group = created.group

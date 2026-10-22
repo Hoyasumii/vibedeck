@@ -1,5 +1,4 @@
 import Foundation
-import VibeDeckCore
 
 @MainActor enum RuleVerificationAI {
     static func run(root: URL, provider: AIProvider, topic: RuleTopic, slug: String, rules: [Rule], scripts: [RuleResult]) async throws -> [RuleResult] {

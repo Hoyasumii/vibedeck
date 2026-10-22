@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 /// Run of the open chat, next to it: state, the workflow diagram with the current step and the path taken,
 /// and the agents and subagents the provider reported. Hiding or expanding it never touches the run.

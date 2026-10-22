@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 struct AIGuideView: View {
     @Environment(\.logProject) private var logProject

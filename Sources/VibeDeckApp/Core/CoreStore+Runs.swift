@@ -65,3 +65,13 @@ extension CoreStore {
         _ = try await call("workflow_run_delete", ["run": ref])
     }
 }
+
+extension CoreStore {
+    /// Uma execução parada volta a andar. PEDIDO-CORE (workflow_run_resume); sem a tool, só devolve a execução.
+    func resumeRun(_ ref: String) async throws -> WorkflowRun {
+        let run = try await loadRun(ref)
+        guard run.status == .stopped, run.current != nil else { return run }
+        _ = try await call("workflow_run_resume", ["run": ref])
+        return try await loadRun(ref)
+    }
+}
