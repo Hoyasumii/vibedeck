@@ -11,3 +11,4 @@ graphify-out/
 design/prototipo/dist/
 /target/
 __pycache__/
+.claude/worktrees/
