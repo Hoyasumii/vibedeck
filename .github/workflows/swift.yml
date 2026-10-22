@@ -1,0 +1,27 @@
+name: Swift
+
+on:
+  push:
+    branches: [main]
+    paths: ["Sources/**", "Tests/VibeDeckAppTests/**", "Package.swift", "Package.resolved", "crates/**", "Cargo.*", "scripts/build-app.sh", ".github/workflows/swift.yml"]
+  pull_request:
+    paths: ["Sources/**", "Tests/VibeDeckAppTests/**", "Package.swift", "Package.resolved", "crates/**", "Cargo.*", "scripts/build-app.sh", ".github/workflows/swift.yml"]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      # O app inicia o Core Rust (vibedeck mcp --app); os testes de integração usam este binário.
+      - run: cargo build --release -p vibedeck
+      - run: echo "VIBEDECK_BIN=$PWD/target/release/vibedeck" >> "$GITHUB_ENV"
+      # Full Xcode toolchain here, so a plain `swift test` builds and links the test bundle.
+      - run: swift build
+      - run: swift test
+
