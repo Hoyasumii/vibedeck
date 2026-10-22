@@ -83,6 +83,10 @@ pub struct McpArgs {
 pub enum McpCommand {
     /// Inicia o servidor MCP em stdin/stdout.
     Serve,
+    /// Registra o servidor no Claude Code ou no Codex.
+    Install(ai::McpInstallArgs),
+    /// Remove o registro do servidor.
+    Uninstall(ai::McpUninstallArgs),
 }
 
 /// Erro de comando: mensagem em stderr e exit code.
@@ -150,7 +154,10 @@ impl Context {
     /// Store do projeto.
     pub fn store(&self) -> Result<vibedeck_core::Store, CliError> {
         let root = self.root()?;
-        vibedeck_core::Store::open(&root).map_err(|e| CliError::new(e.to_string()))
+        let store = vibedeck_core::Store::open(&root).map_err(|e| CliError::new(e.to_string()))?;
+        // Como o Swift: o guia gerado em .vibedeck/ acompanha a versão do binário.
+        ai::refresh_guide(&store);
+        Ok(store)
     }
 
     /// Diretório de partida sem exigir projeto (para `init`).
@@ -184,8 +191,13 @@ fn execute(cli: Cli) -> Result<i32, CliError> {
         Command::Mcp(mcp) => match mcp.command.unwrap_or(McpCommand::Serve) {
             McpCommand::Serve => {
                 let root = locate_root(cli.root.as_deref())?;
+                if let Ok(store) = vibedeck_core::Store::open(&root) {
+                    ai::refresh_guide(&store);
+                }
                 Ok(crate::mcp::serve(root))
             }
+            McpCommand::Install(args) => ai::mcp_install(&args, &ctx),
+            McpCommand::Uninstall(args) => ai::mcp_uninstall(&args, &ctx),
         },
     }
 }
