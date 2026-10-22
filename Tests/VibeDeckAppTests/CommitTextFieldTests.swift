@@ -201,8 +201,9 @@ import Testing
         }
 
         func type(_ text: String) async throws {
-            let field = try #require(field())
-            #expect(window.makeFirstResponder(field))
+            // Distinct name: a local `field` would shadow `field()` inside the #require expansion.
+            let textField = try #require(field())
+            #expect(window.makeFirstResponder(textField))
             await render()
             let editor = try #require(window.firstResponder as? NSTextView)
             editor.string = text

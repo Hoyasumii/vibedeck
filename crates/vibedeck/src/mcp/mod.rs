@@ -4,6 +4,9 @@
 //! - tools: adicione em `tools::all()` (um `Tool` por ferramenta, handler chama o core);
 //! - resources: implemente `ResourceProvider` e passe a `Server::new`.
 
+// API de registro ainda sem consumidores no binário (tools entram nas próximas fatias).
+#![allow(dead_code, unused_imports)]
+
 pub mod args;
 pub mod instructions;
 pub mod schema;

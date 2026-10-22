@@ -6,9 +6,11 @@
 //! - `--json` por comando folha e saída via `output::print_json`;
 //! - erros: `CliError` (exit 1, `Error: <msg>` em stderr); erros de parse de argumentos saem com 64.
 
+// Helpers ainda sem consumidores (comandos entram nas próximas fatias).
+#[allow(dead_code)]
 pub mod output;
 
-use clap::{Args, CommandFactory, Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 use std::ffi::OsString;
 use std::fmt;
 use std::path::{Path, PathBuf};
@@ -151,6 +153,7 @@ mod tests {
 
     #[test]
     fn estrutura_clap_valida() {
+        use clap::CommandFactory;
         Cli::command().debug_assert();
     }
 
