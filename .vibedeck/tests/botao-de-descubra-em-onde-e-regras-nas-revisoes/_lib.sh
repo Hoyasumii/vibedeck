@@ -7,7 +7,9 @@ APP=Sources/VibeDeckApp/ReviewDiscover.swift
 VIEW=Sources/VibeDeckApp/ReviewGroupView.swift
 RS=crates/vibedeck-core/src/reviews/discover.rs
 OPERATION=Sources/VibeDeckApp/AIReadOnlyOperation.swift
-SCOPE='^Sources/VibeDeckApp/Core/Discover/ReviewDiscoverLogic\.swift$|^Sources/VibeDeckApp/ReviewDiscover[^/]*\.swift$|^Sources/VibeDeckApp/ReviewGroupView\.swift$|^Sources/VibeDeckApp/AIReadOnlyOperation\.swift$|^crates/vibedeck-core/src/reviews/discover\.rs$'
+# Processo do claude (restrito, com timeout e cancelamento): AIReadOnlyProcess.run, chamado por AIReadOnlyOperation.
+PROC=Sources/VibeDeckApp/Core/AI/AIReadOnlyProcess.swift
+SCOPE='^Sources/VibeDeckApp/Core/Discover/ReviewDiscoverLogic\.swift$|^Sources/VibeDeckApp/ReviewDiscover[^/]*\.swift$|^Sources/VibeDeckApp/ReviewGroupView\.swift$|^Sources/VibeDeckApp/AIReadOnlyOperation\.swift$|^Sources/VibeDeckApp/Core/AI/AIReadOnlyProcess\.swift$|^crates/vibedeck-core/src/reviews/discover\.rs$'
 fail=0
 
 # applies [regex extra]: sai com 77 se VIBEDECK_FILES não está vazio e nenhum arquivo casa com o escopo (+ extra).

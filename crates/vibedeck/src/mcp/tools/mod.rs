@@ -31,7 +31,7 @@ pub fn all() -> Vec<Tool> {
 }
 
 /// Tools que criam registros e, no modo app, aceitam `author` (`human`|`ai`, padrão `ai`).
-const AUTHOR_TOOLS: [&str; 11] = [
+const AUTHOR_TOOLS: [&str; 12] = [
     "add_review_item",
     "add_rule",
     "add_idea",
@@ -43,6 +43,7 @@ const AUTHOR_TOOLS: [&str; 11] = [
     "add_command",
     "add_skill",
     "add_workflow",
+    "onboarding_apply",
 ];
 
 /// Catálogo do modo `--app`: o padrão, com as tools do app (que substituem as de mesmo nome) e `author`.

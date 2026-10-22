@@ -58,7 +58,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-descubra-em-onde-e-regras-nas-revisoes/52b60258.sh",
-        "generatedAt" : "2026-10-22T18:47:50Z",
+        "generatedAt" : "2026-10-22T19:25:08Z",
         "mode" : "script",
         "ruleHash" : "4eab7bcd92a5501e"
       },
@@ -110,7 +110,7 @@
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-descubra-em-onde-e-regras-nas-revisoes/7334a6cd.sh",
-        "generatedAt" : "2026-10-22T18:47:50Z",
+        "generatedAt" : "2026-10-22T19:25:08Z",
         "mode" : "script",
         "ruleHash" : "57f17cfdf7695257"
       },

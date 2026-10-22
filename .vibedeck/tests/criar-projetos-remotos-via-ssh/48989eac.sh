@@ -11,5 +11,5 @@ needF $C/CodexRPC.swift '"cwd": .string(RemoteExecution.path(for: root))' "o cwd
 needF $C/CodexReadOnly.swift '"cwd": .string(RemoteExecution.path(for: root))' "o cwd do Codex (leitura) deve ser o diretório remoto"
 needF $C/CodexReadTools.swift 'if let workspace = RemoteWorkspace.existing(at: root) { return try SSHReadTools.execute(workspace' "ferramentas de leitura devem ler o conteúdo do servidor"
 # O runner somente-leitura realmente usado (Descubra, Verificar, avaliação) também precisa executar no servidor.
-needF Sources/VibeDeckApp/ReviewDiscover.swift 'RemoteExecution.configure' "ReviewDiscoverRunner.run (usado por AIReadOnlyOperation) não executa o claude no servidor via RemoteExecution.configure"
+needF Sources/VibeDeckApp/AIReadOnlyOperation.swift 'AIReadOnlyProcess.run(executable: executable, root: root' "AIReadOnlyOperation (Descubra, Verificar, avaliação) deve lançar o claude por AIReadOnlyProcess.run, que executa no servidor via RemoteExecution.configure"
 finish

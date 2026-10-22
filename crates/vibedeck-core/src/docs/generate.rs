@@ -87,8 +87,8 @@ pub fn apply(store: &Store, documents: &[Accepted], group: &str) -> Result<Vec<S
             .len()
                 == 1
         })
-        .cloned()
         .take(MAX_DOCUMENTS)
+        .cloned()
         .collect();
     if kept.is_empty() {
         return Err(DocError::InvalidAnswer);
@@ -102,8 +102,8 @@ pub fn apply(store: &Store, documents: &[Accepted], group: &str) -> Result<Vec<S
                 None => default.clone(),
             };
             let title = d.title.trim();
-            let reference = (!destination.is_empty())
-                .then(|| format!("{destination}/{}", slug::make(title)));
+            let reference =
+                (!destination.is_empty()).then(|| format!("{destination}/{}", slug::make(title)));
             created.push(create_generated_doc(
                 store,
                 title,

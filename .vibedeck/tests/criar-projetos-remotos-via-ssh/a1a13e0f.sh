@@ -3,8 +3,10 @@ set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
 applies
 # A1A13E0F: criação, alteração e exclusão nos dados do projeto SSH chegam à pasta remota (o Core roda lá, via MCP por SSH).
-need $STATUS 'RemoteProjectStatus\(workspace\)' "o projeto SSH deve exibir o estado da conexão"
-need Sources/VibeDeckApp/V2/V2StatusBar.swift 'V2RemoteEnvironmentSegment\(workspace: workspace\)' "a barra de status do projeto SSH deve mostrar a conexão"
+needF $STATUS 'struct V2RemoteEnvironmentSegment: View' "o projeto SSH deve exibir o estado da conexão"
+needF $STATUSBAR 'V2RemoteEnvironmentSegment(link: link)' "a barra de status do projeto SSH deve mostrar a conexão"
+# Edição só com conexão: offline o app recusa gravar (nada é gravado fora do servidor).
+in_body $PM 'private func persist\(' 'if isReadOnly \{' "sem conexão a gravação deve ser recusada (somente leitura)"
 in_body $CSTORE 'static func sshLocation' 'RemoteExecution\.launcher\("vibedeck"' "o Core do projeto SSH deve rodar no servidor (ssh host vibedeck mcp)"
 in_body $CSTORE 'static func sshLocation' 'connection\.commandArguments\(login\)' "o Core remoto deve ser lançado pelo ssh do destino"
 needF $CSTORE 'self.location = try CoreStore.sshLocation(for: workspace)' "abrir uma raiz ssh:// deve usar a localização SSH"

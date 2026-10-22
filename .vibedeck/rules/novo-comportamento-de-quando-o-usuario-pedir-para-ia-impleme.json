@@ -221,7 +221,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/04eeb887.sh",
-        "generatedAt" : "2026-10-22T18:45:49Z",
+        "generatedAt" : "2026-10-22T19:26:49Z",
         "mode" : "script",
         "ruleHash" : "bd4b7555587bb39d"
       },
@@ -235,7 +235,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/7d9e4052.sh",
-        "generatedAt" : "2026-10-22T18:45:49Z",
+        "generatedAt" : "2026-10-22T19:26:49Z",
         "mode" : "script",
         "ruleHash" : "f1f8d5f5a956a3a1"
       },

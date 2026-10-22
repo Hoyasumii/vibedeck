@@ -186,7 +186,12 @@ impl Drop for Session {
     }
 }
 
-const APP_ONLY: [&str; 18] = [
+const APP_ONLY: [&str; 23] = [
+    "link_doc",
+    "doc_generate_prompt",
+    "doc_generate_validate",
+    "doc_generate_apply",
+    "ai_recovery_prompt",
     "release_orphaned",
     "workflow_run_restart",
     "put_record",
@@ -284,6 +289,7 @@ fn com_app_o_catalogo_ganha_as_tools_extras_e_author() {
         "add_command",
         "add_skill",
         "add_workflow",
+        "onboarding_apply",
     ] {
         let tool = tools["tools"]
             .as_array()
@@ -1148,5 +1154,87 @@ fn release_orphaned_solta_ideia_de_topico_apagado_por_fora() {
         app.json("get_idea", json!({"idea": slug}))
             .get("promotedTopic")
             .is_none()
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn desvincular_persiste_e_link_doc_revincula() {
+    let p = Project::new();
+    std::fs::write(p.path("README.md"), "# Leia\n").unwrap();
+    let mut app = p.app();
+    let rows = app.json("list_docs", json!({}));
+    assert_eq!(rows[0]["slug"], "readme");
+    app.ok("delete_doc", json!({"slug":"readme"}));
+    assert_eq!(app.json("list_docs", json!({})), json!([]));
+    assert!(p.path("README.md").exists());
+    assert_eq!(
+        std::fs::read_to_string(p.path(".vibedeck/docs/.unlinked")).unwrap(),
+        "README.md\n"
+    );
+    app.fail("link_doc", json!({"file":"nada.md"}));
+    app.fail("link_doc", json!({"file":"../README.md"}));
+    assert_eq!(
+        app.ok("link_doc", json!({"file":"README.md"})),
+        "Vinculado: readme"
+    );
+    assert_eq!(app.json("list_docs", json!({}))[0]["slug"], "readme");
+    assert!(!p.path(".vibedeck/docs/.unlinked").exists());
+}
+
+#[test]
+fn doc_generate_prompt_validate_apply() {
+    let p = Project::new();
+    let mut app = p.app();
+    let prompt = app.json("doc_generate_prompt", json!({}));
+    assert!(prompt["prompt"].as_str().unwrap().contains("arquivo:linha"));
+    assert!(prompt["schema"].as_str().unwrap().contains("documents"));
+    app.fail("doc_generate_validate", json!({"answer":"não é json"}));
+    let answer = json!({"documents":[
+        {"title":" Rodar ","content":" Passos "},{"title":"","content":"x"}]});
+    let valid = app.json(
+        "doc_generate_validate",
+        json!({"answer": answer.to_string()}),
+    );
+    assert_eq!(valid, json!([{"title":"Rodar","content":"Passos"}]));
+    let slugs = app.json(
+        "doc_generate_apply",
+        json!({"documents": valid, "group": "guias"}),
+    );
+    assert_eq!(slugs, json!(["guias/rodar"]));
+    let text = std::fs::read_to_string(p.path(".vibedeck/docs/guias/rodar.md")).unwrap();
+    assert!(text.contains("author: ai") && text.contains("# Rodar"));
+    app.fail("doc_generate_apply", json!({"documents": []}));
+    let r = app.json(
+        "ai_recovery_prompt",
+        json!({"original":"P","diagnosis":"faltou x"}),
+    );
+    assert!(
+        r["prompt"]
+            .as_str()
+            .unwrap()
+            .starts_with("P\n\n## Recuperação única")
+    );
+    assert!(r["incomplete"].as_str().unwrap().contains("incompleta"));
+}
+
+#[test]
+fn onboarding_import_respeita_author_no_modo_app() {
+    let p = Project::new();
+    std::fs::create_dir_all(p.path(".claude/agents")).unwrap();
+    std::fs::write(
+        p.path(".claude/agents/rev.md"),
+        "---\nname: rev\ndescription: R\n---\nCorpo",
+    )
+    .unwrap();
+    let mut app = p.app();
+    app.ok(
+        "onboarding_apply",
+        json!({"action":"import","items":["agent:rev"],"author":"human"}),
+    );
+    let raw = std::fs::read_to_string(p.path(".vibedeck/agents/rev.json")).unwrap();
+    assert!(
+        raw.contains("\"author\" : \"human\"") || raw.contains("\"author\":\"human\""),
+        "{raw}"
     );
 }

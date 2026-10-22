@@ -4,8 +4,9 @@
 use std::collections::HashSet;
 
 use serde_json::{Value, json};
+use vibedeck_core::ai::context;
 use vibedeck_core::app::{self, AppError, RecordKind};
-use vibedeck_core::docs::{self, DocInfo};
+use vibedeck_core::docs::{self, DocInfo, generate};
 use vibedeck_core::model::AiProvider;
 use vibedeck_core::{rules, workflows};
 
@@ -317,6 +318,95 @@ pub fn tools() -> Vec<Tool> {
                     Some((reference, run)) => run_and_ref(&reference, &run),
                     None => Ok("null".to_string()),
                 }
+            },
+        )
+        .read_only(),
+        Tool::new(
+            "link_doc",
+            "Vincula de novo um .md da raiz que foi desvinculado (ou ainda não vinculado); devolve o slug.",
+            schema(&[prop("file", "string", "Nome do .md na raiz, ex. README.md")], &["file"], &[], &[]),
+            |ctx, args| {
+                let slug = docs::links::link_doc(&ctx.store()?, args.req("file")?)?;
+                Ok(format!("Vinculado: {slug}"))
+            },
+        ),
+        Tool::new(
+            "doc_generate_prompt",
+            "Prompt e schema JSON para a IA propor documentos do repositório (não grava).",
+            schema(&[], &[], &[], &[]),
+            |ctx, _| {
+                let existing = docs::list_docs(&ctx.store()?)?;
+                json_text(&json!({
+                    "prompt": generate::prompt(&existing),
+                    "schema": generate::SCHEMA,
+                    "maxDocuments": generate::MAX_DOCUMENTS,
+                    "maxContentLength": generate::MAX_CONTENT_LENGTH,
+                }))
+            },
+        )
+        .read_only(),
+        Tool::new(
+            "doc_generate_validate",
+            "Valida a resposta da IA ({documents:[{title,content}]}) e devolve as propostas aceitáveis; não grava.",
+            schema(&[prop("answer", "string", "JSON da resposta da IA")], &["answer"], &[], &[]),
+            |_, args| {
+                let documents = generate::parse(args.req("answer")?.as_bytes())?;
+                let rows: Vec<Value> = documents
+                    .iter()
+                    .map(|d| json!({"title": d.title, "content": d.content}))
+                    .collect();
+                json_text(&rows)
+            },
+        )
+        .read_only(),
+        Tool::new(
+            "doc_generate_apply",
+            "Cria os documentos aceitos (author=ai), tudo ou nada; devolve os slugs criados.",
+            schema(
+                &[
+                    prop("documents", "array", "Lista de {title, content, group?} (ou string JSON)"),
+                    prop("group", "string", "Grupo de destino padrão; vazio = raiz de Docs"),
+                ],
+                &["documents"],
+                &[],
+                &[],
+            ),
+            |ctx, args| {
+                let bytes = match args.raw("documents") {
+                    Some(Value::String(text)) if !text.is_empty() => text.clone().into_bytes(),
+                    Some(array @ Value::Array(_)) => array.to_string().into_bytes(),
+                    _ => {
+                        return Err(ToolError::invalid_params(
+                            "Parâmetro obrigatório: documents",
+                        ));
+                    }
+                };
+                let documents = generate::decode_accepted(&bytes)?;
+                let slugs = generate::apply(
+                    &ctx.store()?,
+                    &documents,
+                    args.str("group").unwrap_or_default(),
+                )?;
+                json_text(&slugs)
+            },
+        ),
+        Tool::new(
+            "ai_recovery_prompt",
+            "Prompt da recuperação única quando a resposta da IA não cumpriu o contrato, e a mensagem final se persistir.",
+            schema(
+                &[
+                    prop("original", "string", "Prompt original"),
+                    prop("diagnosis", "string", "Por que a resposta falhou"),
+                ],
+                &["original", "diagnosis"],
+                &[],
+                &[],
+            ),
+            |_, args| {
+                json_text(&json!({
+                    "prompt": context::recovery(args.req("original")?, args.req("diagnosis")?),
+                    "incomplete": context::INCOMPLETE,
+                }))
             },
         )
         .read_only(),

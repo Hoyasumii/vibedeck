@@ -106,8 +106,61 @@ pub struct Report {
     pub step: Step,
     pub stack_empty: bool,
     pub stack: Vec<String>,
+    /// Stack deduzida dos arquivos da raiz (Cargo.toml -> Rust etc.), sem o que já está na `stack`.
+    pub suggested_stack: Vec<String>,
     pub patterns: Vec<PatternView>,
     pub resources: Vec<ResourceView>,
+}
+
+/// Arquivo da raiz -> nome de stack sugerido (ordem estável).
+const STACK_MARKERS: [(&str, &str); 14] = [
+    ("Cargo.toml", "Rust"),
+    ("Package.swift", "Swift"),
+    ("go.mod", "Go"),
+    ("pyproject.toml", "Python"),
+    ("requirements.txt", "Python"),
+    ("Gemfile", "Ruby"),
+    ("pom.xml", "Java"),
+    ("build.gradle", "Java"),
+    ("build.gradle.kts", "Kotlin"),
+    ("composer.json", "PHP"),
+    ("pubspec.yaml", "Dart"),
+    ("mix.exs", "Elixir"),
+    ("tsconfig.json", "TypeScript"),
+    ("Dockerfile", "Docker"),
+];
+
+/// Sugere stack pelos arquivos de manifesto da raiz. `package.json` vira TypeScript quando há `tsconfig.json`
+/// ou a dependência `typescript`; senão Node. Fora do que `existing` já tem (sem diferenciar caixa).
+pub fn suggest_stack(root: &Path, existing: &[String]) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    let mut add = |name: &str| {
+        let known = existing
+            .iter()
+            .chain(out.iter())
+            .any(|e| e.eq_ignore_ascii_case(name));
+        if !known {
+            out.push(name.to_string());
+        }
+    };
+    let package = fs::read_to_string(root.join("package.json")).ok();
+    if let Some(text) = &package {
+        let typed = root.join("tsconfig.json").is_file() || text.contains("\"typescript\"");
+        add(if typed { "TypeScript" } else { "Node" });
+    }
+    for (file, name) in STACK_MARKERS {
+        if root.join(file).is_file() {
+            add(name);
+        }
+    }
+    if let Ok(rd) = fs::read_dir(root)
+        && rd
+            .flatten()
+            .any(|e| e.file_name().to_string_lossy().ends_with(".csproj"))
+    {
+        add("C#");
+    }
+    out
 }
 
 pub fn kind_label(kind: NextStepKind) -> &'static str {
@@ -182,6 +235,7 @@ pub fn status_at(root: &Path) -> Report {
     } else {
         Step::Done
     };
+    let suggested_stack = suggest_stack(root, &stack);
     Report {
         has_project,
         status,
@@ -191,6 +245,7 @@ pub fn status_at(root: &Path) -> Report {
         step,
         stack_empty: stack.is_empty(),
         stack,
+        suggested_stack,
         patterns,
         resources,
     }

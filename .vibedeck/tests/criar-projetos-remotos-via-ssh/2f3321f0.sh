@@ -6,5 +6,5 @@ applies
 needF $STATUS 'LoggedButton("Terminal SSH") { claude.openTerminal() }' "falta a ação 'Terminal SSH' no projeto remoto"
 needF $STATUS 'Para autenticar a IA, abra o Terminal SSH e execute claude ou codex no servidor.' "falta a orientação de autenticação do provedor no servidor"
 needF $TERM 'executable: "/usr/bin/ssh"' "o terminal oferecido deve abrir no servidor"
-need Sources/VibeDeckApp/V2/V2StatusBar.swift 'V2RemoteEnvironmentSegment\(workspace: workspace\)' "o estado/ações do projeto SSH devem aparecer na barra de status"
+needF $STATUSBAR 'V2RemoteEnvironmentSegment(link: link)' "o estado/ações do projeto SSH devem aparecer na barra de status"
 finish

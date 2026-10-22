@@ -42,7 +42,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-gerar-documentos/83d8da0a.sh",
-        "generatedAt" : "2026-10-22T18:47:29Z",
+        "generatedAt" : "2026-10-22T19:25:08Z",
         "mode" : "script",
         "ruleHash" : "b504f453d039ff0c"
       },
@@ -112,7 +112,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-gerar-documentos/2ce9184c.sh",
-        "generatedAt" : "2026-10-22T18:47:29Z",
+        "generatedAt" : "2026-10-22T19:25:08Z",
         "mode" : "script",
         "ruleHash" : "dc3678b93528364f"
       },
@@ -210,7 +210,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-gerar-documentos/81d69362.sh",
-        "generatedAt" : "2026-10-22T18:47:29Z",
+        "generatedAt" : "2026-10-22T19:25:08Z",
         "mode" : "script",
         "ruleHash" : "3649979bcae2ad2e"
       },

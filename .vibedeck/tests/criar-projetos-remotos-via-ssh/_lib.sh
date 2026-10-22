@@ -10,10 +10,14 @@ READ=Sources/VibeDeckApp/Core/Support/SSHReadTools.swift
 CSTORE=Sources/VibeDeckApp/Core/CoreStore.swift
 SHEET=Sources/VibeDeckApp/SSHProjectView.swift
 STATUS=Sources/VibeDeckApp/V2/V2RemoteEnvironment.swift
+LINK=Sources/VibeDeckApp/Core/RemoteLink.swift
+PM=Sources/VibeDeckApp/ProjectModel.swift
+STATUSBAR=Sources/VibeDeckApp/V2/V2StatusBar.swift
+CTESTS=Tests/VibeDeckAppTests/CoreModelsTests.swift
 WELCOME=Sources/VibeDeckApp/WelcomeView.swift
 APPF=Sources/VibeDeckApp/VibeDeckApp.swift
 TERM=Sources/VibeDeckApp/ProjectTerminal.swift
-SCOPE='^Sources/VibeDeckApp/Core/(Support/(SSHConnection|RemoteExecution|SSHReadTools)|RemoteWorkspace|CoreStore|CoreClient)\.swift$|^Sources/VibeDeckApp/Core/AI/[^/]*\.swift$|^Sources/VibeDeckApp/(SSHProjectView|WelcomeView|VibeDeckApp|ProjectTerminal|ReviewDiscover|AIReadOnlyOperation)\.swift$|^Sources/VibeDeckApp/V2/V2(RemoteEnvironment|ProjectWindow|StatusBar)\.swift$|^crates/vibedeck-core/src/rules/(runner|execution)\.rs$'
+SCOPE='^Sources/VibeDeckApp/Core/(Support/(SSHConnection|RemoteExecution|SSHReadTools)|RemoteWorkspace|RemoteLink|CoreStore|CoreClient)\.swift$|^Sources/VibeDeckApp/Core/AI/[^/]*\.swift$|^Sources/VibeDeckApp/(SSHProjectView|WelcomeView|VibeDeckApp|ProjectTerminal|ReviewDiscover|AIReadOnlyOperation|ProjectModel)\.swift$|^Sources/VibeDeckApp/V2/V2(RemoteEnvironment|ProjectWindow|StatusBar)\.swift$|^crates/vibedeck-core/src/rules/(runner|execution)\.rs$'
 fail=0
 
 # applies [regex extra]: sai com 77 se VIBEDECK_FILES não está vazio e nenhum arquivo casa com o escopo (+ extra).

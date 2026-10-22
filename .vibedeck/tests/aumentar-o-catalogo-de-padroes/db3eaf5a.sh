@@ -2,7 +2,8 @@
 set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
 applies
-need "$VIEW" 'PatternCatalog\.all' "lista não deriva de PatternCatalog.all"
+need "$VIEW" 'model\.store\.patternCatalog\(' "lista não deriva do catálogo (tool pattern_catalog via CoreStore.patternCatalog)"
+need "$VIEW" 'entries = try await' "a lista precisa ser preenchida com o resultado de patternCatalog"
 need "$VIEW" 'PatternCategory\.all' "lista não deriva de PatternCategory.all"
 # sem ids de padrões fixos na view; toda categoria usada por um template tem case em label (Core Rust e app)
 py <<'PY' || fail=1

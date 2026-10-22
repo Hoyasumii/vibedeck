@@ -2,7 +2,6 @@
 //!
 //! Tools novas, aditivas ao contrato. `onboarding_apply` só cadastra o que a lista `items` nomear.
 
-use vibedeck_core::model::Author;
 use vibedeck_core::onboarding::{self, ItemRef};
 
 use crate::mcp::schema::{prop, schema};
@@ -52,8 +51,8 @@ pub fn tools() -> Vec<Tool> {
                             .map(|i| ItemRef::parse(i))
                             .collect::<Result<Vec<_>, _>>()
                             .map_err(err)?;
-                        let out =
-                            onboarding::import_selected(&store, &refs, Author::Ai).map_err(err)?;
+                        let out = onboarding::import_selected(&store, &refs, ctx.author(args)?)
+                            .map_err(err)?;
                         json_text(&out)
                     }
                     other => Err(ToolError::invalid_params(format!(

@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
-# 32CD8C54: estados distintos (desconectado, sincronizando, pendente, conflito, sincronizado).
-# NÃO SE APLICA ao Core Rust / app atual: o projeto SSH não tem mais espelho local: o Core Rust roda no servidor (ssh host vibedeck mcp -C <pasta>) e o app só fala MCP com ele (RemoteWorkspace.swift, CoreStore.sshLocation), sem cache, edição offline, pendências nem conflitos; a interface só distingue conectando, conectado e offline (V2RemoteEnvironmentSegment).
-# Decisão de arquitetura (briefing-regras.md, F01 arquitetura.md): sem espelho local nem sincronização.
-# Sai com 77 (n/a) em vez de passar; o motivo também está em `details` da regra.
-exit 77
+# 32CD8C54 (D16): a interface distingue projeto SSH conectado, reconectando (próxima tentativa em Ns) e offline somente leitura.
+# Análise estática (comportamento só verificável no macOS).
+set -euo pipefail
+source "$(dirname "$0")/_lib.sh"
+applies
+for s in connected connecting 'waiting\(until: Date\)' offline; do
+  need $LINK "case $s" "RemoteLink.State sem o estado $s"
+done
+in_body $STATUS 'private func detail\(now' 'case \.connected: return "conectado"' "o segmento deve mostrar conectado"
+in_body $STATUS 'private func detail\(now' 'case \.connecting: return "reconectando…"' "o segmento deve mostrar reconectando"
+in_body $STATUS 'private func detail\(now' 'próxima tentativa em' "o segmento deve mostrar a contagem da próxima tentativa"
+in_body $STATUS 'private func detail\(now' 'offline \(somente leitura\)' "o segmento deve mostrar offline somente leitura"
+needF $STATUSBAR 'V2RemoteEnvironmentSegment(link: link)' "a barra de status deve mostrar o estado da conexão SSH"
+needF Sources/VibeDeckApp/V2/V2ProjectWindow.swift 'V2OfflineBanner(link: link)' "o aviso de offline deve aparecer na janela"
+finish

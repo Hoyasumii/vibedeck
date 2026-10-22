@@ -17,12 +17,13 @@ rargs=$(body "$RS" '^pub fn arguments\(')
 for a in '"--tools"' '"--allowedTools"' '"--strict-mcp-config"'; do
   printf '%s\n' "$rargs" | grep -qF -- "$a" || { echo "$RS: arguments() sem $a"; fail=1; }
 done
-# Os processos do Claude usam exatamente esses argumentos.
-for f in "$APP" Sources/VibeDeckApp/Core/AI/AIReadOnlyProcess.swift; do
+# O processo do Claude (AIReadOnlyProcess.run, usado por AIReadOnlyOperation) usa exatamente esses argumentos.
+for f in "$PROC"; do
   need "$f" 'process\.arguments = ReviewDiscover\.arguments\(\)$' "o runner deve lançar o claude com ReviewDiscover.arguments()"
   forbid "$f" 'process\.arguments *(\+=|\.append)\(?[^m]*"--(allowedTools|tools|permission-mode|add-dir|mcp-config)' "o runner não pode ampliar as ferramentas do claude"
 done
 # Caminho Codex: sandbox somente leitura (sem escrita no workspace) e sem aprovações.
+need "$OPERATION" 'AIReadOnlyProcess\.run\(' "o Descubra do Claude precisa passar por AIReadOnlyProcess.run"
 need "$OPERATION" 'workspaceWrites: false' "Codex do Descubra deve rodar sem escrita no workspace"
 C=Sources/VibeDeckApp/Core/AI/CodexReadOnly.swift
 need "$C" '\.string\(workspaceWrites \? "workspace-write" : "read-only"\)' "Codex do Descubra precisa de sandbox read-only quando workspaceWrites == false"

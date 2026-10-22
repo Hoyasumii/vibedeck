@@ -116,14 +116,14 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-13T17:49:48Z",
-      "details" : "Verificar: a lista da PatternsView é derivada do catálogo e de PatternCategory.all, sem listas fixas de ids; uma categoria nova entra em PatternCategory::ALL / label do Core Rust e no label(_:) do app.",
+      "details" : "Verificar: a lista da PatternsView é derivada do catálogo do Core (tool pattern_catalog, via CoreStore.patternCatalog) e de PatternCategory.all, sem listas fixas de ids; uma categoria nova entra em PatternCategory::ALL / label do Core Rust e no label(_:) do app.",
       "id" : "DB3EAF5A-92E6-4292-AE04-3BA10FA10636",
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-o-catalogo-de-padroes/db3eaf5a.sh",
-        "generatedAt" : "2026-10-22T18:43:12Z",
+        "generatedAt" : "2026-10-22T19:25:54Z",
         "mode" : "script",
-        "ruleHash" : "f6308afdc3a01aec"
+        "ruleHash" : "ec13ae24f1b006c3"
       },
       "text" : "A PatternsView exibe os padrões novos agrupados por categoria sem mudança de código quando a categoria já existe"
     },
@@ -200,14 +200,14 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-13T22:39:32Z",
-      "details" : "Verificar: o ForEach de categorias do PatternPicker usa PatternCategory.all, filtrando categorias sem templates; não contém um array literal de categorias.",
+      "details" : "Verificar: o ForEach de categorias do PatternPicker usa PatternCategory.all, filtrando categorias sem templates no catálogo carregado (entries); não contém um array literal de categorias.",
       "id" : "26913F22-1A61-4E2F-B521-7ACDCCDA17A2",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-o-catalogo-de-padroes/26913f22.sh",
-        "generatedAt" : "2026-10-22T18:43:12Z",
+        "generatedAt" : "2026-10-22T19:25:54Z",
         "mode" : "script",
-        "ruleHash" : "c3c53a1c6f73ffa3"
+        "ruleHash" : "3d8f811bc399fd4c"
       },
       "text" : "O seletor de padrões deriva suas categorias de PatternCategory.all."
     },

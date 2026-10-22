@@ -140,3 +140,74 @@ fn json_traz_campos_opcionais_so_para_vinculados() {
     assert_eq!(v["target"], "README.md");
     assert!(v.get("broken").is_none());
 }
+
+#[test]
+fn desvincular_persiste_e_link_doc_revincula() {
+    let (dir, store) = project();
+    fs::write(dir.path().join("README.md"), "# R\n").unwrap();
+    fs::write(dir.path().join("NOTAS.md"), "# N\n").unwrap();
+    docs::list_docs(&store).unwrap();
+    docs::unlink_doc(&store, "readme").unwrap();
+    let slugs: Vec<_> = docs::list_docs(&store)
+        .unwrap()
+        .into_iter()
+        .map(|d| d.slug)
+        .collect();
+    assert_eq!(slugs, ["notas"]);
+    assert!(fs::symlink_metadata(store.data_dir().join("docs/readme.md")).is_err());
+    assert_eq!(
+        fs::read_to_string(store.data_dir().join("docs/.unlinked")).unwrap(),
+        "README.md\n"
+    );
+    assert!(dir.path().join("README.md").exists());
+    // apagar (delete_doc) também registra
+    docs::delete_doc(&store, "notas").unwrap();
+    assert!(docs::list_docs(&store).unwrap().is_empty());
+    // revincular
+    assert_eq!(
+        docs::links::link_doc(&store, "README.md").unwrap(),
+        "readme"
+    );
+    assert!(is_link(&store.data_dir().join("docs/readme.md")));
+    assert_eq!(docs::list_docs(&store).unwrap().len(), 1);
+    assert_eq!(
+        fs::read_to_string(store.data_dir().join("docs/.unlinked")).unwrap(),
+        "NOTAS.md\n"
+    );
+    assert!(matches!(
+        docs::links::link_doc(&store, "nada.md"),
+        Err(DocError::NotRootMarkdown(_))
+    ));
+    assert!(matches!(
+        docs::links::link_doc(&store, "../x.md"),
+        Err(DocError::NotRootMarkdown(_))
+    ));
+}
+
+#[test]
+fn desvincular_quebrado_e_aplicar_propostas_geradas() {
+    let (dir, store) = project();
+    fs::write(dir.path().join("X.md"), "# X\n").unwrap();
+    docs::list_docs(&store).unwrap();
+    fs::remove_file(dir.path().join("X.md")).unwrap();
+    docs::unlink_doc(&store, "x").unwrap();
+    fs::write(dir.path().join("X.md"), "# X\n").unwrap();
+    assert!(docs::list_docs(&store).unwrap().is_empty());
+
+    use docs::generate::{Accepted, apply};
+    let a = |t: &str, g: Option<&str>| Accepted {
+        title: t.into(),
+        content: "c".into(),
+        group: g.map(str::to_string),
+    };
+    let slugs = apply(
+        &store,
+        &[a("Um", None), a("Dois", Some("g")), a("", None)],
+        "",
+    )
+    .unwrap();
+    assert_eq!(slugs, ["um", "g/dois"]);
+    assert!(apply(&store, &[a("", None)], "").is_err());
+    assert!(apply(&store, &[a("Ok", None), a("Mau", Some("../fora"))], "").is_err());
+    assert!(docs::read_doc(&store, "ok").is_err(), "tudo ou nada");
+}

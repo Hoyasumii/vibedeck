@@ -97,3 +97,10 @@ Tools abaixo só existem com `--app` (catálogo padrão inalterado; contrato pas
 - P5 descobrir/gerar por IA: fora (fica no app).
 - P6 idea_implement/idea_run, ai_usage_record, author: FEITO. stack_sync_readme: já ocorre em add_stack/remove_stack/update_stack e em put_project. claude_install_statusline/stop_hook como tool: NÃO FEITO (app chama o CLI `vibedeck usage install` / `vibedeck hook install` do bundle).
 - P7 put_project+badge, author, `to:"/"`, workflow_run_resume, reorganize_restore, receipt base64: FEITO. Recibo de desfazer para `item_groups` delete/move: NÃO FEITO (não pedido nesta rodada). graph_generate via SSH: NÃO FEITO.
+
+## Adicionados (rodada final, só com --app)
+- `link_doc(file)` -> `Vinculado: <slug>` (re-vincula um .md da raiz; desvincular agora persiste em `.vibedeck/docs/.unlinked`). CLI: `docs link <arquivo.md>`.
+- `onboarding_apply` aceita `author` (human|ai).
+- `doc_generate_prompt()` -> `{prompt, schema, maxDocuments, maxContentLength}`; `doc_generate_validate(answer)` -> `[{title, content}]`; `doc_generate_apply(documents:[{title,content,group?}], group?)` -> `[slug]` (tudo ou nada, author=ai). Substituem DocGenerate.swift/DocGenerateLogic.swift no app (a execução da IA continua no app).
+- `ai_recovery_prompt(original, diagnosis)` -> `{prompt, incomplete}` (substitui a cópia Swift da recuperação).
+- `onboarding_status` traz `suggestedStack` (aditivo).

@@ -166,3 +166,27 @@ fn projeto_com_stack_sem_estado_conta_como_concluido() {
     assert_eq!(r.step, Step::Patterns);
     assert_eq!(r.stack, ["Rust"]);
 }
+
+#[test]
+fn sugere_stack_pelos_arquivos_da_raiz() {
+    let dir = tempfile::tempdir().unwrap();
+    let r = dir.path();
+    assert!(onboarding::suggest_stack(r, &[]).is_empty());
+    write(r, "Cargo.toml", "[package]");
+    write(
+        r,
+        "package.json",
+        "{\"devDependencies\":{\"typescript\":\"5\"}}",
+    );
+    write(r, "Package.swift", "");
+    write(r, "app.csproj", "");
+    assert_eq!(
+        onboarding::suggest_stack(r, &["swift".to_string()]),
+        ["TypeScript", "Rust", "C#"]
+    );
+    write(r, "package.json", "{}");
+    std::fs::remove_file(r.join("Cargo.toml")).unwrap();
+    assert_eq!(onboarding::suggest_stack(r, &[]), ["Node", "Swift", "C#"]);
+    let report = onboarding::status_at(r);
+    assert_eq!(report.suggested_stack, ["Node", "Swift", "C#"]);
+}

@@ -68,6 +68,8 @@ pub enum DocsCommand {
     },
     /// Remove só o vínculo de um doc vinculado a um .md da raiz (a origem nunca é tocada).
     Unlink { slug: String },
+    /// Vincula de novo um .md da raiz desvinculado (ex.: README.md).
+    Link { file: String },
 }
 
 fn concept_parser() -> clap::builder::PossibleValuesParser {
@@ -195,6 +197,11 @@ pub fn run(command: Command, ctx: &Context) -> Result<i32, CliError> {
             Some(DocsCommand::Unlink { slug }) => {
                 let removed = docs::unlink_doc(&ctx.store()?, &slug)?;
                 println!("Vínculo removido: {removed}");
+                Ok(0)
+            }
+            Some(DocsCommand::Link { file }) => {
+                let slug = docs::links::link_doc(&ctx.store()?, &file)?;
+                println!("Vinculado: {slug}");
                 Ok(0)
             }
         },

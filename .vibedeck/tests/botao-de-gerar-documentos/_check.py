@@ -23,7 +23,7 @@ DG = APP + 'DocGenerate.swift'
 PM = APP + 'ProjectModel.swift'
 SL = APP + 'SectionListView.swift'
 RO = APP + 'AIReadOnlyOperation.swift'
-AR = APP + 'ReviewDiscover.swift'
+AR = APPCORE + 'AI/AIReadOnlyProcess.swift'  # processo restrito do claude (antes ReviewDiscoverRunner.run)
 CR = APPCORE + 'Discover/ReviewDiscoverLogic.swift'
 CX = APPCORE + 'AI/CodexReadOnly.swift'
 CRATE = 'crates/vibedeck-core/src/'
@@ -83,7 +83,7 @@ def read_only():
     forbid(DG, r'ClaudeStream|workspaceWrites\s*:\s*true|Process\(', 'Geração não pode contornar operação de leitura')
     need(RO, r'runner\.run\([^;]*?workspaceWrites:\s*false', 'Codex deve receber workspaceWrites=false')
     forbid(RO, r'workspaceWrites:\s*true|ClaudeStream', 'Operação de leitura não pode habilitar escrita')
-    need(RO, r'ReviewDiscoverRunner\.run\(', 'Claude deve usar runner restrito')
+    need(RO, r'AIReadOnlyProcess\.run\(', 'Claude deve usar runner restrito')
     need(AR, r'process\.arguments = ReviewDiscover\.arguments\(\)', 'Runner deve usar argumentos restritos')
     source = read(CR)
     tools = re.search(r'static let tools\s*=\s*\[([^\]]*)\]', source)
