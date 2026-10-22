@@ -15,6 +15,9 @@ D9 fronteira processo+JSON | D10 Site só schemas; Releases preparado sem public
 D11 paridade total de dados | D12 remover Core Swift após paridade | D13 Sonnet
 D-MERGE (usuário): ao terminar tudo, abrir PRs e mergear na main resolvendo conflitos (atenção: merge na main dispara deploy do worker)
 
+D14 (usuário): regras que verificavam o Core Swift são reescritas para o Rust (briefing-regras.md)
+D15 (usuário): stack/padrões em vibedeck.json atualizados para Rust
+
 ## Trilhas
 - CORE: F01/F02 APROVADOS. F03 piloto (4 regras reais + runner) passa. F04: 10 áreas integradas (project, docs, reviews, rules, ideas, stack, resources, workflows, ai + recursos MCP); 358 testes; contrato MCP ok (só nuvem removida). Verificação independente de paridade em andamento. Pendente: onboarding (MUD-001) no core, unificar gate de revisões com regras, F05.
 - APP: APP-1 compilou na CI. APP-2a casca V2 escrita (não compilada). APP-2b em andamento: app como cliente MCP do Core Rust, remoção de VibeDeckCore/CLI Swift e da nuvem na UI.
