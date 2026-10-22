@@ -28,7 +28,4 @@ struct RemoteWorkspace {
         if let alias = destination.alias { components.queryItems = [URLQueryItem(name: "alias", value: alias)] }
         return components.url ?? URL(fileURLWithPath: destination.directory)
     }
-
-    /// Sem espelho local, nunca há alterações pendentes (mantido para os chamadores antigos).
-    func requireSynchronized() throws {}
 }

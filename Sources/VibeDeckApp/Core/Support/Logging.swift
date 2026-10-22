@@ -357,7 +357,7 @@ enum VDLog {
         Context(action: actionID, label: actionLabel, root: projectRoot, undo: undoName, logs: testStore)
     }
 
-    /// Shared by ProjectModel's direct writes and the ProjectStore operations it invokes.
+    /// Shared by ProjectModel's direct writes and the Core operations the app invokes.
     static func fileWritten(_ url: URL, bytes: Int) {
         let config = state.withLock { $0 }
         guard config.component == .app || testStore != nil,

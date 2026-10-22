@@ -41,3 +41,14 @@ Enquanto não existirem, esse código Swift (prompts, schemas, parse) permanece 
 - `stack_sync_readme` (badge do README) — hoje `StackService.syncReadme()`; `add_stack/update_stack` já atualizam? Confirmar.
 - `claude_install_statusline/stop_hook` (`vibedeck usage install`, `vibedeck hook install`) como tools ou chamada CLI documentada (o app chama o CLI do bundle).
 - `ai_usage` registra uso: o app grava `AIUsageRecord` de cada turno; pedir `ai_usage_record(record)`.
+
+## P7 — Descobertos durante a migração (todos viram `CoreError.unsupported` ou degradam no app)
+- `put_project` deve atualizar o bloco de badge da stack no README.md (o app antes chamava `StackService.syncReadme()` após cada mudança de stack).
+- `add_pattern`/`add_stack`/`add_*`: parâmetro `author` (`human`|`ai`); o app cria registros como `human`, as tools MCP gravam `ai`.
+- `item_groups` `move_item` com destino raiz: hoje `to` vazio conta como ausente (erro). Aceitar `to: "/"` ou `root: true`.
+- `item_groups` `delete`/`move`: devolver o recibo para desfazer (hoje o app só desfaz mover; apagar grupo não tem desfazer).
+- `workflow_run_resume(run)`: uma execução parada volta a andar (hoje `resumeRun` do Swift). `workflow_run_start` com mesma entrada já reinicia.
+- `reorganize_restore(receipt, forward)`: desfazer/refazer reorganização (o app aplica via `reorganize_apply` e perde o desfazer sem isto).
+- `import_attachment` (P3), `delete_doc`, `list_checks`, `put_record`, `delete_record`, `put_project` (P1/P2) — sem eles o app é somente leitura.
+- `graph_generate` para projetos SSH (o grafo semântico hoje roda no Mac, só local).
+- Receipt de `reorganize_apply`: o app decodifica `before/after` como `Data` Swift (base64). Confirmar a codificação dos bytes no JSON do Rust (`ser_bytes_map`).

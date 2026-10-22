@@ -94,7 +94,6 @@ struct AIConversationConfiguration: Sendable {
     }
     func send(_ text: String, configuration: AIConversationConfiguration, schema: JSONValue? = nil) async throws -> String? {
         try Task.checkCancellation()
-        try RemoteWorkspace.existing(at: configuration.root)?.requireSynchronized()
         try write(ClaudeInput.userMessage(try await RemoteExecution.prepareContext(text, root: configuration.root))); return nil
     }
     func write(_ data: Data) throws {
@@ -192,7 +191,6 @@ struct AIConversationConfiguration: Sendable {
         return id
     }
     func send(_ text: String, configuration: AIConversationConfiguration, schema: JSONValue? = nil) async throws -> String? {
-        try RemoteWorkspace.existing(at: configuration.root)?.requireSynchronized()
         guard let thread else { throw AIIntegrationError.disconnected(provider) }
         stream = CodexEventStream(); turn = nil; finishedDuringSend = false
         var params = CodexProtocol.turnParameters(thread: thread, text: try await RemoteExecution.prepareContext(text, root: configuration.root), mode: configuration.mode,

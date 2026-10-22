@@ -5,7 +5,6 @@ enum RemoteExecution {
     /// Replaces a local launch with SSH. Never falls back to the Mac's executable.
     static func configure(_ process: Process, root: URL, program: String? = nil, command: String? = nil, environment: [String: String] = [:]) throws {
         guard let workspace = RemoteWorkspace.existing(at: root) else { return }
-        try workspace.requireSynchronized()
         let connection = SSHConnection(workspace.destination)
         let name = program ?? process.executableURL?.lastPathComponent ?? ""
         var body: String

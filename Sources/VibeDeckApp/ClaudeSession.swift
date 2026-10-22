@@ -357,8 +357,6 @@ final class AISession {
     func send(_ text: String, mentions: [UUID] = [], attachments: [URL] = [], inspectIdeas: Bool = true) {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !isWorking, ideaRequest == nil else { return }
-        do { try RemoteWorkspace.existing(at: root)?.requireSynchronized() }
-        catch { fail(error.localizedDescription); return }
         if provider == .codex, handleLocalCommand(text) { return }
         let paths = attachments.map(\.path)
         guard !text.isEmpty || !paths.isEmpty else { return }
