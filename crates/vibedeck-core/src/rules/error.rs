@@ -41,6 +41,8 @@ pub enum RuleError {
     ExecutionChanged,
     #[error("A verificação está incompleta e não foi salva.")]
     ExecutionIncomplete,
+    #[error("Execução cancelada.")]
+    Cancelled,
     #[error("A IA não retornou um resultado válido para cada regra.")]
     InvalidAnswer,
 }

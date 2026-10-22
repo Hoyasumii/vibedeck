@@ -3,7 +3,7 @@
 use crate::mcp::args::Args;
 use crate::mcp::schema::{prop, schema};
 use crate::mcp::tool::{Tool, ToolCtx, ToolError, json_text};
-use vibedeck_core::model::{Author, ReviewPriority, ReviewTarget};
+use vibedeck_core::model::{ReviewPriority, ReviewTarget};
 use vibedeck_core::reviews::{self, ItemUpdate, NewItem, PRIORITIES, ReviewError, STATUSES};
 
 fn review_err(e: ReviewError) -> ToolError {
@@ -47,7 +47,7 @@ fn add_review_item(ctx: &ToolCtx, args: &Args) -> Result<String, ToolError> {
             selector: args.str("selector").map(str::to_string),
         },
         rules: args.list("rules").unwrap_or_default(),
-        author: Author::Ai,
+        author: ctx.author(args)?,
     };
     let (slug, item) = reviews::add_item(&store, new, &group).map_err(review_err)?;
     json_text(&reviews::ItemRow { group: slug, item })

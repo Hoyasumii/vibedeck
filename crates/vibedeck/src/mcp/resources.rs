@@ -62,9 +62,7 @@ fn tool_text(root: &Path, name: &str) -> Result<String, RpcError> {
         .iter()
         .find(|t| t.name == name)
         .ok_or_else(|| internal(format!("tool ausente: {name}")))?;
-    let ctx = ToolCtx {
-        root: root.to_path_buf(),
-    };
+    let ctx = ToolCtx::new(root.to_path_buf());
     (tool.handler)(&ctx, &Args(serde_json::Map::new())).map_err(internal)
 }
 

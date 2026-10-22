@@ -2,7 +2,7 @@
 
 use serde::Serialize;
 use serde_json::{Value, json};
-use vibedeck_core::model::{AiProvider, Author, NextStepKind, WorkflowRunStatus};
+use vibedeck_core::model::{AiProvider, NextStepKind, WorkflowRunStatus};
 use vibedeck_core::workflows::{
     self as wf, WorkflowError, WorkflowQuestionDraft, orchestrator_prompt,
 };
@@ -153,7 +153,7 @@ pub fn tools() -> Vec<Tool> {
                     args.str("input").map(str::to_string),
                     args.int("max_steps").filter(|n| *n > 0),
                     args.list("tags").unwrap_or_default(),
-                    Author::Ai,
+                    ctx.author(args)?,
                 )?;
                 slug_and(&rec.slug, &rec.value)
             },

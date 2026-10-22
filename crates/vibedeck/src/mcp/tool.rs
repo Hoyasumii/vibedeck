@@ -4,6 +4,9 @@ use super::args::Args;
 use serde_json::{Value, json};
 use std::fmt;
 use std::path::PathBuf;
+use std::sync::Arc;
+use vibedeck_core::model::Author;
+use vibedeck_core::rules::Cancellation;
 
 /// Erro de tool: sempre vira `isError:true` com este texto.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -33,12 +36,75 @@ impl From<String> for ToolError {
     }
 }
 
+/// Canal de notificações do servidor para o cliente (uma mensagem JSON-RPC por chamada).
+#[derive(Clone)]
+pub struct Notifier(Arc<dyn Fn(Value) + Send + Sync>);
+
+impl Notifier {
+    pub fn new(send: impl Fn(Value) + Send + Sync + 'static) -> Self {
+        Notifier(Arc::new(send))
+    }
+
+    pub fn send(&self, message: Value) {
+        (self.0)(message);
+    }
+}
+
+/// Progresso de uma chamada: só existe no modo app e quando o cliente mandou `_meta.progressToken`.
+#[derive(Clone)]
+pub struct Progress {
+    pub token: Value,
+    pub notifier: Notifier,
+}
+
 /// Contexto entregue aos handlers: raiz do projeto e acesso ao store do core.
+#[derive(Clone)]
 pub struct ToolCtx {
     pub root: PathBuf,
+    /// `vibedeck mcp --app`: habilita `author` nas tools de criação.
+    pub app: bool,
+    pub progress: Option<Progress>,
+    /// Disparado por `notifications/cancelled` durante a chamada.
+    pub cancel: Cancellation,
 }
 
 impl ToolCtx {
+    pub fn new(root: PathBuf) -> Self {
+        ToolCtx {
+            root,
+            app: false,
+            progress: None,
+            cancel: Cancellation::new(),
+        }
+    }
+
+    /// Autoria do que a tool cria: `ai` (padrão); `human` só no modo app, com `author: "human"`.
+    pub fn author(&self, args: &Args) -> Result<Author, ToolError> {
+        if !self.app {
+            return Ok(Author::Ai);
+        }
+        match args.str("author") {
+            None | Some("ai") => Ok(Author::Ai),
+            Some("human") => Ok(Author::Human),
+            Some(_) => Err(ToolError::invalid_params("author deve ser human ou ai.")),
+        }
+    }
+
+    /// Envia `notifications/progress` desta chamada (no-op sem `progressToken`). `progress` cresce a cada envio.
+    pub fn report_progress(&self, progress: u64, message: &str, extra: Value) {
+        let Some(p) = &self.progress else { return };
+        let mut params = json!({
+            "progressToken": p.token,
+            "progress": progress,
+            "message": message,
+        });
+        if let (Some(target), Some(fields)) = (params.as_object_mut(), extra.as_object()) {
+            target.extend(fields.clone());
+        }
+        p.notifier
+            .send(json!({"jsonrpc": "2.0", "method": "notifications/progress", "params": params}));
+    }
+
     /// Store do projeto (aberto a cada chamada: arquivos podem mudar entre chamadas).
     pub fn store(&self) -> Result<vibedeck_core::Store, ToolError> {
         vibedeck_core::Store::open(&self.root).map_err(ToolError::from)

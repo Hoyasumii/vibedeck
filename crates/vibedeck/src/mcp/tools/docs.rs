@@ -65,12 +65,19 @@ pub fn tools() -> Vec<Tool> {
                         )?;
                         Ok("Grupo movido.".into())
                     }
-                    "move_item" => Ok(grp::move_grouped_item(
-                        &store,
-                        concept,
-                        args.req("reference")?,
-                        args.req("to")?,
-                    )?),
+                    "move_item" => {
+                        // "/" é a raiz (no modo app, onde `to` vazio conta como ausente).
+                        let to = match args.raw("to").and_then(Value::as_str) {
+                            Some("/") => "",
+                            _ => args.req("to")?,
+                        };
+                        Ok(grp::move_grouped_item(
+                            &store,
+                            concept,
+                            args.req("reference")?,
+                            to,
+                        )?)
+                    }
                     "delete" => {
                         grp::delete_item_directory(
                             &store,

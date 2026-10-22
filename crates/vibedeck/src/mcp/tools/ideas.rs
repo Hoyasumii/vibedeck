@@ -4,7 +4,7 @@ use std::collections::HashSet;
 
 use serde_json::{Value, json};
 use vibedeck_core::ideas::{IDEA_STATUSES, IdeaError, IdeaStatusExt, SlugAnd, group_path};
-use vibedeck_core::model::{Author, Idea, IdeaStatus, Rule, RuleSeverity};
+use vibedeck_core::model::{Idea, IdeaStatus, Rule, RuleSeverity};
 
 use crate::mcp::schema::{prop, schema};
 use crate::mcp::tool::{Tool, ToolError, json_text};
@@ -84,7 +84,7 @@ pub fn tools() -> Vec<Tool> {
                     args.req("title")?,
                     args.str("body"),
                     &tags,
-                    Author::Ai,
+                    ctx.author(args)?,
                     args.str("reference"),
                 )?;
                 json_text(&SlugAnd {
@@ -171,7 +171,7 @@ pub fn tools() -> Vec<Tool> {
                 } else {
                     RuleSeverity::Must
                 };
-                rule.author = Author::Ai;
+                rule.author = ctx.author(args)?;
                 let (slug, saved) = store
                     .add_idea_rule(args.req("idea")?, rule)
                     .map_err(idea_err)?;

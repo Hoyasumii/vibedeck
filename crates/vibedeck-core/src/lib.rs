@@ -3,6 +3,7 @@
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub mod ai;
+pub mod app;
 pub mod docs;
 pub mod error;
 pub mod ideas;

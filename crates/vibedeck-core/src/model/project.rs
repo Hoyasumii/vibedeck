@@ -165,37 +165,9 @@ struct ClaudeItemWire {
     added_at: Timestamp,
 }
 
-/// `ClaudeItem.suggestedTitle`: último componente do caminho (decodificado) ou `claude.ai`.
+/// `ClaudeItem.suggestedTitle`: fonte única em `project::claude` (inclui o trim de `/` final).
 pub fn suggested_claude_title(url: &str) -> String {
-    let no_frag = url.split(['#', '?']).next().unwrap_or("");
-    let after_scheme = no_frag.split_once("://").map_or(no_frag, |(_, r)| r);
-    let path = after_scheme.split_once('/').map_or("", |(_, p)| p);
-    let last = path.rsplit('/').next().unwrap_or("");
-    let last = percent_decode(last);
-    if last.is_empty() {
-        "claude.ai".into()
-    } else {
-        last
-    }
-}
-
-fn percent_decode(s: &str) -> String {
-    let bytes = s.as_bytes();
-    let mut out = Vec::with_capacity(bytes.len());
-    let mut i = 0;
-    while i < bytes.len() {
-        if bytes[i] == b'%'
-            && let Some(hex) = s.get(i + 1..i + 3)
-            && let Ok(v) = u8::from_str_radix(hex, 16)
-        {
-            out.push(v);
-            i += 3;
-            continue;
-        }
-        out.push(bytes[i]);
-        i += 1;
-    }
-    String::from_utf8_lossy(&out).into_owned()
+    crate::project::claude::suggested_title(url)
 }
 
 impl From<ClaudeItemWire> for ClaudeItem {

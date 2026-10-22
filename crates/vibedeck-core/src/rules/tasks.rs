@@ -170,6 +170,18 @@ pub fn submit_check(
     params: &SubmitParams,
     runner: &RuleTestRunner,
 ) -> Result<RuleCheck> {
+    submit_check_with(store, params, runner, &RunOptions::default(), &|_| {})
+}
+
+/// Como `submit_check`, com opções de execução (cancelamento) e eventos por script (progresso). Cancelado
+/// durante os scripts, nada é gravado e o resultado é `RuleError::Cancelled`.
+pub fn submit_check_with(
+    store: &Store,
+    params: &SubmitParams,
+    runner: &RuleTestRunner,
+    opts: &RunOptions,
+    on_event: &(dyn Fn(RuleScriptEvent) + Sync),
+) -> Result<RuleCheck> {
     let scope = task_scope(store, &params.spec)?;
     let cands = candidates(&scope.topics);
 
@@ -207,14 +219,15 @@ pub fn submit_check(
         return Err(RuleError::IncompleteCheck(missing));
     }
     // Todo script roda, mesmo depois de um `must` reprovado: o check responde a todas as regras.
-    for run in run_scripts(
-        store.root(),
-        &cands,
-        &scope.files,
-        runner,
-        &RunOptions::default(),
-        &|_| {},
-    ) {
+    let runs = run_scripts(store.root(), &cands, &scope.files, runner, opts, on_event);
+    if opts
+        .cancellation
+        .as_ref()
+        .is_some_and(super::runner::Cancellation::is_cancelled)
+    {
+        return Err(RuleError::Cancelled);
+    }
+    for run in runs {
         answered.insert(
             run.rule.id,
             RuleResult {

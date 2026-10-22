@@ -2,9 +2,12 @@
 
 use super::args::Args;
 use super::instructions::instructions;
-use super::tool::{Tool, ToolCtx};
+use super::tool::{Notifier, Progress, Tool, ToolCtx};
 use serde_json::{Map, Value, json};
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex, MutexGuard};
+use vibedeck_core::rules::Cancellation;
 
 pub const SUPPORTED_VERSIONS: [&str; 3] = ["2024-11-05", "2025-03-26", "2025-06-18"];
 pub const LATEST_VERSION: &str = "2025-06-18";
@@ -58,11 +61,77 @@ impl ResourceProvider for NoResources {
     }
 }
 
+/// Chamadas `tools/call` em andamento, para `notifications/cancelled` (que chega por outra thread).
+#[derive(Default)]
+pub struct CallRegistry {
+    state: Mutex<RegistryState>,
+}
+
+#[derive(Default)]
+struct RegistryState {
+    running: HashMap<String, Cancellation>,
+    /// Cancelamentos que chegaram antes de a chamada começar (ela estava na fila).
+    early: HashSet<String>,
+}
+
+fn locked<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
+    m.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+impl CallRegistry {
+    fn begin(&self, key: &str) -> Cancellation {
+        let cancel = Cancellation::new();
+        let mut state = locked(&self.state);
+        if state.early.remove(key) {
+            cancel.cancel();
+        }
+        state.running.insert(key.to_string(), cancel.clone());
+        cancel
+    }
+
+    fn end(&self, key: &str) {
+        locked(&self.state).running.remove(key);
+    }
+
+    /// `key` é o `requestId` serializado (`Value::to_string`).
+    pub fn cancel(&self, key: &str) {
+        let found = {
+            let mut state = locked(&self.state);
+            let found = state.running.get(key).cloned();
+            if found.is_none() {
+                state.early.insert(key.to_string());
+            }
+            found
+        };
+        if let Some(cancel) = found {
+            cancel.cancel();
+        }
+    }
+}
+
+/// Estado do modo `--app`: notificações, cancelamento e assinaturas de recursos.
+pub struct AppRuntime {
+    pub notifier: Notifier,
+    pub calls: Arc<CallRegistry>,
+    pub subscriptions: Arc<Mutex<HashSet<String>>>,
+}
+
+impl AppRuntime {
+    pub fn new(notifier: Notifier) -> Self {
+        AppRuntime {
+            notifier,
+            calls: Arc::new(CallRegistry::default()),
+            subscriptions: Arc::new(Mutex::new(HashSet::new())),
+        }
+    }
+}
+
 pub struct Server {
     ctx: ToolCtx,
     tools: Vec<Tool>,
     resources: Box<dyn ResourceProvider>,
     version: String,
+    app: Option<AppRuntime>,
 }
 
 impl Server {
@@ -73,11 +142,23 @@ impl Server {
         version: String,
     ) -> Self {
         Server {
-            ctx: ToolCtx { root },
+            ctx: ToolCtx::new(root),
             tools,
             resources,
             version,
+            app: None,
         }
+    }
+
+    /// Liga o modo `--app`: capabilities de recursos, notificações, progresso e cancelamento.
+    pub fn with_app(mut self, app: AppRuntime) -> Self {
+        self.ctx.app = true;
+        self.app = Some(app);
+        self
+    }
+
+    pub fn app(&self) -> Option<&AppRuntime> {
+        self.app.as_ref()
     }
 
     /// Processa uma mensagem; `None` para notificações (nunca respondem).
@@ -106,20 +187,23 @@ impl Server {
             return None; // notificação (initialized, cancelled, ...): sem resposta
         };
         let params = obj.get("params").cloned().unwrap_or(Value::Null);
-        Some(match self.dispatch(method, &params) {
+        Some(match self.dispatch(method, &params, &id.to_string()) {
             Ok(result) => json!({"jsonrpc": "2.0", "id": id, "result": result}),
             Err(e) => error_response(id, e.code, &e.message),
         })
     }
 
-    fn dispatch(&self, method: &str, params: &Value) -> Result<Value, RpcError> {
+    fn dispatch(&self, method: &str, params: &Value, request: &str) -> Result<Value, RpcError> {
         match method {
             "initialize" => self.initialize(params),
             "ping" => Ok(json!({})),
             "tools/list" => {
                 Ok(json!({"tools": self.tools.iter().map(Tool::listing).collect::<Vec<_>>()}))
             }
-            "tools/call" => self.call_tool(params),
+            "tools/call" => self.call_tool(params, request),
+            "resources/subscribe" | "resources/unsubscribe" if self.app.is_some() => {
+                self.subscription(method == "resources/subscribe", params)
+            }
             "resources/list" => Ok(json!({"resources": self.resources.list()?})),
             "resources/read" => {
                 let uri = params
@@ -149,14 +233,46 @@ impl Server {
             "protocolVersion": version,
             "capabilities": {
                 "tools": {"listChanged": false},
-                "resources": {"subscribe": false, "listChanged": false},
+                "resources": {"subscribe": self.app.is_some(), "listChanged": self.app.is_some()},
             },
             "serverInfo": {"name": "vibedeck", "version": self.version},
             "instructions": instructions(&self.ctx.root.to_string_lossy()),
         }))
     }
 
-    fn call_tool(&self, params: &Value) -> Result<Value, RpcError> {
+    fn subscription(&self, subscribe: bool, params: &Value) -> Result<Value, RpcError> {
+        let uri = params
+            .get("uri")
+            .and_then(Value::as_str)
+            .ok_or_else(|| RpcError::new(INVALID_PARAMS, "Invalid params: uri"))?;
+        if let Some(app) = &self.app {
+            let mut set = locked(&app.subscriptions);
+            if subscribe {
+                set.insert(uri.to_string());
+            } else {
+                set.remove(uri);
+            }
+        }
+        Ok(json!({}))
+    }
+
+    /// Contexto desta chamada: no modo app traz o cancelamento da requisição e o `progressToken`.
+    fn call_ctx(&self, params: &Value, request: &str) -> ToolCtx {
+        let mut ctx = self.ctx.clone();
+        if let Some(app) = &self.app {
+            ctx.cancel = app.calls.begin(request);
+            ctx.progress = params
+                .pointer("/_meta/progressToken")
+                .filter(|t| t.is_string() || t.is_number())
+                .map(|token| Progress {
+                    token: token.clone(),
+                    notifier: app.notifier.clone(),
+                });
+        }
+        ctx
+    }
+
+    fn call_tool(&self, params: &Value, request: &str) -> Result<Value, RpcError> {
         let bad = |d: &str| RpcError::new(INVALID_PARAMS, format!("Invalid params: {d}"));
         let name = params
             .get("name")
@@ -171,11 +287,16 @@ impl Server {
             None => Err(format!("Method not found: Tool desconhecida: {name}")),
             Some(tool) => {
                 let args = Args::new(arguments);
-                let call = std::panic::AssertUnwindSafe(|| (tool.handler)(&self.ctx, &args));
-                match std::panic::catch_unwind(call) {
+                let ctx = self.call_ctx(params, request);
+                let call = std::panic::AssertUnwindSafe(|| (tool.handler)(&ctx, &args));
+                let result = match std::panic::catch_unwind(call) {
                     Ok(r) => r.map_err(|e| e.0),
                     Err(_) => Err(format!("Falha interna na ferramenta {name}")),
+                };
+                if let Some(app) = &self.app {
+                    app.calls.end(request);
                 }
+                result
             }
         };
         let (text, is_error) = match outcome {

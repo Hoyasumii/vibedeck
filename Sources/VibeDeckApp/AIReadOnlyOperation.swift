@@ -41,8 +41,8 @@ import Foundation
                     usage.tokens = runner.tokens; usage.model = runner.model ?? settings.model
                 } else {
                     guard let executable = RemoteExecution.executable(provider, root: root) else { throw VibeDeckError.discoverFailed("Claude não está instalado.") }
-                    let data = try await ReviewDiscoverRunner.run(executable: executable, root: root, input: nextPrompt,
-                                                                 schema: schema, settings: settings)
+                    let data = try await AIReadOnlyProcess.run(executable: executable, root: root, input: nextPrompt,
+                                                              schema: schema, settings: settings)
                     let envelope = String(decoding: data, as: UTF8.self).split(whereSeparator: \.isNewline).reversed()
                         .compactMap { try? JSONDecoder().decode(JSONValue.self, from: Data($0.utf8)) }
                         .first { $0["type"]?.string == "result" }

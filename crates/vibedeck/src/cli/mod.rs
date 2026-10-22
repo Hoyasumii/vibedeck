@@ -77,12 +77,20 @@ pub struct McpArgs {
     /// Sem subcomando equivale a `serve` (defaultSubcommand).
     #[command(subcommand)]
     pub command: Option<McpCommand>,
+
+    /// Modo do aplicativo: tools extras e avisos de mudança em `.vibedeck/`.
+    #[arg(long)]
+    pub app: bool,
 }
 
 #[derive(Subcommand, Debug)]
 pub enum McpCommand {
     /// Inicia o servidor MCP em stdin/stdout.
-    Serve,
+    Serve {
+        /// Modo do aplicativo: tools extras e avisos de mudança em `.vibedeck/`.
+        #[arg(long)]
+        app: bool,
+    },
     /// Registra o servidor no Claude Code ou no Codex.
     Install(ai::McpInstallArgs),
     /// Remove o registro do servidor.
@@ -188,13 +196,13 @@ fn execute(cli: Cli) -> Result<i32, CliError> {
         Command::Ai(c) => ai::run(c, &ctx),
         Command::Onboarding(c) => onboarding::run(c, &ctx),
 
-        Command::Mcp(mcp) => match mcp.command.unwrap_or(McpCommand::Serve) {
-            McpCommand::Serve => {
+        Command::Mcp(mcp) => match mcp.command.unwrap_or(McpCommand::Serve { app: mcp.app }) {
+            McpCommand::Serve { app } => {
                 let root = locate_root(cli.root.as_deref())?;
                 if let Ok(store) = vibedeck_core::Store::open(&root) {
                     ai::refresh_guide(&store);
                 }
-                Ok(crate::mcp::serve(root))
+                Ok(crate::mcp::serve(root, app))
             }
             McpCommand::Install(args) => ai::mcp_install(&args, &ctx),
             McpCommand::Uninstall(args) => ai::mcp_uninstall(&args, &ctx),
@@ -248,7 +256,13 @@ mod tests {
     #[test]
     fn mcp_padrao_e_serve() {
         let a = Cli::try_parse_from(["vibedeck", "-C", "/x", "mcp"]).unwrap();
-        assert!(matches!(a.command, Command::Mcp(McpArgs { command: None })));
+        assert!(matches!(
+            a.command,
+            Command::Mcp(McpArgs {
+                command: None,
+                app: false
+            })
+        ));
         let b = Cli::try_parse_from(["vibedeck", "mcp", "serve", "-C", "/y"]).unwrap();
         assert_eq!(b.root.as_deref(), Some(Path::new("/y")));
     }

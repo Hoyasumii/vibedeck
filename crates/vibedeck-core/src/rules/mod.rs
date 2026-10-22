@@ -36,7 +36,7 @@ pub use stopgate::{UnverifiedChange, stop_gate_reason, unverified_changes, worki
 pub use tasks::{
     RuleAnswer, RuleTestRunRow, SubmitParams, TaskScope, TaskSpec, complete_rule_execution,
     ensure_verified, list_checks, required_topics, run_rule_scripts, run_rule_tests,
-    run_rule_tests_with, submit_check, task_scope, verification_problems,
+    run_rule_tests_with, submit_check, submit_check_with, task_scope, verification_problems,
 };
 pub use topics::{
     add_rule, applicable_topics, clear_rule_test, create_topic, delete_rule, delete_topic,

@@ -5,10 +5,11 @@ use crate::mcp::schema::{Prop, prop, schema};
 use crate::mcp::tool::{Tool, ToolCtx, ToolError, json_text};
 use serde::Serialize;
 use serde_json::{Value, json};
-use vibedeck_core::model::{Author, Rule, RuleSeverity, RuleTestMode};
+use std::sync::atomic::{AtomicU64, Ordering};
+use vibedeck_core::model::{Rule, RuleSeverity, RuleTestMode, RuleVerdict};
 use vibedeck_core::rules::{
-    self, RuleAnswer, RuleError, RuleExt, RuleTestRunRow, RuleTestRunner, SubmitParams, TaskSpec,
-    TopicChecklist,
+    self, RuleAnswer, RuleError, RuleExt, RuleScriptEvent, RuleTestRunRow, RuleTestRunner,
+    RunOptions, SubmitParams, TaskSpec, TopicChecklist,
 };
 
 impl From<RuleError> for ToolError {
@@ -42,6 +43,44 @@ fn results_schema() -> Value {
             "required": ["ruleId", "verdict"],
         },
     })
+}
+
+/// Opções de execução desta chamada (cancelamento por `notifications/cancelled`) e o ouvinte que emite
+/// `notifications/progress` por script (`ruleId`, `state`, `output`) quando o cliente pediu progresso.
+fn execution(ctx: &ToolCtx) -> (RunOptions, impl Fn(RuleScriptEvent) + Sync + use<>) {
+    let options = RunOptions {
+        cancellation: Some(ctx.cancel.clone()),
+        ..RunOptions::default()
+    };
+    let ctx = ctx.clone();
+    let counter = AtomicU64::new(0);
+    let listener = move |event: RuleScriptEvent| {
+        let (topic, rule_id, state, output) = match event {
+            RuleScriptEvent::Started { topic, rule, .. } => {
+                (topic, rule.id.to_string(), "running", String::new())
+            }
+            RuleScriptEvent::Finished { run, .. } => {
+                let state = match run.outcome.verdict {
+                    RuleVerdict::Pass => "pass",
+                    RuleVerdict::Fail => "fail",
+                    RuleVerdict::Na => "na",
+                };
+                (
+                    run.topic,
+                    run.rule.id.to_string(),
+                    state,
+                    run.outcome.output,
+                )
+            }
+        };
+        let detail = json!({"ruleId": rule_id, "state": state, "output": output, "topic": topic});
+        ctx.report_progress(
+            counter.fetch_add(1, Ordering::SeqCst) + 1,
+            &detail.to_string(),
+            detail,
+        );
+    };
+    (options, listener)
 }
 
 fn id8(id: &impl ToString) -> String {
@@ -215,7 +254,8 @@ fn submit_rule_check(ctx: &ToolCtx, args: &Args) -> Result<String, ToolError> {
             )
         })?;
     }
-    let check = rules::submit_check(
+    let (options, listener) = execution(ctx);
+    let check = rules::submit_check_with(
         &store,
         &SubmitParams {
             task: args.req("task")?.to_string(),
@@ -226,9 +266,11 @@ fn submit_rule_check(ctx: &ToolCtx, args: &Args) -> Result<String, ToolError> {
             },
             answers,
             verify_manual: args.bool("verify_manual").unwrap_or(false),
-            author: Author::Ai,
+            author: vibedeck_core::model::Author::Ai,
         },
         &RuleTestRunner::live(),
+        &options,
+        &listener,
     )?;
     Ok(rules::agent_summary(
         &check,
@@ -246,7 +288,18 @@ fn run_rule_tests(ctx: &ToolCtx, args: &Args) -> Result<String, ToolError> {
         topics: list_or_empty(args, "topics"),
         review_item: item,
     };
-    let runs = rules::run_rule_tests(&store, &spec, only_topics, &RuleTestRunner::live())?;
+    let (options, listener) = execution(ctx);
+    let runs = rules::run_rule_tests_with(
+        &store,
+        &spec,
+        only_topics,
+        &RuleTestRunner::live(),
+        &options,
+        &listener,
+    )?;
+    if ctx.cancel.is_cancelled() {
+        return Err(RuleError::Cancelled.into());
+    }
     if runs.is_empty() {
         return Ok("Nenhuma regra aplicável tem script.".to_string());
     }
@@ -319,7 +372,7 @@ fn add_rule(ctx: &ToolCtx, args: &Args) -> Result<String, ToolError> {
     } else {
         RuleSeverity::Must
     };
-    rule.author = Author::Ai;
+    rule.author = ctx.author(args)?;
     let (slug, saved) = rules::add_rule(&store, rule, args.req("topic")?)?;
     json_text(&json!({"topic": slug, "ruleId": saved.id.to_string(), "text": saved.text}))
 }

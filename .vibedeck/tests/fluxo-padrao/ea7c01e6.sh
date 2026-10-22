@@ -21,7 +21,9 @@ steps() {
   printf '%s\n' "$text" | grep -iE 'corrija e envie' >/dev/null || { echo "$src: não manda corrigir e reenviar o check quando passed=false"; fail=1; }
 }
 
-# AGENTS.md gerado pelo código atual (seção de regras, até a próxima seção ##).
+# AGENTS.md gerado pelo código atual (seção de regras, até a próxima seção ##). O CLI Rust regrava o guia ao abrir o
+# projeto (qualquer comando); `vibedeck init` sozinho não o grava (o Swift gravava), por isso rodamos `status` antes.
+"$VD" status >/dev/null
 guide=$(awk '/^## .*Regras/{f=1;next} f&&/^## /{exit} f' .vibedeck/AGENTS.md)
 [ -n "$guide" ] || { echo "crates/vibedeck-core/src/ai/guide.rs: AGENTS.md gerado não tem a seção de regras"; fail=1; }
 steps "crates/vibedeck-core/src/ai/guide.rs (AGENTS.md)" "$guide"

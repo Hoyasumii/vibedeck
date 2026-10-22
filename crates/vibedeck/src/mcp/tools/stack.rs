@@ -3,7 +3,6 @@
 use std::collections::HashSet;
 
 use serde_json::{Value, json};
-use vibedeck_core::model::Author;
 use vibedeck_core::stack::icons::CATEGORIES;
 use vibedeck_core::stack::{PatternCatalog, SkillIcons, SkillIconsApi, StackError, StackService};
 
@@ -141,7 +140,7 @@ pub fn tools() -> Vec<Tool> {
                 let change = StackService::new(&store, &api).add(
                     &icons,
                     args.raw("note").and_then(Value::as_str),
-                    Author::Ai,
+                    ctx.author(args)?,
                 )?;
                 json_text(&change)
             },
@@ -257,7 +256,7 @@ pub fn tools() -> Vec<Tool> {
                         &rules,
                         args.str("note"),
                         paths.as_deref(),
-                        Author::Ai,
+                        ctx.author(args)?,
                     )?;
                 } else {
                     let refs =
@@ -268,7 +267,12 @@ pub fn tools() -> Vec<Tool> {
                                     "Informe patterns (catálogo) ou name + rules.",
                                 )
                             })?;
-                    store.add_patterns(&refs, args.str("note"), paths.as_deref(), Author::Ai)?;
+                    store.add_patterns(
+                        &refs,
+                        args.str("note"),
+                        paths.as_deref(),
+                        ctx.author(args)?,
+                    )?;
                 }
                 pattern_listing(ctx)
             },

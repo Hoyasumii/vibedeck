@@ -205,14 +205,64 @@ fn ser_bytes_map<S: Serializer>(
     s.collect_map(map.iter().map(|(k, v)| (k, base64(v))))
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+/// Decodifica base64 padrão (com `=`), o formato do `Data` do JSONEncoder do Swift.
+pub fn decode_base64(text: &str) -> Option<Vec<u8>> {
+    let mut out = Vec::with_capacity(text.len() / 4 * 3);
+    let mut acc = 0u32;
+    let mut bits = 0u32;
+    let mut padding = 0usize;
+    for c in text.bytes().filter(|c| !c.is_ascii_whitespace()) {
+        let value = match c {
+            b'A'..=b'Z' => c - b'A',
+            b'a'..=b'z' => c - b'a' + 26,
+            b'0'..=b'9' => c - b'0' + 52,
+            b'+' => 62,
+            b'/' => 63,
+            b'=' => {
+                padding += 1;
+                continue;
+            }
+            _ => return None,
+        };
+        if padding > 0 {
+            return None;
+        }
+        acc = (acc << 6) | u32::from(value);
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            out.push((acc >> bits) as u8);
+            acc &= (1 << bits) - 1;
+        }
+    }
+    (padding <= 2 && acc == 0).then_some(out)
+}
+
+fn de_bytes_map<'de, D: serde::Deserializer<'de>>(
+    d: D,
+) -> std::result::Result<BTreeMap<String, Vec<u8>>, D::Error> {
+    let raw = BTreeMap::<String, String>::deserialize(d)?;
+    raw.into_iter()
+        .map(|(k, v)| {
+            decode_base64(&v)
+                .map(|bytes| (k, bytes))
+                .ok_or_else(|| serde::de::Error::custom("bytes do recibo não são base64 válido"))
+        })
+        .collect()
+}
+
+/// Recibo de `apply`. No JSON, `before`/`after` mapeiam caminho -> bytes em base64 padrão (com `=`), a
+/// codificação do `Data` do Swift (`JSONEncoder` padrão), nos dois sentidos.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Receipt {
-    #[serde(serialize_with = "ser_bytes_map")]
+    #[serde(serialize_with = "ser_bytes_map", deserialize_with = "de_bytes_map")]
     pub before: BTreeMap<String, Vec<u8>>,
-    #[serde(serialize_with = "ser_bytes_map")]
+    #[serde(serialize_with = "ser_bytes_map", deserialize_with = "de_bytes_map")]
     pub after: BTreeMap<String, Vec<u8>>,
+    #[serde(default)]
     pub created_directories: Vec<String>,
+    #[serde(default)]
     pub path_moves: BTreeMap<String, String>,
 }
 

@@ -92,7 +92,7 @@ fn add<P: Persona>(
         tools: a.list("tools").unwrap_or_default(),
         prompt: a.str("prompt").unwrap_or("").to_string(),
         tags: a.list("tags").unwrap_or_default(),
-        author: Author::Ai,
+        author: ctx.author(a)?,
         reference: if reference {
             a.str("reference").map(str::to_string)
         } else {
@@ -347,7 +347,7 @@ pub fn tools() -> Vec<Tool> {
         |c, a| {
             let items = a.list("items").unwrap_or_default();
             let store = c.store()?;
-            let added = resources::add_kit_items(&store, &items, Author::Ai).map_err(err)?;
+            let added = resources::add_kit_items(&store, &items, c.author(a)?).map_err(err)?;
             json_text(&added)
         },
     )];
