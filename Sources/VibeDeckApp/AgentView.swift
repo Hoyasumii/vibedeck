@@ -29,9 +29,8 @@ struct AgentView: View {
                     }
                 }
         }
-        .inspector(isPresented: $showFlow) {
+        .detailContext(isPresented: $showFlow) {
             flowInspector
-                .inspectorColumnWidth(min: 260, ideal: 320, max: 440)
         }
         .navigationTitle(agent.title)
         .navigationSubtitle("\(agent.model ?? "modelo herdado") · \(agent.nextSteps.count) próximo(s) passo(s)")

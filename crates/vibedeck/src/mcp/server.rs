@@ -7,6 +7,7 @@ use serde_json::{Map, Value, json};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard};
+use vibedeck_core::project::logs::{self, LogLevel};
 use vibedeck_core::rules::Cancellation;
 
 pub const SUPPORTED_VERSIONS: [&str; 3] = ["2024-11-05", "2025-03-26", "2025-06-18"];
@@ -283,16 +284,48 @@ impl Server {
             Some(Value::Object(m)) => m.clone(),
             Some(_) => return Err(bad("arguments")),
         };
+        let started = std::time::Instant::now();
+        // Só o nome da ferramenta e a duração vão para o log, nunca os argumentos.
+        let ms = || started.elapsed().as_millis().to_string();
         let outcome = match self.tools.iter().find(|t| t.name == name) {
-            None => Err(format!("Method not found: Tool desconhecida: {name}")),
+            None => {
+                logs::log(
+                    LogLevel::Warning,
+                    "mcp.tool_failed",
+                    "Falha na ferramenta",
+                    &[("tool", name), ("ms", &ms()), ("errorType", "MCPError")],
+                );
+                Err(format!("Method not found: Tool desconhecida: {name}"))
+            }
             Some(tool) => {
                 let args = Args::new(arguments);
                 let ctx = self.call_ctx(params, request);
                 let call = std::panic::AssertUnwindSafe(|| (tool.handler)(&ctx, &args));
-                let result = match std::panic::catch_unwind(call) {
-                    Ok(r) => r.map_err(|e| e.0),
-                    Err(_) => Err(format!("Falha interna na ferramenta {name}")),
+                let (result, expected) = match std::panic::catch_unwind(call) {
+                    Ok(r) => (r.map_err(|e| e.0), true),
+                    Err(_) => (Err(format!("Falha interna na ferramenta {name}")), false),
                 };
+                match &result {
+                    Ok(_) => logs::info(
+                        "mcp.tool_called",
+                        "Ferramenta executada",
+                        &[("tool", name), ("ms", &ms())],
+                    ),
+                    Err(_) => logs::log(
+                        if expected {
+                            LogLevel::Warning
+                        } else {
+                            LogLevel::Error
+                        },
+                        "mcp.tool_failed",
+                        "Falha na ferramenta",
+                        &[
+                            ("tool", name),
+                            ("ms", &ms()),
+                            ("errorType", if expected { "ToolError" } else { "Panic" }),
+                        ],
+                    ),
+                }
                 if let Some(app) = &self.app {
                     app.calls.end(request);
                 }

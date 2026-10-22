@@ -30,9 +30,8 @@ struct RuleTopicView: View {
                 model.mutateTopic(slug, action, undo: undo) { change(&$0.rules) }
             }
         }
-        .inspector(isPresented: $showChecks) {
+        .detailContext(isPresented: $showChecks) {
             ChecksList(slug: slug, checks: model.checks(forTopic: slug), rules: topic.rules)
-                .inspectorColumnWidth(min: 260, ideal: 300, max: 420)
         }
         .navigationTitle(topic.title)
         .navigationSubtitle("\(topic.rules.count) regra(s) · \(topic.isGlobal ? "vale para toda tarefa" : "\(topic.paths.count) escopo(s)")")

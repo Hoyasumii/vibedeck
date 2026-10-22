@@ -52,6 +52,18 @@ pub fn write_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
         let _ = fs::remove_file(&tmp);
         return Err(Error::io(&target, e));
     }
+    // `VDLog.fileWritten`: só dentro do projeto configurado; o arquivo vai relativo à raiz.
+    if let Some(file) = crate::project::logs::project_relative(&target) {
+        crate::project::logs::info(
+            "store.file_written",
+            "Arquivo gravado",
+            &[
+                ("file", &file),
+                ("undo", "Salvar"),
+                ("bytes", &bytes.len().to_string()),
+            ],
+        );
+    }
     Ok(())
 }
 

@@ -100,7 +100,8 @@ struct RawKit {
 
 const GUIDANCE: &str = include_str!("../../assets/kits/guidance.txt");
 /// `AIPromptPolicy.instructions` (cópia; a área `ai` é a dona do texto original).
-const POLICY: &str = include_str!("../../assets/kits/policy.txt");
+/// Política de IA compartilhada: fonte única em `ai/policy_instructions.txt`.
+const POLICY: &str = crate::ai::context::INSTRUCTIONS;
 const KIT_FILES: [&str; 2] = [
     include_str!("../../assets/kits/manutencao.json"),
     include_str!("../../assets/kits/novas-ferramentas.json"),

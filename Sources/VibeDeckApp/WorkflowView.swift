@@ -32,9 +32,8 @@ struct WorkflowView: View {
                 stepList
             }
         }
-        .inspector(isPresented: $showMap) {
+        .detailContext(isPresented: $showMap) {
             mapInspector
-                .inspectorColumnWidth(min: 260, ideal: 320, max: 440)
         }
         .navigationTitle(workflow.title)
         .navigationSubtitle("\(workflow.steps.count) etapa(s) · até \(workflow.maxSteps ?? Workflow.defaultMaxSteps) por execução")

@@ -601,6 +601,18 @@ pub fn set_project(root: Option<&Path>) {
 
 /// Grava uma entrada (síncrono). Falhas vão para o stderr; nunca interrompem quem chama.
 pub fn log(level: LogLevel, event: &str, message: &str, context: &[(&str, &str)]) {
+    log_for(level, None, None, event, message, context);
+}
+
+/// Como [`log`], mas com componente e projeto próprios (`VDLog.log(project:component:)`).
+pub fn log_for(
+    level: LogLevel,
+    component: Option<LogComponent>,
+    project: Option<&Path>,
+    event: &str,
+    message: &str,
+    context: &[(&str, &str)],
+) {
     let (store, mut entry) = {
         let s = state();
         let Some(c) = s.as_ref() else { return };
@@ -615,8 +627,10 @@ pub fn log(level: LogLevel, event: &str, message: &str, context: &[(&str, &str)]
         {
             ctx.insert("action".into(), action);
         }
-        let mut entry = LogEntry::new(level, c.component, event, message, ctx);
-        entry.project = c.project.clone();
+        let mut entry = LogEntry::new(level, component.unwrap_or(c.component), event, message, ctx);
+        entry.project = project
+            .map(|p| p.to_string_lossy().into_owned())
+            .or_else(|| c.project.clone());
         entry.session = Some(c.session.clone());
         entry.version = c.version.clone();
         (store, entry)
@@ -625,6 +639,21 @@ pub fn log(level: LogLevel, event: &str, message: &str, context: &[(&str, &str)]
     if let Err(e) = store.append(&entry) {
         eprintln!("{e}");
     }
+}
+
+/// Caminho de `path` relativo à raiz do projeto configurada (`None` se o log não está ligado, não há
+/// projeto ou o arquivo está fora dele).
+pub fn project_relative(path: &Path) -> Option<String> {
+    let root = {
+        let s = state();
+        let c = s.as_ref()?;
+        c.store.as_ref()?;
+        c.project.clone()?
+    };
+    let abs = crate::paths::lexical_normalize(&std::path::absolute(path).ok()?);
+    let rel = abs.strip_prefix(Path::new(&root)).ok()?;
+    let rel = rel.to_string_lossy().into_owned();
+    (!rel.is_empty()).then_some(rel)
 }
 
 pub fn info(event: &str, message: &str, context: &[(&str, &str)]) {

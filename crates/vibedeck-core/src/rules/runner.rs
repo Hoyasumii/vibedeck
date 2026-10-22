@@ -17,6 +17,8 @@ use std::time::{Duration, Instant};
 
 use regex::Regex;
 
+use crate::project::logs::{self, LogComponent, LogLevel};
+
 pub const TIMED_OUT_STATUS: i32 = 124;
 pub const CANCELLED_STATUS: i32 = 130;
 /// Depois do `SIGTERM`, quanto esperar antes do `SIGKILL` no grupo (o Swift nunca escalava).
@@ -218,6 +220,20 @@ fn truncate_tail(text: String, limit: usize) -> String {
     format!("… (saída cortada)\n{tail}")
 }
 
+/// Só o nome do programa vai para o log: o resto do comando pode carregar conteúdo do usuário.
+fn log_program(command: &str) -> String {
+    let candidate = command
+        .split(' ')
+        .find(|p| !p.is_empty())
+        .and_then(|first| first.rsplit('/').find(|p| !p.is_empty()))
+        .unwrap_or("");
+    let valid = !candidate.is_empty()
+        && candidate
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "_.+-".contains(c));
+    if valid { candidate } else { "shell" }.to_string()
+}
+
 /// Roda `command` no shell de login do usuário, com stdout+stderr juntos.
 pub fn run_shell(command: &str, root: &Path, opts: &ShellOptions) -> ShellResult {
     let cancellation = opts.cancellation.as_ref();
@@ -254,6 +270,14 @@ pub fn run_shell(command: &str, root: &Path, opts: &ShellOptions) -> ShellResult
     let (mut reader, mut child) = match spawned {
         Ok(v) => v,
         Err(e) => {
+            logs::log_for(
+                LogLevel::Error,
+                None,
+                Some(root),
+                "shell.launch_failed",
+                "Falha ao lançar o comando",
+                &[("program", &log_program(command))],
+            );
             return ShellResult {
                 output: format!("Não foi possível executar: {e}"),
                 status: 127,
@@ -288,6 +312,7 @@ pub fn run_shell(command: &str, root: &Path, opts: &ShellOptions) -> ShellResult
     });
 
     let started = Instant::now();
+    let program = log_program(command);
     let mut timed_out = false;
     let mut cancelled = false;
     let mut terminated_at: Option<Instant> = None;
@@ -351,13 +376,30 @@ pub fn run_shell(command: &str, root: &Path, opts: &ShellOptions) -> ShellResult
             format!("{text}\n{extra}")
         }
     };
+    let ms = started.elapsed().as_millis().to_string();
     if cancelled {
+        logs::log_for(
+            LogLevel::Info,
+            Some(LogComponent::Rules),
+            Some(root),
+            "rules.script_cancelled",
+            "Script cancelado",
+            &[("program", &program)],
+        );
         return ShellResult {
             output: join(text, "Cancelado."),
             status: CANCELLED_STATUS,
         };
     }
     if timed_out {
+        logs::log_for(
+            LogLevel::Warning,
+            None,
+            Some(root),
+            "shell.timeout",
+            &format!("Comando interrompido após {} s", opts.timeout.as_secs()),
+            &[("program", &program), ("ms", &ms)],
+        );
         return ShellResult {
             output: join(
                 text,
@@ -369,6 +411,18 @@ pub fn run_shell(command: &str, root: &Path, opts: &ShellOptions) -> ShellResult
     let status = exit
         .map(|s| s.code().or_else(|| s.signal()).unwrap_or(1))
         .unwrap_or(1);
+    logs::log_for(
+        LogLevel::Info,
+        Some(LogComponent::Rules),
+        Some(root),
+        "rules.script_finished",
+        "Script encerrado",
+        &[
+            ("program", &program),
+            ("exit", &status.to_string()),
+            ("ms", &ms),
+        ],
+    );
     ShellResult {
         output: if text.is_empty() {
             "(sem saída)".to_string()

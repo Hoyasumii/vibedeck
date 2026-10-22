@@ -46,9 +46,7 @@ struct V2Rail: View {
 
     private var projectButton: some View {
         LoggedButton(action: onProject) {
-            Text(String(projectName.prefix(1)).uppercased())
-                .font(DesignTokens.Typography.title)
-                .foregroundStyle(DesignTokens.Colors.brandText)
+            VDLogo(size: 26)
                 .frame(width: 40, height: 40)
                 .background(
                     RoundedRectangle(cornerRadius: DesignTokens.Radius.md, style: .continuous)

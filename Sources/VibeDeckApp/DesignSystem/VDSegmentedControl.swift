@@ -15,7 +15,7 @@ struct VDSegmentedControl<Value: Hashable>: View {
         HStack(spacing: 2) {
             ForEach(options) { option in
                 let isOn = option.value == selection
-                Button {
+                LoggedButton {
                     selection = option.value
                 } label: {
                     Text(option.label)
@@ -28,6 +28,7 @@ struct VDSegmentedControl<Value: Hashable>: View {
                         )
                         .contentShape(Capsule())
                 }
+                .loggedControl(control: "vd_segmented.select", label: option.label)
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(isOn ? .isSelected : [])
             }

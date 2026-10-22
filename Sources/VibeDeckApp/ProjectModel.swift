@@ -51,6 +51,9 @@ enum SidebarItem: Hashable {
     case links
     case claudeItems
     case graph
+    case integrations
+    case usage
+    case checksHistory
     case claude
     case terminal(UUID)
     case section(SidebarSection)
@@ -70,6 +73,9 @@ enum SidebarItem: Hashable {
         case .links: "links"
         case .claudeItems: "claudeItems"
         case .graph: "graph"
+        case .integrations: "integrations"
+        case .usage: "usage"
+        case .checksHistory: "checksHistory"
         case .claude: "claude"
         case .terminal(let id): "terminal:\(id.uuidString)"
         case .section(let section): "section:\(section.rawValue)"
@@ -91,6 +97,9 @@ enum SidebarItem: Hashable {
         else if key == "links" { self = .links }
         else if key == "claudeItems" { self = .claudeItems }
         else if key == "graph" { self = .graph }
+        else if key == "integrations" { self = .integrations }
+        else if key == "usage" { self = .usage }
+        else if key == "checksHistory" { self = .checksHistory }
         else if key == "claude" { self = .claude }
         else if key.hasPrefix("terminal:") {
             guard let id = UUID(uuidString: String(key.dropFirst(9))) else { return nil }
@@ -118,7 +127,7 @@ enum SidebarItem: Hashable {
     /// The sidebar section this item lives in (expanded while it is selected).
     var section: SidebarSection? {
         switch self {
-        case .stack, .patterns, .links, .claudeItems, .graph, .claude, .terminal: nil
+        case .stack, .patterns, .links, .claudeItems, .graph, .integrations, .usage, .checksHistory, .claude, .terminal: nil
         case .section(let section): section
         case .doc: .docs
         case .group: .groups
@@ -213,6 +222,9 @@ final class ProjectModel {
     /// Fila serial de gravações: a ordem das edições é a ordem no Core.
     @ObservationIgnored private var writeChain: Task<Void, Never>?
     @ObservationIgnored private var pendingWrites = 0
+    /// Revisão do Core (`project_revision`) logo depois da última gravação do próprio app: o eco do FSEvents tem a mesma.
+    @ObservationIgnored private var ownRevision: String?
+    @ObservationIgnored private var capturingOwnRevision = false
     /// Releituras pedidas enquanto havia gravação em andamento (reler antes de gravar traria o dado velho).
     @ObservationIgnored private var deferredReloads = Set<Area>()
     /// Texto mais recente dos docs: cache de leitura e filtro das mudanças que o próprio app causou.
@@ -339,7 +351,10 @@ final class ProjectModel {
 
     private func persistFinished() {
         pendingWrites = max(0, pendingWrites - 1)
-        if pendingWrites == 0 { scheduleCacheCapture() }
+        if pendingWrites == 0 {
+            scheduleCacheCapture()
+            captureOwnRevision()
+        }
         guard pendingWrites == 0, !deferredReloads.isEmpty, !isReadOnly else { return }
         let areas = deferredReloads
         deferredReloads = []
@@ -384,7 +399,26 @@ final class ProjectModel {
         VDLog.error(error, event: event, project: store.root, component: .app)
     }
 
+    /// Guarda a revisão do Core depois de uma gravação do app: base para reconhecer o eco do FSEvents.
+    private func captureOwnRevision() {
+        capturingOwnRevision = true
+        Task { [weak self] in
+            guard let self = self else { return }
+            let text = try? await self.store.call("project_revision", timeout: 15)
+            if self.pendingWrites == 0 { self.ownRevision = text }
+            self.capturingOwnRevision = false
+        }
+    }
+
+    /// Verdadeiro quando o disco está como o app deixou na última gravação (o evento é só o eco dela).
+    private func isOwnEcho() async -> Bool {
+        guard let own = ownRevision else { return false }
+        guard let now = try? await store.call("project_revision", timeout: 15) else { return false }
+        return now == own
+    }
+
     func startWatching() {
+        if link == nil, ownRevision == nil { captureOwnRevision() }
         if let link = link {
             // SSH: o RemoteLink sonda `project_revision` a cada 6 s e reconecta com intervalo crescente.
             link.start()
@@ -528,14 +562,29 @@ final class ProjectModel {
 
     // MARK: Mudanças externas
 
+    /// Eventos do FSEvents: o eco das gravações do próprio app (revisão igual à guardada) é ignorado e não vira log
+    /// "external". Durante uma gravação o evento ainda é aplicado (a releitura espera), mas não é logado como externo.
     private func handleExternalChanges(_ urls: [URL]) {
+        if pendingWrites > 0 || capturingOwnRevision {
+            applyExternalChanges(urls, logAsExternal: false)
+            return
+        }
+        Task { [weak self] in
+            guard let self = self else { return }
+            if await self.isOwnEcho() { return }
+            self.applyExternalChanges(urls, logAsExternal: true)
+            self.captureOwnRevision()
+        }
+    }
+
+    private func applyExternalChanges(_ urls: [URL], logAsExternal: Bool) {
         var docSlugs = Set<String>()
         var groupsChanged = false, projectChanged = false
         var topicsChanged = false, ideasChanged = false, agentsChanged = false, commandsChanged = false, skillsChanged = false, workflowsChanged = false, runsChanged = false, checksChanged = false
         let docsPrefix = store.docsDir.resolvingSymlinksInPath().path + "/"
         for url in Set(urls.map { $0.resolvingSymlinksInPath().path }) {
             let prefix = store.root.resolvingSymlinksInPath().path + "/"
-            if url.hasPrefix(prefix) {
+            if logAsExternal, url.hasPrefix(prefix) {
                 VDLog.info("store.external_changed", "Mudança externa aplicada", project: store.root, component: .app,
                            context: ["file": String(url.dropFirst(prefix.count)), "origin": "external"])
             }
@@ -1899,7 +1948,7 @@ final class ProjectModel {
         case .command(let slug): store.commandURL(slug)
         case .skill(let slug): store.skillURL(slug)
         case .workflow(let slug): store.workflowURL(slug)
-        case .stack, .patterns, .links, .claudeItems, .graph, .claude, .terminal, .section: nil
+        case .stack, .patterns, .links, .claudeItems, .graph, .integrations, .usage, .checksHistory, .claude, .terminal, .section: nil
         }
     }
 
@@ -1911,6 +1960,9 @@ final class ProjectModel {
         case .links: "Links"
         case .claudeItems: "Claude"
         case .graph: "Grafo"
+        case .integrations: "Integrações"
+        case .usage: "Consumo de IA"
+        case .checksHistory: "Histórico"
         case .claude: "IA"
         case .terminal: "Terminal"
         case .section(let section): section.title
@@ -1933,6 +1985,9 @@ final class ProjectModel {
         case .links: "link"
         case .claudeItems: "square.stack"
         case .graph: "point.3.connected.trianglepath.dotted"
+        case .integrations: "shippingbox"
+        case .usage: "clock"
+        case .checksHistory: "clock"
         case .claude: "sparkles"
         case .terminal: "terminal"
         case .section(let section): section.symbol
@@ -1950,7 +2005,7 @@ final class ProjectModel {
     /// Whether `item` still exists in the project (pages always do; files may have been deleted).
     func exists(_ item: SidebarItem) -> Bool {
         switch item {
-        case .stack, .patterns, .links, .claudeItems, .graph, .terminal, .section: true
+        case .stack, .patterns, .links, .claudeItems, .graph, .integrations, .usage, .checksHistory, .terminal, .section: true
         case .claude: !RemoteExecution.providers(root: store.root).isEmpty
         case .doc(let slug): docs.contains { $0.slug == slug }
         case .group(let slug): group(slug) != nil
@@ -1973,7 +2028,7 @@ final class ProjectModel {
         case .command(let slug): deleteCommand(slug)
         case .skill(let slug): deleteSkill(slug)
         case .workflow(let slug): deleteWorkflow(slug)
-        case .stack, .patterns, .links, .claudeItems, .graph, .claude, .terminal, .section: break
+        case .stack, .patterns, .links, .claudeItems, .graph, .integrations, .usage, .checksHistory, .claude, .terminal, .section: break
         }
     }
 
@@ -1987,7 +2042,7 @@ final class ProjectModel {
         case .command(let slug): mutateCommand(slug, "Editar tags", undo: undo) { $0.tags = tags }
         case .skill(let slug): mutateSkill(slug, "Editar tags", undo: undo) { $0.tags = tags }
         case .workflow(let slug): mutateWorkflow(slug, "Editar tags", undo: undo) { $0.tags = tags }
-        case .stack, .patterns, .links, .claudeItems, .graph, .claude, .terminal, .section: break
+        case .stack, .patterns, .links, .claudeItems, .graph, .integrations, .usage, .checksHistory, .claude, .terminal, .section: break
         }
     }
 

@@ -21,7 +21,7 @@ struct VDButton: View {
     }
 
     var body: some View {
-        Button(action: action) {
+        LoggedButton(action: action) {
             HStack(spacing: DesignTokens.Space.s2) {
                 if let icon {
                     VDIcon(icon, size: size == .lg ? 16 : 13)
@@ -31,6 +31,7 @@ struct VDButton: View {
                 }
             }
         }
+        .loggedControl(control: "vd_button.action", label: title ?? "Ação")
         .buttonStyle(VDButtonStyle(kind: kind, size: size))
     }
 }

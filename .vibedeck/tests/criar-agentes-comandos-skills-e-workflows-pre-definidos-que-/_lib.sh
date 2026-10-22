@@ -21,5 +21,5 @@ forbid() {
     fail=1
   fi
 }
-for f in "$KITS" "$PERSONA" "$VIEW" "$PMODEL" "$ASSETS/manutencao.json" "$ASSETS/novas-ferramentas.json" "$ASSETS/guidance.txt" "$ASSETS/policy.txt"; do [ -f "$f" ] || { echo "$f: arquivo ausente"; exit 1; }; done
+for f in "$KITS" "$PERSONA" "$VIEW" "$PMODEL" "$ASSETS/manutencao.json" "$ASSETS/novas-ferramentas.json" "$ASSETS/guidance.txt" crates/vibedeck-core/src/ai/policy_instructions.txt; do [ -f "$f" ] || { echo "$f: arquivo ausente"; exit 1; }; done
 finish() { exit "$fail"; }

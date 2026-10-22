@@ -6,13 +6,12 @@ struct V2ContentColumn: View {
     let space: V2Space
     @Binding var concept: V2Concept
     @Binding var selection: SidebarItem?
+    @Binding var filter: V2ListFilter
     let focusRequest: Int
     let onAdd: (SidebarSection) -> Void
 
     @Environment(ProjectModel.self) private var model
     @Environment(\.undoManager) private var undo
-    @State private var search = ""
-    @State private var selectedTags = Set<String>()
     @State private var editingTags: SectionRow?
     @FocusState private var filterFocused: Bool
 
@@ -25,10 +24,7 @@ struct V2ContentColumn: View {
             Divider()
             list
         }
-        .onChange(of: concept) { _, _ in
-            search = ""
-            selectedTags = []
-        }
+        .onChange(of: concept) { _, _ in filter.reset() }
         .onChange(of: focusRequest) { _, _ in filterFocused = true }
         .sheet(item: $editingTags) { row in
             TagsEditor(title: row.title, tags: row.tags) { model.setTags($0, for: row.id, undo: undo) }
@@ -89,13 +85,13 @@ struct V2ContentColumn: View {
     private var filterField: some View {
         HStack(spacing: DesignTokens.Space.s2) {
             VDIcon(.search, size: 13).foregroundStyle(DesignTokens.Colors.inkMuted)
-            LoggedTextField("Filtrar \(concept.title.lowercased()) (#tag)", text: $search)
+            LoggedTextField("Filtrar \(concept.title.lowercased()) (#tag)", text: $filter.search)
                 .loggedField(control: "v2_content_column.filter", label: "Filtrar lista")
                 .textFieldStyle(.plain)
                 .focused($filterFocused)
                 .accessibilityLabel("Filtrar por texto e tag")
-            if !search.isEmpty {
-                LoggedButton { search = "" } label: { VDIcon(.close, size: 11) }
+            if !filter.search.isEmpty {
+                LoggedButton { filter.search = "" } label: { VDIcon(.close, size: 11) }
                     .loggedControl(control: "v2_content_column.clear_filter", label: "Limpar filtro")
                     .buttonStyle(.plain)
                     .help("Limpar filtro")
@@ -120,25 +116,9 @@ struct V2ContentColumn: View {
         Array(Set(allRows.flatMap(\.tags))).sorted { $0.localizedStandardCompare($1) == .orderedAscending }
     }
 
-    /// Texto livre e tags exigidas (tokens `#tag` digitados mais os chips ligados).
-    private var parsedFilter: (text: String, tags: [String]) {
-        let terms = search.split(whereSeparator: { $0.isWhitespace })
-        let typed = terms.filter { $0.hasPrefix("#") }.map { String($0.dropFirst()) }.filter { !$0.isEmpty }
-        let text = terms.filter { !$0.hasPrefix("#") }.joined(separator: " ")
-        return (text, selectedTags.sorted() + typed)
-    }
+    private var isFiltering: Bool { filter.isActive }
 
-    private var isFiltering: Bool { !search.isEmpty || !selectedTags.isEmpty }
-
-    private var rows: [SectionRow] {
-        let filter = parsedFilter
-        return allRows.filter { row in
-            filter.tags.allSatisfy { tag in row.tags.contains { $0.caseInsensitiveCompare(tag) == .orderedSame } }
-                && (filter.text.isEmpty || row.title.localizedCaseInsensitiveContains(filter.text)
-                    || row.detail.localizedCaseInsensitiveContains(filter.text)
-                    || row.tags.contains { $0.localizedCaseInsensitiveContains(filter.text) })
-        }
-    }
+    private var rows: [SectionRow] { allRows.filter { filter.matches($0) } }
 
     @ViewBuilder
     private var tagBar: some View {
@@ -157,8 +137,8 @@ struct V2ContentColumn: View {
     }
 
     private func tagBinding(_ tag: String) -> Binding<Bool> {
-        Binding(get: { selectedTags.contains(tag) }, set: { isOn in
-            if isOn { _ = selectedTags.insert(tag) } else { _ = selectedTags.remove(tag) }
+        Binding(get: { filter.tags.contains(tag) }, set: { isOn in
+            if isOn { filter.tags.insert(tag) } else { filter.tags.remove(tag) }
         })
     }
 
@@ -177,7 +157,7 @@ struct V2ContentColumn: View {
     private func sectionList(_ section: SidebarSection) -> some View {
         if let grouped = section.groupedConcept {
             List {
-                GroupTreeView(concept: grouped, rows: rows, filtering: isFiltering,
+                GroupTreeView(concept: grouped, rows: rows, filtering: isFiltering, selected: selection,
                               onOpen: { selection = $0 }, onOpenInNewTab: { selection = $0 })
             }
             .listStyle(.sidebar)
@@ -193,7 +173,7 @@ struct V2ContentColumn: View {
             }
             .frame(maxHeight: .infinity)
         } else if rows.isEmpty {
-            ContentUnavailableView.search(text: search.isEmpty ? selectedTags.sorted().map { "#" + $0 }.joined(separator: " ") : search)
+            ContentUnavailableView.search(text: filter.summary)
                 .frame(maxHeight: .infinity)
         } else {
             rowList
@@ -232,7 +212,7 @@ struct V2ContentColumn: View {
     // MARK: Lista de páginas (Referências, Projeto)
 
     private var visiblePages: [V2Page] {
-        let text = parsedFilter.text
+        let text = filter.parsed.text
         return concept.pages.filter { page in
             (page != .claudeItems || !model.project.claude.isEmpty)
                 && (text.isEmpty || page.title.localizedCaseInsensitiveContains(text))
@@ -255,7 +235,8 @@ struct V2ContentColumn: View {
         case .patterns: return model.project.patterns.count
         case .links: return model.project.links.count
         case .claudeItems: return model.project.claude.count
-        case .overview, .graph: return nil
+        case .checksHistory: return model.checks.count
+        case .overview, .graph, .integrations, .usage: return nil
         }
     }
 

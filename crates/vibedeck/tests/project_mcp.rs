@@ -187,7 +187,25 @@ fn export_graph_e_read_logs() {
         )
     );
     assert!(d.0.join("graphify-out/graph.html").is_file());
-    assert_eq!(r[1].1.split_whitespace().collect::<String>(), "[]");
+    // O MCP grava sucesso/falha das ferramentas e as gravações do projeto (sem nunca citar argumentos).
+    let logs: serde_json::Value = serde_json::from_str(&r[1].1).unwrap();
+    let events: Vec<&str> = logs
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e["event"].as_str().unwrap())
+        .collect();
+    for wanted in ["mcp.tool_called", "mcp.tool_failed", "store.file_written"] {
+        assert!(events.contains(&wanted), "{wanted} ausente em {events:?}");
+    }
+    let written = logs
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e["event"] == "store.file_written")
+        .unwrap();
+    assert_eq!(written["context"]["file"], "graphify-out/graph.html");
+    assert_eq!(written["context"]["undo"], "Salvar");
     assert_eq!(
         r[2],
         (

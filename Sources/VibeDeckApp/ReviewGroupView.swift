@@ -44,7 +44,7 @@ struct ReviewGroupView: View {
             list
         }
         .safeAreaInset(edge: .bottom) { quickAdd }
-        .inspector(isPresented: $showInspector) {
+        .detailContext(isPresented: $showInspector) {
             Group {
                 if let item = selectedItem {
                     ReviewItemInspector(
@@ -59,7 +59,6 @@ struct ReviewGroupView: View {
                                            description: Text("Selecione um ponto de revisão para editar."))
                 }
             }
-            .inspectorColumnWidth(min: 260, ideal: 300, max: 420)
         }
         .onChange(of: selection) { _, new in
             if new != nil { showInspector = true }

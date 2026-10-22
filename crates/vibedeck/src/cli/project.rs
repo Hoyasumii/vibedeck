@@ -77,7 +77,16 @@ fn init(a: InitArgs, ctx: &Context) -> Result<(), CliError> {
         Some(d) => expand_tilde(d),
         None => ctx.start_dir()?,
     };
-    let store = project::init(&dir, a.name.as_deref(), a.description.as_deref())?;
+    // Como `ProjectStore.initialize`: o guia (AGENTS.md/guide.md) nasce junto com o projeto.
+    let store = project::init_with(&dir, a.name.as_deref(), a.description.as_deref(), |store| {
+        vibedeck_core::ai::guide::write_agents_guide(store).map_err(|e| match e {
+            vibedeck_core::ai::AiError::Core(core) => core,
+            other => vibedeck_core::Error::Io {
+                path: store.data_dir(),
+                source: std::io::Error::other(other.to_string()),
+            },
+        })
+    })?;
     println!("Projeto criado em {}", store.root().display());
     Ok(())
 }

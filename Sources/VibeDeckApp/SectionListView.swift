@@ -1,11 +1,13 @@
 import SwiftUI
 
 /// List page for a sidebar section (Docs, Revisões, Regras, Ideias, Agentes): its children in a table,
-/// filterable by free text and by tags (`#tag` tokens or the tag bar).
+/// filtered by the V2 content column filter (free text, `#tag` tokens and tag chips); it has no filter field of its own.
 struct SectionListView: View {
     @Environment(\.logProject) private var providerRoot
     @Environment(\.logProject) private var logProject
     let section: SidebarSection
+    /// Filtro compartilhado com a coluna de conteúdo (campo e chips ficam lá; esta tabela só o aplica).
+    @Binding var filter: V2ListFilter
     let onOpen: (SidebarItem) -> Void
     let onOpenInNewTab: (SidebarItem) -> Void
     let onAdd: () -> Void
@@ -13,55 +15,22 @@ struct SectionListView: View {
     @Environment(ProjectModel.self) private var model
     @Environment(\.undoManager) private var undo
     @LoggedSelection(control: "section_list_view.selection_18", label: "Seleção") private var selection = Set<SidebarItem>()
-    @State private var search = ""
-    @State private var tokens: [TagToken] = []
     @State private var editingTags: SectionRow?
     @State private var importedCount: Int?
     @State private var showingDocGeneration = false
 
-    struct TagToken: Identifiable, Hashable {
-        var tag: String
-        var id: String { tag }
-    }
-
     private var allRows: [SectionRow] { model.rows(for: section) }
 
-    private var allTags: [String] {
-        Array(Set(allRows.flatMap(\.tags))).sorted { $0.localizedStandardCompare($1) == .orderedAscending }
-    }
-
-    private var rows: [SectionRow] {
-        let q = search.trimmingCharacters(in: .whitespaces)
-        let required = tokens.map(\.tag)
-        return allRows.filter { row in
-            required.allSatisfy { tag in row.tags.contains { $0.caseInsensitiveCompare(tag) == .orderedSame } }
-                && (q.isEmpty || row.title.localizedCaseInsensitiveContains(q) || row.detail.localizedCaseInsensitiveContains(q)
-                    || row.tags.contains { $0.localizedCaseInsensitiveContains(q.hasPrefix("#") ? String(q.dropFirst()) : q) })
-        }
-    }
-
-    private var suggestedTokens: [TagToken] {
-        guard search.hasPrefix("#") else { return [] }
-        let q = search.dropFirst()
-        return allTags
-            .filter { tag in q.isEmpty || tag.localizedCaseInsensitiveContains(q) }
-            .filter { tag in !tokens.contains { $0.tag == tag } }
-            .map(TagToken.init)
-    }
+    private var rows: [SectionRow] { allRows.filter { filter.matches($0) } }
 
     var body: some View {
         VStack(spacing: 0) {
             if section == .topics, let execution = model.ruleExecution {
                 RuleExecutionPanel(execution: execution).id(execution.id)
             }
-            if !allTags.isEmpty { tagBar }
             content
         }
         .navigationTitle(section.title)
-        .searchable(text: $search, tokens: $tokens, suggestedTokens: .constant(suggestedTokens),
-                    placement: .toolbar, prompt: "Filtrar \(section.title.lowercased()) (#tag)") { token in
-            Text("#\(token.tag)")
-        }
         .toolbar {
             if [.topics, .docs, .ideas, .groups].contains(section), !AIProvider.installed(in: providerRoot).isEmpty {
                 ToolbarItem { ReorganizeButton() }
@@ -209,7 +178,7 @@ struct SectionListView: View {
     @ViewBuilder
     private var content: some View {
         if let concept = section.groupedConcept {
-            List { GroupTreeView(concept: concept, rows: rows, filtering: !search.isEmpty || !tokens.isEmpty, onOpen: onOpen, onOpenInNewTab: onOpenInNewTab) }
+            List { GroupTreeView(concept: concept, rows: rows, filtering: filter.isActive, onOpen: onOpen, onOpenInNewTab: onOpenInNewTab) }
         } else if allRows.isEmpty {
             ContentUnavailableView {
                 Label(section.emptyMessage, systemImage: section.symbol)
@@ -218,7 +187,7 @@ struct SectionListView: View {
             }
             .frame(maxHeight: .infinity)
         } else if rows.isEmpty {
-            ContentUnavailableView.search(text: search.isEmpty ? tokens.map { "#\($0.tag)" }.joined(separator: " ") : search)
+            ContentUnavailableView.search(text: filter.summary)
                 .frame(maxHeight: .infinity)
         } else {
             table
@@ -267,30 +236,8 @@ struct SectionListView: View {
         .onDeleteCommand { remove(selection) }
     }
 
-    private var tagBar: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 6) {
-                ForEach(allTags, id: \.self) { tag in
-                    let on = tokens.contains { $0.tag == tag }
-                    LoggedButton { toggle(tag) } label: {
-                        Text("#\(tag)").font(.callout)
-                    }.loggedControl(control: "section_list_view.button_16", label: "Ativar controle")
-                    .buttonStyle(.glass)
-                    .tint(on ? .accentColor : nil)
-                    .controlSize(.small)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-        }
-        .scrollIndicators(.hidden)
-    }
-
     private func toggle(_ tag: String) {
-        withAnimation(.snappy) {
-            if let i = tokens.firstIndex(where: { $0.tag == tag }) { tokens.remove(at: i) }
-            else { tokens.append(TagToken(tag: tag)) }
-        }
+        filter.toggle(tag: tag)
     }
 
     private func remove(_ ids: Set<SidebarItem>) {

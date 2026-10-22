@@ -7,7 +7,8 @@ use super::ext::kind_str;
 use crate::model::*;
 
 /// `AIPromptPolicy.instructions` (política compartilhada de instruções de IA).
-const POLICY: &str = include_str!("policy.txt");
+/// Política de IA compartilhada: fonte única em `ai/policy_instructions.txt`.
+const POLICY: &str = crate::ai::context::INSTRUCTIONS;
 const ORCHESTRATOR: &str = include_str!("orchestrator.txt");
 
 fn non_empty(s: &Option<String>) -> Option<&str> {

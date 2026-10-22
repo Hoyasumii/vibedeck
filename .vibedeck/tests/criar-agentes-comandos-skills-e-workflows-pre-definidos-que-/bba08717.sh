@@ -3,7 +3,7 @@ set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
 applies
 # BBA08717 (should): conteúdos pré-definidos instruem seguir padrões do projeto (regras, revisão, check) e evitar código espaguete, sem citar caminhos do VibeDeck.
-for f in "$ASSETS"/*.json "$ASSETS"/guidance.txt "$ASSETS"/policy.txt; do
+for f in "$ASSETS"/*.json "$ASSETS"/guidance.txt crates/vibedeck-core/src/ai/policy_instructions.txt; do
   forbid "$f" 'Sources/VibeDeck|VibeDeckCore|VibeDeckApp|\.swift|ProjectStore|ProjectModel|crates/' "texto do catálogo não deve citar caminhos/nomes internos do VibeDeck"
 done
 need "$ASSETS/guidance.txt" 'código espaguete' "conteúdo deve instruir evitar código espaguete"

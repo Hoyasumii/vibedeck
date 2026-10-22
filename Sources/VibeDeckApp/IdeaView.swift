@@ -34,7 +34,7 @@ struct IdeaView: View {
             content
         }
         .markdownModeShortcut($mode)
-        .inspector(isPresented: $showRules) {
+        .detailContext(isPresented: $showRules) {
             VStack(alignment: .leading, spacing: 0) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Regras da ideia").font(.headline)
@@ -54,7 +54,6 @@ struct IdeaView: View {
                     model.mutateIdea(slug, action, undo: undo) { change(&$0.rules) }
                 }
             }
-            .inspectorColumnWidth(min: 260, ideal: 320, max: 440)
         }
         .navigationTitle(idea.title)
         .navigationSubtitle("\(idea.status.label) · \(idea.rules.count) regra(s)")

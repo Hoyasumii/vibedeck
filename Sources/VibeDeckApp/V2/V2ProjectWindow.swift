@@ -63,6 +63,7 @@ struct ProjectWindowV2Content: View {
     @State private var aiExpanded = false
     @State private var newName: ProjectWindow.NewNamePrompt?
     @State private var filterFocusRequest = 0
+    @State private var listFilter = V2ListFilter()
     @State private var reconciledMoveRevision = 0
 
     init(root: URL, model: ProjectModel) {
@@ -191,7 +192,7 @@ struct ProjectWindowV2Content: View {
     }
 
     private var contentColumn: some View {
-        V2ContentColumn(space: space, concept: conceptBinding, selection: $selection,
+        V2ContentColumn(space: space, concept: conceptBinding, selection: $selection, filter: $listFilter,
                         focusRequest: filterFocusRequest, onAdd: { newName = ProjectWindow.NewNamePrompt($0) })
     }
 
@@ -319,7 +320,7 @@ struct ProjectWindowV2Content: View {
     }
 
     private func sectionTable(_ section: SidebarSection) -> some View {
-        SectionListView(section: section) { open($0) } onOpenInNewTab: { open($0) } onAdd: { newName = ProjectWindow.NewNamePrompt(section) }
+        SectionListView(section: section, filter: $listFilter) { open($0) } onOpenInNewTab: { open($0) } onAdd: { newName = ProjectWindow.NewNamePrompt(section) }
     }
 
     @ViewBuilder
@@ -335,6 +336,12 @@ struct ProjectWindowV2Content: View {
             ClaudeItemsView()
         case .graph:
             GraphView()
+        case .integrations:
+            V2IntegrationsView()
+        case .usage:
+            V2UsageView()
+        case .checksHistory:
+            V2ChecksHistoryView()
         case .claude:
             ClaudeChatPage()
         case .terminal(let id):

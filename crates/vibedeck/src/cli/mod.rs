@@ -25,6 +25,9 @@ use clap::{Args, Parser, Subcommand};
 use std::ffi::OsString;
 use std::fmt;
 use std::path::{Path, PathBuf};
+use std::time::Instant;
+
+use vibedeck_core::project::logs::{self, LogComponent, LogLevel, LogStore};
 
 pub const EXIT_FAILURE: i32 = 1;
 /// EX_USAGE: erro de parse/validação de argumentos (como o swift-argument-parser).
@@ -127,23 +130,59 @@ where
     I: IntoIterator<Item = T>,
     T: Into<OsString> + Clone,
 {
-    let cli = match Cli::try_parse_from(args) {
-        Ok(cli) => cli,
+    use clap::{CommandFactory, FromArgMatches};
+    logs::configure(
+        LogComponent::Cli,
+        Some(env!("CARGO_PKG_VERSION")),
+        Some(LogStore::default_store()),
+    );
+    let parsed = Cli::command()
+        .try_get_matches_from(args)
+        .and_then(|m| Cli::from_arg_matches(&m).map(|cli| (cli, command_path(&m))));
+    let (cli, path) = match parsed {
+        Ok(v) => v,
         Err(e) => {
             let _ = e.print();
             // --help/--version saem 0; qualquer erro de uso sai 64.
             return if e.use_stderr() { EXIT_USAGE } else { 0 };
         }
     };
+    let started = Instant::now();
+    let ms = || started.elapsed().as_millis().to_string();
     match execute(cli) {
-        Ok(code) => code,
+        Ok(code) => {
+            logs::info(
+                "cli.command_completed",
+                "Comando executado",
+                &[("command", &path), ("ms", &ms())],
+            );
+            code
+        }
         Err(e) => {
+            // Falhas deliberadas (sem mensagem) não entram no log, como `ExitCode` no Swift.
             if !e.message.is_empty() {
+                logs::log(
+                    LogLevel::Warning,
+                    "cli.command_failed",
+                    "Falha no comando",
+                    &[("command", &path), ("errorType", "CliError")],
+                );
                 eprintln!("Error: {}", e.message);
             }
             e.code
         }
     }
+}
+
+/// `ideas show` para `vibedeck ideas show`: os nomes dos subcomandos escolhidos.
+fn command_path(matches: &clap::ArgMatches) -> String {
+    let mut names = Vec::new();
+    let mut current = matches;
+    while let Some((name, sub)) = current.subcommand() {
+        names.push(name);
+        current = sub;
+    }
+    names.join(" ")
 }
 
 /// Contexto dos comandos: diretório de partida (`-C`) e acesso ao projeto.
@@ -163,6 +202,7 @@ impl Context {
     pub fn store(&self) -> Result<vibedeck_core::Store, CliError> {
         let root = self.root()?;
         let store = vibedeck_core::Store::open(&root).map_err(|e| CliError::new(e.to_string()))?;
+        logs::set_project(Some(&root));
         // Como o Swift: o guia gerado em .vibedeck/ acompanha a versão do binário.
         ai::refresh_guide(&store);
         Ok(store)
@@ -199,6 +239,13 @@ fn execute(cli: Cli) -> Result<i32, CliError> {
         Command::Mcp(mcp) => match mcp.command.unwrap_or(McpCommand::Serve { app: mcp.app }) {
             McpCommand::Serve { app } => {
                 let root = locate_root(cli.root.as_deref())?;
+                logs::configure(
+                    LogComponent::Mcp,
+                    Some(env!("CARGO_PKG_VERSION")),
+                    Some(LogStore::default_store()),
+                );
+                logs::set_project(Some(&root));
+                LogStore::default_store().prune(vibedeck_core::time::now());
                 if let Ok(store) = vibedeck_core::Store::open(&root) {
                     ai::refresh_guide(&store);
                 }

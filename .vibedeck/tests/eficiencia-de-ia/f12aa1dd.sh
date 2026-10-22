@@ -14,9 +14,11 @@ need crates/vibedeck-core/src/ai/guide.rs 'context::INSTRUCTIONS' 1
 need crates/vibedeck-core/src/workflows/prompts.rs 'POLICY' 1
 need crates/vibedeck-core/src/resources/kits.rs 'POLICY' 1
 need crates/vibedeck-core/src/reviews/discover.rs 'prompt_policy' 1
-# As cópias do texto (include_str!) não podem divergir da fonte.
+# Fonte única: prompts de workflows e kits reaproveitam context::INSTRUCTIONS (sem cópia do texto).
+need crates/vibedeck-core/src/workflows/prompts.rs 'const POLICY: &str = crate::ai::context::INSTRUCTIONS' 1
+need crates/vibedeck-core/src/resources/kits.rs 'const POLICY: &str = crate::ai::context::INSTRUCTIONS' 1
 for copy in crates/vibedeck-core/src/workflows/policy.txt crates/vibedeck-core/assets/kits/policy.txt; do
-  cmp -s "$POLICY" "$copy" || { echo "$copy: texto da política divergiu de $POLICY"; fail=1; }
+  [ ! -e "$copy" ] || { echo "$copy: cópia do texto da política (use $POLICY)"; fail=1; }
 done
 if grep -rn --include='*.rs' 'Não dispense validações obrigatórias' crates; then
   echo "Texto da política duplicado em código Rust (use ai::context::INSTRUCTIONS)"; fail=1

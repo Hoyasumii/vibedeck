@@ -12,7 +12,7 @@ struct VDSidebarItem: View {
     @State private var hovering = false
 
     var body: some View {
-        Button(action: action) {
+        LoggedButton(action: action) {
             HStack(spacing: 10) {
                 if let icon {
                     VDIcon(icon, size: 14)
@@ -40,6 +40,7 @@ struct VDSidebarItem: View {
             )
             .contentShape(Rectangle())
         }
+        .loggedControl(control: "vd_sidebar_item.select", label: title)
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
         .accessibilityAddTraits(isSelected ? .isSelected : [])

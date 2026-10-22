@@ -111,12 +111,13 @@ struct VDStepCard: View {
                     .foregroundStyle(DesignTokens.Colors.inkMuted)
             }
             if let onMore {
-                Button(action: onMore) {
+                LoggedButton(action: onMore) {
                     VDIcon(.more, size: 13)
                         .foregroundStyle(DesignTokens.Colors.inkMuted)
                         .frame(width: 28, height: 28)
                         .contentShape(Circle())
                 }
+                .loggedControl(control: "vd_step_card.more", label: "Opções da etapa")
                 .buttonStyle(.plain)
                 .accessibilityLabel("Opções da etapa \(title)")
             }

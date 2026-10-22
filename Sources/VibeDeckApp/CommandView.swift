@@ -30,11 +30,10 @@ struct CommandView: View {
                     }
                 }
         }
-        .inspector(isPresented: $showFlow) {
+        .detailContext(isPresented: $showFlow) {
             NextStepsInspector(owner: .command(slug), steps: command.nextSteps, mutate: { actionName, change in
                 model.mutateCommand(slug, actionName, undo: undo) { change(&$0.nextSteps) }
             }, open: open)
-            .inspectorColumnWidth(min: 260, ideal: 320, max: 440)
         }
         .navigationTitle(command.title)
         .navigationSubtitle("\(command.model ?? "modelo herdado") · \(command.nextSteps.count) próximo(s) passo(s)")

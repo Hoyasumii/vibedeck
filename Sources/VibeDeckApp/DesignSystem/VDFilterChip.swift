@@ -9,7 +9,7 @@ struct VDFilterChip: View {
     @Binding var isOn: Bool
 
     var body: some View {
-        Button {
+        LoggedButton {
             isOn.toggle()
         } label: {
             HStack(spacing: 6) {
@@ -36,6 +36,7 @@ struct VDFilterChip: View {
             )
             .contentShape(Capsule())
         }
+        .loggedControl(control: "vd_filter_chip.toggle", label: title)
         .buttonStyle(.plain)
         .accessibilityAddTraits(isOn ? .isSelected : [])
     }

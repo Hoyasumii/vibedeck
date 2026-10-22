@@ -50,6 +50,10 @@ fn init_cria_projeto_e_recusa_repetir() {
     for sub in ["docs", "reviews", "rules", "ideas", "agents", "skills"] {
         assert!(d.0.join(".vibedeck").join(sub).is_dir(), "{sub}");
     }
+    // O guia nasce junto com o projeto.
+    for guide in ["AGENTS.md", "guide.md"] {
+        assert!(d.0.join(".vibedeck").join(guide).is_file(), "{guide}");
+    }
     let (code, _, err) = vd(&d.0, &["init"]);
     assert_eq!(code, 1);
     assert!(err.starts_with("Error: "), "{err}");

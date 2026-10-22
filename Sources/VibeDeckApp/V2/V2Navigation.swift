@@ -8,6 +8,8 @@ extension DesignTokens {
         static let railItemWidth: CGFloat = 60
         static let railItemHeight: CGFloat = 56
         static let statusBarHeight: CGFloat = 32
+        /// Largura fixa do contexto do item no detalhe (V2DetailContext); não é coluna de janela.
+        static let contextWidth: CGFloat = 320
     }
 }
 
@@ -40,7 +42,7 @@ enum V2Space: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .plan: return [.ideas, .docs, .references]
         case .automation: return [.agents, .commands, .skills, .workflows]
-        case .quality: return [.rules, .reviews]
+        case .quality: return [.rules, .reviews, .history]
         case .project: return [.project]
         }
     }
@@ -51,7 +53,7 @@ enum V2Space: String, CaseIterable, Identifiable, Hashable {
 enum V2Concept: String, CaseIterable, Identifiable, Hashable {
     case ideas, docs, references
     case agents, commands, skills, workflows
-    case rules, reviews
+    case rules, reviews, history
     case project
 
     var id: String { rawValue }
@@ -60,7 +62,7 @@ enum V2Concept: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .ideas, .docs, .references: return .plan
         case .agents, .commands, .skills, .workflows: return .automation
-        case .rules, .reviews: return .quality
+        case .rules, .reviews, .history: return .quality
         case .project: return .project
         }
     }
@@ -76,6 +78,7 @@ enum V2Concept: String, CaseIterable, Identifiable, Hashable {
         case .workflows: return "Workflows"
         case .rules: return "Regras"
         case .reviews: return "Revisões"
+        case .history: return "Histórico"
         case .project: return "Projeto"
         }
     }
@@ -91,7 +94,7 @@ enum V2Concept: String, CaseIterable, Identifiable, Hashable {
         case .workflows: return .workflows
         case .rules: return .topics
         case .reviews: return .groups
-        case .references, .project: return nil
+        case .references, .history, .project: return nil
         }
     }
 
@@ -99,7 +102,8 @@ enum V2Concept: String, CaseIterable, Identifiable, Hashable {
     var pages: [V2Page] {
         switch self {
         case .references: return [.links, .claudeItems]
-        case .project: return [.overview, .stack, .patterns, .graph]
+        case .history: return [.checksHistory]
+        case .project: return [.overview, .stack, .patterns, .graph, .integrations, .usage]
         default: return []
         }
     }
@@ -108,6 +112,7 @@ enum V2Concept: String, CaseIterable, Identifiable, Hashable {
     var defaultSelection: SidebarItem? {
         switch self {
         case .references: return .links
+        case .history: return .checksHistory
         default: return nil
         }
     }
@@ -128,7 +133,8 @@ enum V2Concept: String, CaseIterable, Identifiable, Hashable {
     /// Conceito dono de um item (nil para o chat e terminais, que não pertencem a um espaço).
     static func of(_ item: SidebarItem) -> V2Concept? {
         switch item {
-        case .stack, .patterns, .graph: return .project
+        case .stack, .patterns, .graph, .integrations, .usage: return .project
+        case .checksHistory: return .history
         case .links, .claudeItems: return .references
         case .claude, .terminal: return nil
         case .section(let section): return forSection(section)
@@ -146,7 +152,7 @@ enum V2Concept: String, CaseIterable, Identifiable, Hashable {
 
 /// Página única listada em Referências e Projeto.
 enum V2Page: Hashable, Identifiable {
-    case overview, stack, patterns, links, claudeItems, graph
+    case overview, stack, patterns, links, claudeItems, graph, integrations, usage, checksHistory
 
     var id: V2Page { self }
 
@@ -157,6 +163,9 @@ enum V2Page: Hashable, Identifiable {
         case .links: self = .links
         case .claudeItems: self = .claudeItems
         case .graph: self = .graph
+        case .integrations: self = .integrations
+        case .usage: self = .usage
+        case .checksHistory: self = .checksHistory
         default: return nil
         }
     }
@@ -170,6 +179,9 @@ enum V2Page: Hashable, Identifiable {
         case .links: return .links
         case .claudeItems: return .claudeItems
         case .graph: return .graph
+        case .integrations: return .integrations
+        case .usage: return .usage
+        case .checksHistory: return .checksHistory
         }
     }
 
@@ -181,6 +193,9 @@ enum V2Page: Hashable, Identifiable {
         case .links: return "Links"
         case .claudeItems: return "Coleção do Claude"
         case .graph: return "Grafo"
+        case .integrations: return "Integrações"
+        case .usage: return "Consumo de IA"
+        case .checksHistory: return "Histórico de verificações"
         }
     }
 
@@ -192,6 +207,9 @@ enum V2Page: Hashable, Identifiable {
         case .links: return "link"
         case .claudeItems: return "square.stack"
         case .graph: return "point.3.connected.trianglepath.dotted"
+        case .integrations: return "shippingbox"
+        case .usage: return "clock"
+        case .checksHistory: return "clock"
         }
     }
 }
