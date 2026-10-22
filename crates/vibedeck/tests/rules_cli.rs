@@ -262,7 +262,9 @@ fn hook_install_status_uninstall() {
     assert_eq!(v["unverified"].as_array().unwrap().len(), 0);
 
     let (code, out, _) = p.cli(&["hook", "install", "-a", "codex"]);
-    let codex = p.path().join(".codex/hooks.json");
+    let codex = std::fs::canonicalize(p.path())
+        .unwrap()
+        .join(".codex/hooks.json");
     assert_eq!(code, 0);
     assert!(out.starts_with(&format!(
         "Hook ligado em {}.\nNo Codex, aprove",
