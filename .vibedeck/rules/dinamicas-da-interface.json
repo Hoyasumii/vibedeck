@@ -11,7 +11,7 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:33:31Z",
-      "details" : "Links, Docs, Revisões, Regras e Ideias. Clicar na seção abre a lista (filtro por texto e #tag); os filhos abrem o item no detalhe. Conceito novo ganha sua seção seguindo o mesmo padrão.\nVerificar: todas as seções aparecem e abrem lista filtrável.",
+      "details" : "V2: o trilho de espaços (Planejar, Automação, Qualidade, Projeto) substitui a sidebar única. Cada conceito (Ideias, Docs, Referências; Agentes, Comandos, Skills, Workflows; Regras, Revisões; Visão geral, Grafo) aparece na coluna de conteúdo do seu espaço com lista filtrável; os itens abrem no detalhe. Conceito novo entra no espaço correspondente seguindo o mesmo padrão.\nVerificar: todos os conceitos aparecem em algum espaço e abrem lista filtrável.",
       "id" : "3901FA3E-16BD-4E00-A844-DAB5A87BDFC1",
       "severity" : "must",
       "test" : {
@@ -20,7 +20,7 @@
         "mode" : "script",
         "ruleHash" : "6dd3d548beee1b4c"
       },
-      "text" : "A sidebar tem uma seção por conceito, cada uma com lista filtrável"
+      "text" : "O trilho tem um espaço por área e cada conceito tem lista filtrável"
     },
     {
       "author" : "ai",
@@ -53,7 +53,7 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:33:31Z",
-      "details" : "Revisões: painel do item selecionado (tipo, status, prioridade, alvo, regras ligadas). Ideias: regras rascunho e promoção. Regras: verificações registradas do tópico. ⌥⌘I mostra/oculta em todos.\nVerificar: ⌥⌘I alterna o painel em cada tipo de página.",
+      "details" : "V2: a coluna da direita é o painel de IA, alternado por ⇧⌘C em todos os espaços. O contexto do item (tipo, status, prioridade, alvo, regras ligadas; regras rascunho e promoção nas ideias; verificações do tópico nas regras) fica no detalhe do item, não num inspector separado.\nVerificar: ⇧⌘C alterna o painel de IA em cada espaço e o contexto do item aparece no detalhe.",
       "id" : "34D2EA32-DD0D-4405-93F6-FDABEBA7CC1B",
       "severity" : "must",
       "test" : {
@@ -62,7 +62,7 @@
         "mode" : "script",
         "ruleHash" : "afb0fca9e5ffc77b"
       },
-      "text" : "Detalhe + inspector: o painel lateral mostra o contexto do item (⌥⌘I)"
+      "text" : "Painel de IA à direita (⇧⌘C); contexto do item no detalhe"
     },
     {
       "author" : "ai",

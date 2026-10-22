@@ -40,7 +40,7 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "Sidebar min 200, ideal 240, max 320 (ProjectWindow); inspectors min 260, ideal 300-320, max 420-440. Não controlar largura de coluna com .frame.\nVerificar: colunas/inspectors novos usam esses modificadores.",
+      "details" : "V2: coluna de conteúdo do espaço min 220, ideal 260, max 340 (navigationSplitViewColumnWidth); painel de IA à direita via inspector min 300, ideal 340, max 460 (inspectorColumnWidth). Exceção: o trilho de espaços tem largura fixa definida em DesignTokens. Não controlar largura de coluna com .frame.\nVerificar: colunas/inspectors novos usam esses modificadores.",
       "id" : "047D2216-D1C9-4AFC-AA0A-D789DC1E8A60",
       "severity" : "must",
       "test" : {
@@ -128,7 +128,7 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "O chevron é um botão que só abre/fecha a seção, sem selecionar a linha nem trocar de página; várias seções podem ficar abertas; o estado fica persistido; a seção do item selecionado abre.\nVerificar: clicar no chevron não muda o conteúdo do detalhe.",
+      "details" : "V2: na coluna de conteúdo de cada espaço, o chevron de um grupo/seção é um botão que só abre/fecha, sem selecionar a linha nem trocar o detalhe; vários grupos podem ficar abertos; o estado é persistido; o grupo do item selecionado abre.\nVerificar: clicar no chevron não muda o conteúdo do detalhe.",
       "id" : "335DA4F8-7DBF-4120-8878-42130C661D69",
       "severity" : "must",
       "test" : {
@@ -137,12 +137,12 @@
         "reason" : "Comportamento de interação (chevron não seleciona nem troca de página); só verificável no app.",
         "ruleHash" : "9db1a99e1a1fcdd0"
       },
-      "text" : "O accordion da sidebar não depende da seleção"
+      "text" : "Grupos colapsáveis da coluna de conteúdo não dependem da seleção"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "SectionListView (Docs, Revisões, Regras, Ideias) filtra por texto livre e por tokens #tag ou pela barra de tags; chips de tag clicáveis filtram. Seção nova segue o mesmo padrão.\nVerificar: digitar #ui filtra só os itens com essa tag.",
+      "details" : "V2: o filtro fica no topo da coluna de conteúdo de cada espaço. SectionListView (ou sucessor V2) filtra por texto livre e por tokens #tag ou pela barra de tags; chips de tag clicáveis filtram. Seção nova segue o mesmo padrão.\nVerificar: digitar #ui filtra só os itens com essa tag.",
       "id" : "A999B857-E236-4893-97A9-07257A538B57",
       "severity" : "must",
       "test" : {
@@ -172,7 +172,7 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : ".toolbarBackgroundVisibility(.hidden, for: .windowToolbar) na WelcomeView e na coluna de detalhe do ProjectWindow, para o header ter a mesma cor do conteúdo e das barras laterais (check 04D2DF8D). Janelas/colunas novas seguem isso.\nVerificar: não aparece faixa de cor diferente no topo.",
+      "details" : ".toolbarBackgroundVisibility(.hidden, for: .windowToolbar) na tela de boas-vindas e na janela V2 do projeto (trilho, conteúdo e detalhe), para o header ter a mesma cor do conteúdo. Janelas/colunas novas seguem isso.\nVerificar: não aparece faixa de cor diferente no topo.",
       "id" : "492100C1-EFE3-488F-8368-08CE17A797DA",
       "severity" : "should",
       "test" : {
