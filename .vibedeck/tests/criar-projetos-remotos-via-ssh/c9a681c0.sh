@@ -1,11 +1,6 @@
 #!/usr/bin/env bash
-# C9A681C0: pendências pertencem a servidor+porta+usuário+diretório; nunca vão para outro destino.
-set -euo pipefail
-source "$(dirname "$0")/_lib.sh"
-applies
-needF $CONN 'public var connectionID: String { Self.digest("\(host)\u{0}\(port)\u{0}\(user)") }' "a conexão deve ser identificada por servidor, porta e usuário"
-needF $CONN 'public var id: String { Self.digest("\(connectionID)\u{0}\(directory)") }' "o projeto deve ser identificado também pelo diretório"
-needF $WS 'guard state.destination == destination else' "o cache deve recusar outro destino"
-in_body $SHEET 'func synchronize\(force' 'SSHFileTransport\(workspace\.destination\)' "a sincronização deve usar o destino de origem das pendências"
-run_tests destinationValidationAndIsolation pendingEditsAreIsolatedPerDestination
-finish
+# C9A681C0: pendências pertencem a servidor+porta+usuário+diretório.
+# NÃO SE APLICA ao Core Rust / app atual: o projeto SSH não tem mais espelho local: o Core Rust roda no servidor (ssh host vibedeck mcp -C <pasta>) e o app só fala MCP com ele (RemoteWorkspace.swift, CoreStore.sshLocation), sem cache, edição offline, pendências nem conflitos (a identidade do destino continua em SSHDestination.id, mas não há pendências a associar).
+# Decisão de arquitetura (briefing-regras.md, F01 arquitetura.md): sem espelho local nem sincronização.
+# Sai com 77 (n/a) em vez de passar; o motivo também está em `details` da regra.
+exit 77

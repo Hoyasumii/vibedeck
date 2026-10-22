@@ -192,7 +192,7 @@
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/interface-do-app/b382469c.sh",
-        "generatedAt" : "2026-10-09T00:50:49Z",
+        "generatedAt" : "2026-10-22T18:49:41Z",
         "mode" : "script",
         "reason" : "Sem assets de ícone, sem SwiftUI.Link, dependências de UI restritas",
         "ruleHash" : "dd83bb23d7b17f26"
@@ -202,15 +202,15 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:24:39Z",
-      "details" : "\"Mover para o Lixo\" no tópico chama releaseOrphanedIdeas; tópicos apagados fora do app (Finder, rm, outro processo) são pegos em handleExternalChanges e na abertura do projeto. Depois disso o badge \"Tópico: …\" some e o botão volta a \"Promover para Regras\". \"Despromover\" fica no menu de contexto do badge da ideia.\nVerificar: apagar o tópico pelo Finder com o app aberto e conferir a ideia.",
+      "details" : "\"Mover para o Lixo\" no tópico apaga pelo Core (delete_record → rules::delete_topic, que chama release_orphaned_ideas); tópicos apagados fora do app (Finder, rm, outro processo) também precisam soltar a ideia: handleExternalChanges recarrega as ideias e o Core despromove os órfãos (release_orphaned_ideas, idempotente). Depois disso o badge \"Tópico: …\" some e o botão volta a \"Promover para Regras\". \"Despromover\" fica no menu de contexto do badge da ideia.\nVerificar: apagar o tópico pelo Finder com o app aberto e conferir a ideia.",
       "id" : "1A4EF162-82B1-4940-8251-A2102964C3E8",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/interface-do-app/1a4ef162.sh",
-        "generatedAt" : "2026-10-09T00:50:49Z",
+        "generatedAt" : "2026-10-22T18:49:47Z",
         "mode" : "script",
         "reason" : "releaseOrphanedIdeas em deleteTopic, handleExternalChanges e abertura; UI de despromover",
-        "ruleHash" : "53de0d52ea08aef5"
+        "ruleHash" : "fce383893ae077d0"
       },
       "text" : "Tópico apagado de qualquer jeito despromove a ideia no app"
     }

@@ -1,10 +1,16 @@
 # Helpers compartilhados pelos scripts do tópico aumentar-o-catalogo-de-padroes (use com `source`).
 cd "${VIBEDECK_ROOT:-.}"
 T=.vibedeck/tests/aumentar-o-catalogo-de-padroes
-PAT=Sources/VibeDeckCore/Patterns.swift
-TESTS=Tests/VibeDeckCoreTests/PatternsTests.swift
+CATJSON=crates/vibedeck-core/assets/patterns/catalog.json
+PAT=crates/vibedeck-core/src/stack/catalog.rs
+TESTS=crates/vibedeck-core/src/stack/catalog.rs
+ITESTS=crates/vibedeck-core/tests/stack_patterns.rs
+CLIRS=crates/vibedeck/src/cli/stack.rs
+MCPRS=crates/vibedeck/src/mcp/tools/stack.rs
+APPPAT=Sources/VibeDeckApp/Core/Model/Patterns.swift
 VIEW=Sources/VibeDeckApp/PatternsView.swift
-SCOPE='^Sources/VibeDeckCore/Patterns\.swift$|^Tests/VibeDeckCoreTests/PatternsTests\.swift$|^Sources/VibeDeckApp/PatternsView\.swift$|^Sources/vibedeck/(CLI|MCPServer)\.swift$|^README\.md$'
+BIN=target/debug/vibedeck
+SCOPE='^crates/vibedeck-core/assets/patterns/|^crates/vibedeck-core/src/stack/(catalog|patterns)\.rs$|^crates/vibedeck-core/tests/stack_patterns\.rs$|^crates/vibedeck/src/(cli|mcp/tools)/stack\.rs$|^Sources/VibeDeckApp/PatternsView\.swift$|^Sources/VibeDeckApp/Core/Model/Patterns\.swift$|^README\.md$'
 NEW_IDS="bdd design-by-contract modular-monolith event-driven value-object domain-service composite proxy"
 fail=0
 
@@ -16,7 +22,7 @@ applies() {
 }
 
 # py <<'PY' … PY: roda python (isolado) lendo o código do stdin, com _catalog importável; as variáveis NEW_IDS/PAT/TESTS/VIEW vão pelo ambiente.
-py() { NEW_IDS="$NEW_IDS" PAT="$PAT" TESTS="$TESTS" VIEW="$VIEW" python3 -I -c "import sys; sys.path.insert(0, '$T'); exec(sys.stdin.read())"; }
+py() { NEW_IDS="$NEW_IDS" PAT="$PAT" TESTS="$TESTS" VIEW="$VIEW" APPPAT="$APPPAT" CATJSON="$CATJSON" python3 -I -c "import sys; sys.path.insert(0, '$T'); exec(sys.stdin.read())"; }
 
 # need <arquivo> <regex ERE> <motivo>
 need() { grep -qE -- "$2" "$1" || { echo "$1: $3"; fail=1; }; }
@@ -28,20 +34,20 @@ body() {
     f { print; match($0, /^ */); if (RLENGTH==ind && $0 ~ /^ *}/) exit }' "$1"
 }
 
-build_cli() { swift build --product vibedeck >/dev/null 2>&1 || { swift build --product vibedeck 2>&1 | tail -20; exit 1; }; }
+build_cli() { cargo build -q -p vibedeck --offline 2>/dev/null || { cargo build -p vibedeck --offline 2>&1 | tail -20; exit 1; }; }
 
-# run_tests <Suite/test>...: confere que os @Test existem e roda só eles (Swift Testing).
+# run_tests <arquivo> <função>...: confere que os #[test] existem e roda só eles (cargo test, --lib ou --test conforme o arquivo).
 run_tests() {
-  local args=() spec name
+  local file="$1" spec scope out; shift
   for spec in "$@"; do
-    name="${spec##*/}"
-    grep -qE "func ${name}\(" "$TESTS" || { echo "$TESTS: teste '${name}' não existe (${spec})"; exit 1; }
-    args+=(--filter "${spec}")
+    grep -qE "fn ${spec}\(" "$file" || { echo "$file: teste '${spec}' não existe"; exit 1; }
   done
-  swift build --build-tests >/dev/null 2>&1 || { swift build --build-tests 2>&1 | tail -20; exit 1; }
-  local out
-  if ! out=$(swift test --skip-build "${args[@]}" 2>&1); then printf '%s\n' "$out" | tail -40; exit 1; fi
-  printf '%s\n' "$out" | grep "Test run with [1-9][0-9]* test" >/dev/null || { echo "nenhum teste rodou para: $*"; printf '%s\n' "$out" | tail -10; exit 1; }
+  case "$file" in
+    */src/*) scope="-p vibedeck-core --lib" ;;
+    */tests/*) scope="-p vibedeck-core --test $(basename "$file" .rs)" ;;
+  esac
+  if ! out=$(cargo test --offline -q $scope -- "$@" 2>&1); then printf '%s\n' "$out" | tail -40; exit 1; fi
+  printf '%s\n' "$out" | grep -E "test result: ok\. [1-9][0-9]* passed" >/dev/null || { echo "nenhum teste rodou para: $*"; printf '%s\n' "$out" | tail -10; exit 1; }
 }
 
 finish() { [ $fail -eq 0 ] || exit 1; }

@@ -4,8 +4,8 @@ source "$(dirname "$0")/_lib.sh"
 applies
 build_cli
 tmp=$(mktemp -d)
-.build/debug/vibedeck patterns catalog --json > "$tmp/all.json"
-for i in $NEW_IDS; do .build/debug/vibedeck patterns catalog "$i" --json > "$tmp/$i.json"; done
+$BIN patterns catalog --json > "$tmp/all.json"
+for i in $NEW_IDS; do $BIN patterns catalog "$i" --json > "$tmp/$i.json"; done
 VD_TMP="$tmp" py <<'PY' || fail=1
 import json, os
 d = os.environ["VD_TMP"]; ids = os.environ["NEW_IDS"].split(); bad = []

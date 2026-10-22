@@ -2,10 +2,10 @@
 # Registrar ações nunca bloqueia a UI: log assíncrono por padrão; sync só em crash/saída.
 set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
-applies '^Sources/VibeDeckApp/|^Sources/VibeDeckCore/Logging\.swift$'
+applies '^Sources/VibeDeckApp/'
 fail=0
 bad() { echo "$1"; fail=1; }
-L=Sources/VibeDeckCore/Logging.swift
+L=$APPLOG
 grep -q 'sync: Bool = false' "$L" || bad "$L: VDLog.log deve ter sync=false por padrão"
 grep -q 'queue.async(execute: work)' "$L" || bad "$L: caminho assíncrono ausente"
 # sync: true só no handler de exceção não tratada.

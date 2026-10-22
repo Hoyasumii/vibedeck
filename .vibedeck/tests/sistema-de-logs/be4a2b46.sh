@@ -2,7 +2,7 @@
 # Mudança externa aplicada ao vivo pelo app registra info store.external_changed com file relativo e origin=external.
 set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
-applies '^Sources/VibeDeckApp/ProjectModel\.swift$|^Sources/VibeDeckCore/Logging\.swift$'
+applies '^Sources/VibeDeckApp/(ProjectModel\.swift|Core/Support/Logging\.swift)$'
 P=Sources/VibeDeckApp/ProjectModel.swift
 blk=$(region "$P" 'func handleExternalChanges' '^    }$')
 fail=0

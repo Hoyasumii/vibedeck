@@ -4,62 +4,62 @@
   "description" : "Interface de linha de comando e servidor MCP usados por humanos e agentes.",
   "id" : "1CACB7ED-D37D-4E72-A574-4751F0D7761D",
   "paths" : [
-    "Sources/vibedeck/**"
+    "crates/vibedeck/**"
   ],
   "rules" : [
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "Hoje os dois cobrem as mesmas operações (status/projeto, links, docs, revisões, regras, checks, ideias, tags). Funcionalidade nova no ProjectStore que agentes ou humanos precisem ganha subcomando em CLI.swift e Tool em MCPServer.swift, com a mesma semântica.\nVerificar: o diff tem as duas pontas, ou a nota do check justifica a falta de uma.",
+      "details" : "Hoje os dois cobrem as mesmas operações (status/projeto, links, docs, revisões, regras, checks, ideias, tags). Funcionalidade nova no Store do vibedeck-core que agentes ou humanos precisem ganha subcomando em crates/vibedeck/src/cli e Tool em crates/vibedeck/src/mcp/tools, com a mesma semântica.\nVerificar: o diff tem as duas pontas, ou a nota do check justifica a falta de uma.",
       "id" : "C604B203-A022-48C7-92DA-F343DA4AE60B",
       "severity" : "must",
       "test" : {
-        "generatedAt" : "2026-10-09T01:21:00Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "manual",
         "reason" : "Exige julgamento: decidir se uma função nova do ProjectStore precisa de CLI e MCP, ou se a nota do check justifica faltar uma ponta.",
-        "ruleHash" : "b6cc6c744000e296"
+        "ruleHash" : "2af11e8c5bdce0b6"
       },
       "text" : "Operação nova no Core aparece no CLI e no MCP"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "add_review_item, add_rule, add_idea, add_idea_rule e submit_rule_check gravam .ai; no CLI, só com a flag --ai. Ferramenta MCP nova que cria registro segue o mesmo padrão e diz \"Marcado como author=ai.\" na descrição.\nVerificar: chamadas novas de create*/add* no MCP passam author: .ai.",
+      "details" : "add_review_item, add_rule, add_idea, add_idea_rule e submit_rule_check gravam Author::Ai; no CLI, só com a flag --ai. Ferramenta MCP nova que cria registro segue o mesmo padrão e diz \"author=ai\" na descrição.\nVerificar: chamadas novas de criação (add_*, import_*) no MCP passam Author::Ai.",
       "id" : "643AA948-85C0-485E-A110-E83B59C0B5BC",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/cli-e-mcp/643aa948.sh",
-        "generatedAt" : "2026-10-09T01:21:00Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
-        "ruleHash" : "4a82282f143faed1"
+        "ruleHash" : "188668bd3758ccbe"
       },
       "text" : "O que o MCP ou o CLI com --ai criam é author=ai"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "update_review_item com status=done e `vibedeck review set --status done` chamam store.ensureVerified antes de salvar. --force (pular a verificação) existe só no CLI, para humanos, e não pode ir para o MCP.\nVerificar: caminhos novos que mudam status para done também chamam ensureVerified.",
+      "details" : "update_review_item com status=done e `vibedeck review set --status done` passam por reviews::apply_update, que chama gate::ensure_verified antes de salvar. --force (pular a verificação) existe só no CLI, para humanos, e não pode ir para o MCP (que fixa force: false).\nVerificar: caminhos novos que mudam status para done também chamam ensure_verified (via apply_update).",
       "id" : "30A2FC1A-16E7-4708-A559-0CA78431EDD7",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/cli-e-mcp/30a2fc1a.sh",
-        "generatedAt" : "2026-10-09T01:21:00Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
-        "ruleHash" : "7fafc6c4b7dde57b"
+        "ruleHash" : "a554b4f8903dd085"
       },
-      "text" : "Marcar done passa por ensureVerified"
+      "text" : "Marcar done passa por ensure_verified"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "As instructions do servidor (REGRA OBRIGATÓRIA: rules_for -> submit_rule_check (scripts) -> corrigir até passed=true; manuais só com verify_manual=true) e as descrições de rules_for (\"OBRIGATÓRIO antes de concluir...\") e submit_rule_check (\"Com verify_manual=true, responda TODAS as manuais...\") não podem ser enfraquecidas nem removidas.\nVerificar: o texto continua no MCPServer.swift.",
+      "details" : "As instructions do servidor (REGRA OBRIGATÓRIA: rules_for -> submit_rule_check (scripts) -> corrigir até passed=true; manuais só com verify_manual=true) e as descrições de rules_for (\"OBRIGATÓRIO antes de concluir...\") e submit_rule_check (\"Com verify_manual=true, responda TODAS as manuais...\") não podem ser enfraquecidas nem removidas.\nVerificar: o texto continua em crates/vibedeck/src/mcp (instructions.rs e tools/rules.rs).",
       "id" : "A34C030C-D9E7-4C1A-A8E1-23E47D9B15AF",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/cli-e-mcp/a34c030c.sh",
-        "generatedAt" : "2026-10-09T12:34:17Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
-        "ruleHash" : "3b837ac36ebcb80e"
+        "ruleHash" : "252dd1e4ba2aa6fe"
       },
       "text" : "O MCP mantém o fluxo obrigatório de regras"
     },
@@ -71,7 +71,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/cli-e-mcp/7a76b622.sh",
-        "generatedAt" : "2026-10-09T01:21:00Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
         "ruleHash" : "a86c4c62a1649fe2"
       },
@@ -80,70 +80,70 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "O helper de arrays em MCPServer.swift aceita array JSON, string com JSON (\"[\\\"a\\\",\\\"b\\\"]\") ou texto separado por vírgulas (\"a, b\"), porque clientes MCP mandam de jeitos diferentes. Parâmetro novo de lista usa esse helper e type \"array\" no schema(...).\nVerificar: nenhum parse de lista feito à mão.",
+      "details" : "O helper Args::list (crates/vibedeck/src/mcp/args.rs) aceita array JSON, string com JSON (\"[\\\"a\\\",\\\"b\\\"]\") ou texto separado por vírgulas (\"a, b\"), porque clientes MCP mandam de jeitos diferentes. Parâmetro novo de lista usa esse helper e type \"array\" no schema.\nVerificar: nenhum parse de lista feito à mão.",
       "id" : "ED4D47D8-F744-4E94-A8EE-807E2AFF0670",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/cli-e-mcp/ed4d47d8.sh",
-        "generatedAt" : "2026-10-09T01:21:00Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
-        "ruleHash" : "12b25cb0759528fd"
+        "ruleHash" : "e8a8992eed47f912"
       },
       "text" : "Arrays de string do MCP aceitam três formatos"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : ".mcp.json é versionado, então o comando registrado deve ser o do PATH (symlink estável entre builds, ex.: ~/.local/bin/vibedeck) e só cai no binário atual se não houver um no PATH. Nunca gravar um caminho absoluto desta máquina no escopo project.\nVerificar: a lógica de resolução do executável em MCPServer.swift continua igual.",
+      "details" : ".mcp.json é versionado, então o comando registrado deve ser o do PATH (symlink estável entre builds, ex.: ~/.local/bin/vibedeck) e só cai no binário atual se não houver um no PATH. Nunca gravar um caminho absoluto desta máquina no escopo project.\nVerificar: a lógica de resolução do executável (usage::vibedeck_executable_path e mcp_install::install) continua igual.",
       "id" : "05F179F3-EB5F-474B-B8C1-9E4E0926B388",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/cli-e-mcp/05f179f3.sh",
-        "generatedAt" : "2026-10-09T01:21:00Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
-        "ruleHash" : "30278715b9c1ec22"
+        "ruleHash" : "76bca5b94098f4c5"
       },
       "text" : "mcp install registra o vibedeck do PATH"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "Agentes dependem de `review list --json`, `rules for --json`, etc. A saída JSON usa VDJSON (estável, chaves ordenadas). Comando novo de leitura ganha --json.\nVerificar: rodar o comando com --json e conferir que é JSON válido.",
+      "details" : "Agentes dependem de `review list --json`, `rules for --json`, etc. A saída JSON usa vibedeck_core::json::encode (estável, chaves ordenadas). Comando novo de leitura ganha --json.\nVerificar: rodar o comando com --json e conferir que é JSON válido.",
       "id" : "21E4D353-1916-4961-B355-EC7B8DEEB0B4",
       "severity" : "must",
       "test" : {
-        "generatedAt" : "2026-10-09T01:21:00Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "manual",
         "reason" : "Exige compilar e executar os comandos com --json num projeto; não é verificável por inspeção estática rápida e determinística.",
-        "ruleHash" : "da47fc3c70b06ad1"
+        "ruleHash" : "9c098b8a48737a50"
       },
       "text" : "Comandos de listagem e consulta mantêm --json"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "scripts/build-app.sh lê a versão de `version: \"...\"` em Sources/vibedeck/CLI.swift para o Info.plist e o nome VibeDeck-<versão>.dmg. Não duplicar a versão em outro lugar; manter o formato `version: \"x.y.z\"` em uma linha.\nVerificar: o grep do script ainda encontra a versão.",
+      "details" : "scripts/build-app.sh lê a versão de `version = \"...\"` em [workspace.package] do Cargo.toml raiz para o Info.plist e o nome VibeDeck-<versão>.dmg; os crates herdam com version.workspace = true. Não duplicar a versão em outro lugar; manter o formato `version = \"x.y.z\"` em uma linha.\nVerificar: o grep do script ainda encontra a versão.",
       "id" : "4913B3AF-4F67-4717-A7D4-9600D8BF0942",
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/cli-e-mcp/4913b3af.sh",
-        "generatedAt" : "2026-10-09T01:21:00Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
-        "ruleHash" : "656dc2ef538c6b22"
+        "ruleHash" : "48747f593e356ccc"
       },
-      "text" : "A version: em CLI.swift é a fonte da versão"
+      "text" : "A version do Cargo.toml (workspace) é a fonte da versão"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:24:39Z",
-      "details" : "`vibedeck ideas unpromote <ideia>` e a ferramenta MCP unpromote_idea chamam store.unpromoteIdea. A descrição do MCP diz \"Só faça isso quando o usuário pedir.\", como em promote_idea.\nVerificar: os dois existem e a frase está na descrição.",
+      "details" : "`vibedeck ideas unpromote <ideia>` e a ferramenta MCP unpromote_idea chamam store.unpromote_idea. A descrição do MCP diz \"Só faça isso quando o usuário pedir.\", como em promote_idea.\nVerificar: os dois existem e a frase está na descrição.",
       "id" : "D94F39E0-F874-43A0-86DC-21D9FEDEC02D",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/cli-e-mcp/d94f39e0.sh",
-        "generatedAt" : "2026-10-09T01:21:00Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
-        "ruleHash" : "cd376e2981bd471b"
+        "ruleHash" : "c50995a1d50b2d08"
       },
       "text" : "ideas unpromote e unpromote_idea existem e só rodam a pedido do usuário"
     }

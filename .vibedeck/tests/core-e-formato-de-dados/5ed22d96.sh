@@ -20,8 +20,9 @@ for f in sorted(glob.glob("crates/vibedeck-core/src/model/*.rs")):
         i, depth = m.end(), 1
         while depth and i < len(s):
             depth += {"{": 1, "}": -1}.get(s[i], 0); i += 1
+        body = re.sub(r'#\[(?:serde|derive)\(.*?\)\]', lambda mm: mm.group(0).replace("\n", " "), s[m.end():i - 1], flags=re.S)
         pend = ""
-        for line in s[m.end():i - 1].split("\n"):
+        for line in body.split("\n"):
             t = line.strip()
             if t.startswith("#["): pend += t; continue
             if not t or t.startswith("//"): continue

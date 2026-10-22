@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
-# A1A13E0F: criação, alteração e exclusão nos dados do projeto SSH são sincronizadas com a pasta remota.
 set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
-applies 'Sources/VibeDeckCore/ProjectStore\.swift$'
-need $WINDOW 'RemoteWorkspace\.existing\(at: model\.store\.root\).*RemoteProjectBar\(workspace: workspace\)' "o projeto SSH deve exibir a barra de sincronização"
-in_body $SHEET '^struct RemoteProjectBar' 'await status\.synchronize\(\)' "a barra deve sincronizar continuamente"
-in_body $SHEET 'func synchronize\(force' 'workspace\.synchronize\(using: SSHFileTransport\(workspace\.destination\)\)' "a sincronização deve enviar para o destino SSH do projeto"
-in_body $WS 'public func replace\(' 'rm -f " \+ quoted' "exclusões devem ser aplicadas no servidor"
-in_body $WS 'public func replace\(' 'mv -f " \+ tempQuote \+ " " \+ quoted' "criações/alterações devem ser gravadas no servidor"
-run_tests projectEditsSynchronizeAndContinueOffline durableEditsDeletionAndRestart remoteChangesRefreshCacheAndLocalFilesStayLocal
+applies
+# A1A13E0F: criação, alteração e exclusão nos dados do projeto SSH chegam à pasta remota (o Core roda lá, via MCP por SSH).
+need $STATUS 'RemoteProjectStatus\(workspace\)' "o projeto SSH deve exibir o estado da conexão"
+need Sources/VibeDeckApp/V2/V2StatusBar.swift 'V2RemoteEnvironmentSegment\(workspace: workspace\)' "a barra de status do projeto SSH deve mostrar a conexão"
+in_body $CSTORE 'static func sshLocation' 'RemoteExecution\.launcher\("vibedeck"' "o Core do projeto SSH deve rodar no servidor (ssh host vibedeck mcp)"
+in_body $CSTORE 'static func sshLocation' 'connection\.commandArguments\(login\)' "o Core remoto deve ser lançado pelo ssh do destino"
+needF $CSTORE 'self.location = try CoreStore.sshLocation(for: workspace)' "abrir uma raiz ssh:// deve usar a localização SSH"
+# Sem espelho local: nada de cache/sincronização no app.
+forbid $WS 'synchronize|pendingCount|conflictFiles' "o projeto SSH não deve manter espelho local nem sincronização"
+# O Core grava de forma atômica na pasta do servidor.
+need crates/vibedeck-core/src/store.rs 'pub fn write_atomic' "o Core Rust deve gravar de forma atômica"
 finish

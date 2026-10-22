@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-# ideia fechada não muda
 set -euo pipefail
-cd "${VIBEDECK_ROOT:-.}"
-out=$(swift test --filter RuleDiscoverTests 2>&1) || { echo "$out" | tail -30; echo "swift test falhou"; exit 1; }
-echo "$out" | grep -E 'Test savedViableVerdictPreservesClosedAndPromotedIdeas(\(\))?.* passed' >/dev/null || { echo "Tests/VibeDeckCoreTests/RuleDiscoverTests.swift: teste savedViableVerdictPreservesClosedAndPromotedIdeas não passou/ausente"; exit 1; }
+source "$(dirname "$0")/_lib.sh"
+applies
+# FD139F97: discarded/done nunca mudam de status ao salvar a avaliação.
+require_apply
+grep -qE 'var isClosed: Bool \{ self == \.discarded \|\| self == \.done \}' "$RULES" || bad "$RULES: IdeaStatus.isClosed deve ser discarded || done"
+has_test savedViableVerdictPreservesClosedAndPromotedIdeas
+finish

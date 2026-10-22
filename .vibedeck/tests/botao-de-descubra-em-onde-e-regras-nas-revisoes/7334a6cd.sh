@@ -1,19 +1,18 @@
 #!/usr/bin/env bash
+set -euo pipefail
 # O Descubra tem botão de cancelar e timeout, e descarta a resposta se o item mudou ou deixou de estar
 # selecionado durante a chamada.
-set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
-applies '^Sources/VibeDeckCore/CodexReadOnly\.swift$'
+applies '^Sources/VibeDeckApp/Core/AI/CodexReadOnly\.swift$'
 # Timeout.
-need "$CORE" 'public static let timeout: Duration = \.seconds\([0-9]+\)' "ReviewDiscover.timeout não definido"
+need "$CORE" 'static let timeout: Duration = \.seconds\([0-9]+\)' "ReviewDiscover.timeout não definido"
+need "$RS" 'pub const TIMEOUT_SECS: u64 = [0-9]+;' "TIMEOUT_SECS (Core Rust) não definido"
 need "$APP" 'Task\.sleep\(for: ReviewDiscover\.timeout\)' "o processo do claude não respeita ReviewDiscover.timeout"
 need "$APP" 'process\.terminate\(\)' "o timeout/cancelamento precisa encerrar o processo"
 need "$APP" 'throw VibeDeckError\.discoverTimedOut' "timeout precisa virar erro discoverTimedOut"
-if grep -q 'CodexReadOnly()' "$APP"; then
-  grep 'CodexReadOnly().run(' "$APP" | grep 'timeout: ReviewDiscover.timeout' >/dev/null || { echo "$APP: chamada Codex sem timeout: ReviewDiscover.timeout"; fail=1; }
-fi
+need "$OPERATION" 'timeout: \.seconds\(180\)' "a chamada Codex do Descubra precisa de timeout"
 # Cancelar.
-need "$VIEW" 'Button\("Cancelar"\) \{ discover\.cancel\(\) \}' "o inspetor precisa de um botão Cancelar durante o Descubra"
+need "$VIEW" 'LoggedButton\("Cancelar"\) \{ discover\.cancel\(\) \}' "o inspetor precisa de um botão Cancelar durante o Descubra"
 need "$APP" 'onCancel: \{' "cancelar a Task precisa encerrar o processo (withTaskCancellationHandler)"
 # Descarta a resposta após cancelamento.
 [ "$(grep -c 'guard !Task.isCancelled else { return }' "$APP")" -ge 2 ] || { echo "$APP: a resposta/erro precisa ser descartado se a Task foi cancelada"; fail=1; }

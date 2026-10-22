@@ -1,13 +1,6 @@
 #!/usr/bin/env bash
-# AF0519D5: projeto SSH recente reabre offline com dados e pendências do cache e indica "Desconectado".
-set -euo pipefail
-source "$(dirname "$0")/_lib.sh"
-applies
-needF $APPF '.onAppear { RecentProjects.shared.add(root) }' "projetos abertos devem entrar nos recentes"
-needF $WELCOME 'RemoteWorkspace.existing(at: url)?.destination.title' "recentes devem identificar o destino SSH"
-in_body $WS 'public static func existing' 'VDJSON\.decoder\.decode\(State\.self' "o estado do projeto SSH deve ser recuperado do disco sem conexão"
-need $WINDOW 'RemoteWorkspace\.existing\(at: model\.store\.root\).*RemoteProjectBar' "o projeto reaberto deve mostrar o estado da conexão"
-needF $SHEET 'var message = "Desconectado"' "o estado inicial deve ser desconectado"
-in_body $SHEET 'func synchronize\(force' 'message = "Desconectado · \\\(workspace\.pendingCount\) pendência' "falha de conexão deve indicar desconectado e pendências"
-run_tests durableEditsDeletionAndRestart failedUploadRetainsDurablePendingAndBase
-finish
+# AF0519D5: projeto SSH recente reabre offline com dados e pendências do cache e indica Desconectado.
+# NÃO SE APLICA ao Core Rust / app atual: o projeto SSH não tem mais espelho local: o Core Rust roda no servidor (ssh host vibedeck mcp -C <pasta>) e o app só fala MCP com ele (RemoteWorkspace.swift, CoreStore.sshLocation), sem cache, edição offline, pendências nem conflitos; os recentes guardam só a URL ssh://, e reabrir exige reconectar (V2RemoteEnvironment mostra conectando/conectado/offline).
+# Decisão de arquitetura (briefing-regras.md, F01 arquitetura.md): sem espelho local nem sincronização.
+# Sai com 77 (n/a) em vez de passar; o motivo também está em `details` da regra.
+exit 77

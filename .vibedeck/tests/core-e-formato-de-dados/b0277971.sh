@@ -6,7 +6,9 @@ applies '(^|/)crates/vibedeck-core/'
 python3 -I - <<'PY'
 import glob, re, sys
 bad = 0
-ALLOWED = {"resolve", "match_rule", "find_review_item", "resolve_item", "resolve_run_ref"}
+ALLOWED = {"resolve", "match_rule", "find_review_item", "find_item"}
+# Remoção por prefixo (links/claude/padrões) e o find_rule de docs/groups.rs têm contrato próprio (não são "busca de referência").
+ALLOWED_AT = {("project/links.rs", "remove"), ("project/claude.rs", "remove"), ("stack/patterns.rs", "pattern_index"), ("docs/groups.rs", "find_rule"), ("workflows/ops.rs", "resolve_run_ref")}
 for f in sorted(glob.glob("crates/vibedeck-core/src/**/*.rs", recursive=True)):
     src = open(f).read()
     src = src[:src.find("#[cfg(test)]")] if "#[cfg(test)]" in src else src
@@ -17,7 +19,7 @@ for f in sorted(glob.glob("crates/vibedeck-core/src/**/*.rs", recursive=True)):
             # o filter pode estar quebrado em linhas: olha a vizinhança
             if not any("id" in x for x in lines[max(0, n - 2):n + 1]): continue
         fn = next((re.search(r'fn (\w+)', lines[k]).group(1) for k in range(n, -1, -1) if re.search(r'\bfn \w+', lines[k])), "?")
-        if fn not in ALLOWED:
+        if fn not in ALLOWED and (f.split("src/", 1)[1], fn) not in ALLOWED_AT:
             print(f"{f}:{n+1}: busca por prefixo de id reimplementada em '{fn}'; reutilize slug::resolve/match_rule/find_review_item"); bad += 1
 def body(path, name):
     s = open(path).read()
@@ -28,6 +30,7 @@ checks = {
                                                        "ambiguous(reference, prefixed)", "exists_path(reference)"],
     ("crates/vibedeck-core/src/rules/topics.rs", "match_rule"): ["chars().count() >= 4", "RuleError::RuleNotFound", "RuleError::AmbiguousRule"],
     ("crates/vibedeck-core/src/rules/topics.rs", "find_review_item"): ["chars().count() >= 4", "AmbiguousItem", "ItemNotFound"],
+    ("crates/vibedeck-core/src/reviews/mod.rs", "find_item"): ["chars().count() >= 4", "Error::AmbiguousItem", "Error::ItemNotFound"],
 }
 for (p, fn), needles in checks.items():
     b = body(p, fn)

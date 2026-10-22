@@ -7,7 +7,12 @@
   "paths" : [
     "Sources/VibeDeckApp/WelcomeView.swift",
     "Sources/VibeDeckApp/VibeDeckApp.swift",
-    "Sources/VibeDeckApp/ProjectWindow.swift"
+    "Sources/VibeDeckApp/V2/V2ProjectWindow.swift",
+    "Sources/VibeDeckApp/V2/V2RemoteEnvironment.swift",
+    "Sources/VibeDeckApp/SSHProjectView.swift",
+    "Sources/VibeDeckApp/Core/RemoteWorkspace.swift",
+    "Sources/VibeDeckApp/Core/Support/SSHConnection.swift",
+    "Sources/VibeDeckApp/Core/Support/RemoteExecution.swift"
   ],
   "rules" : [
     {
@@ -18,7 +23,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/ed5c5fa5.sh",
-        "generatedAt" : "2026-10-21T15:14:08Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
         "ruleHash" : "1a954e3c9ce807ab"
       },
@@ -32,7 +37,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/15952e56.sh",
-        "generatedAt" : "2026-10-21T15:14:08Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
         "ruleHash" : "c5142f5e57d0d461"
       },
@@ -46,7 +51,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/4d6a689a.sh",
-        "generatedAt" : "2026-10-21T15:14:08Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
         "ruleHash" : "d4071a019f199648"
       },
@@ -60,7 +65,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/7260fedb.sh",
-        "generatedAt" : "2026-10-21T15:14:08Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
         "ruleHash" : "f7b4c31883a64add"
       },
@@ -74,7 +79,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/da0bc7a3.sh",
-        "generatedAt" : "2026-10-21T15:14:08Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
         "ruleHash" : "d85e55c962464d01"
       },
@@ -88,7 +93,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/1f73b1d5.sh",
-        "generatedAt" : "2026-10-21T15:14:08Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
         "ruleHash" : "857cb0b4046afbc5"
       },
@@ -102,7 +107,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/b24ae286.sh",
-        "generatedAt" : "2026-10-21T15:14:08Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
         "ruleHash" : "ece9ba39e8a9bf8f"
       },
@@ -116,7 +121,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/ef6c6e55.sh",
-        "generatedAt" : "2026-10-21T15:14:08Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
         "ruleHash" : "3da026daf86794b9"
       },
@@ -130,7 +135,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/131c047e.sh",
-        "generatedAt" : "2026-10-21T15:14:08Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
         "ruleHash" : "bf035630183a0b50"
       },
@@ -144,7 +149,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/9ae36b34.sh",
-        "generatedAt" : "2026-10-21T15:14:08Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
         "ruleHash" : "84dd807379c9d399"
       },
@@ -158,7 +163,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/a1a13e0f.sh",
-        "generatedAt" : "2026-10-21T15:14:08Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
         "ruleHash" : "a11973c76a075598"
       },
@@ -167,154 +172,154 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-20T00:42:38Z",
-      "details" : "Abrir, editar e inicializar projetos em um servidor com SSH/SFTP e sem VibeDeck instalado.",
+      "details" : "Não se aplica ao Core Rust: o projeto remoto agora exige o executável vibedeck no servidor (o Core Rust roda lá), não só SSH/SFTP. Verificação original: Abrir, editar e inicializar projetos em um servidor com SSH/SFTP e sem VibeDeck instalado.",
       "id" : "ED782F45-E458-467A-B100-9D9D6CA51001",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/ed782f45.sh",
-        "generatedAt" : "2026-10-21T15:14:08Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
-        "ruleHash" : "39f384878e8c91fa"
+        "ruleHash" : "962af2c02beadf00"
       },
       "text" : "O acesso aos arquivos do projeto remoto usa SSH/SFTP sem exigir executável VibeDeck instalado no servidor."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-20T00:42:38Z",
-      "details" : "Interromper a conexão durante uma sessão e confirmar novas edições sem reconectar.",
+      "details" : "Não se aplica ao Core Rust: o projeto SSH não tem mais espelho local; o Core Rust roda no servidor (ssh host vibedeck mcp -C <pasta>) e o app só fala MCP com ele, sem cache, edição offline, pendências nem conflitos; sem conexão o app não edita dados. Verificação original: Interromper a conexão durante uma sessão e confirmar novas edições sem reconectar.",
       "id" : "E6158DCD-9EBA-40C1-A71D-C4892919BB50",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/e6158dcd.sh",
-        "generatedAt" : "2026-10-21T15:14:08Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
-        "ruleHash" : "60c21a5b11c1aed9"
+        "ruleHash" : "157fc5ca5cf4c016"
       },
       "text" : "Após perder a conexão SSH, o app permite continuar editando os dados do projeto já carregados."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-20T00:42:38Z",
-      "details" : "Editar offline, encerrar o processo e reabrir o app; verificar que o conteúdo pendente foi recuperado.",
+      "details" : "Não se aplica ao Core Rust: o projeto SSH não tem mais espelho local; o Core Rust roda no servidor (ssh host vibedeck mcp -C <pasta>) e o app só fala MCP com ele, sem cache, edição offline, pendências nem conflitos. Verificação original: Editar offline, encerrar o processo e reabrir o app; verificar que o conteúdo pendente foi recuperado.",
       "id" : "FE660511-C444-415B-AD59-BD0418EBFFAC",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/fe660511.sh",
-        "generatedAt" : "2026-10-21T15:14:08Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
-        "ruleHash" : "0055b034402e680f"
+        "ruleHash" : "960489e97c07c235"
       },
       "text" : "Cada edição confirmada ainda não sincronizada é persistida localmente para recuperação após reiniciar o app."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-20T00:42:38Z",
-      "details" : "Manter pendências em dois destinos com o mesmo caminho de pasta e verificar que reconectar um deles não envia dados ao outro.",
+      "details" : "Não se aplica ao Core Rust: o projeto SSH não tem mais espelho local; o Core Rust roda no servidor (ssh host vibedeck mcp -C <pasta>) e o app só fala MCP com ele, sem cache, edição offline, pendências nem conflitos. Verificação original: Manter pendências em dois destinos com o mesmo caminho de pasta e verificar que reconectar um deles não envia dados ao outro.",
       "id" : "C9A681C0-1E82-4F0A-8555-D3832E2156D9",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/c9a681c0.sh",
-        "generatedAt" : "2026-10-21T15:14:08Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
-        "ruleHash" : "e884cf44cf64325f"
+        "ruleHash" : "32e7d30f940a65d1"
       },
       "text" : "As edições pendentes são associadas ao servidor, porta, usuário e diretório remoto de origem."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-20T00:42:38Z",
-      "details" : "Editar offline um arquivo que permanece inalterado no servidor, reconectar e verificar o conteúdo remoto.",
+      "details" : "Não se aplica ao Core Rust: o projeto SSH não tem mais espelho local; o Core Rust roda no servidor (ssh host vibedeck mcp -C <pasta>) e o app só fala MCP com ele, sem cache, edição offline, pendências nem conflitos. Verificação original: Editar offline um arquivo que permanece inalterado no servidor, reconectar e verificar o conteúdo remoto.",
       "id" : "79220E85-6D88-4431-ABC4-D966E46D9294",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/79220e85.sh",
-        "generatedAt" : "2026-10-21T15:14:08Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
-        "ruleHash" : "21279cc2bf49c6a3"
+        "ruleHash" : "dcd76f5e7970fe33"
       },
       "text" : "Ao restabelecer a conexão, o app sincroniza as edições pendentes que não apresentam conflito."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-20T00:42:38Z",
-      "details" : "Interromper uma transferência e verificar que a edição continua recuperável e é reenviada na próxima reconexão.",
+      "details" : "Não se aplica ao Core Rust: o projeto SSH não tem mais espelho local; o Core Rust roda no servidor (ssh host vibedeck mcp -C <pasta>) e o app só fala MCP com ele, sem cache, edição offline, pendências nem conflitos. Verificação original: Interromper uma transferência e verificar que a edição continua recuperável e é reenviada na próxima reconexão.",
       "id" : "E0AD947E-38B7-43CF-94D2-1DAFE7B832CA",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/e0ad947e.sh",
-        "generatedAt" : "2026-10-21T15:14:08Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
-        "ruleHash" : "09d4e94b066921c5"
+        "ruleHash" : "ab98648c0c48d34d"
       },
       "text" : "Uma edição pendente só deixa de ser pendente após confirmação de sua gravação no servidor."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-20T00:42:38Z",
-      "details" : "Alterar o mesmo arquivo por outra conexão enquanto o app está offline e verificar que o envio automático é bloqueado para esse arquivo.",
+      "details" : "Não se aplica ao Core Rust: o projeto SSH não tem mais espelho local; o Core Rust roda no servidor (ssh host vibedeck mcp -C <pasta>) e o app só fala MCP com ele, sem cache, edição offline, pendências nem conflitos. Verificação original: Alterar o mesmo arquivo por outra conexão enquanto o app está offline e verificar que o envio automático é bloqueado para esse arquivo.",
       "id" : "A6181C00-82F6-4C06-A7FF-9CDE63ED0C63",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/a6181c00.sh",
-        "generatedAt" : "2026-10-21T15:14:08Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
-        "ruleHash" : "6e12cae68da0ccd0"
+        "ruleHash" : "f306b205cc1ed40d"
       },
       "text" : "Antes de enviar uma edição pendente, o app detecta se o arquivo remoto mudou em relação à versão usada como base da edição."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-20T00:42:38Z",
-      "details" : "Criar versões diferentes do mesmo arquivo e verificar que ambas podem ser inspecionadas antes da escolha.",
+      "details" : "Não se aplica ao Core Rust: o projeto SSH não tem mais espelho local; o Core Rust roda no servidor (ssh host vibedeck mcp -C <pasta>) e o app só fala MCP com ele, sem cache, edição offline, pendências nem conflitos. Verificação original: Criar versões diferentes do mesmo arquivo e verificar que ambas podem ser inspecionadas antes da escolha.",
       "id" : "80A692FB-21C2-40C5-8CAE-7B32F7A4BDEB",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/80a692fb.sh",
-        "generatedAt" : "2026-10-21T15:14:08Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
-        "ruleHash" : "5656f5aa29b4b326"
+        "ruleHash" : "d2db18c6068e2bea"
       },
       "text" : "Um conflito de edição apresenta a versão local e a versão remota para o usuário escolher qual preservar."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-20T00:42:38Z",
-      "details" : "Fechar a apresentação do conflito sem escolher e verificar que a versão remota e a pendência local permanecem preservadas.",
+      "details" : "Não se aplica ao Core Rust: o projeto SSH não tem mais espelho local; o Core Rust roda no servidor (ssh host vibedeck mcp -C <pasta>) e o app só fala MCP com ele, sem cache, edição offline, pendências nem conflitos. Verificação original: Fechar a apresentação do conflito sem escolher e verificar que a versão remota e a pendência local permanecem preservadas.",
       "id" : "B9E0F0E2-D41D-4F4F-B9B6-A01E0B0821F6",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/b9e0f0e2.sh",
-        "generatedAt" : "2026-10-21T15:14:09Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
-        "ruleHash" : "aab7381847a7a902"
+        "ruleHash" : "6b4b446387729131"
       },
       "text" : "Um arquivo em conflito permanece sem sobrescrita automática até o usuário escolher uma versão."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-20T00:42:38Z",
-      "details" : "Editar offline, apagar o arquivo no servidor, reconectar e conferir sua recriação no caminho original com o conteúdo local.",
+      "details" : "Não se aplica ao Core Rust: o projeto SSH não tem mais espelho local; o Core Rust roda no servidor (ssh host vibedeck mcp -C <pasta>) e o app só fala MCP com ele, sem cache, edição offline, pendências nem conflitos. Verificação original: Editar offline, apagar o arquivo no servidor, reconectar e conferir sua recriação no caminho original com o conteúdo local.",
       "id" : "F6C6F8A2-309B-4204-A9FA-DB3C64998AE6",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/f6c6f8a2.sh",
-        "generatedAt" : "2026-10-21T15:14:09Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
-        "ruleHash" : "3d042c2ebbc413eb"
+        "ruleHash" : "c2bc451c117f5f09"
       },
       "text" : "Ao reconectar, um arquivo editado offline que foi apagado no servidor é recriado automaticamente com a versão local."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-20T00:42:38Z",
-      "details" : "Provocar cada estado e verificar que o app não apresenta alterações apenas locais como já sincronizadas.",
+      "details" : "Não se aplica ao Core Rust: o projeto SSH não tem mais espelho local; o Core Rust roda no servidor (ssh host vibedeck mcp -C <pasta>) e o app só fala MCP com ele, sem cache, edição offline, pendências nem conflitos; a interface só distingue conectando, conectado e offline. Verificação original: Provocar cada estado e verificar que o app não apresenta alterações apenas locais como já sincronizadas.",
       "id" : "32CD8C54-2CA5-40D1-81E5-B2E752B0E186",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/32cd8c54.sh",
-        "generatedAt" : "2026-10-21T15:14:09Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
-        "ruleHash" : "c68220314908e60d"
+        "ruleHash" : "48f39dc1d1ec09e4"
       },
       "text" : "A interface distingue projeto desconectado, sincronização em andamento, alterações pendentes, conflito e projeto sincronizado."
     },
@@ -326,7 +331,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/d12cd479.sh",
-        "generatedAt" : "2026-10-21T15:14:09Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
         "ruleHash" : "4c9d3c89b493ed6c"
       },
@@ -340,7 +345,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/e0c84df2.sh",
-        "generatedAt" : "2026-10-21T15:14:09Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
         "ruleHash" : "ed523d44c512e80d"
       },
@@ -354,7 +359,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/48989eac.sh",
-        "generatedAt" : "2026-10-21T15:14:09Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
         "ruleHash" : "3c5423bc8c3d264e"
       },
@@ -368,7 +373,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/097368fd.sh",
-        "generatedAt" : "2026-10-21T15:14:09Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
         "ruleHash" : "57e2cbd3f4998674"
       },
@@ -381,7 +386,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/24ceb689.sh",
-        "generatedAt" : "2026-10-21T15:14:09Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
         "ruleHash" : "7604c4b115faf7bb"
       },
@@ -394,7 +399,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/056cdd83.sh",
-        "generatedAt" : "2026-10-21T15:14:09Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
         "ruleHash" : "e8bcfcc1e70e9df1"
       },
@@ -407,7 +412,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/2f3321f0.sh",
-        "generatedAt" : "2026-10-21T15:14:09Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
         "ruleHash" : "2422e3abc083bf27"
       },
@@ -416,39 +421,42 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-20T02:52:04Z",
+      "details" : "Não se aplica ao Core Rust: o projeto SSH não tem mais espelho local; o Core Rust roda no servidor (ssh host vibedeck mcp -C <pasta>) e o app só fala MCP com ele, sem cache, edição offline, pendências nem conflitos; requireSynchronized() é no-op.",
       "id" : "65DF919D-D2ED-4379-9CAD-04A4F833B460",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/65df919d.sh",
-        "generatedAt" : "2026-10-21T15:14:09Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
-        "ruleHash" : "46a08f485c994797"
+        "ruleHash" : "7855894d3548e4d3"
       },
       "text" : "Novas ações de IA e scripts de regras aguardam sincronização das pendências e resolução dos conflitos; o terminal permanece disponível."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-20T02:52:06Z",
+      "details" : "Não se aplica ao Core Rust: não existe mais laço de reconexão automática com intervalo crescente (era parte da sincronização do espelho); resta o botão Reconectar e a senha só por ação do usuário.",
       "id" : "A83A6E65-25FE-498B-919B-1D1FE66555E8",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/a83a6e65.sh",
-        "generatedAt" : "2026-10-21T15:14:09Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
-        "ruleHash" : "5d7fa84bd61cb14c"
+        "ruleHash" : "7e4091d7fd3fa736"
       },
       "text" : "Após perder a conexão SSH, o app tenta reconectar automaticamente com intervalos crescentes e oferece Reconectar; pedidos de senha exigem interação do usuário."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-20T02:52:07Z",
+      "details" : "Não se aplica ao Core Rust: o projeto SSH não tem mais espelho local; o Core Rust roda no servidor (ssh host vibedeck mcp -C <pasta>) e o app só fala MCP com ele, sem cache, edição offline, pendências nem conflitos; reabrir um recente exige reconectar.",
       "id" : "AF0519D5-C3A6-4ECE-A563-7914A1026792",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/af0519d5.sh",
-        "generatedAt" : "2026-10-21T15:14:09Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
-        "ruleHash" : "683d0132b7d134c0"
+        "ruleHash" : "03b8fbe496359470"
       },
       "text" : "Um projeto SSH já carregado pode ser reaberto offline com seus dados e pendências recuperados, indicando claramente o estado desconectado."
     },
@@ -459,7 +467,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/criar-projetos-remotos-via-ssh/3b2802ca.sh",
-        "generatedAt" : "2026-10-21T15:14:09Z",
+        "generatedAt" : "2026-10-22T18:50:44Z",
         "mode" : "script",
         "ruleHash" : "ff9133bf232745a8"
       },

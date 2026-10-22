@@ -9,11 +9,12 @@
     "Sources/VibeDeckApp/RuleDiscover.swift",
     "Sources/VibeDeckApp/ClaudeSession.swift",
     "Sources/VibeDeckApp/WorkflowView.swift",
-    "Sources/VibeDeckCore/Rules.swift",
     "Sources/VibeDeckApp/ProjectModel.swift",
-    "Sources/VibeDeckCore/WorkflowRuns.swift",
-    "Tests/VibeDeckCoreTests/RuleDiscoverTests.swift",
-    "Tests/VibeDeckCoreTests/WorkflowRunsTests.swift"
+    "Sources/VibeDeckApp/V2/V2ProjectWindow.swift",
+    "Sources/VibeDeckApp/Core/Model/Rules.swift",
+    "Sources/VibeDeckApp/Core/CoreStore+Items.swift",
+    "crates/vibedeck-core/src/ideas.rs",
+    "crates/vibedeck-core/src/workflows/**"
   ],
   "rules" : [
     {
@@ -24,7 +25,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/3939ae62.sh",
-        "generatedAt" : "2026-10-21T15:12:47Z",
+        "generatedAt" : "2026-10-22T18:45:49Z",
         "mode" : "script",
         "ruleHash" : "bb52573f8fce3d66"
       },
@@ -38,7 +39,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/975d245b.sh",
-        "generatedAt" : "2026-10-21T15:12:47Z",
+        "generatedAt" : "2026-10-22T18:45:49Z",
         "mode" : "script",
         "ruleHash" : "3b996e7d3e11bae3"
       },
@@ -52,7 +53,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/7c96a9c8.sh",
-        "generatedAt" : "2026-10-21T15:12:47Z",
+        "generatedAt" : "2026-10-22T18:45:49Z",
         "mode" : "script",
         "ruleHash" : "9b35460cd43b1d99"
       },
@@ -66,7 +67,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/f6d23e52.sh",
-        "generatedAt" : "2026-10-21T15:12:47Z",
+        "generatedAt" : "2026-10-22T18:45:49Z",
         "mode" : "script",
         "ruleHash" : "5a71db3406740e46"
       },
@@ -80,7 +81,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/2ec0ae3e.sh",
-        "generatedAt" : "2026-10-21T15:12:47Z",
+        "generatedAt" : "2026-10-22T18:45:49Z",
         "mode" : "script",
         "ruleHash" : "ed637d9b2c5e796e"
       },
@@ -94,7 +95,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/b931c93f.sh",
-        "generatedAt" : "2026-10-21T15:12:47Z",
+        "generatedAt" : "2026-10-22T18:45:49Z",
         "mode" : "script",
         "ruleHash" : "b5c2287ae4d917be"
       },
@@ -108,7 +109,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/f2157eb6.sh",
-        "generatedAt" : "2026-10-21T15:12:47Z",
+        "generatedAt" : "2026-10-22T18:45:49Z",
         "mode" : "script",
         "ruleHash" : "a7d543a33c79c718"
       },
@@ -122,7 +123,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/7e0054d4.sh",
-        "generatedAt" : "2026-10-21T15:12:47Z",
+        "generatedAt" : "2026-10-22T18:45:49Z",
         "mode" : "script",
         "ruleHash" : "e97d612c98ab3e01"
       },
@@ -136,7 +137,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/aefcdb67.sh",
-        "generatedAt" : "2026-10-21T15:12:47Z",
+        "generatedAt" : "2026-10-22T18:45:49Z",
         "mode" : "script",
         "ruleHash" : "5c4711030f272b97"
       },
@@ -150,7 +151,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/d008570a.sh",
-        "generatedAt" : "2026-10-21T15:12:48Z",
+        "generatedAt" : "2026-10-22T18:45:49Z",
         "mode" : "script",
         "ruleHash" : "4a880443d8db9d45"
       },
@@ -164,7 +165,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/a3efe728.sh",
-        "generatedAt" : "2026-10-21T15:12:48Z",
+        "generatedAt" : "2026-10-22T18:45:49Z",
         "mode" : "script",
         "ruleHash" : "68956e0e9766bd1d"
       },
@@ -178,7 +179,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/7b7c27c6.sh",
-        "generatedAt" : "2026-10-21T15:12:48Z",
+        "generatedAt" : "2026-10-22T18:45:49Z",
         "mode" : "script",
         "ruleHash" : "69773ca54ad42867"
       },
@@ -192,7 +193,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/aa2e3bf6.sh",
-        "generatedAt" : "2026-10-21T15:12:48Z",
+        "generatedAt" : "2026-10-22T18:45:49Z",
         "mode" : "script",
         "ruleHash" : "0c3ec9d841ba2276"
       },
@@ -206,7 +207,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/624c3483.sh",
-        "generatedAt" : "2026-10-21T15:12:48Z",
+        "generatedAt" : "2026-10-22T18:45:49Z",
         "mode" : "script",
         "ruleHash" : "2a56a07c79c99ac3"
       },
@@ -220,7 +221,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/04eeb887.sh",
-        "generatedAt" : "2026-10-21T15:12:48Z",
+        "generatedAt" : "2026-10-22T18:45:49Z",
         "mode" : "script",
         "ruleHash" : "bd4b7555587bb39d"
       },
@@ -234,7 +235,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/7d9e4052.sh",
-        "generatedAt" : "2026-10-21T15:12:48Z",
+        "generatedAt" : "2026-10-22T18:45:49Z",
         "mode" : "script",
         "ruleHash" : "f1f8d5f5a956a3a1"
       },
@@ -248,7 +249,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/c7f89480.sh",
-        "generatedAt" : "2026-10-21T15:12:48Z",
+        "generatedAt" : "2026-10-22T18:45:49Z",
         "mode" : "script",
         "ruleHash" : "b5805e1965620303"
       },

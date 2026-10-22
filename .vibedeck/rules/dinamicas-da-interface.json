@@ -5,6 +5,7 @@
   "id" : "3A0D1BED-579F-40B2-B05E-E9958D237093",
   "paths" : [
     "Sources/**",
+    "crates/**",
     "schema/**"
   ],
   "rules" : [
@@ -44,7 +45,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/dinamicas-da-interface/9bbfb48c.sh",
-        "generatedAt" : "2026-10-09T01:26:45Z",
+        "generatedAt" : "2026-10-22T18:48:11Z",
         "mode" : "script",
         "ruleHash" : "5dcf28c934185de2"
       },
@@ -86,7 +87,7 @@
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/dinamicas-da-interface/365080a7.sh",
-        "generatedAt" : "2026-10-09T01:26:45Z",
+        "generatedAt" : "2026-10-22T18:48:11Z",
         "mode" : "script",
         "ruleHash" : "d0beb3e702e73e54"
       },

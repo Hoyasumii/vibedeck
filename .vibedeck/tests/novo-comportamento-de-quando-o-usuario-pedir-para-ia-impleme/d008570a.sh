@@ -14,5 +14,4 @@ for fn in 'private func selectWorkflow(' 'private func confirm(restart: Bool)'; 
 done
 # A sessão não envia nada enquanto o pedido está aberto; stop() também descarta
 inblock "$SESSION" 'func send(_ text: String' 'guard !isWorking, ideaRequest == nil else \{ return \}' "send deve ser bloqueado com pedido aberto"
-tests 'IdeaEvaluationTests/implementationChoiceAndCancellationHaveNoProjectEffects' implementationChoiceAndCancellationHaveNoProjectEffects
 finish

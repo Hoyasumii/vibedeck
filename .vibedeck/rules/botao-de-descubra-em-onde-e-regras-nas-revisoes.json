@@ -4,10 +4,11 @@
   "description" : "Regras vindas da ideia \"Botão de Descubra em \"Onde\" e \"Regras\" nas Revisões\".",
   "id" : "C0CBF882-C740-4B73-BE35-6CBE11579FE9",
   "paths" : [
-    "Sources/VibeDeckCore/ReviewDiscover.swift",
+    "Sources/VibeDeckApp/Core/Discover/ReviewDiscoverLogic.swift",
     "Sources/VibeDeckApp/ReviewDiscover*.swift",
     "Sources/VibeDeckApp/ReviewGroupView.swift",
-    "Tests/VibeDeckCoreTests/ReviewDiscoverTests.swift"
+    "Sources/VibeDeckApp/AIReadOnlyOperation.swift",
+    "crates/vibedeck-core/src/reviews/discover.rs"
   ],
   "rules" : [
     {
@@ -17,7 +18,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-descubra-em-onde-e-regras-nas-revisoes/46a96b82.sh",
-        "generatedAt" : "2026-10-09T01:31:23Z",
+        "generatedAt" : "2026-10-22T18:47:50Z",
         "mode" : "script",
         "ruleHash" : "cb1cda8e9eb5b968"
       },
@@ -31,7 +32,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-descubra-em-onde-e-regras-nas-revisoes/4d2eec85.sh",
-        "generatedAt" : "2026-10-09T01:31:23Z",
+        "generatedAt" : "2026-10-22T18:47:50Z",
         "mode" : "script",
         "ruleHash" : "bb550f693c27a388"
       },
@@ -44,7 +45,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-descubra-em-onde-e-regras-nas-revisoes/06b55036.sh",
-        "generatedAt" : "2026-10-09T01:31:23Z",
+        "generatedAt" : "2026-10-22T18:47:50Z",
         "mode" : "script",
         "ruleHash" : "67080f55363e2507"
       },
@@ -57,7 +58,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-descubra-em-onde-e-regras-nas-revisoes/52b60258.sh",
-        "generatedAt" : "2026-10-09T01:31:23Z",
+        "generatedAt" : "2026-10-22T18:47:50Z",
         "mode" : "script",
         "ruleHash" : "4eab7bcd92a5501e"
       },
@@ -70,7 +71,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-descubra-em-onde-e-regras-nas-revisoes/d670fad9.sh",
-        "generatedAt" : "2026-10-09T01:31:23Z",
+        "generatedAt" : "2026-10-22T18:47:50Z",
         "mode" : "script",
         "ruleHash" : "476bd21a6327f1f3"
       },
@@ -83,7 +84,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-descubra-em-onde-e-regras-nas-revisoes/a9d8fa72.sh",
-        "generatedAt" : "2026-10-09T01:31:23Z",
+        "generatedAt" : "2026-10-22T18:47:50Z",
         "mode" : "script",
         "ruleHash" : "86fe92e90752decd"
       },
@@ -96,7 +97,7 @@
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-descubra-em-onde-e-regras-nas-revisoes/2635526c.sh",
-        "generatedAt" : "2026-10-09T01:31:23Z",
+        "generatedAt" : "2026-10-22T18:47:50Z",
         "mode" : "script",
         "ruleHash" : "779cc9541b68aac1"
       },
@@ -109,7 +110,7 @@
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-descubra-em-onde-e-regras-nas-revisoes/7334a6cd.sh",
-        "generatedAt" : "2026-10-09T01:31:23Z",
+        "generatedAt" : "2026-10-22T18:47:50Z",
         "mode" : "script",
         "ruleHash" : "57f17cfdf7695257"
       },

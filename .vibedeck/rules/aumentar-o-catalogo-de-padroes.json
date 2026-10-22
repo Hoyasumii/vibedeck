@@ -5,53 +5,55 @@
   "description" : "Regras vindas da ideia \"Aumentar o catálogo de padrões\".",
   "id" : "10CE346D-922E-4E7B-8E38-1A2D9ABF61D3",
   "paths" : [
-    "Sources/VibeDeckCore/Patterns.swift",
-    "Tests/VibeDeckCoreTests/PatternsTests.swift",
+    "crates/vibedeck-core/src/stack/catalog.rs",
+    "crates/vibedeck-core/assets/patterns/catalog.json",
+    "crates/vibedeck-core/tests/stack_patterns.rs",
     "Sources/VibeDeckApp/PatternsView.swift",
-    "Sources/vibedeck/CLI.swift",
-    "Sources/vibedeck/MCPServer.swift",
+    "Sources/VibeDeckApp/Core/Model/Patterns.swift",
+    "crates/vibedeck/src/cli/stack.rs",
+    "crates/vibedeck/src/mcp/tools/stack.rs",
     "README.md"
   ],
   "rules" : [
     {
       "author" : "ai",
       "createdAt" : "2026-10-13T17:49:48Z",
-      "details" : "Verificar: o teste catalogIdsAreUniqueAndEveryPatternHasRules passa; ids e category do padrão novo existem em PatternCategory.all.",
+      "details" : "Verificar: o teste catalogo_expandido_tem_os_templates_esperados passa; ids e category do padrão novo existem em PatternCategory::ALL.",
       "id" : "BB4BE48B-F52E-4941-8604-2A9757784B5D",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-o-catalogo-de-padroes/bb4be48b.sh",
-        "generatedAt" : "2026-10-14T14:17:30Z",
+        "generatedAt" : "2026-10-22T18:43:12Z",
         "mode" : "script",
-        "ruleHash" : "56738b9f2aff4931"
+        "ruleHash" : "d3a301ec99bd4df0"
       },
-      "text" : "Todo padrão novo do catálogo entra em PatternCatalog.all com id único, nome, category de PatternCategory.all, summary e pelo menos uma regra"
+      "text" : "Todo padrão novo do catálogo entra em PatternCatalog::all() (assets/patterns/catalog.json) com id único, nome, category de PatternCategory::ALL, summary e pelo menos uma regra"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-13T17:49:48Z",
-      "details" : "Verificar: Slug.make(id) == id e nenhum matches(exactly:) de outro template responde ao id, nome ou alias novo; senão find() resolve o padrão errado.",
+      "details" : "Verificar: slug::make(id) == id e nenhum matches_exactly de outro template responde ao id, nome ou alias novo; senão find() resolve o padrão errado.",
       "id" : "0103954E-9D50-46AC-B132-7D308EDC50FD",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-o-catalogo-de-padroes/0103954e.sh",
-        "generatedAt" : "2026-10-14T14:17:30Z",
+        "generatedAt" : "2026-10-22T18:43:12Z",
         "mode" : "script",
-        "ruleHash" : "111acd37c916905a"
+        "ruleHash" : "1c930a170f004945"
       },
-      "text" : "O id do padrão novo é um slug (Slug.make) e não colide com id, nome ou alias de outro padrão do catálogo"
+      "text" : "O id do padrão novo é um slug (slug::make) e não colide com id, nome ou alias de outro padrão do catálogo"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-13T17:49:48Z",
-      "details" : "Verificar: PatternCatalog.find com o nome em outro idioma e com a sigla comum devolve o padrão (ex.: 'domain-driven design' → ddd).",
+      "details" : "Verificar: PatternCatalog::find com o nome em outro idioma e com a sigla comum devolve o padrão (ex.: 'domain-driven design' → ddd).",
       "id" : "BB16FAC4-DB6B-4BE0-91A8-143C75984EA5",
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-o-catalogo-de-padroes/bb16fac4.sh",
-        "generatedAt" : "2026-10-14T14:17:30Z",
+        "generatedAt" : "2026-10-22T18:43:12Z",
         "mode" : "script",
-        "ruleHash" : "8934f518db9a6700"
+        "ruleHash" : "ec7b9d17806ee345"
       },
       "text" : "Cada padrão novo traz aliases em português e inglês para os nomes pelos quais é conhecido"
     },
@@ -63,7 +65,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-o-catalogo-de-padroes/d1840685.sh",
-        "generatedAt" : "2026-10-14T14:17:30Z",
+        "generatedAt" : "2026-10-22T18:43:12Z",
         "mode" : "script",
         "ruleHash" : "967fbb21a2e83bbe"
       },
@@ -91,7 +93,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-o-catalogo-de-padroes/5819e3b4.sh",
-        "generatedAt" : "2026-10-14T14:17:30Z",
+        "generatedAt" : "2026-10-22T18:43:12Z",
         "mode" : "script",
         "ruleHash" : "141bb518ef342ba6"
       },
@@ -100,44 +102,44 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-13T17:49:48Z",
-      "details" : "Verificar: PatternsTests tem um teste que adiciona cada novo id (ou todos os do catálogo) e confere topic.sourcePattern e rules.count.",
+      "details" : "Verificar: tests/stack_patterns.rs tem um teste que adiciona cada id do catálogo e confere topic.source_pattern e rules.len().",
       "id" : "64932D91-2FB9-4B39-AAB5-CEB3FB3BD5FD",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-o-catalogo-de-padroes/64932d91.sh",
-        "generatedAt" : "2026-10-14T14:17:30Z",
+        "generatedAt" : "2026-10-22T18:43:12Z",
         "mode" : "script",
-        "ruleHash" : "3911089ab4c3c112"
+        "ruleHash" : "a3c3afc10945dfce"
       },
-      "text" : "Um teste cobre os padrões adicionados: addPatterns pelo id cria um tópico com sourcePattern e o mesmo número de regras do template"
+      "text" : "Um teste cobre os padrões adicionados: add_patterns pelo id cria um tópico com source_pattern e o mesmo número de regras do template"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-13T17:49:48Z",
-      "details" : "Verificar: a lista da PatternsView é derivada de PatternCatalog.all e PatternCategory.all, sem listas fixas de ids; uma categoria nova entra em PatternCategory.all e em label(_:).",
+      "details" : "Verificar: a lista da PatternsView é derivada do catálogo e de PatternCategory.all, sem listas fixas de ids; uma categoria nova entra em PatternCategory::ALL / label do Core Rust e no label(_:) do app.",
       "id" : "DB3EAF5A-92E6-4292-AE04-3BA10FA10636",
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-o-catalogo-de-padroes/db3eaf5a.sh",
-        "generatedAt" : "2026-10-14T14:17:30Z",
+        "generatedAt" : "2026-10-22T18:43:12Z",
         "mode" : "script",
-        "ruleHash" : "e43f97354dd5c5a5"
+        "ruleHash" : "f6308afdc3a01aec"
       },
-      "text" : "A PatternsView exibe os padrões novos agrupados por PatternCategory sem mudança de código quando a categoria já existe"
+      "text" : "A PatternsView exibe os padrões novos agrupados por categoria sem mudança de código quando a categoria já existe"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-13T17:49:48Z",
-      "details" : "Verificar: grep por ids de padrões fora de Patterns.swift e dos testes não acha listas paralelas; patterns list/search no CLI e no MCP devolvem os novos.",
+      "details" : "Verificar: grep por ids de padrões em crates/ fora de assets/patterns/catalog.json e dos testes não acha listas paralelas; patterns catalog no CLI e pattern_catalog no MCP devolvem os novos.",
       "id" : "08E3B7D9-E896-4488-BDD9-8CFC543BB94C",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-o-catalogo-de-padroes/08e3b7d9.sh",
-        "generatedAt" : "2026-10-14T14:17:30Z",
+        "generatedAt" : "2026-10-22T18:43:12Z",
         "mode" : "script",
-        "ruleHash" : "2737334c8a1b0c93"
+        "ruleHash" : "fea8ded5abca00c3"
       },
-      "text" : "Os padrões novos aparecem no CLI e no MCP pela mesma PatternCatalog, sem lista duplicada"
+      "text" : "Os padrões novos aparecem no CLI e no MCP pelo mesmo PatternCatalog do Core, sem lista duplicada"
     },
     {
       "author" : "ai",
@@ -147,7 +149,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-o-catalogo-de-padroes/02a3a32c.sh",
-        "generatedAt" : "2026-10-14T14:17:30Z",
+        "generatedAt" : "2026-10-22T18:43:12Z",
         "mode" : "script",
         "ruleHash" : "b0f11f46d375a073"
       },
@@ -161,7 +163,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-o-catalogo-de-padroes/d017d9bd.sh",
-        "generatedAt" : "2026-10-14T14:17:30Z",
+        "generatedAt" : "2026-10-22T18:43:12Z",
         "mode" : "script",
         "ruleHash" : "ff3ed0d35278e8da"
       },
@@ -170,28 +172,28 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-13T22:39:32Z",
-      "details" : "Verificar: em PatternsTests.swift, percorrer id, name e aliases de cada template; para cada referência, conferir que exatamente um template retorna true em matches(exactly:) e que find retorna seu id. Repetições normalizadas dentro do mesmo template são permitidas.",
+      "details" : "Verificar: em src/stack/catalog.rs, o teste toda_referencia_resolve_sem_ambiguidade percorre id, name e aliases de cada template; para cada referência, confere que exatamente um template retorna true em matches_exactly e que find retorna seu id. Repetições normalizadas dentro do mesmo template são permitidas.",
       "id" : "2FB10F58-AE83-4135-9758-A78F87B631C6",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-o-catalogo-de-padroes/2fb10f58.sh",
-        "generatedAt" : "2026-10-14T14:17:30Z",
+        "generatedAt" : "2026-10-22T18:43:12Z",
         "mode" : "script",
-        "ruleHash" : "e68e8b3d66de258d"
+        "ruleHash" : "37717774a87ea988"
       },
       "text" : "Um teste automatizado cobre a resolução inequívoca de todas as referências do catálogo."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-13T22:39:32Z",
-      "details" : "Verificar: um teste percorre os oito templates novos e confere details não vazio com hasPrefix(\"Verificar:\") em cada regra, sem exigir essa condição dos templates antigos.",
+      "details" : "Verificar: o teste regras_novas_trazem_verificacao_concreta percorre os oito templates novos (NEW_CATEGORIES) e confere details não vazio com starts_with(\"Verificar:\") em cada regra, sem exigir essa condição dos templates antigos.",
       "id" : "9F756E3B-0FAB-415C-A1AD-05B073AB3188",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-o-catalogo-de-padroes/9f756e3b.sh",
-        "generatedAt" : "2026-10-14T14:17:30Z",
+        "generatedAt" : "2026-10-22T18:43:12Z",
         "mode" : "script",
-        "ruleHash" : "bd115da9cbb02f4f"
+        "ruleHash" : "93c87f86df20ec13"
       },
       "text" : "Um teste automatizado valida o prefixo de verificação nas regras dos templates novos."
     },
@@ -203,7 +205,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-o-catalogo-de-padroes/26913f22.sh",
-        "generatedAt" : "2026-10-14T14:17:30Z",
+        "generatedAt" : "2026-10-22T18:43:12Z",
         "mode" : "script",
         "ruleHash" : "c3c53a1c6f73ffa3"
       },
@@ -217,7 +219,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-o-catalogo-de-padroes/6edc1feb.sh",
-        "generatedAt" : "2026-10-14T14:17:30Z",
+        "generatedAt" : "2026-10-22T18:43:12Z",
         "mode" : "script",
         "ruleHash" : "266f00645c530d01"
       },
@@ -231,7 +233,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-o-catalogo-de-padroes/e3842617.sh",
-        "generatedAt" : "2026-10-14T14:17:30Z",
+        "generatedAt" : "2026-10-22T18:43:12Z",
         "mode" : "script",
         "ruleHash" : "a430faa09f36464d"
       },

@@ -6,7 +6,7 @@ applies
 needF $SHEET '@State private var remember = false' "a opção de guardar senha deve iniciar desmarcada"
 needF $SHEET 'var remember = false' "a opção de guardar senha na reconexão deve iniciar desmarcada"
 needF $SHEET 'Toggle("Guardar senha no Chaves do macOS"' "falta a opção explícita de guardar a senha"
-B=$(body $CONN '^public enum SSHCredentials')
+B=$(body $CONN '^enum SSHCredentials')
 for p in 'kSecClassGenericPassword' 'SecItemAdd' 'SecItemCopyMatching' 'SecItemDelete'; do grep -q "$p" <<<"$B" || { echo "$CONN: SSHCredentials deve usar $p (Chaves do macOS)"; fail=1; }; done
 # Toda gravação de senha depende da opção explícita.
 while IFS= read -r hit; do

@@ -10,13 +10,13 @@ import subprocess
 import sys
 
 APP = 'Sources/VibeDeckApp/'
-CORE = 'Sources/VibeDeckCore/'
+CORE = 'crates/vibedeck-core/src/'
 TEST = 'Tests/VibeDeckAppTests/RuleExecutionModelTests.swift'
 WINDOW = APP + 'ProjectWindow.swift'
 MODEL = APP + 'ProjectModel.swift'
 PAGE = APP + 'SectionListView.swift'
 HELPER = '.vibedeck/tests/painel-lateral-melhorado/'
-scope = {WINDOW, MODEL, PAGE, CORE + 'Rules.swift', CORE + 'Models.swift', TEST,
+scope = {WINDOW, MODEL, PAGE, CORE + 'rules/mod.rs', CORE + 'model/mod.rs', TEST,
          'Package.swift', 'Package.resolved'}
 root = Path.cwd().resolve()
 changed = os.environ.get('VIBEDECK_FILES', '').splitlines()

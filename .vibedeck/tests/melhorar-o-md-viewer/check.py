@@ -24,7 +24,7 @@ DOC = BASE + "DocView.swift"
 IDEA = BASE + "IdeaView.swift"
 COMMON = {EDITOR, PREVIEW, DOC, IDEA, "Package.swift"}
 EXTRA = {
-    "F8FDC0F6": {BASE + "ProjectModel.swift", "Sources/VibeDeckCore/ProjectStore.swift"},
+    "F8FDC0F6": {BASE + "ProjectModel.swift", "crates/vibedeck-core/src/docs/mod.rs"},
     "BF5BA615": {BASE + "DocGenerate.swift", "Package.resolved"},
     "DB31B66D": {BASE + "DocGenerate.swift", "Package.resolved"},
     "5C7F52C8": {"Package.resolved"},
@@ -169,7 +169,8 @@ elif RULE == "F8FDC0F6":
     # Persistence paths must forward the unmodified binding, in addition to the
     # actual NSTextView/highlighter runtime round-trip below.
     require(DOC, r"model\.saveDoc\(slug, text: text\)", "save() deve persistir o binding sem transformação")
-    require(BASE + "ProjectModel.swift", r"func saveDoc\(.*?write\(Data\(text\.utf8\), to: store\.docURL\(slug\)\)", "saveDoc deve gravar os bytes markdown originais")
+    require(BASE + "ProjectModel.swift", r"func saveDoc\(.*?try await self\.store\.writeDoc\(slug, text: latest\)", "saveDoc deve gravar os bytes markdown originais")
+    require("crates/vibedeck-core/src/docs/mod.rs", r"pub fn write_doc\(.*?write_atomic\(&p, text\.as_bytes\(\)\)", "write_doc do Core deve gravar os bytes markdown recebidos, sem reescrita")
     require(IDEA, r"let body = text.*?\$0\.body = body\.isEmpty \? nil : body", "save() da ideia deve preservar o markdown")
     appkit("raw")
 elif RULE == "501B105D":

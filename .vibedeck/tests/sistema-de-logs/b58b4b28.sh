@@ -2,7 +2,7 @@
 # README e guide.md documentam ações/reações e a leitura por app, CLI e MCP (em pt-BR).
 set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
-applies '^README\.md$|^\.vibedeck/guide\.md$|^Sources/VibeDeckApp/|^Sources/vibedeck/'
+applies '^README\.md$|^\.vibedeck/guide\.md$|^Sources/VibeDeckApp/|^crates/vibedeck/'
 fail=0
 bad() { echo "$1"; fail=1; }
 for f in README.md .vibedeck/guide.md; do

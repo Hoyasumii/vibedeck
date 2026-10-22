@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-# new/exploring/approved viável -> approved
 set -euo pipefail
-cd "${VIBEDECK_ROOT:-.}"
-out=$(swift test --filter RuleDiscoverTests 2>&1) || { echo "$out" | tail -30; echo "swift test falhou"; exit 1; }
-echo "$out" | grep -E 'Test savedViableVerdictApprovesEligibleIdeas(\(\))?.* passed' >/dev/null || { echo "Tests/VibeDeckCoreTests/RuleDiscoverTests.swift: teste savedViableVerdictApprovesEligibleIdeas não passou/ausente"; exit 1; }
+source "$(dirname "$0")/_lib.sh"
+applies
+# E3F5E0D2: viável em new/exploring vira approved; approved continua approved.
+require_apply
+has_test savedViableVerdictApprovesEligibleIdeas
+grep -qE 'for status in \[IdeaStatus\.new, \.exploring, \.approved\]' "$TESTS" || bad "$TESTS: o teste deve cobrir new, exploring e approved"
+finish

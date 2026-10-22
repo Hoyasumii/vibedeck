@@ -4,6 +4,7 @@
   "description" : "Economia de contexto sem perda de requisitos ou verificações, em todas as instalações e provedores.",
   "id" : "D0BE7F4D-7EFB-4E50-A189-DAAB3AB10541",
   "paths" : [
+    "crates/**",
     "Sources/**",
     "Tests/**",
     "scripts/test-ai-efficiency.sh"
@@ -17,7 +18,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/eficiencia-de-ia/2f64266b.sh",
-        "generatedAt" : "2026-10-09T13:07:49Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
         "ruleHash" : "a7eb00a0f6830c76"
       },
@@ -26,14 +27,14 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-09T13:04:58Z",
-      "details" : "App, CLI, MCP, chat e funções estruturadas usam AIPromptPolicy. Prompts personalizados permanecem intactos.",
+      "details" : "Core Rust (claude -p, Codex, guia AGENTS, workflows, kits), app, CLI, MCP, chat e funções estruturadas usam a política compartilhada (ai::context::INSTRUCTIONS no Core; AIPromptPolicy no app). As cópias do texto em workflows/policy.txt e assets/kits/policy.txt não podem divergir. Prompts personalizados permanecem intactos.",
       "id" : "F12AA1DD-0FFB-48F8-912D-236E271AA842",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/eficiencia-de-ia/f12aa1dd.sh",
-        "generatedAt" : "2026-10-09T14:17:31Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
-        "ruleHash" : "69e1ce320e1e733d"
+        "ruleHash" : "d20e6c445d0261ec"
       },
       "text" : "Instruções comuns têm uma fonte compartilhada"
     },
@@ -45,7 +46,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/eficiencia-de-ia/3301bc0e.sh",
-        "generatedAt" : "2026-10-09T14:17:31Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
         "ruleHash" : "f4a53743a64e2c34"
       },
@@ -59,7 +60,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/eficiencia-de-ia/64f3eca8.sh",
-        "generatedAt" : "2026-10-09T13:07:49Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
         "ruleHash" : "e831b1f73f5f2e9b"
       },
@@ -73,7 +74,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/eficiencia-de-ia/fc9a5733.sh",
-        "generatedAt" : "2026-10-09T13:07:49Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
         "ruleHash" : "313e247f4d36616e"
       },
@@ -87,7 +88,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/eficiencia-de-ia/6088cc95.sh",
-        "generatedAt" : "2026-10-09T14:14:57Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
         "reason" : "Integridade e economia: guia, catálogo, resumo do submit_rule_check, rules_for compacto, política única e contrato/orçamento do MCP contra Tests/Fixtures.",
         "ruleHash" : "2d8bd2c41f1f39ce"
@@ -102,7 +103,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/eficiencia-de-ia/7974ee31.sh",
-        "generatedAt" : "2026-10-09T13:07:49Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
         "ruleHash" : "8436083b4d7f4c2b"
       },
@@ -116,7 +117,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/eficiencia-de-ia/ee39f0e7.sh",
-        "generatedAt" : "2026-10-09T14:17:31Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
         "ruleHash" : "d929e5007ce93b64"
       },

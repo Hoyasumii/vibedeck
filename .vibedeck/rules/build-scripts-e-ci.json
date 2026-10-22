@@ -6,6 +6,8 @@
   "paths" : [
     "scripts/**",
     "Package.swift",
+    "Cargo.toml",
+    "Cargo.lock",
     ".github/**",
     "assets/**"
   ],
@@ -13,16 +15,16 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "platforms: [.macOS(.v26)] e swift-tools-version: 6.2; três produtos (VibeDeckApp, vibedeck, VibeDeckCore); dependências só swift-argument-parser, swift-sdk (MCP), swift-markdown-ui e SwiftTerm (só no app, fixado em 1.11.x: 1.12+ compila um shader Metal que exige o Metal Toolchain). O VibeDeckCore não depende de nada externo nem de SwiftUI.\nVerificar: dependência nova é justificada e não entra no Core.",
+      "details" : "Package.swift: platforms: [.macOS(.v26)] e swift-tools-version: 6.2; um único produto (VibeDeckApp); dependências só swift-markdown-ui e SwiftTerm (fixado em 1.11.x: 1.12+ compila um shader Metal que exige o Metal Toolchain). O Core, a CLI e o MCP vivem no workspace Cargo (crates/vibedeck-core e crates/vibedeck, edition 2024): vibedeck-core não depende de clap nem do crate vibedeck.\nVerificar: dependência nova é justificada; o Swift não volta a ter Core/CLI/MCP e o Core Rust não ganha CLI/UI.",
       "id" : "B6B91F0E-F8CD-43C8-85A8-333C324684C7",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/build-scripts-e-ci/b6b91f0e.sh",
-        "generatedAt" : "2026-10-09T01:20:58Z",
+        "generatedAt" : "2026-10-22T18:50:04Z",
         "mode" : "script",
-        "ruleHash" : "fb968f046f6cfb7f"
+        "ruleHash" : "182b8b330cd90135"
       },
-      "text" : "macOS 26 e swift-tools 6.2 no Package.swift"
+      "text" : "macOS 26 e swift-tools 6.2 no Package.swift (só o app); Core em Rust no workspace Cargo"
     },
     {
       "author" : "ai",
@@ -41,30 +43,30 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "swift.yml tem paths-ignore worker/** e roda `swift test` no macos-latest com Xcode latest-stable; worker.yml só dispara com worker/**, schema/** ou o próprio workflow, e o job deploy (wrangler, concurrency worker-deploy, secrets CLOUDFLARE_*) só roda em push na main, depois do check.\nVerificar: workflows novos ou alterados mantêm esses filtros.",
+      "details" : "rust.yml dispara só com crates/**, Cargo.*, schema/**, scripts/** ou o próprio workflow e roda fmt, clippy -D warnings e `cargo test`; worker.yml só dispara com worker/**, schema/** ou o próprio workflow, e o job deploy (wrangler, concurrency worker-deploy, secrets CLOUDFLARE_*) só roda em push na main, depois do check. Os workflows foram removidos temporariamente (commit 63a1a38, CI/CD desativado): sem .github/workflows o script retorna 77 (não se aplica) até serem recriados.\nVerificar: workflows novos ou alterados mantêm esses filtros.",
       "id" : "A111C3ED-0A9C-4368-83DE-7C91B1697406",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/build-scripts-e-ci/a111c3ed.sh",
-        "generatedAt" : "2026-10-09T01:20:58Z",
+        "generatedAt" : "2026-10-22T18:50:04Z",
         "mode" : "script",
-        "ruleHash" : "7569bbd6ef9e5632"
+        "ruleHash" : "01db1777212b7092"
       },
-      "text" : "Os workflows ignoram os paths um do outro; deploy só na main"
+      "text" : "Cada workflow só dispara pelos próprios paths; deploy do worker só na main"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "Gera build/VibeDeck.app com o app em Contents/MacOS/VibeDeck, o CLI em Contents/Helpers/vibedeck, bundles SwiftPM em Resources, AppIcon.icns, Info.plist com a versão do CLI, e o DMG build/VibeDeck-<versão>.dmg; --install-cli faz um symlink em ~/.local/bin. build/ não é versionado.\nVerificar: rodar scripts/build-app.sh e abrir o app.",
+      "details" : "Gera build/VibeDeck.app com o app em Contents/MacOS/VibeDeck, o Core Rust `vibedeck` (cargo build --release -p vibedeck, ou VIBEDECK_BIN pré-compilado) em Contents/MacOS/vibedeck (o app fala com ele por MCP), bundles SwiftPM em Resources, AppIcon.icns, fontes, Info.plist com a versão do workspace Cargo (Cargo.toml), e o DMG build/VibeDeck-<versão>.dmg; --install-cli faz um symlink em ~/.local/bin. build/ não é versionado.\nVerificar: rodar scripts/build-app.sh e abrir o app.",
       "id" : "B7D9E63A-D446-47D8-8E57-151F9E4E1AC4",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/build-scripts-e-ci/b7d9e63a.sh",
-        "generatedAt" : "2026-10-09T01:20:58Z",
+        "generatedAt" : "2026-10-22T18:50:04Z",
         "mode" : "script",
-        "ruleHash" : "230aa6c790baf577"
+        "ruleHash" : "a752135fe68109af"
       },
-      "text" : "build-app.sh empacota o CLI dentro do app e gera o DMG"
+      "text" : "build-app.sh empacota o Core Rust dentro do app e gera o DMG"
     },
     {
       "author" : "ai",

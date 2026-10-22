@@ -172,14 +172,14 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-12T03:21:50Z",
-      "details" : "submit_check e run_rule_tests chamam o mesmo run_scripts paralelo; não há caminho sequencial separado só para CLI/MCP (crates/vibedeck só chama rules::submit_check e rules::run_rule_tests).",
+      "details" : "submit_check (via submit_check_with) e run_rule_tests (via run_rule_tests_with) chamam o mesmo run_scripts paralelo; não há caminho sequencial separado só para CLI/MCP (crates/vibedeck só chama rules::submit_check*, rules::run_rule_tests*).",
       "id" : "99B49EF4-3A88-4EA6-ADFC-6AEF6F26046B",
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/99b49ef4.sh",
-        "generatedAt" : "2026-10-22T18:41:30Z",
+        "generatedAt" : "2026-10-22T18:52:45Z",
         "mode" : "script",
-        "ruleHash" : "1e61979eca5e2605"
+        "ruleHash" : "f00c60c4057cf3d0"
       },
       "text" : "O CLI (rules check) e o MCP (submit_rule_check) usam a mesma execução paralela do Core que o app."
     },
@@ -233,7 +233,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/82ca1706.sh",
-        "generatedAt" : "2026-10-22T18:41:30Z",
+        "generatedAt" : "2026-10-22T18:52:45Z",
         "mode" : "script",
         "ruleHash" : "7e1b262924df7ee4"
       },
@@ -340,14 +340,14 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-12T03:51:29Z",
-      "details" : "submit_check chama run_scripts com RunOptions::default() (sem stop_on_must_failure nem cancelamento) e grava um resultado de script para toda regra candidata.",
+      "details" : "submit_check delega a submit_check_with com RunOptions::default() (sem stop_on_must_failure) e grava um resultado de script para toda regra candidata; CLI e MCP nunca pedem parada em falha must.",
       "id" : "5C335D69-B345-44F4-AC82-46846231FD2B",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/aumentar-a-quantidade-de-scripts-em-shell-rodando-ao-mesmo-t/5c335d69.sh",
-        "generatedAt" : "2026-10-22T18:41:30Z",
+        "generatedAt" : "2026-10-22T18:52:45Z",
         "mode" : "script",
-        "ruleHash" : "6c45fbf5f1933d5c"
+        "ruleHash" : "e705e79781ae4ea6"
       },
       "text" : "submit_check (CLI rules check e MCP submit_rule_check) roda todos os scripts candidatos mesmo depois de uma falha must, para que o check tenha resposta para toda regra."
     },

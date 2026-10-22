@@ -3,7 +3,7 @@
 # manual sob demanda (verify_manual + pass/fail/na), continua comunicado pelo AGENTS.md gerado, pelas instruções do MCP e pelo CLI.
 set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
-applies '^Sources/vibedeck/|^Sources/VibeDeckCore/(AgentsGuide|ProjectStore)\.swift$'
+applies '^crates/vibedeck(-core)?/src/(cli/|mcp/|ai/guide|ai/guide_reference|reviews/|rules/|store\.rs)'
 build_cli
 new_project
 fail=0
@@ -23,20 +23,20 @@ steps() {
 
 # AGENTS.md gerado pelo código atual (seção de regras, até a próxima seção ##).
 guide=$(awk '/^## .*Regras/{f=1;next} f&&/^## /{exit} f' .vibedeck/AGENTS.md)
-[ -n "$guide" ] || { echo "Sources/VibeDeckCore/AgentsGuide.swift: AGENTS.md gerado não tem a seção de regras"; fail=1; }
-steps "Sources/VibeDeckCore/AgentsGuide.swift (AGENTS.md)" "$guide"
+[ -n "$guide" ] || { echo "crates/vibedeck-core/src/ai/guide.rs: AGENTS.md gerado não tem a seção de regras"; fail=1; }
+steps "crates/vibedeck-core/src/ai/guide.rs (AGENTS.md)" "$guide"
 
 # Instruções do MCP, como o servidor as entrega no initialize.
 init=$(mcp '{"jsonrpc":"2.0","id":1,"method":"tools/list"}')
 instr=$(printf '%s\n' "$init" | response 0 | sed -E 's/.*"instructions":"(([^"\\]|\\.)*)".*/\1/' | sed 's/\\n/\n/g; s/\\"/"/g')
-steps "Sources/vibedeck/MCPServer.swift (instruções do MCP)" "$instr"
+steps "crates/vibedeck/src/mcp (instruções do MCP)" "$instr"
 tools=$(printf '%s\n' "$init" | response 1)
 for t in rules_for submit_rule_check; do
-  printf '%s' "$tools" | grep "\"name\":\"$t\"" >/dev/null || { echo "Sources/vibedeck/MCPServer.swift: ferramenta $t sumiu do MCP"; fail=1; }
+  printf '%s' "$tools" | grep "\"name\":\"$t\"" >/dev/null || { echo "crates/vibedeck/src/mcp: ferramenta $t sumiu do MCP"; fail=1; }
 done
 
 # CLI: `rules for` e `rules check` existem e o check pede pass/fail/na.
-"$VD" help rules for >/dev/null 2>&1 || { echo "Sources/vibedeck/CLI.swift: 'vibedeck rules for' sumiu"; fail=1; }
-"$VD" help rules check 2>/dev/null | grep -E 'pass.{1,3}fail.{1,3}na' >/dev/null || { echo "Sources/vibedeck/CLI.swift: 'vibedeck rules check' sumiu ou não explica pass/fail/na"; fail=1; }
+"$VD" help rules for >/dev/null 2>&1 || { echo "crates/vibedeck/src/cli: 'vibedeck rules for' sumiu"; fail=1; }
+"$VD" help rules check 2>/dev/null | grep -E 'pass.{1,3}fail.{1,3}na' >/dev/null || { echo "crates/vibedeck/src/cli: 'vibedeck rules check' sumiu ou não explica pass/fail/na"; fail=1; }
 
 exit $fail

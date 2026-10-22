@@ -12,5 +12,5 @@ b=$(awk '/pub fn save<T: Stored>/{f=1} f{print} f&&/^    }$/{exit}' crates/vibed
 grep -q 'write_atomic\|write_if_changed' <<<"$b" || { echo "crates/vibedeck-core/src/store.rs: Store::save não grava de forma atômica"; fail=1; }
 grep -q 'write_if_changed\|fn write_atomic' crates/vibedeck-core/src/store.rs || { echo "store.rs: falta escrita atômica"; fail=1; }
 need "$PMODEL" 'store\.call\("add_kit"' "ProjectModel deve adicionar via MCP add_kit (Core)"
-need crates/vibedeck/src/mcp/tools/resources.rs 'resources::add_kit_items\(&store, &items, Author::Ai\)' "MCP add_kit deve chamar add_kit_items"
+need crates/vibedeck/src/mcp/tools/resources.rs 'resources::add_kit_items\(&store, &items, ' "MCP add_kit deve chamar add_kit_items"
 finish

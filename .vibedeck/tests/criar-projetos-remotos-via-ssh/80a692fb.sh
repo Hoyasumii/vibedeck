@@ -1,14 +1,6 @@
 #!/usr/bin/env bash
 # 80A692FB: o conflito mostra versão local e remota e permite escolher qual preservar.
-set -euo pipefail
-source "$(dirname "$0")/_lib.sh"
-applies
-needF $WS 'public let local: Data?' "o conflito deve guardar a versão local"
-needF $WS 'public let remote: Data?' "o conflito deve guardar a versão remota"
-needF $SHEET 'version("Versão local", data: item.local)' "a versão local deve ser exibida"
-needF $SHEET 'version("Versão remota", data: item.remote)' "a versão remota deve ser exibida"
-needF $SHEET 'status.resolve(item, keepLocal: true)' "falta 'Preservar local'"
-needF $SHEET 'status.resolve(item, keepLocal: false)' "falta 'Preservar remota'"
-needF $SHEET 'LoggedButton("Resolver: \(item.path)")' "cada conflito deve poder ser aberto"
-run_tests conflictPreservesBothAcrossRestartUntilChoice chooseRemoteAndDetectChangedConflictVersion
-finish
+# NÃO SE APLICA ao Core Rust / app atual: o projeto SSH não tem mais espelho local: o Core Rust roda no servidor (ssh host vibedeck mcp -C <pasta>) e o app só fala MCP com ele (RemoteWorkspace.swift, CoreStore.sshLocation), sem cache, edição offline, pendências nem conflitos.
+# Decisão de arquitetura (briefing-regras.md, F01 arquitetura.md): sem espelho local nem sincronização.
+# Sai com 77 (n/a) em vez de passar; o motivo também está em `details` da regra.
+exit 77

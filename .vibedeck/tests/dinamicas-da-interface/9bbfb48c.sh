@@ -18,9 +18,9 @@ def block(src, sig):
         d += {"{": 1, "}": -1}.get(src[j], 0)
         if d == 0: return src[i:j + 1]
     return ""
-fw = open("Sources/VibeDeckCore/FileWatcher.swift").read()
+fw = open("Sources/VibeDeckApp/Core/Support/FileWatcher.swift").read()
 if "FSEventStreamCreate" not in fw or "kFSEventStreamCreateFlagFileEvents" not in fw:
-    fail("Sources/VibeDeckCore/FileWatcher.swift", "FileWatcher não observa eventos de arquivo (FSEvents)")
+    fail("Sources/VibeDeckApp/Core/Support/FileWatcher.swift", "FileWatcher não observa eventos de arquivo (FSEvents)")
 pm = open(A + "ProjectModel.swift").read()
 pw = open(A + "ProjectWindow.swift").read()
 sw = block(pm, r"func startWatching\(\)")

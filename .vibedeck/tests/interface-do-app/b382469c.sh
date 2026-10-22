@@ -6,7 +6,7 @@ if [ -n "${VIBEDECK_FILES:-}" ] && ! printf "%s\n" "$VIBEDECK_FILES" | grep -E "
 fail=0
 bad() { echo "$1: $2"; fail=1; }
 # Sem assets de ícone próprios, sem SwiftUI.Link, dependências de UI só MarkdownUI e SwiftTerm (1.11.x).
-for a in $(find Sources/VibeDeckApp Sources/vibedeck -name '*.xcassets' -o -name '*.png' -o -name '*.svg' -o -name '*.pdf' -o -name '*.icns' 2>/dev/null); do
+for a in $(find Sources/VibeDeckApp -name '*.xcassets' -o -name '*.png' -o -name '*.svg' -o -name '*.pdf' -o -name '*.icns' 2>/dev/null); do
   bad "$a" "asset de imagem próprio (use SF Symbols)"
 done
 while IFS=: read -r f n line; do
@@ -15,7 +15,7 @@ done < <(grep -nE 'Image\("' Sources/VibeDeckApp/*.swift | sed -E 's/^([^:]+):([
 while IFS=: read -r f n line; do
   [[ "${line%%//*}" =~ (^|[^A-Za-z.])Link\(destination || "${line%%//*}" == *SwiftUI.Link* ]] && bad "$f:$n" "SwiftUI.Link (use o Link do Core via Aliases.swift/ProjectLink)"
 done < <(grep -nE 'Link\(destination|SwiftUI\.Link' Sources/VibeDeckApp/*.swift || true)
-allowed='swift-argument-parser|swift-sdk|swift-markdown-ui|SwiftTerm'
+allowed='swift-markdown-ui|SwiftTerm'
 while IFS= read -r url; do
   echo "$url" | grep -E "/($allowed)(\.git)?\"" >/dev/null || bad Package.swift "dependência nova: $url (UI só MarkdownUI e SwiftTerm)"
 done < <(grep -oE '\.package\(url: "[^"]+"' Package.swift || true)

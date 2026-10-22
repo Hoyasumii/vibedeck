@@ -17,6 +17,7 @@ D-MERGE (usuário): ao terminar tudo, abrir PRs e mergear na main resolvendo con
 
 D14 (usuário): regras que verificavam o Core Swift são reescritas para o Rust (briefing-regras.md)
 D15 (usuário): stack/padrões em vibedeck.json atualizados para Rust
+D16 (usuário): SSH direto no servidor (MCP via ssh) + reconexão automática com intervalo crescente + estado offline somente leitura (cache da última leitura); sem edição offline nem conflito
 
 ## Trilhas
 - CORE: F01/F02 APROVADOS. F03 piloto (4 regras reais + runner) passa. F04: 10 áreas integradas (project, docs, reviews, rules, ideas, stack, resources, workflows, ai + recursos MCP); 358 testes; contrato MCP ok (só nuvem removida). Verificação independente de paridade em andamento. Pendente: onboarding (MUD-001) no core, unificar gate de revisões com regras, F05.

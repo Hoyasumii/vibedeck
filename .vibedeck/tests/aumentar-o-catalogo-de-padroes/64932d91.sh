@@ -2,11 +2,11 @@
 set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
 applies
-need "$TESTS" 'addPatterns\(PatternCatalog\.all\.map\(\\?\.id\)|addPatterns\(' "nenhum teste chama addPatterns"
-body "$TESTS" '@Test func everyCatalogTemplateCreatesItsEnforcedTopic' > /tmp/vd_body_$$ || true
+need "$ITESTS" 'add_patterns\(' "nenhum teste chama add_patterns"
+body "$ITESTS" 'fn todo_template_cria_seu_topico' > /tmp/vd_body_$$ || true
 b=$(cat /tmp/vd_body_$$); rm -f /tmp/vd_body_$$
-for pat in 'PatternCatalog\.all' 'sourcePattern == template\.id' 'rules\.count == template\.rules\.count'; do
-  printf '%s' "$b" | grep -E "$pat" >/dev/null || { echo "$TESTS: everyCatalogTemplateCreatesItsEnforcedTopic não confere '$pat'"; fail=1; }
+for pat in 'PatternCatalog::all\(\)' 'source_pattern\.as_deref\(\), Some\(t\.id\.as_str\(\)\)' 'topic\.rules\.len\(\), t\.rules\.len\(\)'; do
+  printf '%s' "$b" | grep -E "$pat" >/dev/null || { echo "$ITESTS: todo_template_cria_seu_topico não confere '$pat'"; fail=1; }
 done
-run_tests PatternsTests/everyCatalogTemplateCreatesItsEnforcedTopic
+run_tests $ITESTS todo_template_cria_seu_topico
 finish

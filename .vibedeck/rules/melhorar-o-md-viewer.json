@@ -46,7 +46,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/melhorar-o-md-viewer/f8fdc0f6.sh",
-        "generatedAt" : "2026-10-09T19:18:27Z",
+        "generatedAt" : "2026-10-22T18:50:57Z",
         "mode" : "script",
         "ruleHash" : "cc53da65121b3836"
       },
