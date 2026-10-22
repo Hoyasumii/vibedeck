@@ -20,7 +20,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/build-scripts-e-ci/b6b91f0e.sh",
-        "generatedAt" : "2026-10-22T18:50:04Z",
+        "generatedAt" : "2026-10-22T18:57:25Z",
         "mode" : "script",
         "ruleHash" : "182b8b330cd90135"
       },
@@ -48,7 +48,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/build-scripts-e-ci/a111c3ed.sh",
-        "generatedAt" : "2026-10-22T18:50:04Z",
+        "generatedAt" : "2026-10-22T18:57:25Z",
         "mode" : "script",
         "ruleHash" : "01db1777212b7092"
       },
@@ -62,7 +62,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/build-scripts-e-ci/b7d9e63a.sh",
-        "generatedAt" : "2026-10-22T18:50:04Z",
+        "generatedAt" : "2026-10-22T18:57:25Z",
         "mode" : "script",
         "ruleHash" : "a752135fe68109af"
       },

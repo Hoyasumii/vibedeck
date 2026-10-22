@@ -61,7 +61,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/worker-e-schemas/cd3057f2.sh",
-        "generatedAt" : "2026-10-22T18:48:05Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "reason" : "Mesmo conjunto de schemas no índice do worker, em SchemaURL, na linha Schemas: do guide.md/AgentsGuide.swift e em schema/v1; chaves do índice iguais aos nomes do SchemaURL.",
         "ruleHash" : "dbca5c75983653ff"
@@ -76,7 +76,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/worker-e-schemas/0a89a5bc.sh",
-        "generatedAt" : "2026-10-22T18:48:05Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "reason" : "O $id de cada schema/*/*.schema.json é igual à URL derivada de SchemaURL.base em Models.swift.",
         "ruleHash" : "57d8cc083ff59fb4"

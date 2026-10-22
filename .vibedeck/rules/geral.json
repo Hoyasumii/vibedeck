@@ -12,7 +12,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/geral/9d6f362b.sh",
-        "generatedAt" : "2026-10-22T18:48:46Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "e4d468c54138068f"
       },
@@ -54,7 +54,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/geral/0e5aec71.sh",
-        "generatedAt" : "2026-10-22T18:48:46Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "18be713618c5974e"
       },
@@ -67,7 +67,7 @@
       "id" : "306A20B6-E1FA-4BE4-96E8-2B854A3D0BC6",
       "severity" : "should",
       "test" : {
-        "generatedAt" : "2026-10-22T18:48:51Z",
+        "generatedAt" : "2026-10-22T18:57:25Z",
         "mode" : "manual",
         "reason" : "Depende de julgamento: comparar o diff com as seções do README (formato de .vibedeck/, fluxo de regras, build, atalhos, comandos do CLI, Worker) e decidir se algo documentado mudou; não dá para decidir por script.",
         "ruleHash" : "ae2986869f745c57"

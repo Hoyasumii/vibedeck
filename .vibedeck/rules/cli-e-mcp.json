@@ -24,14 +24,14 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "add_review_item, add_rule, add_idea, add_idea_rule e submit_rule_check gravam Author::Ai; no CLI, só com a flag --ai. Ferramenta MCP nova que cria registro segue o mesmo padrão e diz \"author=ai\" na descrição.\nVerificar: chamadas novas de criação (add_*, import_*) no MCP passam Author::Ai.",
+      "details" : "add_review_item, add_rule, add_idea, add_idea_rule e submit_rule_check gravam Author::Ai; no CLI, só com a flag --ai. Ferramenta MCP nova que cria registro segue o mesmo padrão e diz \"author=ai\" na descrição. Só no modo `mcp --app` (do app) a ferramenta aceita author=\"human\" explícito; sem --app a autoria é sempre ai (ToolCtx::author).\nVerificar: chamadas novas de criação (add_*, import_*) no MCP passam Author::Ai.",
       "id" : "643AA948-85C0-485E-A110-E83B59C0B5BC",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/cli-e-mcp/643aa948.sh",
-        "generatedAt" : "2026-10-22T18:52:14Z",
+        "generatedAt" : "2026-10-22T18:57:54Z",
         "mode" : "script",
-        "ruleHash" : "188668bd3758ccbe"
+        "ruleHash" : "c8bc007cfcef3a8b"
       },
       "text" : "O que o MCP ou o CLI com --ai criam é author=ai"
     },

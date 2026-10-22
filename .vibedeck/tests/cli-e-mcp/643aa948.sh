@@ -17,9 +17,12 @@ for name in ["add_review_item", "add_rule", "add_idea"]:
     d = desc(name)
     if d is None: bad.append(f"ferramenta {name} não encontrada")
     elif "author=ai" not in d: bad.append(f'descrição de {name} não diz "author=ai"')
-need = {"reviews.rs": "author: Author::Ai", "rules.rs": "Author::Ai", "ideas.rs": "Author::Ai"}
-for f, p in need.items():
-    if p not in tools["crates/vibedeck/src/mcp/tools/" + f]: bad.append(f"mcp/tools/{f}: faltou {p}")
+# autoria: Author::Ai direto ou ctx.author(args), que só devolve human no modo `mcp --app` com author="human" explícito
+tool_rs = open("crates/vibedeck/src/mcp/tool.rs").read()
+m = re.search(r"pub fn author\(.*?\n    }\n", tool_rs, re.S)
+if not m or not re.search(r"if !self\.app\s*\{\s*return Ok\(Author::Ai\)", m.group(0)): bad.append("mcp/tool.rs: ToolCtx::author deve devolver Author::Ai fora do modo --app")
+for f in ["reviews.rs", "rules.rs", "ideas.rs"]:
+    if not re.search(r"Author::Ai|ctx\.author\(", tools["crates/vibedeck/src/mcp/tools/" + f]): bad.append(f"mcp/tools/{f}: criação sem Author::Ai / ctx.author(args)")
 # CLI: autoria sempre decidida pela flag --ai
 for f in glob.glob("crates/vibedeck/src/cli/*.rs"):
     for i, l in enumerate(open(f).read().split("\n")):

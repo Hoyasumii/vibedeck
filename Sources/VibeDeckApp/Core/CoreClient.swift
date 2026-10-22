@@ -252,6 +252,17 @@ final class CoreClient: @unchecked Sendable {
         shutdownNow()
     }
 
+    /// Derruba a conexão atual (p.ex. SSH pendurado): requisições em voo falham com `disconnected` e a próxima
+    /// chamada abre outra. Diferente de `close()`, o cliente continua utilizável.
+    func reset() {
+        let session: Session? = locked {
+            let s = current
+            current = nil
+            return s
+        }
+        if let session = session { terminate(session) }
+    }
+
     // MARK: Conexão
 
     private func locked<T>(_ body: () -> T) -> T {

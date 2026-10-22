@@ -16,7 +16,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/5fa116b6.sh",
-        "generatedAt" : "2026-10-22T18:45:07Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "b7af2e18e723e954"
       },
@@ -30,7 +30,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/857149e6.sh",
-        "generatedAt" : "2026-10-22T18:45:07Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "c2b3e92306b32fe0"
       },
@@ -44,7 +44,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/99bf0d79.sh",
-        "generatedAt" : "2026-10-22T18:45:07Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "15def873caf4c2e7"
       },
@@ -58,7 +58,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/5ed22d96.sh",
-        "generatedAt" : "2026-10-22T18:45:07Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "bb7301f9b3b0de4e"
       },
@@ -72,7 +72,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/c6d79b9c.sh",
-        "generatedAt" : "2026-10-22T18:45:07Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "80ec252e8ca4fa90"
       },
@@ -86,7 +86,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/57ada275.sh",
-        "generatedAt" : "2026-10-22T18:45:07Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "6ffa584ec958741c"
       },
@@ -100,7 +100,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/4133c155.sh",
-        "generatedAt" : "2026-10-22T18:45:07Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "8b1c73ed4f65f672"
       },
@@ -114,7 +114,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/b0277971.sh",
-        "generatedAt" : "2026-10-22T18:45:07Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "24d15283ebfd5e75"
       },
@@ -128,7 +128,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/7f7c6b09.sh",
-        "generatedAt" : "2026-10-22T18:45:07Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "1fa80cbd9eeaf1fe"
       },
@@ -142,7 +142,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/bc028be5.sh",
-        "generatedAt" : "2026-10-22T18:45:07Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "6296a91fa2e43ffa"
       },
@@ -156,7 +156,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/64e65b59.sh",
-        "generatedAt" : "2026-10-22T18:45:07Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "fe8742a1d03f4a46"
       },
@@ -170,7 +170,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/8d874a06.sh",
-        "generatedAt" : "2026-10-22T18:45:07Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "f87b1f1f62d996cc"
       },
@@ -184,7 +184,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/35d8d7c3.sh",
-        "generatedAt" : "2026-10-22T18:45:07Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "592b10751273e92b"
       },
@@ -198,7 +198,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/64334d9c.sh",
-        "generatedAt" : "2026-10-22T18:45:07Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "d1a13395c536c498"
       },
@@ -212,7 +212,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/ea5e6f7d.sh",
-        "generatedAt" : "2026-10-22T18:45:07Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "faca32817d60349e"
       },
@@ -226,7 +226,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/97510532.sh",
-        "generatedAt" : "2026-10-22T18:45:07Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "d736fa88e32b420c"
       },
@@ -239,7 +239,7 @@
       "id" : "91774D06-91B5-4945-9EC6-CDEFC57332FA",
       "severity" : "should",
       "test" : {
-        "generatedAt" : "2026-10-22T18:45:07Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "manual",
         "reason" : "Depende de julgamento: saber se o comportamento é novo e se o @Test o cobre não é decidível por script.",
         "ruleHash" : "7c227c722a526de3"
@@ -254,7 +254,7 @@
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/dfe3361b.sh",
-        "generatedAt" : "2026-10-22T18:45:07Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "fd35416db1305d95"
       },
@@ -268,7 +268,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/b659fd25.sh",
-        "generatedAt" : "2026-10-22T18:45:07Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "1447b12d59c12d5c"
       },
@@ -282,7 +282,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/a2b13b15.sh",
-        "generatedAt" : "2026-10-22T18:45:07Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "4eedb3c2d3824ffa"
       },
