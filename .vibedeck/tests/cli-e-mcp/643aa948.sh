@@ -1,25 +1,30 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "${VIBEDECK_ROOT:-.}"
-if [ -n "${VIBEDECK_FILES:-}" ] && ! printf "%s\n" "$VIBEDECK_FILES" | grep -q "^Sources/vibedeck/"; then exit 77; fi
-MCP=Sources/vibedeck/MCPServer.swift; CLI=Sources/vibedeck/CLI.swift
-fail() { echo "$1" >&2; exit 1; }
-python3 -I - "$MCP" <<'PY'
-import re, sys
-src = open(sys.argv[1]).read().split("\n")
-# blocos "case \"nome\":" do handler
-starts = [(i, m.group(1)) for i, l in enumerate(src) if (m := re.match(r"^\s{8}case \"([a-z_]+)\":", l))]
-bad = 0
-for k, (i, name) in enumerate(starts):
-    end = starts[k + 1][0] if k + 1 < len(starts) else len(src)
-    body = "\n".join(src[i:end])
-    creates = re.search(r"\b(Rule|ReviewItem)\(|createIdea\(|addCustomPattern\(|addPatterns\(|\.add\(|import(Agents|Commands|Skills)\(", body)
-    if (name.startswith(("add_", "import_")) or name == "submit_rule_check") and creates and "author: .ai" not in body:
-        print(f"{sys.argv[1]}:{i+1}: ferramenta {name} cria registro sem author: .ai"); bad += 1
-# descrição das ferramentas criadoras originais (add_idea_rule e submit_rule_check: só author: .ai no código)
+if [ -n "${VIBEDECK_FILES:-}" ] && ! printf "%s\n" "$VIBEDECK_FILES" | grep -qE "^crates/vibedeck/"; then exit 77; fi
+python3 -I - <<'PY'
+import glob, re, sys
+bad = []
+tools = {f: open(f).read() for f in glob.glob("crates/vibedeck/src/mcp/tools/*.rs")}
+allsrc = "\n".join(tools.values())
+for f, t in tools.items():
+    # docs.rs: write_doc sem generated cria doc humano de propósito (descrito na ferramenta)
+    if "Author::Human" in t and not f.endswith("/docs.rs"): bad.append(f"{f}: ferramenta MCP não pode gravar Author::Human")
+def desc(name):
+    m = re.search(r'Tool::new\(\s*"%s",\s*"((?:[^"\\]|\\.)*)"' % name, allsrc)
+    return m.group(1) if m else None
 for name in ["add_review_item", "add_rule", "add_idea"]:
-    m = re.search(r"Tool\(name: \"%s\", description: \"((?:[^\"\\]|\\.)*)\"" % name, "\n".join(src))
-    if not m: print(f"ferramenta {name} não encontrada"); bad += 1
-    elif "author=ai" not in m.group(1): print(f"{sys.argv[1]}: descrição de {name} não diz \"author=ai\""); bad += 1
+    d = desc(name)
+    if d is None: bad.append(f"ferramenta {name} não encontrada")
+    elif "author=ai" not in d: bad.append(f'descrição de {name} não diz "author=ai"')
+need = {"reviews.rs": "author: Author::Ai", "rules.rs": "Author::Ai", "ideas.rs": "Author::Ai"}
+for f, p in need.items():
+    if p not in tools["crates/vibedeck/src/mcp/tools/" + f]: bad.append(f"mcp/tools/{f}: faltou {p}")
+# CLI: autoria sempre decidida pela flag --ai
+for f in glob.glob("crates/vibedeck/src/cli/*.rs"):
+    for i, l in enumerate(open(f).read().split("\n")):
+        if re.search(r"Author::Human", l) and not re.search(r"if (a\.)?ai\s*\{\s*Author::Ai\s*\}\s*else\s*\{\s*Author::Human", l):
+            bad.append(f"{f}:{i+1}: Author::Human fora do padrão `if ai {{ Author::Ai }} else {{ Author::Human }}`")
+if bad: print("\n".join(bad), file=sys.stderr)
 sys.exit(1 if bad else 0)
 PY

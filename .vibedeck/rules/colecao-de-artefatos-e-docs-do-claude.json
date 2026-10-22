@@ -12,7 +12,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/97e096a2.sh",
-        "generatedAt" : "2026-10-14T14:11:40Z",
+        "generatedAt" : "2026-10-22T18:39:28Z",
         "mode" : "script",
         "ruleHash" : "af6e34799b05c529"
       },
@@ -25,7 +25,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/b5b453dc.sh",
-        "generatedAt" : "2026-10-14T14:11:40Z",
+        "generatedAt" : "2026-10-22T18:39:28Z",
         "mode" : "script",
         "ruleHash" : "bbabba54c4ce6d27"
       },
@@ -38,7 +38,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/0f77f1fd.sh",
-        "generatedAt" : "2026-10-14T14:11:40Z",
+        "generatedAt" : "2026-10-22T18:39:28Z",
         "mode" : "script",
         "ruleHash" : "8a19bbb08c0f9829"
       },
@@ -51,7 +51,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/dcd7508b.sh",
-        "generatedAt" : "2026-10-14T14:11:40Z",
+        "generatedAt" : "2026-10-22T18:39:28Z",
         "mode" : "script",
         "ruleHash" : "60f0e2e6769bb9d2"
       },

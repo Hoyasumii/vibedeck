@@ -1,15 +1,26 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "${VIBEDECK_ROOT:-.}"
-if [ -n "${VIBEDECK_FILES:-}" ] && ! printf "%s\n" "$VIBEDECK_FILES" | grep -q "^Sources/vibedeck/"; then exit 77; fi
-MCP=Sources/vibedeck/MCPServer.swift; CLI=Sources/vibedeck/CLI.swift
+if [ -n "${VIBEDECK_FILES:-}" ] && ! printf "%s\n" "$VIBEDECK_FILES" | grep -qE "^crates/(vibedeck/|vibedeck-core/src/ai/(mcp_install|usage)\.rs)"; then exit 77; fi
 fail() { echo "$1" >&2; exit 1; }
-sed -n "/^func vibedeckExecutablePath/,/^}/p" "$MCP" > /tmp/vd_exec_$$.txt
-trap "rm -f /tmp/vd_exec_$$.txt" EXIT
-for p in "ProcessInfo.processInfo.environment\[\"PATH\"\]" "isExecutableFile(atPath: candidate)" "Bundle.main.executablePath"; do
-  grep -q "$p" /tmp/vd_exec_$$.txt || fail "$MCP: vibedeckExecutablePath perdeu: $p"
-done
-# PATH vem antes do binário atual
-a=$(grep -n "environment\[\"PATH\"\]" /tmp/vd_exec_$$.txt | head -1 | cut -d: -f1); b=$(grep -n "Bundle.main.executablePath" /tmp/vd_exec_$$.txt | head -1 | cut -d: -f1)
-[ "$a" -lt "$b" ] || fail "$MCP: o binário atual deve ser só o fallback, depois do PATH"
-grep -qF "scope == .project ? \"vibedeck\" : vibedeckExecutablePath()" "$MCP" || fail "$MCP: escopo project deve registrar o comando \"vibedeck\" do PATH, não caminho absoluto"
+USAGE=crates/vibedeck-core/src/ai/usage.rs; INST=crates/vibedeck-core/src/ai/mcp_install.rs; CLI=crates/vibedeck/src/cli/ai.rs
+python3 -I - "$USAGE" "$INST" "$CLI" <<'PY'
+import re, sys
+usage, inst, cli = (open(p).read() for p in sys.argv[1:4])
+bad = []
+m = re.search(r"pub fn vibedeck_executable_path\(\).*?\n}\n", usage, re.S)
+if not m:
+    bad.append("usage.rs: vibedeck_executable_path sumiu")
+else:
+    f = m.group(0)
+    for p in ['env::var("PATH")', "is_file()", "current_exe()"]:
+        if p not in f: bad.append(f"vibedeck_executable_path perdeu: {p}")
+    if 'env::var("PATH")' in f and "current_exe()" in f and f.index('env::var("PATH")') > f.index("current_exe()"):
+        bad.append("o binário atual deve ser só o fallback, depois do PATH")
+if not re.search(r'scope == Scope::Project\s*\{\s*"vibedeck"\s*\}\s*else\s*\{\s*cli\s*\}', inst):
+    bad.append('mcp_install.rs: escopo project deve registrar o comando "vibedeck" do PATH, não caminho absoluto')
+if "usage::vibedeck_executable_path()" not in cli:
+    bad.append("cli/ai.rs: mcp install deve registrar usage::vibedeck_executable_path()")
+if bad: print("\n".join(bad), file=sys.stderr)
+sys.exit(1 if bad else 0)
+PY

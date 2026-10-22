@@ -1,27 +1,35 @@
 #!/usr/bin/env bash
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
-# VDJSON é a configuração canônica; JSONEncoder()/JSONDecoder() só em protocolos de fio (não arquivos do projeto).
-applies '(^|/)Sources/VibeDeckCore/'
+# json::encode (VDJSON) é o emissor canônico dos arquivos do projeto; serde_json::to_*_pretty só em protocolos de fio.
+applies '(^|/)crates/'
 python3 -I - <<'PY'
-import glob, os, re, sys
+import glob, re, sys
 bad = 0
-models = open("Sources/VibeDeckCore/Models.swift").read()
-m = re.search(r'public enum VDJSON \{.*?\n\}', models, re.S)
-vd = m.group(0) if m else ""
-for needle, why in [(".prettyPrinted", "encoder prettyPrinted"), (".sortedKeys", "encoder sortedKeys"),
-                    (".withoutEscapingSlashes", "encoder withoutEscapingSlashes"), ("dateEncodingStrategy = .iso8601", "datas ISO 8601 no encoder"),
-                    ("strategy: .iso8601", "decoder aceita ISO 8601 sem frações"),
-                    ("includingFractionalSeconds: true", "decoder aceita ISO 8601 com frações"),
-                    ("append(0x0A)", "encode acrescenta \\n no fim")]:
-    if needle not in vd:
-        print(f"Sources/VibeDeckCore/Models.swift: VDJSON sem {why} ({needle})"); bad += 1
-# Protocolos de fio / config externa: não gravam arquivos do projeto.
-WIRE = {"Models.swift", "ReviewDiscover.swift", "Stack.swift", "CodexMCP.swift", "CodexRPC.swift", "ClaudeStream.swift"}
-for f in sorted(glob.glob("Sources/VibeDeckCore/*.swift")):
-    if os.path.basename(f) in WIRE: continue
-    for n, l in enumerate(open(f).read().split("\n"), 1):
-        if re.search(r'\bJSON(En|De)coder\(\)', l) and not l.strip().startswith("//"):
-            print(f"{f}:{n}: use VDJSON.encoder/decoder (ou VDJSON.encode) para arquivos do projeto: {l.strip()}"); bad += 1
-sys.exit(1 if bad else 0)
+j = open("crates/vibedeck-core/src/json.rs").read()
+j = j[:j.find("#[cfg(test)]")] if "#[cfg(test)]" in j else j
+for needle, why in [("a.0.as_bytes().cmp(b.0.as_bytes())", "chaves ordenadas por bytes (sortedKeys)"), ('" : "', "separador ' : ' (prettyPrinted)"),
+                    ('out.push_str("  ")', "indentação de 2 espaços"), ("out.push('\\n');", "\\n no fim"),
+                    ("pub fn encode", "json::encode"), ("pub fn to_vdjson", "json::to_vdjson")]:
+    if needle not in j:
+        print(f"crates/vibedeck-core/src/json.rs: emissor sem {why} ({needle})"); bad += 1
+if re.search(r"'/' =>|\"\\\\/\"", j):
+    print("crates/vibedeck-core/src/json.rs: '/' não pode ser escapado (withoutEscapingSlashes)"); bad += 1
+store = open("crates/vibedeck-core/src/store.rs").read()
+if store.count("json::encode(") < 2:
+    print("crates/vibedeck-core/src/store.rs: save/save_check devem gravar via json::encode"); bad += 1
+# Datas: ISO 8601 UTC; leitura aceita com e sem frações.
+t = open("crates/vibedeck-core/src/time.rs").read()
+for fn in ("format_iso", "format_iso_millis", "parse_iso"):
+    if f"pub fn {fn}" not in t:
+        print(f"crates/vibedeck-core/src/time.rs: falta {fn}"); bad += 1
+for f in sorted(glob.glob("crates/**/*.rs", recursive=True)):
+    if "/tests/" in f or f.endswith("crates/vibedeck-core/src/json.rs"): continue
+    s = open(f).read()
+    if "#[cfg(test)]" in s: s = s[:s.find("#[cfg(test)]")]
+    for n, l in enumerate(s.split("\n"), 1):
+        if re.search(r'serde_json::to_(string|vec|writer)_pretty\(|serde_json::ser::PrettyFormatter', l) and not l.strip().startswith("//"):
+            print(f"{f}:{n}: use json::encode/to_vdjson para arquivos do projeto: {l.strip()}"); bad += 1
+if bad: sys.exit(1)
 PY
+cargo_tests vibedeck-core empty_containers_have_blank_line keys_sorted_by_bytes control_characters_and_escapes unicode_stays_raw dates_are_truncated_and_uuid_uppercased
