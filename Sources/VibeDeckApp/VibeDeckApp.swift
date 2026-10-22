@@ -111,6 +111,7 @@ struct AppCommands: Commands {
     @Environment(\.openWindow) private var openWindow
     @FocusedValue(\.claudeSession) private var claude
     @FocusedValue(\.closeActiveTab) private var closeActiveTab
+    @FocusedValue(\.aiPanelToggle) private var aiPanelToggle
 
     var body: some Commands {
         CommandGroup(replacing: .saveItem) {
@@ -138,7 +139,10 @@ struct AppCommands: Commands {
         CommandGroup(after: .sidebar) {
             if let claude {
                 if !AIProvider.installed(in: claude.root).isEmpty {
-                    LoggedButton("Abrir IA") { claude.requestedPage = .chat }.loggedControl(control: "vibe_deck_app.button_6", label: "Abrir IA")
+                    // V2: ⇧⌘C alterna o painel de IA da janela; sem janela V2 em foco, abre a conversa.
+                    LoggedButton("Alternar Painel de IA") {
+                        if let aiPanelToggle { aiPanelToggle.run() } else { claude.requestedPage = .chat }
+                    }.loggedControl(control: "vibe_deck_app.button_6", label: "Alternar Painel de IA")
                         .keyboardShortcut("c", modifiers: [.command, .shift])
                 }
                 LoggedButton("Novo Terminal") { claude.openTerminal() }.loggedControl(control: "vibe_deck_app.button_7", label: "Novo Terminal")
@@ -218,7 +222,7 @@ struct RootView: View {
     @ViewBuilder
     private var content: some View {
         if let root, ProjectStore.isProject(root) {
-            ProjectWindow(root: root)
+            ProjectWindowV2(root: root)
                 .id(root)
                 .navigationTitle(RemoteWorkspace.existing(at: root)?.destination.title ?? root.lastPathComponent)
                 .onAppear { RecentProjects.shared.add(root) }
