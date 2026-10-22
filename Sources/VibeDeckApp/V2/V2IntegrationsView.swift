@@ -76,7 +76,7 @@ enum V2IntegrationProbe {
     /// Roda `vibedeck -C <raiz> <argumentos>`. Devolve a mensagem de erro, ou nil quando deu certo.
     static func run(_ arguments: [String], root: URL) async -> String? {
         guard let binary = CoreLocator.binary() else { return "O executável vibedeck não foi encontrado." }
-        return await Task.detached { () -> String? in
+        return await VDLog.detached { () -> String? in
             let process = Process()
             process.executableURL = binary
             process.arguments = ["-C", root.path] + arguments

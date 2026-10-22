@@ -1513,7 +1513,15 @@ final class ProjectModel {
                     let slug = entry.slug, value = entry.value
                     toggles.append { [weak self] remove in self?.toggleCreatedItem(.workflow, slug, value, remove: remove, name: name, undo: nil) }  // undo agrupado: o passo único é registrado pelo chamador
                 }
-                if !toggles.isEmpty { registerKitUndo(toggles, remove: true, name: name, undo: undo) }
+                reloadKitItems()
+                if !toggles.isEmpty {
+                    // Um único passo de undo: desfaz remove os itens novos; o redo os recria (registerKitUndo).
+                    undo?.registerUndo(withTarget: self) { model in
+                        for toggle in toggles { toggle(true) }
+                        model.registerKitUndo(toggles, remove: false, name: name, undo: undo)
+                    }
+                    undo?.setActionName(name)
+                }
             } catch {
                 VDLog.error(error, event: "store.kit_add_failed", project: store.root, component: .app)
                 errorMessage = error.localizedDescription
@@ -1911,6 +1919,21 @@ final class ProjectModel {
     private static func docDetail(_ doc: DocInfo) -> String {
         guard let link = doc.link else { return doc.modified.formatted(.relative(presentation: .named)) }
         return link.broken ? "Vínculo quebrado · \(link.target)" : "Vinculado · \(link.target)"
+    }
+
+    /// A coluna de conteúdo omite grupos de revisão sem item aberto (`openCount == 0`) e ideias Implementadas (`done`).
+    /// A tabela do detalhe (`rows(for:)`) continua com todos.
+    func isOmittedFromColumn(_ item: SidebarItem) -> Bool {
+        switch item {
+        case .group(let slug): return (group(slug)?.openCount ?? 0) == 0
+        case .idea(let slug): return idea(slug)?.status == .done
+        default: return false
+        }
+    }
+
+    /// Linhas da coluna de conteúdo. O item aberto no detalhe nunca some, mesmo que mudar de status o omitiria.
+    func columnRows(for section: SidebarSection, keeping selected: SidebarItem?) -> [SectionRow] {
+        rows(for: section).filter { $0.id == selected || !isOmittedFromColumn($0.id) }
     }
 
     func rows(for section: SidebarSection) -> [SectionRow] {

@@ -1,22 +1,23 @@
 #!/usr/bin/env bash
 # Edição direta: nenhuma tela de edição tem botão Salvar (só diálogos de criação confirmam, com "Criar"),
-# e toda mutação vinda da UI passa um UndoManager (undo: nil só no autosave de editores de texto, que têm undo próprio).
+# e toda mutação vinda da UI passa um UndoManager (undo: nil só no autosave de editores de texto, que têm undo próprio, ou com o marcador `// undo agrupado` quando o chamador registra o passo único).
 set -euo pipefail
 cd "${VIBEDECK_ROOT:-.}"
 if [ -n "${VIBEDECK_FILES:-}" ] && ! printf '%s\n' "$VIBEDECK_FILES" | grep -E '^Sources/VibeDeckApp/' >/dev/null; then exit 77; fi
 python3 -I - <<'PY'
 import re, sys, glob
 bad = 0
-for f in sorted(glob.glob("Sources/VibeDeckApp/*.swift")):
+for f in sorted(glob.glob("Sources/VibeDeckApp/*.swift") + glob.glob("Sources/VibeDeckApp/V2/*.swift")):
     lines = open(f).read().splitlines()
     func = None
     for n, l in enumerate(lines, 1):
         code = l.split("//")[0]
+        grouped = "// undo agrupado" in l  # passo único de undo registrado pelo chamador (ex.: lote do catálogo, assistente)
         m = re.match(r"\s*(?:private |fileprivate )?func (\w+)", l)
         if m: func = m.group(1)
         if re.search(r'Button\("(Salvar|Save|Aplicar|OK, salvar)"', code):
             print(f"{f}:{n}: botão \"Salvar\" — edição deve gravar na hora (e ir para o undo), sem confirmação"); bad = 1
-        if re.search(r"\bundo: nil\b", code) and func != "save":
+        if re.search(r"\bundo: nil\b", code) and func != "save" and not grouped:
             print(f"{f}:{n}: mutação com undo: nil fora do autosave de texto — não entra no ⌘Z: {l.strip()}"); bad = 1
 # Todo mutate*/change*/setTags do ProjectModel registra undo.
 src = open("Sources/VibeDeckApp/ProjectModel.swift").read().splitlines()

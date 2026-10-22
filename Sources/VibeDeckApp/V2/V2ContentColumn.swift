@@ -110,7 +110,7 @@ struct V2ContentColumn: View {
     }
 
     private var allRows: [SectionRow] {
-        concept.section.map { model.rows(for: $0) } ?? []
+        concept.section.map { model.columnRows(for: $0, keeping: selection) } ?? []
     }
 
     private var allTags: [String] {
