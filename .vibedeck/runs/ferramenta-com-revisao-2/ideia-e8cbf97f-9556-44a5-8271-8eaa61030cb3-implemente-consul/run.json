@@ -1,0 +1,13 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/workflow-run.schema.json",
+  "createdAt" : "2026-10-21T20:36:04Z",
+  "current" : "planejar",
+  "cycle" : 1,
+  "id" : "43A1AFD9-49E5-4995-BA21-591F97D1E9E8",
+  "input" : "Ideia E8CBF97F-9556-44A5-8271-8EAA61030CB3. Implemente consultando get_idea pelo UUID; leia a descrição e as regras e siga o tópico promovido, quando houver.",
+  "provider" : "claude",
+  "reason" : "Interrompido pelo usuário",
+  "status" : "stopped",
+  "updatedAt" : "2026-10-21T20:40:39Z",
+  "workflow" : "ferramenta-com-revisao-2"
+}

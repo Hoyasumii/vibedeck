@@ -1,7 +1,7 @@
 # VibeDeck
 
 <!-- vibedeck:stack:start -->
-[![My Skills](https://skill-icons.alanreisanjo.workers.dev/icons?i=swift,apple,workers,ts)](https://skill-icons.alanreisanjo.workers.dev)
+[![My Skills](https://skill-icons.alanreisanjo.workers.dev/icons?i=swift,apple,workers,ts,rust,mcp,zod)](https://skill-icons.alanreisanjo.workers.dev)
 <!-- vibedeck:stack:end -->
 
 App macOS nativo (SwiftUI + Liquid Glass) para gerenciar projetos feitos com vibe coding:
@@ -116,6 +116,25 @@ vibedeck patterns remove tdd
 No MCP: `list_patterns`, `pattern_catalog`, `add_pattern` (author=ai), `remove_pattern`, `update_pattern` e o
 resource `vibedeck://patterns`.
 
+Stack e padrões chegam às IAs por consulta, com as notas de uso, sem uma cópia fixa no prompt.
+O guia `.vibedeck/AGENTS.md` e a política compartilhada pelos fluxos de Claude/Codex orientam essa leitura
+antes de implementar. Os canais têm estas diferenças:
+
+| Canal | Contexto disponível |
+| --- | --- |
+| MCP `list_stack` / `vibedeck://stack` | Tecnologias e notas; a ferramenta também retorna o badge. |
+| CLI `vibedeck stack --json` | Tecnologias e notas do manifesto. |
+| MCP `list_patterns` / `vibedeck://patterns` | Padrões, notas, tópico vinculado, globs e regras. |
+| CLI `vibedeck patterns --json` | Registros do manifesto, incluindo notas e referência `topic`; consulte também `vibedeck rules for <arquivos> --json`. |
+| Arquivos, sem MCP/CLI | Leia `stack` e `patterns` em `vibedeck.json`, os tópicos referidos por `topic` e os demais tópicos aplicáveis em `.vibedeck/rules/`. |
+
+Nos tópicos, `paths` vazio vale para toda tarefa; com globs, vale quando algum arquivo da tarefa casa.
+Use `rules_for` para os arquivos e o item de revisão, quando houver, e releia o contexto após alterações.
+O badge do README não contém notas nem regras. `patterns` ausente ou vazio significa nenhum padrão
+cadastrado; as outras regras continuam valendo. A consulta não garante que a IA siga as orientações:
+os checks continuam obrigatórios. Chamadas sem MCP usam CLI ou leitura dos arquivos conforme as permissões;
+no Codex, scripts de regras rodam pelo MCP do VibeDeck, fora do terminal do agente.
+
 ## Regras e ideias
 
 - **Tópico de regras**: lista de comportamentos (`must` bloqueia, `should` só avisa). Sem `paths`, vale
@@ -191,6 +210,13 @@ resource `vibedeck://patterns`.
   veredito viável e atual: qualquer mudança em título, texto, globs ou regras o invalida, e "Verificar" refaz só essa
   avaliação. No app, ideias `approved` com avaliação viável atual oferecem **Workflow**, **Execução padrão** e **Cancelar** antes de promover regras ou iniciar a implementação. Sem workflows, só aparecem Execução padrão e Cancelar, sem catálogo. O seletor permite escolher um workflow existente ou adicionar itens do catálogo por seleção explícita. No chat, o modo explícito é respeitado; pedidos sem modo aguardam a escolha. Execução padrão usa `IdeaImplementation.prompt`. Workflows recebem o UUID recuperável da ideia; mudanças de título ou descrição não mudam o vínculo. Havendo execução anterior, **Retomar** preserva o estado e **Reiniciar** começa na primeira etapa. A confirmação relê a avaliação atual no disco. Cancelar não inicia nem promove. CLI e MCP continuam sem a pergunta de modo. Após confirmar, as regras são promovidas/sincronizadas e a implementação segue as regras e o check.
   Ao clicar em "Salvar avaliação", um veredito viável em ideia com regras marca o status como `approved`, junto com o `readiness` em um único passo de desfazer. Isso não é promoção: `promotedTopic` continua vazio, nenhum tópico é criado e as regras continuam rascunho. Ideias fechadas ou já promovidas mantêm o status; vereditos não viáveis não alteram o status. Rodar Descubra/Verificar sem salvar não aprova a ideia.
+- **Dependências entre ideias**: no detalhe da ideia, **Dependências** escolhe várias ideias do projeto (inclusive
+  as Implementadas, que somem da sidebar) e remove cada vínculo pelo ✕, com desfazer; **Dependentes** mostra quem
+  depende diretamente dela, derivado das outras ideias (sem lista inversa no JSON). Só uma dependência `done`
+  libera a implementação; qualquer outro status, ou uma ideia apagada, bloqueia o botão Implementar, os pedidos no
+  chat e o início/retomada/reinício por workflow, com os motivos em pt-BR, antes de promover regras, criar run ou
+  chamar o provedor. A aprovação continua possível, e concluir a última dependência não inicia nada sozinho.
+  O Core recusa autorreferência, ideia inexistente e ciclos sem gravar nada.
   "Copiar prompt" leva esse pedido para a área de transferência, usando o tópico promovido ou as regras
   rascunho, sem promover a ideia. Está disponível mesmo sem provedor de IA e confirma com "Copiado".
 - **Agentes**: nome, modelo e prompt (markdown) de agentes do VibeDeck. Os **próximos passos** apontam para
@@ -239,6 +265,11 @@ resource `vibedeck://patterns`.
   cada etapa abre uma sessão com contexto limpo. Ambos usam o mesmo motor de vereditos, condições,
   perguntas e limites de visitas. O provedor fica gravado na execução; continuar mantém esse provedor.
   As perguntas das etapas aparecem no painel e suas respostas são registradas antes da retomada.
+  Iniciar ou retomar abre, ao lado do chat, o **visualizador da execução**: o diagrama do workflow com a etapa
+  atual e as transições percorridas, o estado da execução e os agentes e subagentes informados pelo provedor
+  (eventos `task_*` do Claude Code, `collabAgentToolCall` do Codex). Arraste a divisão para ajustar a largura,
+  expanda ou oculte o painel sem interromper a execução. A conversa guarda a referência à execução
+  (`workflowRun`); ao reabri-la, agentes salvos como em andamento aparecem sem confirmação de atividade.
   `vibedeck workflows flow <workflow>` continua gerando o JSON do workflow sem estado.
 - **Conduzir** (só neste repositório): o fluxo do claude-kit portado para o VibeDeck, com issues do GitHub
   (e o Status do GitHub Projects) no lugar do Plane. Comandos `registrar-task-do-github → viabilizar → planejar →
@@ -336,6 +367,8 @@ vibedeck hook install                        # liga o hook Stop (portão de regr
 vibedeck hook install --agent codex          # o mesmo no Codex (.codex/hooks.json)
 vibedeck ideas new "Modo offline" --tags futuro && vibedeck ideas promote modo-offline
 vibedeck ideas unpromote modo-offline        # apaga o tópico e despromove a ideia
+vibedeck ideas depend app-mobile modo-offline   # app-mobile só implementa depois de modo-offline done
+vibedeck ideas undepend app-mobile modo-offline # MCP: update_idea com dependencies (lista completa)
 vibedeck agents import                       # traz os agentes do Claude Code
 vibedeck agents next revisor testador        # testador atua depois do revisor
 vibedeck agents flow revisor                 # JSON do fluxo para o prompt

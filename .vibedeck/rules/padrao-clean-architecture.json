@@ -1,0 +1,38 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-22T14:56:19Z",
+  "description" : "Camadas concêntricas (entidades, casos de uso, adaptadores, frameworks) com dependências apontando só para dentro.",
+  "id" : "ABA47EEA-5EF9-4545-9C9F-AD83E490F597",
+  "rules" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Entidades ← casos de uso ← adaptadores ← frameworks.\nVerificar: nenhuma camada interna importa ou conhece uma externa.",
+      "id" : "8229EEC1-E218-4B92-B871-B45798D4FF2B",
+      "severity" : "must",
+      "text" : "Dependências apontam só para dentro"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: regras de aplicação novas ficam em casos de uso (interactors) com entrada e saída definidas, não em controllers/views.",
+      "id" : "9E0D5726-189C-476A-9B9A-CD74BED2537B",
+      "severity" : "must",
+      "text" : "Cada caso de uso é uma unidade explícita"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: entidades e modelos de framework (ORM, DTO de rede) não vazam entre camadas; há mapeamento na fronteira.",
+      "id" : "C579A40B-72C8-4CC0-B7FD-025552B6793F",
+      "severity" : "should",
+      "text" : "Dados atravessam fronteiras como estruturas simples"
+    }
+  ],
+  "sourcePattern" : "clean-architecture",
+  "tags" : [
+    "padrao"
+  ],
+  "title" : "Padrão: Clean Architecture"
+}

@@ -9,6 +9,8 @@ public enum VibeDeckError: LocalizedError, Equatable {
     case ambiguousItem(String)
     case topicNotFound(String)
     case ideaNotFound(String)
+    case invalidIdeaDependency(String)
+    case ideaNotImplementable([String])
     case agentNotFound(String)
     case commandNotFound(String)
     case skillNotFound(String)
@@ -62,6 +64,9 @@ public enum VibeDeckError: LocalizedError, Equatable {
         case .ambiguousItem(let s): "Prefixo de id ambíguo: \(s)"
         case .topicNotFound(let s): "Tópico de regras não encontrado: \(s)"
         case .ideaNotFound(let s): "Ideia não encontrada: \(s)"
+        case .invalidIdeaDependency(let s): "Dependência inválida: \(s) Nada foi alterado."
+        case .ideaNotImplementable(let reasons):
+            "A ideia não pode ser implementada:\n" + reasons.map { "- \($0)" }.joined(separator: "\n")
         case .agentNotFound(let s): "Agente não encontrado: \(s)"
         case .commandNotFound(let s): "Comando não encontrado: \(s)"
         case .skillNotFound(let s): "Skill não encontrada: \(s)"
@@ -1259,6 +1264,74 @@ public struct ProjectStore: Sendable {
             released.append(slug)
         }
         return released
+    }
+
+    // MARK: Idea dependencies
+
+    /// Replaces the idea's dependencies (slugs, UUIDs, prefixes or titles). Self-references, unknown ideas and
+    /// cycles are rejected before anything is written. Duplicates collapse, keeping the first occurrence.
+    @discardableResult
+    public func setIdeaDependencies(_ ref: String, _ refs: [String]) throws -> (slug: String, idea: Idea) {
+        let slug = try resolveIdeaSlug(ref)
+        let idea = try loadIdea(slug)
+        let ideas = try listIdeas().map { (slug: $0.slug, idea: $0.idea) }
+        var seen = Set<UUID>()
+        let ids = try refs.map { ref -> UUID in
+            if let id = UUID(uuidString: ref), id == idea.id || idea.dependencies.contains(id) || ideas.contains(where: { $0.idea.id == id }) { return id }
+            guard let found = try? resolveIdeaSlug(ref), let target = ideas.first(where: { $0.slug == found }) else {
+                throw VibeDeckError.invalidIdeaDependency("ideia inexistente no projeto: \(ref).")
+            }
+            return target.idea.id
+        }.filter { seen.insert($0).inserted }
+        if let problem = IdeaImplementation.dependencyProblem(idea.id, ids, in: ideas) {
+            throw VibeDeckError.invalidIdeaDependency(problem)
+        }
+        guard ids != idea.dependencies else { return (slug, idea) }
+        return try updateIdea(slug) { $0.dependencies = ids }
+    }
+
+    @discardableResult
+    public func addIdeaDependencies(_ ref: String, _ refs: [String]) throws -> (slug: String, idea: Idea) {
+        let idea = try loadIdea(resolveIdeaSlug(ref))
+        return try setIdeaDependencies(ref, idea.dependencies.map(\.uuidString) + refs)
+    }
+
+    /// Removes the given links; references that are not dependencies (or no longer exist) are ignored.
+    @discardableResult
+    public func removeIdeaDependencies(_ ref: String, _ refs: [String]) throws -> (slug: String, idea: Idea) {
+        let idea = try loadIdea(resolveIdeaSlug(ref))
+        let removed = Set(refs.compactMap { ref in
+            UUID(uuidString: ref) ?? (try? resolveIdeaSlug(ref)).flatMap { try? loadIdea($0).id }
+        })
+        return try setIdeaDependencies(ref, idea.dependencies.filter { !removed.contains($0) }.map(\.uuidString))
+    }
+
+    /// The idea with its derived links, read from disk now (for `ideas show --json` and `get_idea`).
+    public func ideaDetail(_ ref: String) throws -> IdeaDetail {
+        let slug = try resolveIdeaSlug(ref)
+        let idea = try loadIdea(slug)
+        let ideas = try listIdeas().map { (slug: $0.slug, idea: $0.idea) }
+        return IdeaDetail(slug: slug, idea: idea, dependents: IdeaImplementation.dependents(of: idea.id, in: ideas),
+                          dependencyBlockers: IdeaImplementation.dependencyBlockers(of: idea, in: ideas))
+    }
+
+    /// Rereads the idea's dependencies from disk and throws when any is still pending (also when reading fails).
+    public func requireIdeaDependenciesMet(_ ref: String) throws {
+        let blockers = try ideaDetail(ref).dependencyBlockers
+        guard blockers.isEmpty else { throw VibeDeckError.ideaNotImplementable(blockers.map(\.message)) }
+    }
+
+    /// The single gate for implementing an idea (standard or workflow, app or chat): rereads the idea and its
+    /// dependencies from disk and throws every reason it can't be implemented now.
+    public func implementableIdea(_ ref: String) throws -> (slug: String, idea: Idea) {
+        let detail = try ideaDetail(ref)
+        var reasons: [String] = []
+        if !IdeaImplementation.isEligible(detail.idea) {
+            reasons.append("a ideia precisa estar aprovada e ter uma avaliação viável atual. Verifique novamente.")
+        }
+        reasons += detail.dependencyBlockers.map(\.message)
+        guard reasons.isEmpty else { throw VibeDeckError.ideaNotImplementable(reasons) }
+        return (detail.slug, detail.idea)
     }
 
     /// Drops the topic link; an approved idea goes back to exploring, other statuses stay.

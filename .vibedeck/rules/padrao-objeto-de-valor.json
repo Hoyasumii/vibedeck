@@ -1,0 +1,46 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-22T14:56:19Z",
+  "description" : "Um conceito de domínio é definido por seus atributos, sem identidade própria, com valores imutáveis e invariantes protegidas.",
+  "id" : "98375D6A-B307-4B23-9C55-16644EFF82B5",
+  "rules" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: inspecione a comparação de igualdade e confirme que valores com os mesmos atributos são iguais independentemente da instância.",
+      "id" : "F5931FF3-9994-4567-8285-8E3581964795",
+      "severity" : "must",
+      "text" : "Igualdade de objetos de valor depende de seus atributos"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: confira que não há operação pública que altere os atributos de uma instância após sua criação.",
+      "id" : "8C457638-D3F2-4611-B3E1-4041235542F0",
+      "severity" : "must",
+      "text" : "Objetos de valor são imutáveis"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: inspecione os caminhos de criação e confirme que entradas inválidas são rejeitadas antes de disponibilizar a instância.",
+      "id" : "579FA025-AA73-45E3-AE4F-F788681E382D",
+      "severity" : "must",
+      "text" : "A construção rejeita valores que violam invariantes"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: execute testes de igualdade entre instâncias e de rejeição de atributos inválidos.",
+      "id" : "40FDBE88-D79D-45A4-872E-BCDD3FC88FF3",
+      "severity" : "should",
+      "text" : "Objetos de valor têm testes de igualdade e invariantes"
+    }
+  ],
+  "sourcePattern" : "value-object",
+  "tags" : [
+    "padrao"
+  ],
+  "title" : "Padrão: Objeto de valor"
+}

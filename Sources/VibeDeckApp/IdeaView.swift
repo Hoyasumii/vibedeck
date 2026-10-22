@@ -6,6 +6,7 @@ struct IdeaView: View {
     @Environment(\.logProject) private var logProject
     let slug: String
     let openTopic: (String) -> Void
+    let openIdea: (String) -> Void
     @Environment(ProjectModel.self) private var model
     @Environment(\.undoManager) private var undo
     @Environment(AISession.self) private var session
@@ -20,6 +21,9 @@ struct IdeaView: View {
     @State private var stalePaths: [String] = []
     /// What runs with the topic slug once the promotion (and the stale-globs dialog) is done.
     @State private var afterPromote: ((String) -> Void)?
+    /// The pending promotion leads to implementing, so its confirmation rechecks the dependencies first.
+    @State private var promotionForImplementation = false
+    @State private var choosingDependencies = false
     @AppStorage("ideaViewMode") private var mode: MarkdownViewMode = .edit
 
     private var idea: Idea { model.idea(slug) ?? Idea(title: slug) }
@@ -158,6 +162,7 @@ struct IdeaView: View {
                     Image(systemName: "sparkles").foregroundStyle(.purple).help("Criado por IA")
                 }
             }
+            dependencyRow
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
@@ -176,6 +181,94 @@ struct IdeaView: View {
 
     private var tagsField: some View {
         TagsField(tags: idea.tags) { tags in model.mutateIdea(slug, "Editar tags", undo: undo) { $0.tags = tags } }
+    }
+
+    /// Dependências (chips with ✕ + multi-selection popover) and Dependentes (derived, live). Horizontal scroll so
+    /// the row never sets the detail column's min width.
+    private var dependencyRow: some View {
+        let dependents = model.ideaDependents(idea.id)
+        return ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                LoggedButton { choosingDependencies = true } label: {
+                    Label("Dependências", systemImage: "link")
+                }.loggedControl(control: "idea_view.dependencies", label: "Dependências")
+                .help("Ideias que precisam estar implementadas antes desta")
+                .popover(isPresented: $choosingDependencies, arrowEdge: .bottom) { dependencyPicker }
+                if idea.dependencies.isEmpty {
+                    Text("Nenhuma").foregroundStyle(.secondary)
+                }
+                ForEach(idea.dependencies, id: \.self) { dependencyChip($0) }
+                Divider().frame(height: 16)
+                Label("Dependentes", systemImage: "arrow.turn.down.right").foregroundStyle(.secondary)
+                if dependents.isEmpty {
+                    Text("Nenhum").foregroundStyle(.secondary)
+                }
+                ForEach(dependents, id: \.id) { link in
+                    LoggedButton { openIdea(link.slug) } label: {
+                        Label(link.title, systemImage: link.status.symbol).lineLimit(1)
+                    }.loggedControl(control: "idea_view.open_dependent", label: "Abrir dependente")
+                    .buttonStyle(.link)
+                    .help("Depende desta ideia (\(link.status.label.lowercased()))")
+                }
+            }
+            .controlSize(.small)
+        }
+        .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func dependencyChip(_ id: UUID) -> some View {
+        let entry = model.ideas.first { $0.value.id == id }
+        return HStack(spacing: 4) {
+            Image(systemName: entry?.value.status.symbol ?? "questionmark.circle")
+                .foregroundStyle(entry?.value.status == .done ? .green : .orange)
+            if let entry {
+                LoggedButton { openIdea(entry.slug) } label: { Text(entry.value.title).lineLimit(1) }
+                    .loggedControl(control: "idea_view.open_dependency", label: "Abrir dependência")
+                    .buttonStyle(.plain)
+            } else {
+                Text("Ausente: \(id.uuidString)").lineLimit(1)
+            }
+            LoggedButton {
+                model.setIdeaDependencies(slug, idea.dependencies.filter { $0 != id }, "Remover dependência", undo: undo)
+            } label: { Image(systemName: "xmark.circle.fill") }
+            .loggedControl(control: "idea_view.remove_dependency", label: "Remover dependência")
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .help("Remover esta dependência")
+        }
+        .padding(.horizontal, 8).padding(.vertical, 3)
+        .overlay(Capsule().strokeBorder(.quaternary))
+        .help(entry.map { "\($0.value.status.label): só uma ideia implementada satisfaz a dependência" }
+              ?? "Ideia não encontrada no projeto: bloqueia a implementação até ser removida")
+    }
+
+    /// Every idea of the project except this one, including the done ones the sidebar hides.
+    private var dependencyPicker: some View {
+        let candidates = model.ideas.filter { $0.value.id != idea.id }
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("Dependências").font(.headline)
+            Text("Só ideias implementadas liberam a implementação desta.").font(.caption).foregroundStyle(.secondary)
+            if candidates.isEmpty {
+                Text("Não há outras ideias no projeto.").foregroundStyle(.secondary)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(candidates) { entry in
+                            Toggle(isOn: Binding(get: { idea.dependencies.contains(entry.value.id) }, set: { on in
+                                let ids = on ? idea.dependencies + [entry.value.id] : idea.dependencies.filter { $0 != entry.value.id }
+                                model.setIdeaDependencies(slug, ids, on ? "Adicionar dependência" : "Remover dependência", undo: undo)
+                            }).logging(control: "idea_view.toggle_dependency", label: "Dependência", project: logProject)) {
+                                Label(entry.value.title, systemImage: entry.value.status.symbol).lineLimit(1)
+                            }
+                            .toggleStyle(.checkbox)
+                        }
+                    }
+                }
+                .frame(maxHeight: 320)
+            }
+        }
+        .padding(14)
+        .frame(width: 320)
     }
 
     @ViewBuilder
@@ -213,10 +306,13 @@ struct IdeaView: View {
             onImplement: implementation ? {
                 flush()
                 guard let current = try? model.store.loadIdea(slug) else { return }
+                // Pending dependencies stop here, before any promotion (Core reads them from disk).
+                guard model.ideaDependenciesMet(slug) else { return }
                 if IdeaImplementation.isEligible(current) {
                     session.requestIdeaImplementation(current)
                 } else if current.status != .approved, current.implementBlocker == nil,
-                          readyToPromote(then: implement), let topic = model.promoteIdea(slug) {
+                          readyToPromote(then: implement, forImplementation: true),
+                          let topic = model.promoteIdea(slug, forImplementation: true) {
                     implement(topic)
                 }
             } : nil,
@@ -263,9 +359,11 @@ struct IdeaView: View {
     /// "Implementar": only for a viable idea (rules + current AI verdict). Promotes/syncs the rules (so rules_for
     /// enforces them; the idea becomes Aprovada) and asks the chat to implement it.
     private var implementButton: some View {
-        ruleDiscover(assessOnly: true, implementation: true)
-            .disabled(!idea.canRequestImplementation)
-            .help(idea.implementBlocker.map { "Reavaliar antes de implementar: " + $0 } ?? "Implementar a ideia avaliada")
+        let blockers = model.ideaDependencyBlockers(idea)
+        return ruleDiscover(assessOnly: true, implementation: true)
+            .disabled(!idea.canRequestImplementation || !blockers.isEmpty)
+            .help(!blockers.isEmpty ? "Dependências pendentes:\n" + blockers.map(\.message).joined(separator: "\n")
+                  : idea.implementBlocker.map { "Reavaliar antes de implementar: " + $0 } ?? "Implementar a ideia avaliada")
     }
 
     private var copyPromptButton: some View {
@@ -295,14 +393,14 @@ struct IdeaView: View {
               : "Leva regras e globs novos desta ideia para o tópico já criado")
         .confirmationDialog("Globs que não casam nenhum arquivo", isPresented: Binding(get: { !stalePaths.isEmpty }, set: { if !$0 { stalePaths = [] } })) {
             LoggedButton("Promover sem eles") {
-                let (skipped, then) = takePendingPromotion()
-                if let topic = model.promoteIdea(slug, skippingPaths: skipped) { then?(topic) }
+                let (skipped, then, implementing) = takePendingPromotion()
+                if let topic = model.promoteIdea(slug, skippingPaths: skipped, forImplementation: implementing) { then?(topic) }
             }.loggedControl(control: "idea_view.button_6", label: "Promover sem eles")
             LoggedButton("Promover com eles") {
-                let (_, then) = takePendingPromotion()
-                if let topic = model.promoteIdea(slug) { then?(topic) }
+                let (_, then, implementing) = takePendingPromotion()
+                if let topic = model.promoteIdea(slug, forImplementation: implementing) { then?(topic) }
             }.loggedControl(control: "idea_view.button_7", label: "Promover com eles")
-            LoggedButton("Cancelar", role: .cancel) { stalePaths = []; afterPromote = nil }.loggedControl(control: "idea_view.button_8", label: "Cancelar")
+            LoggedButton("Cancelar", role: .cancel) { stalePaths = []; afterPromote = nil; promotionForImplementation = false }.loggedControl(control: "idea_view.button_8", label: "Cancelar")
         } message: {
             Text("Estes globs da ideia não casam mais nenhum arquivo do projeto (renomeado ou apagado?):\n" + stalePaths.joined(separator: "\n"))
         }
@@ -314,17 +412,19 @@ struct IdeaView: View {
 
     /// Before promoting from a button: true when it can go ahead now; false when globs match no file, and the
     /// dialog asks first (its buttons promote and then run `then` with the topic).
-    private func readyToPromote(then: @escaping (String) -> Void) -> Bool {
+    /// `forImplementation`: the dialog's confirmation rechecks the dependencies (Core, from disk) before promoting.
+    private func readyToPromote(then: @escaping (String) -> Void, forImplementation: Bool = false) -> Bool {
         flush()
         stalePaths = (try? model.store.unmatchedIdeaPaths(slug)) ?? []
         afterPromote = stalePaths.isEmpty ? nil : then
+        promotionForImplementation = !stalePaths.isEmpty && forImplementation
         return stalePaths.isEmpty
     }
 
     /// Closes the stale-globs dialog: the globs it listed and what to run after promoting.
-    private func takePendingPromotion() -> (Set<String>, ((String) -> Void)?) {
-        defer { stalePaths = []; afterPromote = nil }
-        return (Set(stalePaths), afterPromote)
+    private func takePendingPromotion() -> (Set<String>, ((String) -> Void)?, Bool) {
+        defer { stalePaths = []; afterPromote = nil; promotionForImplementation = false }
+        return (Set(stalePaths), afterPromote, promotionForImplementation)
     }
 
     // MARK: Persistence (debounced, like DocView)

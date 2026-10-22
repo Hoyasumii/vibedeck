@@ -230,4 +230,32 @@ import Testing
         #expect(try store.loadIdea(slug).promotedTopic == nil)
     }
 
+    @Test func ideaRunBlocksPendingDependenciesOnStartResumeAndRestartWithoutWrites() throws {
+        let store = try cycleStore()
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let viable = { (title: String) throws -> String in
+            let (slug, _) = try store.createIdea(title: title)
+            try store.updateIdea(slug) { $0.rules = [Rule(text: "R")]; RuleDiscoverVerdict(viable: true).apply(to: &$0) }
+            return slug
+        }
+        let main = try viable("Principal"), dep = try viable("Pré-requisito")
+        try store.addIdeaDependencies(main, [dep])
+        let id = try store.loadIdea(main).id.uuidString
+        let idea = try store.loadIdea(main)
+        #expect(throws: VibeDeckError.self) { try store.implementIdeaRun(id, workflow: "ciclo", restart: false, provider: .codex) }
+        #expect(try store.listRuns().isEmpty)
+        try store.updateIdea(dep) { $0.status = .done }
+        let started = try store.implementIdeaRun(id, workflow: "ciclo", restart: false, provider: .codex)
+        let runBytes = try Data(contentsOf: store.runURL(started.ref))
+        // Reopened externally before the confirmation: resume and restart are blocked and the run is untouched.
+        try store.updateIdea(dep) { $0.status = .exploring }
+        for restart in [false, true] {
+            #expect(throws: VibeDeckError.self) { try store.implementIdeaRun(id, workflow: "ciclo", restart: restart, provider: .codex) }
+        }
+        #expect(try Data(contentsOf: store.runURL(started.ref)) == runBytes)
+        #expect(try store.listRuns().count == 1)
+        #expect(try store.loadIdea(main) == idea)
+        #expect(try store.loadIdea(main).promotedTopic == nil)
+    }
+
 }

@@ -1,0 +1,38 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-22T14:56:19Z",
+  "description" : "Test-Driven Development: o teste vem antes do código; cada comportamento novo nasce de um teste que falha.",
+  "id" : "C499E334-2E48-4BB5-979E-B42E2C4B7FBA",
+  "rules" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Escreva primeiro o teste que falha (vermelho), depois o mínimo de código para passar (verde), depois refatore.\nVerificar: a alteração vem acompanhada de testes que a exercitam; um bug corrigido ganha um teste de regressão.",
+      "id" : "3787FB4C-952B-493D-8421-453F8A269983",
+      "severity" : "must",
+      "text" : "Todo comportamento novo ou corrigido tem um teste automatizado"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: rode os testes do projeto e confirme que todos passam; não desative nem apague testes para fazer passar.",
+      "id" : "91C694F5-E503-40B4-8948-F36AB26CE509",
+      "severity" : "must",
+      "text" : "A suíte de testes passa antes de concluir"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Dependências externas (rede, disco, relógio, banco) entram por parâmetro ou protocolo e são trocadas por dublês nos testes.\nVerificar: os testes novos não dependem de serviços externos nem de estado global.",
+      "id" : "F3088591-7653-4C64-A34A-3D73F1BBE3ED",
+      "severity" : "must",
+      "text" : "O código é testável sem infraestrutura real"
+    }
+  ],
+  "sourcePattern" : "tdd",
+  "tags" : [
+    "padrao"
+  ],
+  "title" : "Padrão: TDD"
+}

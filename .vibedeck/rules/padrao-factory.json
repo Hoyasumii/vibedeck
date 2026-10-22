@@ -1,0 +1,30 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-22T14:56:19Z",
+  "description" : "Centraliza a criação de objetos (Factory Method / Abstract Factory), escondendo qual tipo concreto é instanciado.",
+  "id" : "3B8FBDC1-1713-462A-99F6-B5F7EC3B19C2",
+  "rules" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: o código cliente não escolhe o tipo concreto com if/switch; pede à fábrica.",
+      "id" : "8966FED8-7577-475E-AA72-C934AE70CD19",
+      "severity" : "must",
+      "text" : "A criação de variantes passa por uma fábrica"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: o tipo de retorno é abstrato, para o cliente não depender da classe concreta.",
+      "id" : "0A12C92C-88E8-488B-B172-9CE56D7CDE0F",
+      "severity" : "must",
+      "text" : "A fábrica devolve o protocolo/tipo abstrato"
+    }
+  ],
+  "sourcePattern" : "factory",
+  "tags" : [
+    "padrao"
+  ],
+  "title" : "Padrão: Factory"
+}

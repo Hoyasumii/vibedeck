@@ -1,0 +1,144 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "human",
+  "body" : "## Atualização de escopo confirmada — 22/10/2026\n\nO usuário pediu remover sessões de nuvem do VibeDeck e manter execução local e por SSH. A etapa 02 passa a provar MCP stdio em máquina limpa/local e ambiente SSH. Exigências anteriores de nuvem estão revogadas; a ordem e as dependências das cinco etapas continuam.\nTambém pediu início guiado para perguntar stack/padrões e oferecer cadastro de skills/agentes/comandos existentes, e Docs com arquivos Markdown da raiz (ex.: README.md) espelhados por links simbólicos.\nReferência: .vibedeck/docs/especificacao-do-produto/07-mudancas-confirmadas.md. Consultar antes de implementar; ali estão os detalhes confirmados, propostas e pendências. Essas funcionalidades entram no mapa de domínio/UX da migração; sua prioridade interna ainda precisa ser definida. Esta anotação não implementa nem promove regras.\n\n## Ordem de execução — atualizada em 22/10/2026\n\n1. 01 — Arquitetura e padrões: 32390FB1-061D-45DE-ACC8-24D717FF880A.\n2. 02 — Core mínimo e MCP por stdio em máquina limpa/local e por SSH: 6AC91755-1DDC-487F-9554-344E0E95C258.\n3. 03 — Piloto de 3 a 5 verificações Rust: 5FE68368-901F-4643-8A35-427C7EBEE15B.\n4. 04 — Migrar o restante do Core, CLI/MCP e integrar o app: 35806341-8605-43B0-A13A-456DB1369B35.\n5. 05 — Medir e otimizar após a migração: C17132D2-9CAA-4981-A4B5-81CBE4550AA8.\n\nAs dependências abaixo foram registradas no VibeDeck para tornar essa ordem visível e bloquear implementação fora da sequência. A etapa 02 é o começo executável da reescrita; a etapa 04 conclui a migração. A etapa 03 exige somente a amostra validada, não converter todos os scripts. Não aguardar a reescrita completa para provar o MCP localmente e por SSH. Planejamento e revisão podem ocorrer antes; cada implementação aguarda sua predecessora concluída.\n\n## Etapa 04 — concluir a reescrita, após o piloto\n\nPré-requisito: etapa 03 (5FE68368-901F-4643-8A35-427C7EBEE15B) concluída. Reaproveitar o workspace, o MCP e os contratos entregues nas etapas 01–03.\nEntrega: migrar o restante das operações, substituir CLI/MCP com paridade, integrar SwiftUI à fronteira escolhida e retirar implementações Swift redundantes somente após validação.\nNão repetir a prova inicial nem recomeçar o Core do zero. O escopo desta ideia é a conclusão da migração iniciada em 02.\n\nA ideia da Reescrita do VibeDeck é botar o Core do Aplicativo em Rust, assim como o CLI e o MCP, e manter o pacote de Swift apenas para a interface do Aplicativo. Isso vai ser útil quando o projeto ganhar versões para outras plataformas, como windows e Linux\n\nA ideia tbm é mudar a regra que já existe do CLI, para substituir o CLI existente com o novo\n\n## Direção consolidada em 21/10/2026\n\nO usuário confirmou que o produto deve ser multiplataforma e que a criação do Core Rust deve melhorar a manutenibilidade com padrões de código. O destino é Core, CLI e MCP em Rust, mantendo SwiftUI como interface macOS. A troca de linguagem sozinha não garante melhor manutenção nem desempenho; avaliar modularidade, dependências e comportamento.\n\n## Organização e sequência proposta\n\nA sequência vigente está no início desta descrição: arquitetura (01), prova do Core/MCP (02), piloto das regras (03), migração completa (04), desempenho (05). As dependências de implementação foram registradas para refletir essa ordem. O piloto não exige converter todos os scripts e a prova MCP não exige portar todo o Core.\nGrupo: criacao-do-core. A convivência temporária é permitida durante as etapas; ao final da etapa 04 há uma única implementação da lógica de negócio.\n\n## Restrições e contratos a preservar\n\nManter as 11 regras rascunho originais e as 3 adicionadas para o MCP portátil (14 no total). Preservar IDs, autoria humana, campos desconhecidos, schemas, slugs e relações entre itens, datas e escrita atômica; manter paridade de comandos/flags, ferramentas MCP, JSON, erros e códigos de saída.\nPreservar também os comportamentos atuais de dependências de ideias, checks e regras manuais, transições/checkpoints de workflow, timeout/cancelamento, execução local/SSH e configurações de provider/modelo/permissões.\nNão substituir silenciosamente regras ativas que ainda exigem o CLI Swift: inventariar conflitos e propor a atualização correspondente na etapa de migração. Preservar o requisito original de substituir o CLI instalado pelo novo e empacotá-lo no app.\nNão ampliar o escopo para reescrever a UI ou implementar a ideia de decisão local Laya; ela permanece separada em arquitetura-e-desempenho.\n\n## Evidências recuperáveis\n\nPackage.swift: biblioteca VibeDeckCore compartilhada por app e CLI/MCP.\nSources/VibeDeckCore/RuleTests.swift: contrato de execução, códigos 0/77, timeout, cancelamento e serialização por ferramenta de build.\nSources/VibeDeckCore/ProjectStore.swift: operações e agendamento das verificações.\nSources/vibedeck/CLI.swift e MCPServer.swift: superfície pública a inventariar.\nAs referências são ponto de partida; reler os trechos atuais antes de implementar.\n\n## Critério de conclusão da migração\n\nContratos públicos e formatos preservados por testes de paridade; testes Rust aprovados antes de remover a implementação Swift equivalente; build e testes nativos nos três sistemas suportados; app macOS integrado; CLI/MCP Rust distribuídos e CLI instalado atualizado; nenhuma lógica de domínio duplicada ao final. Medições registradas sem prometer ganhos antecipados.\n\n## Próxima sessão — 22/10/2026\n\nComeçar pela etapa 01 (arquitetura), seguir para a etapa 02 (Core mínimo/MCP), depois 03 (piloto das regras); só então iniciar esta etapa 04. Ainda faltam decisões de layout dos crates, protocolo/FFI, runner e distribuição do executável de regras. Estas ideias estão em exploração, sem readiness positiva presumida e sem promoção a regras ativas. Antes de implementação, seguir avaliação e escolha de execução padrão/workflow, consultar stack, padrões e revisões abertas; usar provider codex nas operações que aceitam provedor.\n\n## Meta central esclarecida pelo usuário: MCP portátil por stdio\n\nA prioridade do Core Rust é permitir um servidor MCP por stdio, utilizável em sessões locais, ambientes SSH e outras máquinas com instalação mínima. Interpretamos \"std\" como stdio (stdin/stdout). Isso orienta a arquitetura e a distribuição; não é apenas uma troca de linguagem.\n\nO servidor deve iniciar sem app gráfico e sem toolchains Rust/Swift ou runtimes Python/Node instalados para suas operações básicas. Distribuir artefatos pré-compilados por sistema e arquitetura; documentar qualquer dependência de sistema inevitável. Ferramentas específicas dos projetos continuam sendo requisitos apenas das operações que as utilizam, com erro claro quando ausentes.\n\nO cliente MCP deve conseguir iniciar o executável no ambiente da sessão com configuração pequena (caminho do binário, argumentos, raiz do projeto e ambiente necessário), sem depender de instalação global, caminho do computador do desenvolvedor ou app macOS aberto. Esse formato precisa ser validado nos clientes locais e ambientes SSH escolhidos.\n\nStdio conecta o cliente ao processo iniciado naquele ambiente. Usar por SSH exige disponibilizar e iniciar o binário no servidor; um servidor MCP HTTP seria outro transporte, ainda fora do escopo confirmado.\nManter stdout exclusivo para o protocolo MCP e diagnósticos em stderr ou arquivo. Preservar provider, modelo e permissões escolhidos pela sessão.\n\n### Aceite e próximos passos\n\nEscolher ao menos um ambiente SSH representativo; testar download/instalação, configuração, inicialização MCP, descoberta de ferramentas e uma leitura/escrita real em projeto temporário, sem UI e sem toolchains de desenvolvimento. Repetir em máquina/ambiente limpo e em CI nos sistemas suportados. Registrar exatamente os pré-requisitos, artefato, comandos e configuração necessários.\nExecutar esse teste completo na etapa 02, antes do piloto das regras (03). Nesta etapa 04, expandir a superfície do MCP até a paridade completa e repetir a validação nos ambientes suportados.\n\n## Ajustes pendentes do usuário\n\nDefinir ordem dos módulos/casos de uso e marcos de migração; conferir a matriz de paridade, os conflitos com regras ativas que ainda exigem Swift e a estratégia de atualização do CLI instalado. Confirmar os critérios rascunho antes de iniciar.\n\n## Especificação do produto — consultar antes de executar\n\nDiretório Docs: .vibedeck/docs/especificacao-do-produto/.\nComeçar pelo índice .vibedeck/docs/especificacao-do-produto/00-indice-e-como-preencher.md (MCP read_doc: especificacao-do-produto/00-indice-e-como-preencher).\nPara esta etapa, consultar inventário completo, funcionalidades migradas, contratos, matriz de paridade e decisões de integração, seguindo os links do inventário e lendo apenas os trechos necessários. O usuário preencherá os templates; [PREENCHER], [DECIDIR], propostas e campos vazios não são requisitos aprovados.\nComparar a especificação preenchida com os requisitos desta ideia, as regras ativas e as evidências do comportamento atual. Resolver decisões bloqueantes e divergências antes da alteração afetada; não inferir aprovação de informação ausente nem promover regras automaticamente. Essa consulta complementa, sem substituir, avaliação, dependências e workflow de implementação.\n\n## Exceções explícitas à paridade e revisão pendente dos rascunhos\n\nA paridade exigida pelas regras desta ideia exclui a feature de sessões de nuvem, cuja remoção foi solicitada. Inventariar e retirar UI, CLI/MCP e configurações cloud com transição documentada, preservando dados conforme decisão do usuário.\nA regra rascunho 13D1425F-0210-42DD-B667-A24FFDA86743, que exigia validação em sessão de nuvem, está revogada por esta decisão. Seu texto estruturado ainda precisa ser revisado para local/SSH antes de avaliação positiva/promoção. O MCP atual permite adicionar rascunhos, mas não editar essa regra individual; o registro existente foi preservado e a divergência foi marcada explicitamente.\n",
+  "createdAt" : "2026-10-09T16:06:01Z",
+  "dependencies" : [
+    "5FE68368-901F-4643-8A35-427C7EBEE15B"
+  ],
+  "id" : "35806341-8605-43B0-A13A-456DB1369B35",
+  "paths" : [
+    "Sources/VibeDeckCore/*.swift",
+    "Sources/vibedeck/*.swift",
+    "Sources/VibeDeckApp/*.swift",
+    "Package.swift",
+    "scripts/*.sh"
+  ],
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:38:55Z",
+      "details" : "Verificar que Sources/ Swift não contém regras de negócio (resolução de referências, aplicabilidade de tópicos, validação de check) e que chama o Core Rust.",
+      "id" : "F9CFB6C7-4643-4A73-AE74-B09604F76E61",
+      "severity" : "must",
+      "text" : "O Core em Rust é a única implementação da lógica de dados do projeto (leitura, escrita, regras, checks, ideias, revisões); o pacote Swift não duplica essa lógica."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:38:55Z",
+      "details" : "Verificar que o build do CLI/MCP roda com cargo, sem swift build, e que ambos importam o mesmo crate do Core.",
+      "id" : "DF006CE3-7422-4E3F-B0C1-42B98C68F5B2",
+      "severity" : "must",
+      "text" : "O CLI vibedeck e o servidor MCP são binários Rust que usam o mesmo Core, sem depender de código Swift."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:38:55Z",
+      "details" : "Comparar a saída --json e a lista de tools do MCP antes e depois da migração; qualquer diferença deve ser documentada.",
+      "id" : "83660463-AE39-4DC8-876B-3ED38DD3FDE2",
+      "severity" : "must",
+      "text" : "A reescrita preserva paridade de comportamento: mesmos comandos, flags (incluindo --json e --ai), ferramentas MCP e códigos de saída do CLI/MCP atuais."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:38:55Z",
+      "details" : "Teste de round-trip: arquivos existentes do repositório são lidos e regravados pelo Rust sem diferença semântica; campos vazios continuam omitidos e RuleCheck.createdAt mantém frações de segundo.",
+      "id" : "26A8F17F-5417-4690-9B9C-26562F154345",
+      "severity" : "must",
+      "text" : "O formato dos arquivos em .vibedeck/ e vibedeck.json não muda com a reescrita: o Core Rust lê e escreve arquivos compatíveis com o schema/v1 atual."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:38:55Z",
+      "details" : "Verificar que toda escrita usa um único helper atômico e que há teste para isso.",
+      "id" : "0AD6066A-B2F1-423E-BC61-75312DB5E5A9",
+      "severity" : "must",
+      "text" : "O Core em Rust mantém as invariantes de persistência: nenhuma escrita parcial (escrita atômica via arquivo temporário e rename) e nenhum estado em memória entre operações."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:38:55Z",
+      "details" : "Verificar o README e que existe um único módulo Swift responsável por essa ponte.",
+      "id" : "C0E7C10C-7866-4AF4-A81D-395E1D7D7070",
+      "severity" : "should",
+      "text" : "O app Swift acessa o Core Rust por uma fronteira única e documentada (FFI ou processo do CLI), e essa escolha fica registrada no README."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:38:55Z",
+      "details" : "Rodar cargo test e swift test; não apagar Sources/VibeDeckCore antes da paridade dos testes.",
+      "id" : "001121E1-1512-49C9-B9CA-B782CDDB853D",
+      "severity" : "must",
+      "text" : "Toda a lógica do Core migrado para Rust tem testes automatizados equivalentes aos testes Swift existentes, e cargo test passa antes de remover o código Swift correspondente."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:38:55Z",
+      "details" : "Verificar que o workspace Rust compila com cargo check nos três alvos (CI ou cross-target).",
+      "id" : "319A33CF-18C3-45BE-B93E-3039F16EC4F3",
+      "severity" : "should",
+      "text" : "O Core Rust não usa APIs específicas de macOS (AppKit, Foundation do Apple, Keychain) e compila em macOS, Linux e Windows."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:38:55Z",
+      "details" : "Verificar build-app.sh e .github/workflows: cargo build --release antes do swift build, binário copiado para o .app, scripts ainda com set -euo pipefail e source scripts/env.sh.",
+      "id" : "C09AAF48-52D8-40A9-9C54-D0C01453804F",
+      "severity" : "must",
+      "text" : "Os scripts de build e os workflows de CI compilam o Core/CLI/MCP em Rust e continuam empacotando o CLI dentro do app e gerando o DMG."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:38:55Z",
+      "details" : "Verificar que vibedeck --version bate com Cargo.toml e que não resta um version: em CLI.swift divergente.",
+      "id" : "47DC3D50-9084-4C2A-8377-1D84C5A381F3",
+      "severity" : "should",
+      "text" : "A versão do CLI tem uma única fonte no projeto Rust (Cargo.toml) e o script de build do app usa esse valor."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-09T17:38:55Z",
+      "details" : "Verificar que o enum de erro centraliza as mensagens e que nenhuma mensagem visível ao usuário está em inglês.",
+      "id" : "2B0AC7CF-E1E5-43EF-AC9C-A0D277175E6B",
+      "severity" : "must",
+      "text" : "As mensagens de erro do Core em Rust continuam em pt-BR e usam um tipo de erro único equivalente ao VibeDeckError."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-22T01:33:36Z",
+      "details" : "Em teste de integração, iniciar o processo por cliente MCP sem app aberto; negociar inicialização, listar ferramentas e executar operação; verificar que mensagens de log não contaminam stdout.",
+      "id" : "0D242700-99BC-4931-9FA7-368E826A6EE6",
+      "severity" : "must",
+      "text" : "O servidor MCP Rust funciona por stdio sem depender do app gráfico, com stdout reservado ao protocolo e diagnósticos separados."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-22T01:33:38Z",
+      "details" : "Testar ambiente limpo sem Rust/Cargo, Swift/Xcode, Python e Node; iniciar MCP e executar leitura/escrita em projeto temporário. Documentar dependências de sistema inevitáveis e separar ferramentas opcionais dos projetos.",
+      "id" : "4C242321-6179-461E-8475-D04F9CAE7236",
+      "severity" : "must",
+      "text" : "Core, CLI e MCP são distribuídos como artefatos pré-compilados com os pré-requisitos de execução documentados, sem exigir toolchains de desenvolvimento para operações básicas."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-22T01:33:39Z",
+      "details" : "Registrar artefato, pré-requisitos, instalação, argumentos, ambiente, raiz do projeto e configuração do cliente; comprovar inicialização, descoberta de ferramentas e operação real sem caminhos do desenvolvedor ou instalação global obrigatória. Preservar provider/modelo/permissões. Stdio ocorre no ambiente da sessão; transporte de rede exige escopo próprio.",
+      "id" : "13D1425F-0210-42DD-B667-A24FFDA86743",
+      "severity" : "must",
+      "text" : "O mesmo servidor MCP por stdio é validado em máquina limpa e em ao menos um ambiente representativo de sessão em nuvem, com configuração mínima reproduzível."
+    }
+  ],
+  "status" : "exploring",
+  "tags" : [
+    "core",
+    "cli",
+    "mcp",
+    "build",
+    "swiftui",
+    "rust",
+    "multiplataforma",
+    "manutenibilidade"
+  ],
+  "title" : "04 — Concluir reescrita do Core, CLI e MCP em Rust",
+  "updatedAt" : "2026-10-22T14:49:44Z"
+}

@@ -278,7 +278,8 @@ public struct SSHFileTransport: RemoteWorkspace.Transport {
         if let data {
             _ = try connection.run("umask 077; " + check + "mkdir -p " + SSHConnection.quote(parent.isEmpty ? "." : parent) + " && cat > " + tempQuote, input: data, timeout: 300)
             let permissions = "if test -e " + quoted + "; then mode=$(stat -c %a " + quoted + " 2>/dev/null || stat -f %Lp " + quoted + ") && chmod \"$mode\" " + tempQuote + " || exit; fi; "
-            _ = try connection.run(check + permissions + compare + " && mv -f " + tempQuote + " " + quoted + " && cmp -s " + quoted + " /dev/stdin", input: data, timeout: 300)
+            // "-" instead of /dev/stdin: on Linux sshd's stdin is a socket and opening /proc/self/fd/0 fails (ENXIO).
+            _ = try connection.run(check + permissions + compare + " && mv -f " + tempQuote + " " + quoted + " && cmp -s " + quoted + " -", input: data, timeout: 300)
         } else {
             _ = try connection.run(check + compare + " && rm -f " + quoted + " && test ! -e " + quoted)
         }

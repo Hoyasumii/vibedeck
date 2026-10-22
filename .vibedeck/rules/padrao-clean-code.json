@@ -1,0 +1,38 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-22T14:56:19Z",
+  "description" : "Código legível: nomes que revelam intenção, funções pequenas, sem duplicação nem código morto.",
+  "id" : "66858A32-C57E-4825-92F9-E7473AFB0C96",
+  "rules" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: funções novas cabem na tela e têm um nível de abstração; extraia passos com nomes claros.",
+      "id" : "8341AA2D-A545-4E2F-9208-4417C95CCF80",
+      "severity" : "should",
+      "text" : "Funções são pequenas e fazem uma coisa"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: variáveis, funções e tipos dizem o que são/fazem, sem abreviações obscuras.",
+      "id" : "A9C179E4-D02D-4655-8094-6BC1EEFFB06E",
+      "severity" : "must",
+      "text" : "Nomes revelam intenção"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: reaproveite o que já existe em vez de copiar; remova código comentado e não usado.",
+      "id" : "3644D2EF-AB49-4398-A704-2ADA0729E11E",
+      "severity" : "must",
+      "text" : "Sem duplicação nem código morto"
+    }
+  ],
+  "sourcePattern" : "clean-code",
+  "tags" : [
+    "padrao"
+  ],
+  "title" : "Padrão: Clean Code"
+}

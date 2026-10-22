@@ -557,7 +557,7 @@ struct ProjectWindow: View {
             }
         case .idea(let slug):
             if model.idea(slug) != nil {
-                IdeaView(slug: slug) { selection = .topic($0) }
+                IdeaView(slug: slug) { selection = .topic($0) } openIdea: { selection = .idea($0) }
             } else {
                 ContentUnavailableView("Ideia não encontrada", systemImage: "questionmark.folder")
             }

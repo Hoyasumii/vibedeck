@@ -483,6 +483,7 @@ struct MCPHandler: Sendable {
                  "body": ("string", ""),
                  "status": ("string", ""),
                  "tags": ("array", ""),
+                 "dependencies": ("array", ""),
              ], required: ["idea"], enums: ["status": ideaStatuses])),
         Tool(name: "add_idea_rule", description: "Adiciona uma regra rascunho a uma ideia (vale após promote_idea).",
              inputSchema: schema([
@@ -1071,8 +1072,9 @@ struct MCPHandler: Sendable {
             })
 
         case "get_idea":
-            let slug = try store.resolveIdeaSlug(req("idea"))
-            return try json(SlugAnd(slug: slug, value: store.loadIdea(slug)))
+            return try json(store.ideaDetail(req("idea")))
+
+
 
         case "add_idea":
             let (slug, idea) = try store.createIdea(title: req("title"), body: str("body"), tags: list("tags") ?? [], author: .ai, reference: str("reference"))
@@ -1084,6 +1086,8 @@ struct MCPHandler: Sendable {
                 return v
             }
             let tags = list("tags")
+            // Full list (add or remove links): validated by the Core before the other fields are written.
+            if let dependencies = list("dependencies") { try store.setIdeaDependencies(req("idea"), dependencies) }
             let (slug, idea) = try store.updateIdea(req("idea")) { idea in
                 if let t = str("title") { idea.title = t }
                 if let b = str("body") { idea.body = b }

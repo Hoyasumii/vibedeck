@@ -1,0 +1,46 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-22T14:56:19Z",
+  "description" : "Domain-Driven Design: o código usa a linguagem do negócio, com entidades, objetos de valor, agregados e contextos delimitados.",
+  "id" : "65D27D33-E3CA-4044-BE69-FEB75D03482F",
+  "rules" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: tipos, métodos e eventos têm os nomes que o negócio usa, não nomes técnicos genéricos.",
+      "id" : "6F6AD706-8212-4EC4-B926-AB5B328AA92E",
+      "severity" : "must",
+      "text" : "O código usa a linguagem ubíqua do domínio"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: invariantes são garantidas dentro do próprio modelo; nada de entidade só com getters/setters.",
+      "id" : "5A9EA105-6677-402C-93E7-0B20A583FC5B",
+      "severity" : "must",
+      "text" : "Regras de negócio vivem nas entidades e objetos de valor, não em serviços anêmicos"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: código externo não altera entidades internas de um agregado diretamente; referências entre agregados são por id.",
+      "id" : "8FA77DB0-01C5-445E-8EED-FAFC0FD37B5E",
+      "severity" : "must",
+      "text" : "Agregados protegem suas invariantes e são alterados só pela raiz"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: conceitos de um contexto não são importados direto em outro; há tradução (anticorrupção) na fronteira.",
+      "id" : "D57E5BC7-C217-43A4-BF8A-167F69548656",
+      "severity" : "should",
+      "text" : "Contextos delimitados não se misturam"
+    }
+  ],
+  "sourcePattern" : "ddd",
+  "tags" : [
+    "padrao"
+  ],
+  "title" : "Padrão: DDD"
+}

@@ -2,8 +2,10 @@ import Foundation
 
 /// Shared by every installation and provider. Never rewrites user-authored instructions.
 public enum AIPromptPolicy {
-    public static let version = 1
+    public static let version = 2
     public static let instructions = """
+    Antes de implementar, leia .vibedeck/AGENTS.md, stack/patterns e notas em vibedeck.json e regras
+    aplicáveis em .vibedeck/rules/ (paths são globs; vazio é global).
     Trabalhe por escopo: objetivo, restrições, evidências e critério de conclusão. Use busca e leia trechos
     relevantes antes de ampliar o contexto; consulte o grafo por consulta quando disponível, sem exigir grafo.
     Preserve requisitos, decisões do usuário, falhas pendentes, regras e etapas explícitas do workflow.

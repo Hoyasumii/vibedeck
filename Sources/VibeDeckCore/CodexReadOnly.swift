@@ -1,7 +1,8 @@
 import Foundation
 
 /// Isolated structured calls. Read-only by default; test generation explicitly requests workspace writes.
-/// MCP integrations and approvals stay disabled; ephemeral threads do not enter chat history.
+/// Read-only calls disable MCP; writing jobs get only the app's VibeDeck MCP for rule checks.
+/// Approvals stay disabled; ephemeral threads do not enter chat history.
 @MainActor public final class CodexReadOnly {
     private let rpc = CodexRPC()
     private var waiter: CheckedContinuation<String, Error>?
@@ -11,14 +12,14 @@ import Foundation
     public private(set) var tokens = AITokenUsage()
     public private(set) var model: String?
     public init() {}
-    public func run(root: URL, prompt: String, schema: JSONValue, timeout: Duration = .seconds(90), settings: AIProviderSettings = .init(), workspaceWrites: Bool = false) async throws -> String {
+    public func run(root: URL, prompt: String, schema: JSONValue, timeout: Duration = .seconds(90), settings: AIProviderSettings = .init(), workspaceWrites: Bool = false, mcpCLI: String? = nil) async throws -> String {
         let prompt = try await RemoteExecution.prepareContext(prompt, root: root)
         output = ""; tokens = .init()
         defer { stop() }
         return try await withTaskCancellationHandler {
             try await rpc.start(root: root)
             let config = try await rpc.request("config/read", params: ["includeLayers": .bool(false)])
-            let overrides = Self.overrides(config: config, workspaceWrites: workspaceWrites)
+            let overrides = Self.overrides(config: config, workspaceWrites: workspaceWrites, root: root, cli: mcpCLI)
             var params: [String: JSONValue] = ["cwd": .string(RemoteExecution.path(for: root)), "ephemeral": .bool(true), "approvalPolicy": .string("never"), "sandbox": .string(workspaceWrites ? "workspace-write" : "read-only"), "config": .object(overrides), "developerInstructions": .string(AIPromptPolicy.instructions)]
             if !workspaceWrites { params["dynamicTools"] = CodexReadTools.specs }
             if let model = settings.model { params["model"] = .string(model) }
@@ -87,10 +88,20 @@ import Foundation
         } onCancel: { Task { @MainActor [weak self] in self?.finish(.failure(CancellationError())); self?.stop() } }
     }
     /// Read-only calls keep file tools but remove command execution; test generation keeps its write mode.
-    static func overrides(config: JSONValue, workspaceWrites: Bool) -> [String: JSONValue] {
+    static func overrides(config: JSONValue, workspaceWrites: Bool, root: URL? = nil, cli: String? = nil) -> [String: JSONValue] {
         var overrides: [String: JSONValue] = [:]
         for name in config["config"]?["mcp_servers"]?.object?.keys ?? Dictionary<String, JSONValue>().keys {
+            if workspaceWrites, root != nil, name == "vibedeck" { continue }
             overrides["mcp_servers.\(name).enabled"] = .bool(false)
+        }
+        if workspaceWrites, let root {
+            // MCP runs as a child of app-server, outside the agent's command sandbox. Rule scripts
+            // therefore run normally without relaxing workspace-write or accepting arbitrary approvals.
+            // Replace any user-configured server of this name with the app's known CLI.
+            let remote = RemoteWorkspace.existing(at: root) != nil
+            let serverRoot = URL(fileURLWithPath: RemoteExecution.path(for: root))
+            overrides.merge(CodexMCP.sessionConfig(root: serverRoot, cli: remote ? "vibedeck" : cli)) { _, new in new }
+            overrides["mcp_servers.vibedeck.enabled"] = .bool(true)
         }
         if !workspaceWrites {
             overrides["features.shell_tool"] = .bool(false)

@@ -178,7 +178,7 @@ public struct ClaudeResult: Equatable, Sendable {
 }
 
 /// One line of `claude -p --output-format stream-json`, reduced to what the panel shows.
-/// Events from subagents (`parent_tool_use_id` set) are ignored.
+/// Events from subagents (`parent_tool_use_id` set) are ignored, except their start and end (`.agents`).
 public enum ClaudeEvent: Equatable, Sendable {
     case initialized(sessionId: String, model: String?, slashCommands: [String] = [])
     /// The session's permission mode changed (e.g. back to default after a plan is approved).
@@ -192,12 +192,15 @@ public enum ClaudeEvent: Equatable, Sendable {
     /// A control request the panel doesn't handle; must be answered with an error so Claude doesn't hang.
     case unsupportedControl(requestId: String)
     case result(ClaudeResult)
+    /// Subagents started or ended (Claude's `task_*` system lines, Codex's collab tool calls).
+    case agents([AgentProcessEvent])
     case ignored
 }
 
 public enum ClaudeStream {
     public static func parse(_ line: String) -> ClaudeEvent {
         guard let data = line.data(using: .utf8), let json = try? JSONDecoder().decode(JSONValue.self, from: data) else { return .ignored }
+        if json["type"]?.string == "system", let event = agentEvent(json) { return .agents([event]) }
         if let parent = json["parent_tool_use_id"], parent != .null { return .ignored }
 
         switch json["type"]?.string {
@@ -268,6 +271,37 @@ public enum ClaudeStream {
 
         default:
             return .ignored
+        }
+    }
+
+    /// `task_started` / `task_updated` / `task_notification` of an agent task (other tasks, like background shells,
+    /// are not agents). The process id is the Agent call's `tool_use_id`, so nested agents find their parent.
+    static func agentEvent(_ json: JSONValue) -> AgentProcessEvent? {
+        let taskID = json["task_id"]?.string
+        switch json["subtype"]?.string {
+        case "task_started":
+            guard json["task_type"]?.string?.hasSuffix("agent") == true || json["subagent_type"]?.string != nil,
+                  let id = json["tool_use_id"]?.string ?? taskID else { return nil }
+            return .started(id: id, alias: taskID, name: json["subagent_type"]?.string ?? "Subagente",
+                            detail: json["description"]?.string, parentID: json["parent_tool_use_id"]?.string)
+        case "task_notification":
+            guard let id = json["tool_use_id"]?.string ?? taskID, let state = agentState(json["status"]?.string) else { return nil }
+            return .finished(id: id, state: state)
+        case "task_updated":
+            guard let id = taskID, let state = agentState(json["patch"]?["status"]?.string), state != .running else { return nil }
+            return .finished(id: id, state: state)
+        default:
+            return nil
+        }
+    }
+
+    private static func agentState(_ status: String?) -> AgentProcessState? {
+        switch status {
+        case "running", "pending": .running
+        case "completed": .succeeded
+        case "failed", "error": .failed
+        case "killed", "stopped", "cancelled", "interrupted": .interrupted
+        default: nil
         }
     }
 

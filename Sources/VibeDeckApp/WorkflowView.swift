@@ -527,23 +527,9 @@ private struct WorkflowRunRow: View {
         return parts.joined(separator: " · ")
     }
 
-    private var symbol: String {
-        switch run.status {
-        case .running: "play.circle"
-        case .waiting: "questionmark.circle"
-        case .done: "checkmark.circle"
-        case .stopped: "stop.circle"
-        }
-    }
+    private var symbol: String { run.status.symbol }
 
-    private var color: Color {
-        switch run.status {
-        case .running: .accentColor
-        case .waiting: .orange
-        case .done: .green
-        case .stopped: .secondary
-        }
-    }
+    private var color: Color { run.status.color }
 }
 
 extension WorkflowRunStatus {
@@ -553,6 +539,24 @@ extension WorkflowRunStatus {
         case .waiting: "Aguardando resposta"
         case .done: "Concluída"
         case .stopped: "Parada"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .running: "play.circle"
+        case .waiting: "questionmark.circle"
+        case .done: "checkmark.circle"
+        case .stopped: "stop.circle"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .running: .accentColor
+        case .waiting: .orange
+        case .done: .green
+        case .stopped: .secondary
         }
     }
 }

@@ -27,6 +27,12 @@
       },
       "additionalProperties": false
     },
+    "dependencies": {
+      "type": "array",
+      "description": "UUIDs of other ideas of the same project that must be done before this one can be implemented. Dependents are derived, never stored.",
+      "items": { "type": "string", "format": "uuid", "pattern": "^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$" },
+      "uniqueItems": true
+    },
     "author": { "enum": ["human", "ai"] },
     "createdAt": { "type": "string", "format": "date-time" },
     "updatedAt": { "type": "string", "format": "date-time" }

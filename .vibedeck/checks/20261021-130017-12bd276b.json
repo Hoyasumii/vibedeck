@@ -1,0 +1,212 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-check.schema.json",
+  "author" : "ai",
+  "createdAt" : "2026-10-21T13:00:17.225Z",
+  "failures" : [
+    "Os workflows ignoram os paths um do outro; deploy só na main"
+  ],
+  "files" : [
+    ".github/workflows/swift.yml"
+  ],
+  "id" : "12BD276B-5453-45F8-8EDA-C839656B2A11",
+  "passed" : false,
+  "pending" : [
+    "README atualizado quando muda algo documentado"
+  ],
+  "results" : [
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/build-scripts-e-ci/b6b91f0e.sh (exit 77)\n(sem saída)",
+      "ruleId" : "B6B91F0E-F8CD-43C8-85A8-333C324684C7",
+      "source" : "script",
+      "topic" : "build-scripts-e-ci",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/build-scripts-e-ci/10f1fcb3.sh (exit 77)\n(sem saída)",
+      "ruleId" : "10F1FCB3-C0AB-4119-8CF9-85162FBCE622",
+      "source" : "script",
+      "topic" : "build-scripts-e-ci",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 1,
+      "note" : ".vibedeck/tests/build-scripts-e-ci/a111c3ed.sh (exit 1)\n.github/workflows/worker.yml: deploy deve ter needs: check\n.github/workflows/worker.yml: deploy deve rodar só em push na main (if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request')\n.github/workflows/worker.yml: deploy deve ter concurrency: worker-deploy",
+      "ruleId" : "A111C3ED-0A9C-4368-83DE-7C91B1697406",
+      "source" : "script",
+      "topic" : "build-scripts-e-ci",
+      "verdict" : "fail"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/build-scripts-e-ci/b7d9e63a.sh (exit 77)\n(sem saída)",
+      "ruleId" : "B7D9E63A-D446-47D8-8E57-151F9E4E1AC4",
+      "source" : "script",
+      "topic" : "build-scripts-e-ci",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/build-scripts-e-ci/99c049ac.sh (exit 77)\n(sem saída)",
+      "ruleId" : "99C049AC-A1D3-4B87-AF5E-2C3135E5549E",
+      "source" : "script",
+      "topic" : "build-scripts-e-ci",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/9d6f362b.sh (exit 0)\n(sem saída)",
+      "ruleId" : "9D6F362B-9F0E-4661-97B3-6158B160D478",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/geral/9f92a765.sh (exit 77)\n(sem saída)",
+      "ruleId" : "9F92A765-76E7-4EA0-A66A-78AE12EE4C8F",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 0,
+      "note" : ".vibedeck/tests/geral/ac4ba963.sh (exit 0)\n(sem saída)",
+      "ruleId" : "AC4BA963-CDEE-419C-B057-9140643E115D",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "pass"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/geral/0e5aec71.sh (exit 77)\n(sem saída)",
+      "ruleId" : "0E5AEC71-405E-4113-AB27-615313AB2B5F",
+      "source" : "script",
+      "topic" : "geral",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/97e096a2.sh (exit 77)\n(sem saída)",
+      "ruleId" : "97E096A2-000D-4657-B152-0FE64E0C8E6C",
+      "source" : "script",
+      "topic" : "colecao-de-artefatos-e-docs-do-claude",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/b5b453dc.sh (exit 77)\n(sem saída)",
+      "ruleId" : "B5B453DC-7961-43CF-B3C2-DFA18950E81D",
+      "source" : "script",
+      "topic" : "colecao-de-artefatos-e-docs-do-claude",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/0f77f1fd.sh (exit 77)\n(sem saída)",
+      "ruleId" : "0F77F1FD-8852-4A26-B860-8C363E445637",
+      "source" : "script",
+      "topic" : "colecao-de-artefatos-e-docs-do-claude",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/colecao-de-artefatos-e-docs-do-claude/dcd7508b.sh (exit 77)\n(sem saída)",
+      "ruleId" : "DCD7508B-3ADF-4776-93EF-EA4FD237CAD5",
+      "source" : "script",
+      "topic" : "colecao-de-artefatos-e-docs-do-claude",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/133b62cd.sh (exit 77)\n(sem saída)",
+      "ruleId" : "133B62CD-0226-4845-9E53-4F502A05CA08",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/a21b5419.sh (exit 77)\n(sem saída)",
+      "ruleId" : "A21B5419-49D4-4F31-9BEC-DEA037FB9F2F",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/d4dd944d.sh (exit 77)\n(sem saída)",
+      "ruleId" : "D4DD944D-5DC9-4EEA-9139-DEE9F8968FEF",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/4d89a4da.sh (exit 77)\n(sem saída)",
+      "ruleId" : "4D89A4DA-FD25-4B06-8C32-504434336A75",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/953b1e7e.sh (exit 77)\n(sem saída)",
+      "ruleId" : "953B1E7E-82E7-4157-AD7D-2F0576EF05AC",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/384b5c03.sh (exit 77)\n(sem saída)",
+      "ruleId" : "384B5C03-96A1-47DA-B363-30B8EF61E50C",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/103b84bc.sh (exit 77)\n(sem saída)",
+      "ruleId" : "103B84BC-17CD-4929-839E-BE0B82B976D8",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/2621dabd.sh (exit 77)\n(sem saída)",
+      "ruleId" : "2621DABD-5DC8-44DE-943C-A601518D7929",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/bba08717.sh (exit 77)\n(sem saída)",
+      "ruleId" : "BBA08717-71D1-4963-B090-6E869319B8D2",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    },
+    {
+      "exitCode" : 77,
+      "note" : ".vibedeck/tests/criar-agentes-comandos-skills-e-workflows-pre-definidos-que-/8a34ae9e.sh (exit 77)\n(sem saída)",
+      "ruleId" : "8A34AE9E-0913-41BD-8441-4B7E1652275B",
+      "source" : "script",
+      "topic" : "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-",
+      "verdict" : "na"
+    }
+  ],
+  "task" : "Remove o job linux-cli (build do CLI/MCP no Linux) do CI em swift.yml",
+  "topics" : [
+    "build-scripts-e-ci",
+    "geral",
+    "colecao-de-artefatos-e-docs-do-claude",
+    "criar-agentes-comandos-skills-e-workflows-pre-definidos-que-"
+  ],
+  "warnings" : [
+
+  ]
+}

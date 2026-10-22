@@ -1,0 +1,198 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-21T21:36:24Z",
+  "description" : "Regras vindas da ideia \"Dependencia de Ideias\".",
+  "id" : "072374A2-7EA0-42DA-9CB9-E9977DAAC1A7",
+  "paths" : [
+    "Sources/VibeDeckCore/Rules.swift",
+    "Sources/VibeDeckCore/ProjectStore.swift",
+    "Sources/VibeDeckCore/WorkflowRuns.swift",
+    "Sources/VibeDeckApp/IdeaView.swift",
+    "Sources/VibeDeckApp/ProjectModel.swift",
+    "Sources/VibeDeckApp/ClaudeSession.swift",
+    "Sources/vibedeck/CLI.swift",
+    "Sources/vibedeck/MCPServer.swift",
+    "schema/v1/idea.schema.json"
+  ],
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-21T13:19:55Z",
+      "details" : "Verificar: salvar e recarregar uma ideia com várias dependências; cada UUID deve aparecer uma única vez.",
+      "id" : "5F39CA51-087B-4145-ACF3-31D768FB348B",
+      "severity" : "must",
+      "text" : "Uma ideia pode ter zero ou mais dependências, persistidas como UUIDs únicos de outras ideias do mesmo projeto."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-21T13:19:55Z",
+      "details" : "Verificar: decodificar um JSON de ideia anterior à funcionalidade e confirmar que não há dependências.",
+      "id" : "662C0C27-8352-4AE4-849A-11B269E246E3",
+      "severity" : "must",
+      "text" : "Arquivos de ideia sem o campo de dependências devem ser carregados com a lista de dependências vazia."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-21T13:19:55Z",
+      "details" : "Verificar: validar exemplos sem o campo, com vários UUIDs, com UUID inválido e com duplicatas.",
+      "id" : "7EB612AE-16C6-43F1-B10B-09D265E315AA",
+      "severity" : "must",
+      "text" : "O schema de ideia deve aceitar um campo opcional de dependências contendo um array de UUIDs sem duplicatas."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-21T13:19:55Z",
+      "details" : "Verificar: tentar adicionar o UUID da ideia à própria lista e confirmar erro sem alteração do arquivo.",
+      "id" : "1B514995-28F9-423D-A031-3C98221C27F5",
+      "severity" : "must",
+      "text" : "O Core deve rejeitar a inclusão da própria ideia como dependência."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-21T13:19:55Z",
+      "details" : "Verificar: A depende de B impede B depender de A; A depende de B e B de C impede C depender de A.",
+      "id" : "A6687E04-E7C7-421D-AD9A-57ADDDDAD327",
+      "severity" : "must",
+      "text" : "O Core deve rejeitar alterações de dependências que criem ciclos diretos ou indiretos."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-21T13:19:55Z",
+      "details" : "Verificar: informar referência inexistente e confirmar erro sem gravação parcial.",
+      "id" : "DE4ABD94-5DA2-4002-A3EF-96ADF5A6995E",
+      "severity" : "must",
+      "text" : "O Core deve rejeitar a inclusão de uma dependência que não corresponda a uma ideia existente no projeto."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-21T13:19:55Z",
+      "details" : "Verificar: new, exploring, approved e discarded bloqueiam; done satisfaz a dependência.",
+      "id" : "DE104684-EBF8-4E56-8EA0-22BA9C030C58",
+      "severity" : "must",
+      "text" : "Uma dependência só é satisfeita quando a ideia referenciada tem status done."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-21T13:19:55Z",
+      "details" : "Verificar: uma ideia approved com avaliação viável atual e duas dependências permanece bloqueada quando apenas uma delas está done.",
+      "id" : "4CFDF18C-9D3F-4706-82E6-90A8C4F25FF6",
+      "severity" : "must",
+      "text" : "A implementação de uma ideia deve ser bloqueada enquanto qualquer uma de suas dependências não estiver satisfeita, mesmo que a ideia esteja aprovada."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-21T13:19:55Z",
+      "details" : "Verificar: remover externamente o arquivo de uma dependência e confirmar que a referência ausente não é tratada como concluída.",
+      "id" : "2002735E-5596-4C0F-BA9C-6C0B76E31458",
+      "severity" : "must",
+      "text" : "Uma dependência cujo UUID não possa mais ser encontrado deve bloquear a implementação da ideia dependente."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-21T13:19:55Z",
+      "details" : "Verificar: os dois modos consultam a mesma validação, sem depender exclusivamente de botão desabilitado ou instrução no prompt.",
+      "id" : "FBE3CF91-50E3-4422-B1B8-D197DB66178C",
+      "severity" : "must",
+      "text" : "A validação de dependências para implementação deve ficar no Core e ser reutilizada pelos caminhos de execução padrão e por workflow."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-21T13:19:55Z",
+      "details" : "Verificar: solicitar uma ideia bloqueada pelo botão e pelo chat, incluindo pedidos com modo padrão ou workflow explícito.",
+      "id" : "38D61C91-F85A-42BB-9879-84A7E3D9FD8E",
+      "severity" : "must",
+      "text" : "O app deve aplicar o bloqueio por dependências tanto ao botão Implementar quanto aos pedidos de implementação reconhecidos no chat."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-21T13:19:55Z",
+      "details" : "Verificar: abrir a escolha de implementação, reabrir externamente uma dependência antes done e confirmar que a execução é bloqueada ao continuar.",
+      "id" : "F14AF789-C98B-43DC-9BFD-E8EA02C74168",
+      "severity" : "must",
+      "text" : "As dependências devem ser relidas do disco na confirmação que inicia, retoma ou reinicia a implementação da ideia."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-21T13:19:55Z",
+      "details" : "Verificar: comparar ideias, tópicos e runs antes e depois da tentativa e confirmar ausência de chamada de implementação ao provedor.",
+      "id" : "6E15FBA4-07A7-4D09-ACB3-DEAC1894BC60",
+      "severity" : "must",
+      "text" : "Uma tentativa de implementação bloqueada por dependências deve terminar antes de promover regras, alterar uma execução de workflow ou enviar o pedido de implementação à IA."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-21T13:19:55Z",
+      "details" : "Verificar: uma ideia com dependências approved, discarded e ausente apresenta os três impedimentos em pt-BR.",
+      "id" : "7A891542-EFF1-497F-8417-D47623F80AAF",
+      "severity" : "must",
+      "text" : "O motivo do bloqueio deve identificar todas as dependências não satisfeitas e seus estados, indicando referências ausentes pelo UUID."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-21T13:19:55Z",
+      "details" : "Verificar: selecionar várias ideias, incluindo uma Implementada que não aparece na sidebar.",
+      "id" : "B9BD6DFE-120D-49F0-A8AB-7416B8D5696E",
+      "severity" : "must",
+      "text" : "IdeaView deve oferecer o campo Dependências com seleção múltipla das ideias do projeto, incluindo ideias done."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-21T13:19:55Z",
+      "details" : "Verificar: remover uma dependência entre três e confirmar que as outras duas permanecem.",
+      "id" : "25C775EA-BE46-4FBB-8DFD-B20111B8BBF8",
+      "severity" : "must",
+      "text" : "O campo Dependências deve permitir remover individualmente qualquer vínculo selecionado."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-21T13:19:55Z",
+      "details" : "Verificar: se A e C dependem de B, B lista A e C; uma ideia que depende apenas de A não aparece como dependente direto de B.",
+      "id" : "9CFA8584-2CD6-4E4A-BC36-E1BE40362543",
+      "severity" : "must",
+      "text" : "Cada ideia deve exibir um campo Dependentes com todas as ideias que a referenciam diretamente como dependência."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-21T13:19:55Z",
+      "details" : "Verificar: adicionar ou remover A → B altera a lista exibida em B sem gravar um campo inverso no JSON de B.",
+      "id" : "17EC9625-955D-45DE-9AB6-011A4EC49566",
+      "severity" : "must",
+      "text" : "A lista de dependentes deve ser derivada das dependências persistidas nas demais ideias, sem manter uma segunda lista de vínculos no arquivo da ideia referenciada."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-21T13:19:55Z",
+      "details" : "Verificar: criar um vínculo pelo CLI, removê-lo pelo MCP e confirmar que ambos rejeitam autorreferência e ciclos.",
+      "id" : "096A336F-2C24-4122-958D-F254B4491A11",
+      "severity" : "must",
+      "text" : "O CLI e o MCP devem permitir adicionar e remover dependências de uma ideia por operações do Core."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-21T13:19:55Z",
+      "details" : "Verificar: consultar a mesma ideia por ideas show --json e get_idea e comparar os vínculos e impedimentos retornados.",
+      "id" : "60AF97E1-B621-468B-B602-F4097BBF3373",
+      "severity" : "must",
+      "text" : "As consultas de detalhe de ideia no CLI e no MCP devem retornar dependências, dependentes e impedimentos por dependência."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-21T13:19:55Z",
+      "details" : "Verificar: marcar a última dependência como done libera a condição de dependências sem criar run nem chamar o provedor.",
+      "id" : "19478404-18E3-40D8-ACC0-A4A10653ECBD",
+      "severity" : "must",
+      "text" : "A conclusão de uma dependência deve remover apenas o impedimento correspondente, sem iniciar automaticamente a implementação da ideia dependente."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-21T13:19:55Z",
+      "details" : "Verificar: salvar avaliação viável de uma ideia com regras e dependência pendente mantém o fluxo de aprovação e bloqueia somente sua implementação.",
+      "id" : "6ADEBEBA-FB4D-41FD-8178-D27BE8115E6F",
+      "severity" : "must",
+      "text" : "A existência de dependências pendentes não deve impedir a aprovação da ideia."
+    }
+  ],
+  "sourceIdea" : "A9B694ED-D865-4E66-824C-F9509F4BD917",
+  "title" : "Dependencia de Ideias"
+}

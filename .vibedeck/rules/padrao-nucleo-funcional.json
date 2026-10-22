@@ -1,0 +1,38 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-22T14:56:19Z",
+  "description" : "Functional core, imperative shell: lógica em funções puras e dados imutáveis; efeitos colaterais só na borda.",
+  "id" : "A999D6A4-8B54-4231-91D4-2D67259B9C0B",
+  "rules" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Mesma entrada, mesma saída, sem I/O, relógio ou aleatoriedade escondidos.\nVerificar: regras novas podem ser testadas sem mocks, só com valores.",
+      "id" : "148F5306-7A09-4435-B513-19A02DED2769",
+      "severity" : "must",
+      "text" : "A lógica de negócio fica em funções puras"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: prefira `let`/valores/cópias com alteração a estado mutável compartilhado.",
+      "id" : "0F92EC73-F142-46BB-B71D-0B5FA45995EE",
+      "severity" : "must",
+      "text" : "Dados são imutáveis por padrão"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: I/O, persistência e chamadas externas ficam nas bordas, que chamam o núcleo puro.",
+      "id" : "5E97F54A-5E96-455E-AFC5-DFFBEE902029",
+      "severity" : "must",
+      "text" : "Efeitos colaterais ficam na casca, fora do núcleo"
+    }
+  ],
+  "sourcePattern" : "functional-core",
+  "tags" : [
+    "padrao"
+  ],
+  "title" : "Padrão: Núcleo funcional"
+}

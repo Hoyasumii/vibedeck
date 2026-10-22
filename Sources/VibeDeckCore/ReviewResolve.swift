@@ -125,6 +125,10 @@ public enum ReviewResolve {
         for (index, step) in plan.steps.enumerated() { lines.append("\(index + 1). \(step)") }
         if !plan.files.isEmpty { lines.append("Arquivos previstos: " + plan.files.joined(separator: ", ")) }
         lines += [
+            "", "## Verificação",
+            "- Use rules_for e submit_rule_check no MCP vibedeck com review_item=\(item.id.uuidString) e os arquivos realmente alterados; sem MCP, use os equivalentes vibedeck rules for/check --item \(item.id.uuidString).",
+            "- No Codex, rode os scripts pelo MCP do VibeDeck, fora do terminal do agente, sem alterar o sandbox nem dispensar checks.",
+            "- Para concluir o item, confira também as regras manuais must: include_manual=true, depois verify_manual=true com evidência para cada manual. Não aprove sem verificar.",
             "", "## Limites",
             "- Altere apenas arquivos dentro do diretório atual e só o que o plano pede.",
             "- Não edite .vibedeck/reviews nem o status do item: o app muda o status depois do check.",
@@ -169,14 +173,23 @@ public enum ReviewResolve {
 
     // MARK: Check
 
-    /// Runs the item's rule check (scripts; manual rules stay pending) and reports why it can't be done yet.
+    /// Runs the item's scripts again, retaining manual evidence recorded during this execution only.
     /// Empty result = `ensureVerified` accepts the item and the caller may mark it `done`.
     public static func verify(
-        store: ProjectStore, item: ReviewItem, files: [String], runner: RuleTestRunner = .live
+        store: ProjectStore, item: ReviewItem, files: [String], verifiedSince: Date? = nil, runner: RuleTestRunner = .live
     ) -> [String] {
         do {
-            let check = try store.submitCheck(task: "Resolver: \(item.title)", files: files, reviewItem: item.id.uuidString,
-                                              answers: [], runner: runner)
+            let recent = try store.listChecks().first { $0.reviewItem == item.id }
+            let evidence: RuleCheck?
+            if let verifiedSince, let recent, recent.createdAt >= verifiedSince { evidence = recent }
+            else { evidence = nil }
+            let checkedFiles = Array(Set(files + (evidence?.files ?? []))).sorted()
+            let topics = try store.applicableTopics(files: checkedFiles + [item.target?.file].compactMap { $0 }, explicit: item.rules)
+            let manualIDs = Set(topics.flatMap { $0.topic.rules }.filter { $0.testState.needsAgent }.map(\.id))
+            let answers = (evidence?.results ?? []).filter { $0.source == .agent && manualIDs.contains($0.ruleId) }
+                .map { RuleAnswer(ruleId: $0.ruleId.uuidString, verdict: $0.verdict, note: $0.note) }
+            let check = try store.submitCheck(task: "Resolver: \(item.title)", files: checkedFiles, reviewItem: item.id.uuidString,
+                                              answers: answers, runner: runner)
             guard check.passed else { return check.failures.map { "Falhou no check: \($0)" } }
             try store.ensureVerified(item.id.uuidString)
             return []

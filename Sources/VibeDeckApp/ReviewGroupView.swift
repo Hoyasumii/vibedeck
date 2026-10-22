@@ -334,9 +334,13 @@ struct ReviewItemRow: View {
                             .padding(.horizontal, 8).padding(.vertical, 3)
                             .glassEffect(.regular.tint(.blue.opacity(0.3)), in: .capsule)
                     }
-                    if item.priority == .high {
-                        Label("Alta", systemImage: "exclamationmark.2").font(.caption).foregroundStyle(.orange).fixedSize()
-                    }
+                    Label(item.priority.label, systemImage: prioritySymbol)
+                        .font(.caption.weight(.medium))
+                        .lineLimit(1)
+                        .fixedSize()
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .glassEffect(.regular.tint(priorityColor.opacity(0.35)), in: .capsule)
+                        .help("Prioridade: \(item.priority.label)")
                     if let where_ = targetText {
                         Text(where_).font(.caption.monospaced()).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
                     }
@@ -360,6 +364,22 @@ struct ReviewItemRow: View {
             }
         }
         .padding(.vertical, 6)
+    }
+
+    private var prioritySymbol: String {
+        switch item.priority {
+        case .low: "arrow.down"
+        case .normal: "equal"
+        case .high: "exclamationmark.2"
+        }
+    }
+
+    private var priorityColor: Color {
+        switch item.priority {
+        case .low: .gray
+        case .normal: .blue
+        case .high: .orange
+        }
     }
 
     private var targetText: String? {
@@ -571,7 +591,7 @@ struct ReviewItemInspector: View {
     }
 }
 
-/// Text field that edits a local draft and commits on Return or when focus leaves,
+/// Text field that edits a local draft and commits on Return, focus loss or disappearance,
 /// so each edit becomes one undo step instead of one per keystroke.
 struct CommitTextField: View {
     @Environment(\.logProject) private var providerRoot
@@ -601,6 +621,13 @@ struct CommitTextField: View {
             .onSubmit(submit)
             .onChange(of: draft) { _, _ in confirmedDraft = nil }
             .onChange(of: focused) { _, isFocused in if !isFocused { submit() } }
+            // Removing a focused editor does not necessarily deliver a focus change.
+            // Use this editor's commit closure, which still refers to its original item.
+            .onDisappear(perform: submit)
+            // Closing the window or quitting (⌘Q) does not remove the view: commit the draft too.
+            // `submit` is a no-op for fields without pending edits.
+            .onReceive(NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)) { _ in submit() }
+            .onReceive(NotificationCenter.default.publisher(for: .vibedeckFlushPendingSaves)) { _ in submit() }
     }
 
     private func submit() {

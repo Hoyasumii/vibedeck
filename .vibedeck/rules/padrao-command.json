@@ -1,0 +1,30 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-22T14:56:19Z",
+  "description" : "Encapsula uma ação como objeto, permitindo enfileirar, registrar, repetir e desfazer.",
+  "id" : "11412EC8-C2FE-4186-B383-6D2209F4D4EB",
+  "rules" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: a ação tem um tipo próprio com tudo que precisa para executar (e desfazer, se aplicável).",
+      "id" : "A9793900-3951-4F0D-9C91-4E95002E7733",
+      "severity" : "must",
+      "text" : "Ações de usuário/sistema passíveis de fila, histórico ou desfazer são objetos de comando"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: invoker e receiver ficam desacoplados pelo protocolo do comando.",
+      "id" : "4194F8B5-4564-41DF-94C0-3296FEB8E7D0",
+      "severity" : "must",
+      "text" : "Quem dispara o comando não conhece quem o executa"
+    }
+  ],
+  "sourcePattern" : "command",
+  "tags" : [
+    "padrao"
+  ],
+  "title" : "Padrão: Command"
+}

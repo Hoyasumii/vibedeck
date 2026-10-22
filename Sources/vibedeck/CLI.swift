@@ -929,7 +929,7 @@ struct Rules: ParsableCommand {
 struct Ideas: ParsableCommand {
     static let configuration = CommandConfiguration(
         abstract: "Ideias futuras do projeto (brainstorm), com regras rascunho.",
-        subcommands: [List.self, Show.self, New.self, Set.self, AddRule.self, Promote.self, Unpromote.self],
+        subcommands: [List.self, Show.self, New.self, Set.self, AddRule.self, Depend.self, Undepend.self, Promote.self, Unpromote.self],
         defaultSubcommand: List.self
     )
 
@@ -955,12 +955,16 @@ struct Ideas: ParsableCommand {
 
         func run() throws {
             let store = try options.store()
-            let idea = try store.loadIdea(store.resolveIdeaSlug(self.idea))
-            if json { return try printJSON(idea) }
+            let detail = try store.ideaDetail(self.idea)
+            if json { return try printJSON(detail) }
+            let idea = detail.idea
             print("\(idea.title) — \(idea.status.label)")
             if let body = idea.body, !body.isEmpty { print("\n\(body)\n") }
             if !idea.rules.isEmpty { print("Regras rascunho:"); printRules(idea.rules) }
             if let t = idea.promotedTopic { print("Promovida para o tópico: \(t)") }
+            if !idea.dependencies.isEmpty { print("Dependências: " + idea.dependencies.map(\.uuidString).joined(separator: ", ")) }
+            for blocker in detail.dependencyBlockers { print("Impedimento: \(blocker.message)") }
+            if !detail.dependents.isEmpty { print("Dependentes: " + detail.dependents.map { "\($0.slug) [\($0.status.rawValue)]" }.joined(separator: ", ")) }
         }
     }
 
@@ -1006,6 +1010,28 @@ struct Ideas: ParsableCommand {
             let rule = Rule(text: text, severity: should ? .should : .must, author: ai ? .ai : .human)
             try options.store().addRule(rule, toIdea: idea)
             print(rule.id.uuidString)
+        }
+    }
+
+    struct Depend: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Adiciona dependências: ideias que precisam estar implementadas (done) antes desta.")
+        @OptionGroup var options: RootOptions
+        @Argument var idea: String
+        @Argument(help: "Ideias (slug, UUID, prefixo ou título).") var dependencies: [String]
+        func run() throws {
+            let (slug, idea) = try options.store().addIdeaDependencies(idea, dependencies)
+            print("\(slug)\t\(idea.dependencies.count) dependência(s)")
+        }
+    }
+
+    struct Undepend: ParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "Remove dependências da ideia.")
+        @OptionGroup var options: RootOptions
+        @Argument var idea: String
+        @Argument(help: "Ideias (slug, UUID, prefixo ou título).") var dependencies: [String]
+        func run() throws {
+            let (slug, idea) = try options.store().removeIdeaDependencies(idea, dependencies)
+            print("\(slug)\t\(idea.dependencies.count) dependência(s)")
         }
     }
 

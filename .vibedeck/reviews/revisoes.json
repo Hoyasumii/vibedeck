@@ -35,13 +35,13 @@
         "core-e-formato-de-dados",
         "conceitos-do-produto"
       ],
-      "status" : "open",
+      "status" : "done",
       "target" : {
         "component" : "CommitTextField",
         "file" : "Sources/VibeDeckApp/ReviewGroupView.swift"
       },
       "title" : "Os detalhes dos itens das revisões não está salvando os itens. Ou se está salvando, não está carregando",
-      "updatedAt" : "2026-10-09T15:55:08Z"
+      "updatedAt" : "2026-10-22T13:12:57Z"
     },
     {
       "author" : "human",
@@ -50,9 +50,9 @@
       "id" : "8A856584-36DF-4F56-878C-66A5CBA5792E",
       "kind" : "fix",
       "priority" : "high",
-      "status" : "open",
+      "status" : "done",
       "title" : "Exibir grau de prioridade dos itens",
-      "updatedAt" : "2026-10-09T15:56:27Z"
+      "updatedAt" : "2026-10-22T13:19:27Z"
     }
   ],
   "title" : "Revisões"

@@ -30,6 +30,176 @@
     }
   ],
   "name" : "vibedeck",
+  "patterns" : [
+    {
+      "author" : "human",
+      "category" : "practices",
+      "id" : "tdd",
+      "name" : "TDD",
+      "summary" : "Test-Driven Development: o teste vem antes do código; cada comportamento novo nasce de um teste que falha.",
+      "topic" : "padrao-tdd"
+    },
+    {
+      "author" : "human",
+      "category" : "practices",
+      "id" : "solid",
+      "name" : "SOLID",
+      "summary" : "Responsabilidade única, aberto/fechado, substituição de Liskov, segregação de interfaces e inversão de dependência.",
+      "topic" : "padrao-solid"
+    },
+    {
+      "author" : "human",
+      "category" : "practices",
+      "id" : "dependency-injection",
+      "name" : "Injeção de dependência",
+      "summary" : "Os objetos recebem suas dependências de fora (construtor/parâmetro) em vez de criá-las ou buscá-las em singletons.",
+      "topic" : "padrao-injecao-de-dependencia"
+    },
+    {
+      "author" : "human",
+      "category" : "practices",
+      "id" : "functional-core",
+      "name" : "Núcleo funcional",
+      "summary" : "Functional core, imperative shell: lógica em funções puras e dados imutáveis; efeitos colaterais só na borda.",
+      "topic" : "padrao-nucleo-funcional"
+    },
+    {
+      "author" : "human",
+      "category" : "practices",
+      "id" : "clean-code",
+      "name" : "Clean Code",
+      "summary" : "Código legível: nomes que revelam intenção, funções pequenas, sem duplicação nem código morto.",
+      "topic" : "padrao-clean-code"
+    },
+    {
+      "author" : "human",
+      "category" : "practices",
+      "id" : "bdd",
+      "name" : "Desenvolvimento orientado a comportamento",
+      "summary" : "Comportamentos esperados são descritos em cenários com contexto, ação e resultado observável.",
+      "topic" : "padrao-desenvolvimento-orientado-a-comportamento"
+    },
+    {
+      "author" : "human",
+      "category" : "practices",
+      "id" : "design-by-contract",
+      "name" : "Design por contrato",
+      "summary" : "Operações declaram precondições e pós-condições; objetos preservam invariantes durante suas mudanças.",
+      "topic" : "padrao-design-por-contrato"
+    },
+    {
+      "author" : "human",
+      "category" : "architecture",
+      "id" : "clean-architecture",
+      "name" : "Clean Architecture",
+      "summary" : "Camadas concêntricas (entidades, casos de uso, adaptadores, frameworks) com dependências apontando só para dentro.",
+      "topic" : "padrao-clean-architecture"
+    },
+    {
+      "author" : "human",
+      "category" : "domain",
+      "id" : "ddd",
+      "name" : "DDD",
+      "summary" : "Domain-Driven Design: o código usa a linguagem do negócio, com entidades, objetos de valor, agregados e contextos delimitados.",
+      "topic" : "padrao-ddd"
+    },
+    {
+      "author" : "human",
+      "category" : "domain",
+      "id" : "repository",
+      "name" : "Repository",
+      "summary" : "O domínio acessa a persistência por repositórios com interface de coleção, sem conhecer o banco.",
+      "topic" : "padrao-repository"
+    },
+    {
+      "author" : "human",
+      "category" : "domain",
+      "id" : "domain-service",
+      "name" : "Serviço de domínio",
+      "summary" : "Uma operação de negócio que não pertence a uma única entidade ou objeto de valor é expressa como serviço de domínio.",
+      "topic" : "padrao-servico-de-dominio"
+    },
+    {
+      "author" : "human",
+      "category" : "domain",
+      "id" : "value-object",
+      "name" : "Objeto de valor",
+      "summary" : "Um conceito de domínio é definido por seus atributos, sem identidade própria, com valores imutáveis e invariantes protegidas.",
+      "topic" : "padrao-objeto-de-valor"
+    },
+    {
+      "author" : "human",
+      "category" : "design",
+      "id" : "strategy",
+      "name" : "Strategy",
+      "summary" : "Algoritmos intercambiáveis atrás de uma interface comum, escolhidos em tempo de execução em vez de if/switch espalhados.",
+      "topic" : "padrao-strategy"
+    },
+    {
+      "author" : "human",
+      "category" : "design",
+      "id" : "factory",
+      "name" : "Factory",
+      "summary" : "Centraliza a criação de objetos (Factory Method / Abstract Factory), escondendo qual tipo concreto é instanciado.",
+      "topic" : "padrao-factory"
+    },
+    {
+      "author" : "human",
+      "category" : "design",
+      "id" : "builder",
+      "name" : "Builder",
+      "summary" : "Constrói objetos complexos passo a passo, separando a construção da representação final.",
+      "topic" : "padrao-builder"
+    },
+    {
+      "author" : "human",
+      "category" : "design",
+      "id" : "adapter",
+      "name" : "Adapter",
+      "summary" : "Converte a interface de um componente existente na interface que o cliente espera.",
+      "topic" : "padrao-adapter"
+    },
+    {
+      "author" : "human",
+      "category" : "design",
+      "id" : "decorator",
+      "name" : "Decorator",
+      "summary" : "Acrescenta comportamento a um objeto envolvendo-o em outro com a mesma interface, sem herança.",
+      "topic" : "padrao-decorator"
+    },
+    {
+      "author" : "human",
+      "category" : "design",
+      "id" : "observer",
+      "name" : "Observer",
+      "summary" : "Um sujeito notifica observadores interessados sem conhecê-los, desacoplando quem emite de quem reage.",
+      "topic" : "padrao-observer"
+    },
+    {
+      "author" : "human",
+      "category" : "design",
+      "id" : "command",
+      "name" : "Command",
+      "summary" : "Encapsula uma ação como objeto, permitindo enfileirar, registrar, repetir e desfazer.",
+      "topic" : "padrao-command"
+    },
+    {
+      "author" : "human",
+      "category" : "design",
+      "id" : "state",
+      "name" : "State",
+      "summary" : "O comportamento de um objeto muda conforme seu estado interno, modelado como tipos ou casos explícitos.",
+      "topic" : "padrao-state"
+    },
+    {
+      "author" : "human",
+      "category" : "design",
+      "id" : "singleton",
+      "name" : "Singleton",
+      "summary" : "Uma única instância compartilhada. Use com parcimônia: prefira injetar a instância.",
+      "topic" : "padrao-singleton"
+    }
+  ],
   "reviewKinds" : [
     {
       "id" : "disable",
@@ -90,6 +260,24 @@
       "icon" : "typescript",
       "name" : "TypeScript",
       "note" : "worker/ serve os JSON Schemas (schema/v1 é a fonte)"
+    },
+    {
+      "author" : "human",
+      "category" : "language",
+      "icon" : "rust",
+      "name" : "Rust"
+    },
+    {
+      "author" : "human",
+      "category" : "backend",
+      "icon" : "mcp",
+      "name" : "MCP"
+    },
+    {
+      "author" : "human",
+      "category" : "frontend",
+      "icon" : "zod",
+      "name" : "Zod"
     }
   ],
   "version" : 1

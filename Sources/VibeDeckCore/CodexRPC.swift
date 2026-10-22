@@ -206,6 +206,10 @@ public enum CodexProtocol {
         switch method {
         case "item/agentMessage/delta": return .textDelta(params["delta"]?.string ?? "")
         case "item/reasoning/summaryTextDelta", "item/reasoning/textDelta": return .thinking
+        case "item/started" where item["type"]?.string == "collabAgentToolCall",
+             "item/completed" where item["type"]?.string == "collabAgentToolCall":
+            let events = agentEvents(item, thread: params["threadId"]?.string, completed: method == "item/completed")
+            return events.isEmpty ? .ignored : .agents(events)
         case "item/started":
             switch item["type"]?.string {
             case "agentMessage": return .textStarted
@@ -222,5 +226,31 @@ public enum CodexProtocol {
             return .result(ClaudeResult(isError: turn["status"]?.string == "failed", text: turn["error"]?["message"]?.string, costUSD: nil, isInterrupted: turn["status"]?.string == "interrupted"))
         default: return .ignored
         }
+    }
+
+    /// A collab tool call of the conversation's thread: `spawnAgent` starts its receivers; `agentsStates` reports
+    /// each agent's status (thread id → state). A sender other than the conversation's thread is the parent.
+    static func agentEvents(_ item: JSONValue, thread: String?, completed: Bool) -> [AgentProcessEvent] {
+        let sender = item["senderThreadId"]?.string
+        let parent = sender == nil || sender == thread ? nil : sender
+        let states = item["agentsStates"]?.object ?? [:]
+        var events: [AgentProcessEvent] = []
+        if item["tool"]?.string == "spawnAgent" {
+            let prompt = item["prompt"]?.string?.split(whereSeparator: \.isNewline).first.map(String.init)
+            for id in item["receiverThreadIds"]?.array?.compactMap(\.string) ?? [] {
+                events.append(.started(id: id, name: item["model"]?.string.map { "Subagente · " + $0 } ?? "Subagente", detail: prompt, parentID: parent))
+                if completed, states[id] == nil, item["status"]?.string == "failed" { events.append(.finished(id: id, state: .failed)) }
+            }
+        }
+        for (id, state) in states.sorted(by: { $0.key < $1.key }) {
+            switch state["status"]?.string {
+            case "pendingInit", "running": events.append(.finished(id: id, state: .running))
+            case "completed", "shutdown": events.append(.finished(id: id, state: .succeeded))
+            case "errored", "notFound": events.append(.finished(id: id, state: .failed))
+            case "interrupted": events.append(.finished(id: id, state: .interrupted))
+            default: break
+            }
+        }
+        return events
     }
 }

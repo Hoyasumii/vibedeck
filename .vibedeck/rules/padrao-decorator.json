@@ -1,0 +1,30 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-22T14:56:19Z",
+  "description" : "Acrescenta comportamento a um objeto envolvendo-o em outro com a mesma interface, sem herança.",
+  "id" : "C8F54B59-5DC0-4BA4-B187-2F496694BE6B",
+  "rules" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: log, cache, retry etc. envolvem o objeto original com o mesmo protocolo em vez de subclasses ou flags.",
+      "id" : "A9946E0D-A246-4F70-BAAE-CD1B888E5230",
+      "severity" : "must",
+      "text" : "Comportamento transversal é adicionado por composição"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: mesma interface e mesma semântica; quem usa não distingue o decorado do original.",
+      "id" : "1F7E4A91-438B-4F28-864B-F5B167E7972B",
+      "severity" : "must",
+      "text" : "O decorator preserva o contrato do objeto decorado"
+    }
+  ],
+  "sourcePattern" : "decorator",
+  "tags" : [
+    "padrao"
+  ],
+  "title" : "Padrão: Decorator"
+}

@@ -1,0 +1,38 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-22T14:56:19Z",
+  "description" : "Comportamentos esperados são descritos em cenários com contexto, ação e resultado observável.",
+  "id" : "0B843B99-4D5A-44AC-9DCE-EAA6F64D5116",
+  "rules" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: inspecione os cenários e confirme que seus resultados descrevem efeitos percebidos pelo usuário ou sistema consumidor, sem depender de detalhes internos.",
+      "id" : "97D0E684-2DDC-48A8-9EEA-EF46C197ADF2",
+      "severity" : "must",
+      "text" : "Cenários descrevem comportamentos observáveis"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: confirme que cada cenário identifica suas condições iniciais, a ação executada e o resultado que deve ser observado.",
+      "id" : "372F0A93-09B7-4BA1-8C56-E752864D5C04",
+      "severity" : "must",
+      "text" : "Cada cenário explicita contexto, ação e resultado esperado"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: execute os testes correspondentes aos cenários e confira que suas asserções verificam os resultados esperados.",
+      "id" : "1DCCB47A-35C7-4FF1-94E8-6F30CA1AD380",
+      "severity" : "should",
+      "text" : "Cenários de comportamento têm testes automatizados"
+    }
+  ],
+  "sourcePattern" : "bdd",
+  "tags" : [
+    "padrao"
+  ],
+  "title" : "Padrão: Desenvolvimento orientado a comportamento"
+}

@@ -57,6 +57,9 @@ private func data(_ json: String) -> Data { Data(json.utf8) }
                                                    answers: [.init(question: "Qual?", answer: "Esta")])
         #expect(prompt.contains("Fazer X") && prompt.contains("1. um") && prompt.contains("Qual? → Esta"))
         #expect(prompt.contains("Não apague o item"))
+        #expect(prompt.contains("review_item=\(item.id.uuidString)"))
+        #expect(prompt.contains("rules_for e submit_rule_check no MCP vibedeck"))
+        #expect(prompt.contains("verify_manual=true com evidência"))
     }
 
     @Test func middleFailureDoesNotStopOthersNorRevertDone() async {
@@ -105,5 +108,30 @@ private func data(_ json: String) -> Data { Data(json.utf8) }
         let problems = ReviewResolve.verify(store: store, item: bad, files: [], runner: runner)
         #expect(!problems.isEmpty)
         #expect(try store.loadGroup(slug).items.first { $0.id == bad.id }?.status == .open, "verify não muda status")
+    }
+
+    @Test func finalVerificationRetainsOnlyCurrentManualEvidenceAndRerunsScripts() throws {
+        let store = try newStore()
+        let (group, _) = try store.createGroup(title: "G")
+        let manual = Rule(text: "Inspeção manual")
+        _ = try store.addRule(manual, toTopic: "Regras")
+        var script = Rule(text: "Teste automático")
+        script.test = RuleTest(mode: .script, command: "check", ruleHash: script.contentHash)
+        _ = try store.addRule(script, toTopic: "Regras")
+        let item = ReviewItem(kind: "fix", title: "Resolver")
+        _ = try store.addItem(item, toGroup: group)
+        let passing = RuleTestRunner { _, _ in RuleTestOutcome(exitCode: 0, output: "ok") }
+        let started = Date.now.addingTimeInterval(-1)
+        _ = try store.submitCheck(task: "IA", files: ["Actual.swift"], reviewItem: item.id.uuidString,
+                                  answers: [.init(ruleId: manual.id.uuidString, verdict: .pass, note: "Inspecionado")],
+                                  verifyManual: true, runner: passing)
+        #expect(ReviewResolve.verify(store: store, item: item, files: ["Planned.swift"], verifiedSince: started, runner: passing).isEmpty)
+        let final = try #require(store.listChecks().first)
+        #expect(final.files == ["Actual.swift", "Planned.swift"])
+        #expect(final.results.first { $0.ruleId == manual.id }?.note == "Inspecionado")
+        let failing = RuleTestRunner { _, _ in RuleTestOutcome(exitCode: 1, output: "regressão") }
+        #expect(!ReviewResolve.verify(store: store, item: item, files: [], verifiedSince: started, runner: failing).isEmpty)
+        #expect(!ReviewResolve.verify(store: store, item: item, files: [], verifiedSince: Date.distantFuture, runner: passing).isEmpty)
+        #expect(try store.loadGroup(group).items.first?.status == .open)
     }
 }

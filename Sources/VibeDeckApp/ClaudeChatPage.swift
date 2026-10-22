@@ -59,6 +59,10 @@ struct ClaudeChatPage: View {
                     LoggedButton { claude.interrupt() } label: { Label("Parar", systemImage: "stop.fill") }.loggedControl(control: "claude_chat_page.button_2", label: "Parar")
                         .help("Interromper a resposta")
                 }
+                if claude.current?.workflowRun != nil, !claude.runPanelVisible {
+                    LoggedButton { claude.runPanelVisible = true } label: { Label("Mostrar execução", systemImage: "point.3.connected.trianglepath.dotted") }.loggedControl(control: "claude_chat_page.button_25", label: "Mostrar execução")
+                        .help("Mostrar o visualizador da execução do workflow")
+                }
                 if claude.current != nil {
                     LoggedButton { claude.leaveChat() } label: { Label("Conversas", systemImage: "bubble.left.and.text.bubble.right") }.loggedControl(control: "claude_chat_page.button_3", label: "Conversas")
                         .help("Ver todas as conversas")
@@ -74,7 +78,24 @@ struct ClaudeChatPage: View {
         .onChange(of: claude.current?.id) { inputFocused = true }
     }
 
+    /// The conversation, with its workflow run beside it (drag the divider to resize) or expanded over it.
+    @ViewBuilder
     private var chat: some View {
+        if let ref = claude.current?.workflowRun, claude.runPanelVisible {
+            if claude.runPanelExpanded {
+                WorkflowRunPanel(ref: ref)
+            } else {
+                HSplitView {
+                    conversation.frame(minWidth: 0, maxWidth: .infinity)
+                    WorkflowRunPanel(ref: ref).frame(minWidth: 240, idealWidth: 380, maxWidth: .infinity)
+                }
+            }
+        } else {
+            conversation
+        }
+    }
+
+    private var conversation: some View {
         VStack(spacing: 0) {
             ClaudeChatHeader()
             Divider()

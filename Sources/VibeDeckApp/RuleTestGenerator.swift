@@ -25,8 +25,9 @@ enum RuleTestGenerator {
                 "completed": .object(["type": .string("boolean")]), "summary": .object(["type": .string("string")])]),
                 "required": .array([.string("completed"), .string("summary")])])
             let output = try await runner.run(root: root,
-                prompt: prompt + "\nRetorne completed=true somente se todos os testes solicitados foram gerados, executados e registrados; caso contrário false e explique em summary.",
-                schema: schema, timeout: .seconds(600), settings: settings, workspaceWrites: true)
+                prompt: prompt + "\nUse o MCP vibedeck para consultar regras e registrar checks (rules_for e submit_rule_check). Os scripts rodam pelo VibeDeck; não execute rules check pelo terminal dentro do sandbox. "
+                    + "Retorne completed=true somente se a tarefa solicitada foi implementada e suas verificações obrigatórias passaram; caso contrário false e explique em summary.",
+                schema: schema, timeout: .seconds(600), settings: settings, workspaceWrites: true, mcpCLI: ClaudeUsageView.cliPath)
             let answer = try JSONDecoder().decode(JSONValue.self, from: Data(output.utf8))
             guard answer["completed"]?.bool == true else { throw Failure(message: answer["summary"]?.string ?? AIPromptPolicy.incomplete) }
             try validateGeneration(root: root, topic: topic, expected: expectedRules)

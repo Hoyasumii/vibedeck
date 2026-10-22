@@ -8,11 +8,16 @@ struct WorkflowDiagram: View {
     @Environment(\.logProject) private var logProject
     let steps: [WorkflowStep]
     let title: (WorkflowStep) -> String?
-    let open: (WorkflowStep) -> Void
+    /// Step of a run to highlight (`WorkflowRun.current`).
+    var current: String? = nil
+    /// Transitions a run took; with a run, the others are dimmed.
+    var traversed: Set<WorkflowRun.Hop>? = nil
+    /// Nil: double click does nothing.
+    let open: ((WorkflowStep) -> Void)?
 
     var body: some View {
         ScrollView([.horizontal, .vertical]) {
-            WorkflowDiagramCanvas(steps: steps, title: title, open: open)
+            WorkflowDiagramCanvas(steps: steps, title: title, current: current, traversed: traversed, open: open)
                 .padding(20)
         }
     }
@@ -23,7 +28,9 @@ struct WorkflowDiagramCanvas: View {
     @Environment(\.logProject) private var logProject
     let steps: [WorkflowStep]
     let title: (WorkflowStep) -> String?
-    let open: (WorkflowStep) -> Void
+    var current: String? = nil
+    var traversed: Set<WorkflowRun.Hop>? = nil
+    let open: ((WorkflowStep) -> Void)?
     @State private var focus: Int?
 
     var body: some View {
@@ -43,7 +50,7 @@ struct WorkflowDiagramCanvas: View {
                     }
                     path.addLine(to: edge.end)
                     let color = self.color(edge).opacity(on ? 1 : 0.18)
-                    let width: CGFloat = on && focus != nil ? 2.5 : 1.5
+                    let width: CGFloat = on && (focus != nil || traversed != nil) ? 2.5 : 1.5
                     context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: width, lineJoin: .round, dash: edge.style == .end ? [5, 4] : []))
                     let before = edge.laneX.map { CGPoint(x: $0, y: edge.end.y) } ?? edge.start
                     head(at: edge.end, from: before, color: color, in: &context)
@@ -106,13 +113,14 @@ struct WorkflowDiagramCanvas: View {
         .padding(.horizontal, 10)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(focus == index ? Color.accentColor : .secondary.opacity(0.3), lineWidth: focus == index ? 2 : 1))
+        .overlay(RoundedRectangle(cornerRadius: 10).fill(Color.accentColor.opacity(isCurrent(step) ? 0.15 : 0)).allowsHitTesting(false))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(focus == index || isCurrent(step) ? Color.accentColor : .secondary.opacity(0.3), lineWidth: isCurrent(step) ? 3 : focus == index ? 2 : 1))
         .contentShape(RoundedRectangle(cornerRadius: 10))
         .onHover { inside in
             if inside { focus = index } else if focus == index { focus = nil }
         }
-        .onTapGesture(count: 2) { VDLog.withAction(control: "workflow_diagram.tap_1", label: "Selecionar", project: logProject) { if name != nil { open(step) } } }
-        .help(name == nil ? step.ref : "Duplo clique abre \(name ?? step.ref)")
+        .onTapGesture(count: 2) { VDLog.withAction(control: "workflow_diagram.tap_1", label: "Selecionar", project: logProject) { if name != nil { open?(step) } } }
+        .help(name == nil ? step.ref : isCurrent(step) ? "Etapa atual" : open == nil ? (name ?? step.ref) : "Duplo clique abre \(name ?? step.ref)")
     }
 
     private func pill(_ text: String, color: Color) -> some View {
@@ -122,7 +130,14 @@ struct WorkflowDiagramCanvas: View {
             .background(color.opacity(0.18), in: Capsule())
     }
 
-    private func isOn(_ edge: WorkflowDiagramLayout.Edge) -> Bool { focus == nil || edge.from == focus }
+    /// Hovering a step shows its edges; with a run, only the transitions it took stay lit.
+    private func isOn(_ edge: WorkflowDiagramLayout.Edge) -> Bool {
+        if let focus { return edge.from == focus }
+        guard let traversed else { return true }
+        return traversed.contains(.init(from: steps[edge.from].id, to: edge.to < steps.count ? steps[edge.to].id : nil))
+    }
+
+    private func isCurrent(_ step: WorkflowStep) -> Bool { step.id == current }
 
     private func color(_ edge: WorkflowDiagramLayout.Edge) -> Color {
         switch edge.style {

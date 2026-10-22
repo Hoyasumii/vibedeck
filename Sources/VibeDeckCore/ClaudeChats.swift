@@ -58,6 +58,10 @@ public struct ClaudeChat: Codable, Equatable, Identifiable, Sendable {
     public var provider: AIProvider
     public var sessionId: String?
     public var pendingPlan: String? = nil
+    /// Workflow run this conversation executes (`<workflow>/<run>`), independent of title and messages.
+    public var workflowRun: String? = nil
+    /// Agents and subagents seen in the conversation, as last reported by the provider.
+    public var agentProcesses: [AgentProcess] = []
     public var createdAt: Date
     public var updatedAt: Date
     public var messages: [ClaudeChatMessage]
@@ -73,7 +77,7 @@ public struct ClaudeChat: Codable, Equatable, Identifiable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, title, provider, sessionId, pendingPlan, createdAt, updatedAt, messages
+        case id, title, provider, sessionId, pendingPlan, workflowRun, agentProcesses, createdAt, updatedAt, messages
     }
 
     public init(from decoder: Decoder) throws {
@@ -83,9 +87,25 @@ public struct ClaudeChat: Codable, Equatable, Identifiable, Sendable {
         provider = try c.decodeIfPresent(AIProvider.self, forKey: .provider) ?? .claude
         sessionId = try c.decodeIfPresent(String.self, forKey: .sessionId)
         pendingPlan = try c.decodeIfPresent(String.self, forKey: .pendingPlan)
+        workflowRun = try c.decodeIfPresent(String.self, forKey: .workflowRun)
+        agentProcesses = (try? c.decodeIfPresent([AgentProcess].self, forKey: .agentProcesses)) ?? []
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? .now
         updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
         messages = try c.decodeIfPresent([ClaudeChatMessage].self, forKey: .messages) ?? []
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(title, forKey: .title)
+        try c.encode(provider, forKey: .provider)
+        try c.encodeIfPresent(sessionId, forKey: .sessionId)
+        try c.encodeIfPresent(pendingPlan, forKey: .pendingPlan)
+        try c.encodeIfPresent(workflowRun, forKey: .workflowRun)
+        if !agentProcesses.isEmpty { try c.encode(agentProcesses, forKey: .agentProcesses) }
+        try c.encode(createdAt, forKey: .createdAt)
+        try c.encode(updatedAt, forKey: .updatedAt)
+        try c.encode(messages, forKey: .messages)
     }
 
     public static let untitled = "Nova conversa"

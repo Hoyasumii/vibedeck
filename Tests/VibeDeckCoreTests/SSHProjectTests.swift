@@ -156,6 +156,28 @@ import Testing
         #expect(workspace.conflicts.count == 1)
         #expect(server.files["vibedeck.json"] == bytes("another writer"))
     }
+    @Test func remoteLauncherFindsToolsOutsideNonInteractivePath() throws {
+        let (_, dir) = try setup(); defer { try? FileManager.default.removeItem(at: dir) }
+        func install(_ relative: String, _ name: String) throws {
+            let folder = dir.appending(path: relative); try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let file = folder.appending(path: name); try Data("#!/bin/sh\necho \"\(relative) $*\"\n".utf8).write(to: file)
+            try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: file.path)
+        }
+        try install(".local/bin", "vd_tool_a"); try install(".nvm/versions/node/v22.1.0/bin", "vd_tool_b")
+        func run(_ shell: String, _ name: String) throws -> (Int32, String) {
+            let p = Process(); p.executableURL = URL(fileURLWithPath: shell)
+            p.arguments = ["-c", RemoteExecution.launcher(name, arguments: ["-p", "a b"])]
+            p.environment = ["HOME": dir.path, "PATH": "/usr/bin:/bin", "SHELL": "/usr/bin/false"]
+            let out = Pipe(); p.standardOutput = out; p.standardError = FileHandle.nullDevice
+            try p.run(); let data = out.fileHandleForReading.readDataToEndOfFile(); p.waitUntilExit()
+            return (p.terminationStatus, String(decoding: data, as: UTF8.self))
+        }
+        for shell in ["/bin/sh", "/bin/zsh"] where FileManager.default.isExecutableFile(atPath: shell) {
+            #expect(try run(shell, "vd_tool_a") == (0, ".local/bin -p a b\n"))
+            #expect(try run(shell, "vd_tool_b") == (0, ".nvm/versions/node/v22.1.0/bin -p a b\n"))
+            #expect(try run(shell, "vibedeck_tool_absent_7139").0 == 127)
+        }
+    }
     @Test func sshAliasesIncludeFilesAndExcludeWildcards() throws {
         let (_, dir) = try setup(); defer { try? FileManager.default.removeItem(at: dir) }
         let config = dir.appending(path: "config"), include = dir.appending(path: "hosts.conf")
@@ -163,6 +185,78 @@ import Testing
         try Data("Host first second *.wild !excluded\nInclude hosts.conf\n".utf8).write(to: config)
         #expect(SSHConnection.aliases(config: config) == ["child", "first", "second"])
         #expect(SSHConnection.quote("a'b") == "'a'\\''b'")
+    }
+    @Test func connectionArgumentsUsePortUserAliasAndStrictHostKeys() throws {
+        func value(_ args: [String], after flag: String) -> String? { args.firstIndex(of: flag).map { args[$0 + 1] } }
+        let manual = SSHConnection(try SSHDestination(host: "server.example", port: 2222, user: "tester", directory: "/p")).commandArguments("pwd")
+        #expect(value(manual, after: "-p") == "2222" && value(manual, after: "-l") == "tester")
+        #expect(manual.contains("StrictHostKeyChecking=yes") && manual.contains("BatchMode=yes"))
+        #expect(Array(manual.suffix(2)) == ["server.example", "pwd"])
+        let aliased = SSHConnection(try SSHDestination(host: "10.0.0.5", port: 2200, user: "deploy", directory: "/p", alias: "staging"))
+        let args = aliased.commandArguments("pwd")
+        #expect(Array(args.suffix(2)) == ["staging", "pwd"] && args.contains("Hostname=10.0.0.5"))
+        #expect(value(args, after: "-p") == "2200" && value(args, after: "-l") == "deploy")
+        let terminal = aliased.commandArguments("sh", terminal: true)
+        #expect(terminal.contains("-tt") && !terminal.contains("BatchMode=yes"))
+        #expect(aliased.inDirectory("pwd") == "cd '/p' && pwd")
+    }
+    @Test func pendingEditsAreIsolatedPerDestination() throws {
+        let dir = FileManager.default.temporaryDirectory.appending(path: "vibedeck-ssh-tests-" + UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let a = try SSHDestination(host: "a.example", port: 22, user: "u", directory: "/same")
+        let b = try SSHDestination(host: "b.example", port: 22, user: "u", directory: "/same")
+        let first = try RemoteWorkspace.open(a, cache: dir), second = try RemoteWorkspace.open(b, cache: dir)
+        #expect(first.root != second.root)
+        let serverA = Server(["vibedeck.json": bytes("A")]), serverB = Server(["vibedeck.json": bytes("B")])
+        try first.synchronize(using: serverA); try second.synchronize(using: serverB)
+        try AtomicFile.write(bytes("A offline"), to: first.root.appending(path: "vibedeck.json"))
+        try AtomicFile.write(bytes("B offline"), to: second.root.appending(path: "vibedeck.json"))
+        try first.synchronize(using: serverA)
+        #expect(serverA.files["vibedeck.json"] == bytes("A offline"))
+        #expect(serverB.files["vibedeck.json"] == bytes("B") && second.pendingCount == 1)
+        #expect(throws: VibeDeckError.self) { try RemoteWorkspace(root: first.root, destination: b) }
+    }
+    @Test func projectEditsSynchronizeAndContinueOffline() throws {
+        let (workspace, dir) = try setup(); defer { try? FileManager.default.removeItem(at: dir) }
+        let server = Server()
+        let store = try ProjectStore.initialize(at: workspace.root, name: "Remoto")
+        try workspace.synchronize(using: server)
+        #expect(server.files["vibedeck.json"] != nil && server.files[".vibedeck/"] != nil && workspace.pendingCount == 0)
+        let slug = try store.createDoc(title: "Documento remoto"), path = ".vibedeck/docs/" + slug + ".md"
+        try workspace.synchronize(using: server)
+        #expect(server.files[path] != nil)
+        server.fail = true
+        try store.writeDoc(slug, "Edição offline")
+        #expect(throws: VibeDeckError.self) { try workspace.synchronize(using: server) }
+        #expect(workspace.pendingCount > 0)
+        server.fail = false; try workspace.synchronize(using: server)
+        #expect(String(decoding: server.files[path] ?? Data(), as: UTF8.self).contains("Edição offline"))
+        try store.deleteDoc(slug); try workspace.synchronize(using: server)
+        #expect(server.files[path] == nil && workspace.pendingCount == 0)
+    }
+    @Test func unresolvedConflictNeverOverwritesEitherVersion() throws {
+        let (workspace, dir) = try setup(); defer { try? FileManager.default.removeItem(at: dir) }
+        let server = Server(["vibedeck.json": bytes("original")])
+        try workspace.synchronize(using: server)
+        try AtomicFile.write(bytes("local"), to: workspace.root.appending(path: "vibedeck.json"))
+        server.files["vibedeck.json"] = bytes("remote")
+        for _ in 0..<3 { try workspace.synchronize(using: server) }
+        let reopened = try RemoteWorkspace(root: workspace.root, destination: workspace.destination)
+        try reopened.synchronize(using: server)
+        #expect(server.files["vibedeck.json"] == bytes("remote"))
+        #expect(try Data(contentsOf: workspace.root.appending(path: "vibedeck.json")) == bytes("local"))
+        #expect(reopened.conflicts.map(\.path) == ["vibedeck.json"] && reopened.pendingCount == 1)
+    }
+    @Test func remoteProjectsUseServerProviders() throws {
+        let (workspace, dir) = try setup(); defer { try? FileManager.default.removeItem(at: dir) }
+        #expect(RemoteExecution.providers(root: workspace.root) == AIProvider.allCases)
+        #expect(AIProvider.allCases.allSatisfy { RemoteExecution.available($0, root: workspace.root) })
+        #expect(RemoteExecution.executable(.codex, root: workspace.root)?.path == "/codex")
+        let process = Process(); process.executableURL = URL(fileURLWithPath: "/Mac/only/claude")
+        try RemoteExecution.configure(process, root: workspace.root, program: "claude")
+        #expect(process.executableURL?.path == "/usr/bin/ssh")
+        #expect(process.arguments?.last?.contains("/projects/a") == true)
+        #expect(process.arguments?.joined(separator: " ").contains("/Mac/only") == false)
     }
 }
 

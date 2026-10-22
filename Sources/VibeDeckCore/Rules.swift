@@ -255,6 +255,9 @@ public struct Idea: Codable, Equatable, Identifiable, Sendable {
     public var promotedTopic: String?
     /// Last AI verdict on whether the idea is ready to implement (Descubra / Verificar).
     public var readiness: IdeaReadiness?
+    /// UUIDs of other ideas of the project that must be `done` before this one can be implemented. Dependents are
+    /// derived from the other ideas' lists; no inverse list is stored. Validated by `ProjectStore.setIdeaDependencies`.
+    public var dependencies: [UUID]
     public var author: Author
     public var createdAt: Date
     public var updatedAt: Date
@@ -268,13 +271,14 @@ public struct Idea: Codable, Equatable, Identifiable, Sendable {
         self.tags = tags
         self.paths = []
         self.rules = []
+        self.dependencies = []
         self.author = author
         self.createdAt = now
         self.updatedAt = now
     }
 
     enum CodingKeys: String, CodingKey {
-        case schema = "$schema", id, title, body, status, tags, paths, rules, promotedTopic, readiness, author, createdAt, updatedAt
+        case schema = "$schema", id, title, body, status, tags, paths, rules, promotedTopic, readiness, dependencies, author, createdAt, updatedAt
     }
 
     public init(from decoder: Decoder) throws {
@@ -289,6 +293,8 @@ public struct Idea: Codable, Equatable, Identifiable, Sendable {
         rules = try c.decodeIfPresent([Rule].self, forKey: .rules) ?? []
         promotedTopic = try c.decodeIfPresent(String.self, forKey: .promotedTopic)
         readiness = try? c.decodeIfPresent(IdeaReadiness.self, forKey: .readiness)
+        var seen = Set<UUID>()
+        dependencies = (try c.decodeIfPresent([UUID].self, forKey: .dependencies) ?? []).filter { seen.insert($0).inserted }
         author = try c.decodeIfPresent(Author.self, forKey: .author) ?? .human
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? .now
         updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? createdAt
@@ -306,6 +312,7 @@ public struct Idea: Codable, Equatable, Identifiable, Sendable {
         try c.encode(rules, forKey: .rules)
         try c.encodeIfPresent(promotedTopic, forKey: .promotedTopic)
         try c.encodeIfPresent(readiness, forKey: .readiness)
+        if !dependencies.isEmpty { try c.encode(dependencies, forKey: .dependencies) }
         try c.encode(author, forKey: .author)
         try c.encode(createdAt, forKey: .createdAt)
         try c.encode(updatedAt, forKey: .updatedAt)
@@ -313,8 +320,8 @@ public struct Idea: Codable, Equatable, Identifiable, Sendable {
 }
 
 extension Idea {
-    /// Fingerprint of what the AI judged (title, body, globs, rules). Status, tags and promotion stay out, so promoting
-    /// doesn't invalidate the verdict; any other edit (app, CLI, MCP) does.
+    /// Fingerprint of what the AI judged (title, body, globs, rules). Status, tags, dependencies and promotion stay out,
+    /// so promoting or linking doesn't invalidate the verdict; any other edit (app, CLI, MCP) does.
     public var contentFingerprint: String {
         let rules = rules.map { "\($0.severity.rawValue)\t\($0.text)\t\($0.details ?? "")" }
         let text = ([title, body ?? "", paths.joined(separator: "\n")] + rules).joined(separator: "\n\u{1F}\n")
@@ -379,8 +386,93 @@ public struct IdeaReadiness: Codable, Equatable, Sendable {
     }
 }
 
+/// An idea referenced by another one (a dependency or a dependent), as shown by the app, the CLI and the MCP.
+public struct IdeaLink: Codable, Equatable, Sendable {
+    public var id: UUID
+    public var slug: String
+    public var title: String
+    public var status: IdeaStatus
+
+    public init(slug: String, idea: Idea) {
+        self.id = idea.id
+        self.slug = slug
+        self.title = idea.title
+        self.status = idea.status
+    }
+}
+
+/// A dependency that keeps an idea from being implemented: not `done`, or missing from the project (`idea == nil`).
+public struct IdeaDependencyBlocker: Codable, Equatable, Sendable {
+    public var id: UUID
+    public var idea: IdeaLink?
+    public var message: String
+
+    public init(id: UUID, idea: IdeaLink?) {
+        self.id = id
+        self.idea = idea
+        self.message = idea.map { "Depende de \"\($0.title)\" (\($0.status.label.lowercased()))." }
+            ?? "Depende de uma ideia ausente: \(id.uuidString)."
+    }
+}
+
+/// Detail of an idea for `ideas show --json` and `get_idea`: the idea's own fields plus the derived links.
+public struct IdeaDetail: Encodable, Sendable {
+    public var slug: String
+    public var idea: Idea
+    public var dependents: [IdeaLink]
+    public var dependencyBlockers: [IdeaDependencyBlocker]
+
+    enum Key: String, CodingKey { case slug, dependents, dependencyBlockers }
+
+    public func encode(to encoder: Encoder) throws {
+        try idea.encode(to: encoder)
+        var c = encoder.container(keyedBy: Key.self)
+        try c.encode(slug, forKey: .slug)
+        try c.encode(dependents, forKey: .dependents)
+        try c.encode(dependencyBlockers, forKey: .dependencyBlockers)
+    }
+}
+
 /// Prompt sent to the chat by "Implementar" on a viable idea (already promoted, so its rules are enforced).
 public enum IdeaImplementation {
+    /// Every dependency of `idea` that is not `done` in `ideas` (the project's ideas, read from disk), in order.
+    /// A UUID that matches no idea blocks too.
+    public static func dependencyBlockers(of idea: Idea, in ideas: [(slug: String, idea: Idea)]) -> [IdeaDependencyBlocker] {
+        let byID = Dictionary(ideas.map { ($0.idea.id, $0) }, uniquingKeysWith: { first, _ in first })
+        return idea.dependencies.compactMap { id in
+            guard let found = byID[id] else { return IdeaDependencyBlocker(id: id, idea: nil) }
+            return found.idea.status == .done ? nil : IdeaDependencyBlocker(id: id, idea: IdeaLink(slug: found.slug, idea: found.idea))
+        }
+    }
+
+    /// Ideas that list `id` directly among their dependencies.
+    public static func dependents(of id: UUID, in ideas: [(slug: String, idea: Idea)]) -> [IdeaLink] {
+        ideas.filter { $0.idea.dependencies.contains(id) }.map { IdeaLink(slug: $0.slug, idea: $0.idea) }
+    }
+
+    /// Why `dependencies` can't be set on the idea `id`: itself, a new unknown UUID or a cycle. Nil when valid.
+    public static func dependencyProblem(_ id: UUID, _ dependencies: [UUID], in ideas: [(slug: String, idea: Idea)]) -> String? {
+        if dependencies.contains(id) { return "uma ideia não pode depender de si mesma." }
+        var graph = Dictionary(ideas.map { ($0.idea.id, $0.idea.dependencies) }, uniquingKeysWith: { first, _ in first })
+        // A link already stored to an idea removed since then may stay (it keeps blocking); new ones must exist.
+        let stored = Set(graph[id] ?? [])
+        if let missing = dependencies.first(where: { graph[$0] == nil && !stored.contains($0) }) { return "ideia inexistente no projeto: \(missing.uuidString)." }
+        graph[id] = dependencies
+        // Depth-first from each new dependency: reaching `id` again closes a cycle.
+        var visited = Set<UUID>()
+        var stack = dependencies
+        while let next = stack.popLast() {
+            if next == id {
+                let title = ideas.first { $0.idea.id == id }?.idea.title ?? id.uuidString
+                return "o vínculo criaria um ciclo de dependências passando por \"\(title)\"."
+            }
+            guard visited.insert(next).inserted else { continue }
+            stack += graph[next] ?? []
+        }
+        return nil
+    }
+
+
     public static func isEligible(_ idea: Idea) -> Bool {
         idea.status == .approved && idea.readiness?.viable == true
             && idea.readiness?.fingerprint == idea.contentFingerprint

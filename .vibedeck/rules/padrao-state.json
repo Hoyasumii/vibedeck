@@ -1,0 +1,30 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-22T14:56:19Z",
+  "description" : "O comportamento de um objeto muda conforme seu estado interno, modelado como tipos ou casos explícitos.",
+  "id" : "0B591699-B3F6-4A0F-8E23-6BE356BB3C15",
+  "rules" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: existe um enum/tipo por estado e as transições válidas ficam em um só lugar, sem flags booleanas combinadas.",
+      "id" : "67F0BC9B-0056-44EA-9ED5-59CBCE2808C0",
+      "severity" : "must",
+      "text" : "Estados e transições são explícitos"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: o código não permite ir para um estado não previsto; há teste das transições.",
+      "id" : "E1379E64-D8BF-4A8C-87BC-2F1C4399B33A",
+      "severity" : "must",
+      "text" : "Transições inválidas são impossíveis ou rejeitadas"
+    }
+  ],
+  "sourcePattern" : "state",
+  "tags" : [
+    "padrao"
+  ],
+  "title" : "Padrão: State"
+}

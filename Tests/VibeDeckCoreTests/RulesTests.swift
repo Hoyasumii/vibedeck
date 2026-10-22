@@ -192,3 +192,150 @@ private func newStore() throws -> ProjectStore {
         #expect(guide.contains("verify_manual=true"), "projetos existentes recebem o fluxo só-script ao abrir")
     }
 }
+
+// MARK: - Idea dependencies
+
+extension RulesTests {
+    /// An approved idea with a current viable verdict, so only dependencies decide whether it can be implemented.
+    private func viableIdea(_ store: ProjectStore, _ title: String) throws -> (slug: String, idea: Idea) {
+        let (slug, _) = try store.createIdea(title: title)
+        return try store.updateIdea(slug) { $0.rules = [Rule(text: "R")]; RuleDiscoverVerdict(viable: true).apply(to: &$0) }
+    }
+
+    @Test func dependenciesDecodeLegacyOmitEmptyAndRoundTripUnique() throws {
+        let legacy = Data(#"{"id":"\#(UUID().uuidString)","title":"Antiga","status":"new","rules":[],"author":"human","createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z"}"#.utf8)
+        let old = try VDJSON.decoder.decode(Idea.self, from: legacy)
+        #expect(old.dependencies.isEmpty)
+        #expect(!String(decoding: try VDJSON.encode(old), as: UTF8.self).contains("dependencies"))
+        var idea = Idea(title: "Nova")
+        let a = UUID(), b = UUID()
+        idea.dependencies = [a, b, a]
+        let decoded = try VDJSON.decoder.decode(Idea.self, from: VDJSON.encode(idea))
+        #expect(decoded.dependencies == [a, b])
+        let store = try newStore()
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let (x, _) = try viableIdea(store, "X"), (y, _) = try viableIdea(store, "Y"), (z, _) = try viableIdea(store, "Z")
+        let saved = try store.setIdeaDependencies(x, [y, z, y]).idea
+        #expect(try store.loadIdea(x).dependencies == saved.dependencies)
+        #expect(saved.dependencies == [try store.loadIdea(y).id, try store.loadIdea(z).id])
+    }
+
+    @Test func dependencyIntegrityRejectsSelfMissingAndCyclesWithoutWriting() throws {
+        let store = try newStore()
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let (a, _) = try viableIdea(store, "A"), (b, _) = try viableIdea(store, "B"), (c, _) = try viableIdea(store, "C")
+        let bytes = { (slug: String) in try Data(contentsOf: store.ideaURL(slug)) }
+        let before = try bytes(a)
+        #expect(throws: VibeDeckError.self) { try store.addIdeaDependencies(a, [a]) }
+        #expect(throws: VibeDeckError.self) { try store.addIdeaDependencies(a, [UUID().uuidString]) }
+        #expect(throws: VibeDeckError.self) { try store.addIdeaDependencies(a, ["nao-existe"]) }
+        #expect(throws: VibeDeckError.self) { try store.addIdeaDependencies(a, [b, a]) }
+        #expect(try bytes(a) == before)
+        try store.addIdeaDependencies(a, [b])
+        let bBefore = try bytes(b)
+        #expect(throws: VibeDeckError.self) { try store.addIdeaDependencies(b, [a]) }
+        #expect(try bytes(b) == bBefore)
+        try store.addIdeaDependencies(b, [c])
+        let cBefore = try bytes(c)
+        #expect(throws: VibeDeckError.self) { try store.addIdeaDependencies(c, [a]) }
+        #expect(try bytes(c) == cBefore)
+    }
+
+    @Test func onlyDoneSatisfiesAndBlockersNameEveryPendingDependency() throws {
+        let store = try newStore()
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let (main, _) = try viableIdea(store, "Principal")
+        var refs: [String] = []
+        for status in IdeaStatus.allCases {
+            let (slug, _) = try store.createIdea(title: "Dep \(status.rawValue)")
+            try store.updateIdea(slug) { $0.status = status }
+            refs.append(slug)
+        }
+        let (gone, _) = try store.createIdea(title: "Apagada")
+        let goneID = try store.loadIdea(gone).id
+        try store.addIdeaDependencies(main, refs + [gone])
+        try store.deleteIdea(gone)
+        let blockers = try store.ideaDetail(main).dependencyBlockers
+        #expect(blockers.map { $0.idea?.status } == [.new, .exploring, .approved, .discarded, nil])
+        #expect(blockers.contains { $0.message == "Depende de \"Dep approved\" (aprovada)." })
+        #expect(blockers.contains { $0.message == "Depende de \"Dep discarded\" (descartada)." })
+        #expect(blockers.last?.message == "Depende de uma ideia ausente: \(goneID.uuidString).")
+        do {
+            _ = try store.implementableIdea(main)
+            Issue.record("Implementação liberada com dependências pendentes")
+        } catch let error as VibeDeckError {
+            let text = error.localizedDescription
+            #expect(blockers.allSatisfy { text.contains($0.message) })
+            #expect(!text.contains("Dep done"))
+        }
+        // A stored link to a removed idea can stay while others are removed.
+        try store.removeIdeaDependencies(main, [refs[0]])
+        #expect(try store.loadIdea(main).dependencies.contains(goneID))
+    }
+
+    @Test func approvedIdeaWithOneOfTwoDependenciesDoneStaysBlockedUntilBoth() throws {
+        let store = try newStore()
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let (main, _) = try viableIdea(store, "Principal")
+        let (d1, _) = try viableIdea(store, "D1"), (d2, _) = try viableIdea(store, "D2")
+        try store.addIdeaDependencies(main, [d1, d2])
+        try store.updateIdea(d1) { $0.status = .done }
+        #expect(IdeaImplementation.isEligible(try store.loadIdea(main)))
+        #expect(throws: VibeDeckError.self) { try store.implementableIdea(main) }
+        #expect(try store.ideaDetail(main).dependencyBlockers.count == 1)
+        #expect(throws: VibeDeckError.self) { try store.requireIdeaDependenciesMet(main) }
+        try store.updateIdea(d2) { $0.status = .done }
+        try store.requireIdeaDependenciesMet(main)
+        #expect(try store.implementableIdea(main).slug == main)
+        // Completing the last dependency only lifts the blocker: nothing is started.
+        #expect(try store.listRuns().isEmpty)
+        #expect(try store.listTopics().isEmpty)
+    }
+
+    @Test func dependentsAreDirectAndDerivedWithoutInverseField() throws {
+        let store = try newStore()
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let (a, _) = try viableIdea(store, "A"), (b, _) = try viableIdea(store, "B")
+        let (c, _) = try viableIdea(store, "C"), (d, _) = try viableIdea(store, "D")
+        let bBytes = try Data(contentsOf: store.ideaURL(b))
+        try store.addIdeaDependencies(a, [b]); try store.addIdeaDependencies(c, [b]); try store.addIdeaDependencies(d, [a])
+        #expect(Set(try store.ideaDetail(b).dependents.map(\.slug)) == [a, c])
+        #expect(try Data(contentsOf: store.ideaURL(b)) == bBytes)
+        try store.removeIdeaDependencies(a, [b])
+        #expect(try store.ideaDetail(b).dependents.map(\.slug) == [c])
+        try store.addIdeaDependencies(a, [b, c])
+        try store.addIdeaDependencies(a, [store.loadIdea(c).id.uuidString])
+        #expect(try store.loadIdea(a).dependencies.count == 2)
+        // Removing one of three keeps the other two.
+        let (e, _) = try viableIdea(store, "E")
+        try store.addIdeaDependencies(e, [a, b, c])
+        try store.removeIdeaDependencies(e, [b])
+        #expect(try store.loadIdea(e).dependencies == [try store.loadIdea(a).id, try store.loadIdea(c).id])
+        #expect(try Data(contentsOf: store.ideaURL(b)) == bBytes)
+    }
+
+    @Test func dependenciesStayOutOfTheAssessmentFingerprint() throws {
+        var idea = Idea(title: "Avaliada")
+        idea.rules = [Rule(text: "R")]
+        RuleDiscoverVerdict(viable: true).apply(to: &idea)
+        idea.dependencies = [UUID()]
+        #expect(idea.implementBlocker == nil)
+        #expect(IdeaImplementation.isEligible(idea))
+    }
+
+    @Test func ideaSchemaDeclaresUniqueUUIDDependencies() throws {
+        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .appending(path: "schema/v1/idea.schema.json")
+        let schema = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any]
+        let properties = schema?["properties"] as? [String: Any]
+        let dependencies = properties?["dependencies"] as? [String: Any]
+        let items = dependencies?["items"] as? [String: Any]
+        #expect(dependencies?["type"] as? String == "array")
+        #expect(dependencies?["uniqueItems"] as? Bool == true)
+        #expect(items?["format"] as? String == "uuid")
+        let pattern = try #require(items?["pattern"] as? String)
+        #expect(UUID().uuidString.range(of: pattern, options: .regularExpression) != nil)
+        #expect("nao-e-uuid".range(of: pattern, options: .regularExpression) == nil)
+        #expect((schema?["required"] as? [String])?.contains("dependencies") == false)
+    }
+}

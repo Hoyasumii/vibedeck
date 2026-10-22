@@ -937,14 +937,43 @@ final class ProjectModel {
 
     // MARK: Ideas
 
-    /// Reload from disk at every confirmation; the watcher may not have delivered an external edit yet.
+    /// Reload from disk at every confirmation; the watcher may not have delivered an external edit yet. The Core
+    /// gate also rereads the dependencies, so a dependency reopened meanwhile blocks here.
     func currentImplementationIdea(_ id: UUID) throws -> (slug: String, idea: Idea) {
         let slug = try store.resolveIdeaSlug(id.uuidString)
         let idea = try store.loadIdea(slug)
         guard IdeaImplementation.isEligible(idea) else {
             throw VibeDeckError.invalidWorkflow("a ideia precisa estar aprovada e ter uma avaliação viável atual. Verifique novamente.")
         }
-        return (slug, idea)
+        return try store.implementableIdea(slug)
+    }
+
+    /// Dependencies that keep the idea from being implemented, from the loaded ideas (live through the watcher).
+    func ideaDependencyBlockers(_ idea: Idea) -> [IdeaDependencyBlocker] {
+        IdeaImplementation.dependencyBlockers(of: idea, in: ideas.map { ($0.slug, $0.value) })
+    }
+
+    /// Ideas that depend directly on `id`, derived from the other ideas' dependencies.
+    func ideaDependents(_ id: UUID) -> [IdeaLink] {
+        IdeaImplementation.dependents(of: id, in: ideas.map { ($0.slug, $0.value) })
+    }
+
+    /// Writes through the Core validation; undo restores the previous list (validated again).
+    func setIdeaDependencies(_ slug: String, _ ids: [UUID], _ actionName: String, undo: UndoManager?) {
+        do {
+            let old = try store.loadIdea(slug).dependencies
+            guard old != ids else { return }
+            try VDLog.$projectRoot.withValue(store.root) {
+                try VDLog.$undoName.withValue(actionName) { try store.setIdeaDependencies(slug, ids.map(\.uuidString)) }
+            }
+            reloadIdeas()
+            VDLog.info("idea.dependencies_changed", "Dependências da ideia alteradas", project: store.root, component: .app,
+                       context: ["slug": slug, "count": String(ids.count)])
+            undo?.registerUndo(withTarget: self) { $0.setIdeaDependencies(slug, old, actionName, undo: undo) }
+            undo?.setActionName(actionName)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     private struct IdeaImplementationState {
@@ -1291,7 +1320,10 @@ final class ProjectModel {
     }
 
     /// Promotes the idea's rules to an enforced topic. Returns the topic slug.
-    func promoteIdea(_ slug: String, skippingPaths: Set<String> = []) -> String? {
+    /// `forImplementation`: the Core rereads the dependencies first, so one reopened while a dialog was open
+    /// blocks here with nothing promoted.
+    func promoteIdea(_ slug: String, skippingPaths: Set<String> = [], forImplementation: Bool = false) -> String? {
+        if forImplementation, !ideaDependenciesMet(slug) { return nil }
         do {
             let topic = try store.promoteIdea(slug, skippingPaths: skippingPaths)
             reloadTopics()
@@ -1300,6 +1332,14 @@ final class ProjectModel {
         } catch {
             errorMessage = error.localizedDescription
             return nil
+        }
+    }
+
+    /// Core check of the dependencies, read from disk; a pending one (or a read failure) shows the error.
+    func ideaDependenciesMet(_ slug: String) -> Bool {
+        do { try store.requireIdeaDependenciesMet(slug); return true } catch {
+            errorMessage = error.localizedDescription
+            return false
         }
     }
 

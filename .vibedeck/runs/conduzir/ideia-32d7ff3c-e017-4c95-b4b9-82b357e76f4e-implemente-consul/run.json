@@ -1,0 +1,12 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/workflow-run.schema.json",
+  "createdAt" : "2026-10-20T20:56:56Z",
+  "current" : "registrar-task-do-github",
+  "cycle" : 1,
+  "id" : "4AB8D01B-ED90-47D7-8C67-E4FB0509F3BF",
+  "input" : "Ideia 32D7FF3C-E017-4C95-B4B9-82B357E76F4E. Implemente consultando get_idea pelo UUID; leia a descrição e as regras e siga o tópico promovido, quando houver.",
+  "provider" : "codex",
+  "status" : "running",
+  "updatedAt" : "2026-10-20T20:56:56Z",
+  "workflow" : "conduzir"
+}

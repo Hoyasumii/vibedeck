@@ -1,0 +1,54 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/workflow-run.schema.json",
+  "createdAt" : "2026-10-21T21:08:03Z",
+  "current" : "registrar-task-do-github",
+  "cycle" : 1,
+  "id" : "F6EE7000-CEA3-443E-B20F-C94115F3A2C5",
+  "input" : "Ideia E8CBF97F-9556-44A5-8271-8EAA61030CB3. Implemente consultando get_idea pelo UUID; leia a descrição e as regras e siga o tópico promovido, quando houver.",
+  "provider" : "claude",
+  "questions" : [
+    {
+      "answer" : "Informar número",
+      "answeredAt" : "2026-10-21T21:14:23Z",
+      "context" : "A entrada da execução é uma ideia (UUID E8CBF97F-...), não um número de issue como #12 ou 12. Esta etapa só aceita o número da issue.",
+      "createdAt" : "2026-10-21T21:08:14Z",
+      "multiple" : false,
+      "number" : 1,
+      "options" : [
+        {
+          "description" : "Responda com o número da issue (ex.: 12) e o workflow roda de novo.",
+          "label" : "Informar número"
+        },
+        {
+          "description" : "Encerra sem registrar task; a ideia deve ser implementada fora do workflow Conduzir.",
+          "label" : "Cancelar execução"
+        }
+      ],
+      "question" : "Qual é o número da issue do GitHub (Hoyasumii/vibedeck) a conduzir?",
+      "step" : "registrar-task-do-github"
+    },
+    {
+      "answer" : "12",
+      "answeredAt" : "2026-10-21T21:18:24Z",
+      "context" : "A entrada recebida foi o texto de uma ideia (UUID E8CBF97F-...), não o número de uma issue, e a resposta anterior 'Informar número' não trouxe um número. O formato esperado é #12 ou 12.",
+      "createdAt" : "2026-10-21T21:14:31Z",
+      "multiple" : false,
+      "number" : 2,
+      "options" : [
+        {
+          "description" : "Digite o número da issue em 'Outro' (ex.: 12)",
+          "label" : "Informar número"
+        },
+        {
+          "description" : "Encerra a execução sem registrar nada",
+          "label" : "Cancelar"
+        }
+      ],
+      "question" : "Qual é o número da issue do GitHub (Hoyasumii/vibedeck) a conduzir? Digite só o número (ex.: 12) em Outro.",
+      "step" : "registrar-task-do-github"
+    }
+  ],
+  "status" : "running",
+  "updatedAt" : "2026-10-21T21:18:24Z",
+  "workflow" : "conduzir"
+}

@@ -1,0 +1,30 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-22T14:56:19Z",
+  "description" : "Algoritmos intercambiáveis atrás de uma interface comum, escolhidos em tempo de execução em vez de if/switch espalhados.",
+  "id" : "9D96C17C-90A9-43F6-9317-7004158837E5",
+  "rules" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: não há cadeias de if/switch por tipo repetidas em vários pontos; cada variante é um tipo que implementa a mesma interface.",
+      "id" : "602C35DA-8055-4C89-85C1-9829A9F8F10C",
+      "severity" : "must",
+      "text" : "Variações de comportamento viram implementações de um protocolo"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: quem usa a estratégia recebe o protocolo por parâmetro ou injeção.",
+      "id" : "82BDE968-F8CD-4900-95D1-98324D423D61",
+      "severity" : "must",
+      "text" : "O cliente depende do protocolo, não da implementação concreta"
+    }
+  ],
+  "sourcePattern" : "strategy",
+  "tags" : [
+    "padrao"
+  ],
+  "title" : "Padrão: Strategy"
+}

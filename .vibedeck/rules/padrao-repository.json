@@ -1,0 +1,30 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-22T14:56:19Z",
+  "description" : "O domínio acessa a persistência por repositórios com interface de coleção, sem conhecer o banco.",
+  "id" : "A91F92D5-CA2E-48A0-A8B4-D3074CFF0228",
+  "rules" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: código de domínio/aplicação não faz SQL, chamadas de ORM ou de arquivo direto.",
+      "id" : "1769AF58-655A-42AC-9E29-A7140F2E6343",
+      "severity" : "must",
+      "text" : "Acesso a dados passa por repositórios"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: o protocolo fica junto do domínio e fala em entidades; a implementação concreta fica fora e pode ser trocada em testes.",
+      "id" : "B81CF5E0-6D17-49CC-930B-23F20E32110C",
+      "severity" : "must",
+      "text" : "A interface do repositório é do domínio; a implementação é da infraestrutura"
+    }
+  ],
+  "sourcePattern" : "repository",
+  "tags" : [
+    "padrao"
+  ],
+  "title" : "Padrão: Repository"
+}

@@ -150,3 +150,118 @@ extension IdeaEvaluationTests {
         #expect(!undo.canUndo)
     }
 }
+
+extension IdeaEvaluationTests {
+    private func blockedProject(_ name: String) throws -> (store: ProjectStore, slug: String, idea: Idea) {
+        let root = FileManager.default.temporaryDirectory.appending(path: "idea-\(name)-\(UUID())")
+        let store = try ProjectStore.initialize(at: root)
+        let (slug, _) = try store.createIdea(title: "Bloqueada")
+        try store.updateIdea(slug) { $0.rules = [Rule(text: "R")]; RuleDiscoverVerdict(viable: true).apply(to: &$0) }
+        let (dep, _) = try store.createIdea(title: "Pré-requisito")
+        try store.updateIdea(dep) { $0.status = .approved }
+        try store.createCommand(title: "Etapa")
+        try store.createWorkflow(title: "Fluxo")
+        try store.addWorkflowStep(to: "fluxo", kind: .command, target: "etapa")
+        try store.addIdeaDependencies(slug, [dep])
+        return (store, slug, try store.loadIdea(slug))
+    }
+
+    private func snapshot(_ store: ProjectStore) throws -> [String] {
+        try store.listIdeas().map { "\($0.slug)=\(String(decoding: try VDJSON.encode($0.idea), as: UTF8.self))" }
+            + store.listTopics().map(\.slug) + store.listRuns().map(\.ref)
+    }
+
+    @Test func pendingDependenciesBlockStandardAndWorkflowBeforeAnyEffect() throws {
+        let (store, _, idea) = try blockedProject("deps")
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let model = ProjectModel(store: store)
+        let before = try snapshot(store)
+        let undo = UndoManager()
+        for workflow in [nil, "fluxo"] as [String?] {
+            do {
+                _ = try model.prepareIdeaImplementation(idea.id, workflow: workflow, provider: .claude, undo: undo)
+                Issue.record("Implementação preparada com dependência pendente")
+            } catch {
+                #expect(error.localizedDescription.contains("Depende de \"Pré-requisito\" (aprovada)."))
+            }
+        }
+        #expect(try snapshot(store) == before)
+        #expect(!undo.canUndo)
+        let session = AISession(root: store.root, projectId: try store.loadProject().id)
+        session.requestIdeaImplementation(idea)
+        #expect(session.ideaRequest == nil)
+        #expect(!session.isWorking)
+        #expect(session.entries.contains { if case .error(let text) = $0.kind { text.contains("Pré-requisito") } else { false } })
+        #expect(try snapshot(store) == before)
+    }
+
+    @Test func dependencyReopenedAfterOpeningTheChoiceBlocksTheConfirmation() throws {
+        let (store, slug, idea) = try blockedProject("reopen")
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let dep = try #require(store.loadIdea(slug).dependencies.first)
+        try store.updateIdea(dep.uuidString) { $0.status = .done }
+        let model = ProjectModel(store: store)
+        #expect(try model.currentImplementationIdea(idea.id).slug == slug)
+        try store.updateIdea(dep.uuidString) { $0.status = .exploring }
+        let before = try snapshot(store)
+        #expect(throws: VibeDeckError.self) {
+            try model.prepareIdeaImplementation(idea.id, workflow: "fluxo", provider: .claude, undo: nil)
+        }
+        #expect(try snapshot(store) == before)
+    }
+
+    /// "Implementar" on an idea not yet approved with stale globs: the dialog's confirmation rechecks on disk.
+    @Test func dependencyReopenedWhileGlobsDialogIsOpenBlocksPromotion() throws {
+        let (store, slug, _) = try blockedProject("globs")
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let dep = try #require(store.loadIdea(slug).dependencies.first)
+        try store.updateIdea(dep.uuidString) { $0.status = .done }
+        try store.updateIdea(slug) { $0.paths = ["nao-existe/**"] }
+        let model = ProjectModel(store: store)
+        #expect(model.ideaDependenciesMet(slug))
+        #expect(try !store.unmatchedIdeaPaths(slug).isEmpty)
+        try store.updateIdea(dep.uuidString) { $0.status = .exploring }
+        let before = try snapshot(store)
+        for skipped in [Set(["nao-existe/**"]), []] {
+            #expect(model.promoteIdea(slug, skippingPaths: skipped, forImplementation: true) == nil)
+            #expect(model.errorMessage?.contains("Pré-requisito") == true)
+            #expect(try snapshot(store) == before)
+        }
+        try store.updateIdea(dep.uuidString) { $0.status = .done }
+        #expect(model.promoteIdea(slug, forImplementation: true) != nil)
+        #expect(try store.loadIdea(slug).promotedTopic != nil)
+    }
+
+    @Test func dependencyEditsPersistImmediatelyAndUndo() throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "idea-deps-undo-\(UUID())")
+        let store = try ProjectStore.initialize(at: root)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let (main, _) = try store.createIdea(title: "Principal")
+        let ids = try ["A", "B", "C"].map { title -> UUID in
+            let (slug, idea) = try store.createIdea(title: title)
+            if title == "C" { try store.updateIdea(slug) { $0.status = .done } }
+            return idea.id
+        }
+        let model = ProjectModel(store: store)
+        let undo = UndoManager(); undo.groupsByEvent = false
+        undo.beginUndoGrouping()
+        model.setIdeaDependencies(main, ids, "Adicionar dependência", undo: undo)
+        undo.endUndoGrouping()
+        #expect(try store.loadIdea(main).dependencies == ids)
+        #expect(model.ideaDependents(ids[1]).map(\.slug) == [main])
+        undo.beginUndoGrouping()
+        model.setIdeaDependencies(main, [ids[0], ids[2]], "Remover dependência", undo: undo)
+        undo.endUndoGrouping()
+        #expect(try store.loadIdea(main).dependencies == [ids[0], ids[2]])
+        #expect(model.ideaDependents(ids[1]).isEmpty)
+        undo.undo()
+        #expect(try store.loadIdea(main).dependencies == ids)
+        undo.undo()
+        #expect(try store.loadIdea(main).dependencies.isEmpty)
+        // A rejected edit (self-reference) writes nothing and reports the error.
+        let mainID = try store.loadIdea(main).id
+        model.setIdeaDependencies(main, [mainID], "Adicionar dependência", undo: undo)
+        #expect(try store.loadIdea(main).dependencies.isEmpty)
+        #expect(model.errorMessage?.contains("si mesma") == true)
+    }
+}

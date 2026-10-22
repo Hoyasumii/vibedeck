@@ -1,0 +1,30 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-22T14:56:19Z",
+  "description" : "Converte a interface de um componente existente na interface que o cliente espera.",
+  "id" : "7FA36BCA-E510-471A-A6CC-38E5E1A30EB0",
+  "rules" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: o resto do código usa a interface do projeto, não a API externa diretamente.",
+      "id" : "3B5E424F-9EB4-4F47-BBE0-5C4B234F3FEE",
+      "severity" : "must",
+      "text" : "Código de terceiros/legado é isolado por um adapter"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: o adapter converte formatos e chamadas; a lógica de domínio fica fora dele.",
+      "id" : "1B2FEBD0-0380-4A6A-8F73-7F3FD7C7DCDC",
+      "severity" : "must",
+      "text" : "O adapter só traduz, sem regra de negócio"
+    }
+  ],
+  "sourcePattern" : "adapter",
+  "tags" : [
+    "padrao"
+  ],
+  "title" : "Padrão: Adapter"
+}

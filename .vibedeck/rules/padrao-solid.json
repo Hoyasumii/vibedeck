@@ -1,0 +1,46 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-22T14:56:19Z",
+  "description" : "Responsabilidade única, aberto/fechado, substituição de Liskov, segregação de interfaces e inversão de dependência.",
+  "id" : "53F90EAE-155D-446F-A963-06B130FE489D",
+  "rules" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: classes/structs/módulos novos ou alterados têm um motivo só para mudar; nada de \"Manager\" que faz tudo.",
+      "id" : "8C7BA779-881A-41CF-8EE4-0BD757A1F484",
+      "severity" : "must",
+      "text" : "Cada tipo tem uma única responsabilidade"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: regras de negócio recebem protocolos/interfaces; implementações concretas são injetadas de fora.",
+      "id" : "51430D46-BC6E-4046-9210-858637F8D59B",
+      "severity" : "must",
+      "text" : "Módulos de alto nível dependem de abstrações, não de implementações concretas"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: nenhum protocolo novo obriga quem o implementa a métodos que não usa.",
+      "id" : "DB2C12A3-2725-43DB-A17C-9188CE7DDCA8",
+      "severity" : "should",
+      "text" : "Interfaces são pequenas e específicas"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: prefira novos tipos/estratégias a encher de `if`/`switch` um fluxo existente.",
+      "id" : "C3D4B64B-6478-457F-8E01-693E0376518A",
+      "severity" : "should",
+      "text" : "Comportamento novo entra por extensão, não alterando código estável"
+    }
+  ],
+  "sourcePattern" : "solid",
+  "tags" : [
+    "padrao"
+  ],
+  "title" : "Padrão: SOLID"
+}

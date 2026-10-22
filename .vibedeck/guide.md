@@ -182,6 +182,12 @@ estar pronta para implementar; qualquer mudança em título, body, paths ou regr
 a implementação só é iniciada depois de salvar uma avaliação positiva do conteúdo atual. Registre ideias que surgirem com `add_idea`.
 Ao clicar em "Salvar avaliação", um veredito viável em ideia com regras marca o status como `approved`, junto com o `readiness` em um único passo de desfazer. Isso não é promoção: `promotedTopic` continua vazio, nenhum tópico é criado e as regras continuam rascunho. Ideias fechadas ou já promovidas mantêm o status; vereditos não viáveis não alteram o status. Rodar Descubra/Verificar sem salvar não aprova a ideia.
 No app, ideias `approved` com avaliação viável atual oferecem **Workflow**, **Execução padrão** e **Cancelar** antes de promover regras ou iniciar a implementação. Sem workflows, só aparecem Execução padrão e Cancelar, sem catálogo. O seletor permite escolher um workflow existente ou adicionar itens do catálogo por seleção explícita. No chat, o modo explícito é respeitado; pedidos sem modo aguardam a escolha. Execução padrão usa `IdeaImplementation.prompt`. Workflows recebem o UUID recuperável da ideia; mudanças de título ou descrição não mudam o vínculo. Havendo execução anterior, **Retomar** preserva o estado e **Reiniciar** começa na primeira etapa. A confirmação relê a avaliação atual no disco. Cancelar não inicia nem promove. CLI e MCP continuam sem a pergunta de modo.
+`dependencies` lista UUIDs de outras ideias do projeto que precisam estar `done` antes de implementar esta
+(qualquer outro status, ou ideia ausente, bloqueia). Dependentes são derivados, nunca gravados. Edite com
+`vibedeck ideas depend|undepend <ideia> <deps…>` ou `update_idea` com `dependencies` (lista completa); o Core
+recusa autorreferência, ideia inexistente e ciclos sem gravar nada. `ideas show --json` e `get_idea` trazem
+`dependents` e `dependencyBlockers`. Dependências pendentes não impedem a aprovação; bloqueiam só a
+implementação (padrão ou workflow, app ou chat), antes de promover, criar run ou chamar o provedor.
 No app, "Copiar prompt" copia o pedido de implementação para usar em outra ferramenta, com o tópico
 promovido ou as regras rascunho, sem promover a ideia. Funciona mesmo sem provedor de IA e mostra "Copiado".
 
@@ -332,6 +338,7 @@ echo '[{"ruleId":"ab12","verdict":"pass","note":"..."}]' | vibedeck rules check 
 vibedeck rules test src/Login.tsx            # roda os scripts das regras aplicáveis (sem gravar check)
 vibedeck rules set-test ab12 --command .vibedeck/tests/geral/ab12cd34.sh   # ou --manual --reason "..." / --clear
 vibedeck ideas list | vibedeck ideas new "Modo offline"
+vibedeck ideas depend <ideia> <dependencia>... | vibedeck ideas undepend <ideia> <dependencia>...
 vibedeck agents list | vibedeck agents next <agente> <proximo> | vibedeck agents flow <agente>
 vibedeck commands list | vibedeck agents next <agente> <comando> --kind command | vibedeck commands flow <comando>
 vibedeck skills list | vibedeck agents next <agente> <skill> --kind skill | vibedeck skills flow <skill>

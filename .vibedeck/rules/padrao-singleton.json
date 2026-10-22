@@ -1,0 +1,30 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-22T14:56:19Z",
+  "description" : "Uma única instância compartilhada. Use com parcimônia: prefira injetar a instância.",
+  "id" : "240EF5B4-BC13-42D4-B7E4-2E7A2B5D9CCA",
+  "rules" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: o acesso ao singleton acontece na composição (raiz da app) e chega aos demais por injeção de dependência.",
+      "id" : "7EAC2E11-DF02-43F1-AF7C-4655EA63FC50",
+      "severity" : "must",
+      "text" : "Singletons não são acessados diretamente por quem os usa"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: acesso protegido (actor, lock ou imutabilidade).",
+      "id" : "9F05E489-D53C-4D98-81E5-7172DB35EEC1",
+      "severity" : "must",
+      "text" : "O estado compartilhado é seguro para concorrência"
+    }
+  ],
+  "sourcePattern" : "singleton",
+  "tags" : [
+    "padrao"
+  ],
+  "title" : "Padrão: Singleton"
+}

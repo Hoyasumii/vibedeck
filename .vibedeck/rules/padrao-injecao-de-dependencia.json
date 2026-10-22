@@ -1,0 +1,30 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-22T14:56:19Z",
+  "description" : "Os objetos recebem suas dependências de fora (construtor/parâmetro) em vez de criá-las ou buscá-las em singletons.",
+  "id" : "F90199E5-F2C9-4A99-9E52-E5948440E7B7",
+  "rules" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: código novo não instancia serviços concretos internamente nem acessa singletons/estado global para obtê-los.",
+      "id" : "353A15FA-E289-40E7-A60E-254932382357",
+      "severity" : "must",
+      "text" : "Dependências entram pelo construtor ou por parâmetro"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: a criação dos objetos concretos fica no ponto de entrada (main, app, container), não espalhada pelo domínio.",
+      "id" : "6E0E61B4-7D1A-4AAA-BAEE-E6AB67857746",
+      "severity" : "must",
+      "text" : "A montagem das dependências fica num ponto de composição"
+    }
+  ],
+  "sourcePattern" : "dependency-injection",
+  "tags" : [
+    "padrao"
+  ],
+  "title" : "Padrão: Injeção de dependência"
+}

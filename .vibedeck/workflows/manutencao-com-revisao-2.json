@@ -1,0 +1,51 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/workflow.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-21T21:36:20Z",
+  "id" : "79C8D2C0-57DE-4DCF-83C4-D98201B72203",
+  "input" : "<objetivo e critérios de aceite>",
+  "maxSteps" : 10,
+  "steps" : [
+    {
+      "id" : "planejar",
+      "kind" : "skill",
+      "ref" : "diagnostico-de-sistema-2",
+      "transitions" : [
+        {
+          "to" : "implementar"
+        }
+      ]
+    },
+    {
+      "id" : "implementar",
+      "kind" : "command",
+      "maxVisits" : 3,
+      "note" : "Use o objetivo da execução e o plano da etapa anterior.",
+      "ref" : "corrigir-sistema-2",
+      "transitions" : [
+        {
+          "to" : "revisar",
+          "verdict" : "IMPLEMENTADO"
+        }
+      ]
+    },
+    {
+      "id" : "revisar",
+      "kind" : "agent",
+      "maxVisits" : 3,
+      "ref" : "revisor-de-manutencao-2",
+      "transitions" : [
+        {
+          "to" : "implementar",
+          "verdict" : "AJUSTAR"
+        }
+      ]
+    }
+  ],
+  "summary" : "Planejar → implementar → revisar, com até três rodadas de ajustes.",
+  "tags" : [
+    "kit"
+  ],
+  "title" : "Manutenção com revisão",
+  "updatedAt" : "2026-10-21T21:36:20Z"
+}

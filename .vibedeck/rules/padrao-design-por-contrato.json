@@ -1,0 +1,46 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-22T14:56:19Z",
+  "description" : "Operações declaram precondições e pós-condições; objetos preservam invariantes durante suas mudanças.",
+  "id" : "B41F7178-B856-4393-9C56-80435E58EEAF",
+  "rules" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: inspecione o contrato de cada operação e identifique as condições exigidas para suas entradas e estado inicial.",
+      "id" : "CF6CECEC-501A-47A5-A90E-07BDFB196A9E",
+      "severity" : "must",
+      "text" : "Operações explicitam suas precondições"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: inspecione o contrato de cada operação e identifique as garantias de saída e estado final para entradas válidas.",
+      "id" : "141A0450-CBB3-40C4-A6B3-F4261D66CAE1",
+      "severity" : "must",
+      "text" : "Operações explicitam suas pós-condições"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: confira os caminhos de alteração de estado e verifique que nenhum estado público resultante viola as invariantes declaradas.",
+      "id" : "DD3AC98A-2326-44A7-BDE8-2D8C47B8E97F",
+      "severity" : "must",
+      "text" : "Alterações preservam as invariantes do objeto"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: execute testes das precondições, pós-condições e invariantes, incluindo entradas que violam o contrato.",
+      "id" : "C86E132C-C8A2-4A39-AD07-0724ADBBCC67",
+      "severity" : "should",
+      "text" : "Contratos têm testes de entradas válidas e violações"
+    }
+  ],
+  "sourcePattern" : "design-by-contract",
+  "tags" : [
+    "padrao"
+  ],
+  "title" : "Padrão: Design por contrato"
+}

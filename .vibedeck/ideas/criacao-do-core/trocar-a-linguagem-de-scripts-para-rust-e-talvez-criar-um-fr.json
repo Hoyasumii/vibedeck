@@ -1,0 +1,95 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema.json",
+  "author" : "human",
+  "body" : "## Atualização de escopo confirmada — 22/10/2026\n\nO usuário pediu remover sessões de nuvem do VibeDeck e manter execução local e por SSH. A etapa 02 passa a provar MCP stdio em máquina limpa/local e ambiente SSH. Exigências anteriores de nuvem estão revogadas; a ordem e as dependências das cinco etapas continuam.\nTambém pediu início guiado para perguntar stack/padrões e oferecer cadastro de skills/agentes/comandos existentes, e Docs com arquivos Markdown da raiz (ex.: README.md) espelhados por links simbólicos.\nReferência: .vibedeck/docs/especificacao-do-produto/07-mudancas-confirmadas.md. Consultar antes de implementar; ali estão os detalhes confirmados, propostas e pendências. Essas funcionalidades entram no mapa de domínio/UX da migração; sua prioridade interna ainda precisa ser definida. Esta anotação não implementa nem promove regras.\n\n## Ordem de execução — atualizada em 22/10/2026\n\n1. 01 — Arquitetura e padrões: 32390FB1-061D-45DE-ACC8-24D717FF880A.\n2. 02 — Core mínimo e MCP por stdio em máquina limpa/local e por SSH: 6AC91755-1DDC-487F-9554-344E0E95C258.\n3. 03 — Piloto de 3 a 5 verificações Rust: 5FE68368-901F-4643-8A35-427C7EBEE15B.\n4. 04 — Migrar o restante do Core, CLI/MCP e integrar o app: 35806341-8605-43B0-A13A-456DB1369B35.\n5. 05 — Medir e otimizar após a migração: C17132D2-9CAA-4981-A4B5-81CBE4550AA8.\n\nAs dependências abaixo foram registradas no VibeDeck para tornar essa ordem visível e bloquear implementação fora da sequência. A etapa 02 é o começo executável da reescrita; a etapa 04 conclui a migração. A etapa 03 exige somente a amostra validada, não converter todos os scripts. Não aguardar a reescrita completa para provar o MCP localmente e por SSH. Planejamento e revisão podem ocorrer antes; cada implementação aguarda sua predecessora concluída.\n\n## Etapa 03 — trocar uma amostra de scripts, depois da prova MCP\n\nPré-requisito: etapa 02 (6AC91755-1DDC-487F-9554-344E0E95C258) concluída, além da arquitetura que a antecede.\nEntrega desta ideia: piloto de 3 a 5 regras com paridade demonstrada. Converter os 315 arquivos não é requisito para marcar o piloto como concluído. A expansão posterior deve ser incremental, sob o contrato validado.\nA migração do restante do Core (04) só aguarda este piloto; não precisa esperar a conversão total dos scripts.\n\n## Intenção original e decisão do usuário\n\nTrocar a linguagem dos scripts para Rust e considerar um framework de testes específico do VibeDeck. Em 21/10/2026 o usuário confirmou o objetivo de criar um Core Rust multiplataforma, com padrões que melhorem a manutenibilidade. Esta ideia será o piloto dessa direção, sem exigir a migração completa do Core antes.\n\n## Problema e evidências\n\nInventário observado em 21/10/2026: 315 arquivos .sh em .vibedeck/tests; 80 mencionam Python. Esses números incluem helpers, não equivalem a regras registradas e precisam ser recalculados antes de implementar.\nSources/VibeDeckCore/RuleTests.swift já fornece executor Swift, ambiente VIBEDECK_ROOT/VIBEDECK_FILES/VIBEDECK_RULE_ID, códigos 0=pass e 77=na, timeout e cancelamento.\n.vibedeck/tests/core-e-formato-de-dados/_lib.sh reúne seleção por arquivos e chamadas de build/test Swift; há repetição de invocações e verificações por busca textual. Não há benchmark que demonstre que trocar a linguagem acelera esse fluxo.\n\n## Proposta amadurecida\n\nCriar uma biblioteca Rust pequena de verificações e um executável compartilhado compilado por versão. Cada regra referencia uma verificação identificável. Evitar um projeto Rust por regra, cargo run por execução ou um processo compilado separadamente para cada arquivo.\nManter comandos externos como extensão para projetos e ferramentas específicas. As regras existentes continuam executáveis durante a migração. O contrato deve permitir que o futuro Core Rust invoque a biblioteca diretamente; no piloto, o executor Swift chama o executável com a ponte mínima necessária.\nUm framework genérico de plugins, uma DSL ou um sandbox não fazem parte do piloto. O formato do registro e a escolha de argumentos estruturados versus comando atual são decisões a validar com compatibilidade do schema.\n\n## Escopo do piloto proposto\n\nSelecionar de 3 a 5 regras existentes, após inventariar os comandos registrados:\n- uma verificação simples de arquivos ou conteúdo;\n- uma validação de JSON/schema ou invariantes de dados;\n- uma regra que dispara testes Swift;\n- se necessário, um caso de aplicabilidade/na e um caso de falha.\nUsar verificações identificáveis e resultados por regra; helpers compartilhados para caminhos, seleção e diagnósticos. Quando uma regra precisar reconhecer estrutura de linguagem, comparar parser/AST com busca textual; portar regex literalmente não resolve fragilidade estrutural.\nAgrupar builds/testes quando possível sem perder rastreabilidade: uma falha não pode aprovar indevidamente outras regras. Não reutilizar resultados entre estados diferentes sem provar que entradas e ferramentas são as mesmas.\n\n## Contrato e compatibilidade\n\nPreservar identidade da regra, escopo de arquivos, 0/77/demais códigos, saída de diagnóstico, timeout, cancelamento e tratamento de falhas. Internamente usar tipos explícitos; a fronteira com o runner mantém o contrato atual ou um adaptador documentado.\nNão transformar erro de compilação, ferramenta ausente, saída inválida ou zero testes executados em pass ou na.\nPreservar aplicabilidade, regras must/should, manuais pending, hashes de validade, persistência de checks e bloqueios de conclusão existentes.\nManter o comportamento de concorrência e exclusão por recurso de build. O detector atual lê referências .sh/.py; comandos e helpers Rust exigem decisão explícita de como declarar ou descobrir os recursos, sem esconder chamadas a Swift/Cargo do agendador.\nEvitar supor Bash, grep, sinais Unix, separadores de caminho ou permissões executáveis em Windows. Distinguir o suporte do runner Rust do suporte da ferramenta chamada: testes do app SwiftUI continuam específicos de macOS. Preservar execução por SSH e resolver onde o binário e suas ferramentas precisam existir.\n\n## Execução interna da etapa 03\n\n1. Ler a arquitetura 32390FB1-061D-45DE-ACC8-24D717FF880A e a reescrita 35806341-8605-43B0-A13A-456DB1369B35; consultar stack, padrões, revisões e regras aplicáveis.\n2. Inventariar regras registradas, helpers, ferramentas, tempos e contratos; escolher a amostra e registrar uma linha de base.\n3. Fechar API da biblioteca, comando/protocolo, distribuição e integração inicial Swift; documentar como haverá paridade e retorno aos comandos anteriores.\n4. Submeter a ideia amadurecida ao fluxo de avaliação do VibeDeck e escolher execução padrão ou workflow antes da implementação; usar provider codex onde houver parâmetro de provedor.\n5. Implementar a amostra e comparar resultados antigos/novos nos mesmos arquivos, incluindo entradas adversas.\n6. Medir execução fria/quente, compilação separadamente, quantidade de processos e manutenção dos casos. Só expandir após evidências de correção e decisão sobre custo/benefício.\n\n## Decisões abertas\n\nNome e layout dos crates; biblioteca própria ou módulo do Core; protocolo e formato de diagnóstico; distribuição/atualização do binário local e remoto; versão mínima do Rust; declaração de recursos do agendador; prioridade de plataformas; necessidade real de parser/AST; política de build agrupado. Nenhuma dessas opções foi aprovada implicitamente.\n\n## Critério de conclusão do piloto\n\nAmostra com paridade pass/fail/na comprovada, erros e cancelamento cobertos, nenhuma aprovação sem execução, comandos anteriores preservados como caminho de retorno, integração Swift funcionando e verificações portáveis testadas em macOS/Linux/Windows. Cargo fmt/check/clippy/test e checks obrigatórios do projeto passam. Comparativo de medições e recomendação de expansão ficam registrados; se Rust não melhorar o fluxo, revisar a abordagem antes de ampliar.\n\n## Relações e limites\n\nParte do grupo criacao-do-core. Usa como referência os requisitos da ideia concluída de execução paralela de scripts, sem reabrir ou modificar seus requisitos ativos. Complementa a análise de desempenho C17132D2-9CAA-4981-A4B5-81CBE4550AA8. As regras abaixo são rascunhos da proposta; não ativar nem substituir regras vigentes durante esta organização.\n\n## Alinhamento com a meta principal: MCP portátil local e por SSH\n\nO usuário esclareceu que o Core deve permitir MCP por stdio localmente, por SSH e em outras máquinas com instalação mínima. O piloto deve contribuir para isso: verificações básicas embutidas ou distribuídas como artefato pré-compilado, sem exigir Cargo/Rust, Swift, Bash ou Python apenas para iniciar o runner.\n\nDistinguir dependências do runner das ferramentas do projeto. Uma regra que chama swift test ainda requer Swift e plataforma compatível; isso não deve impedir que o MCP inicie e execute operações independentes dessa ferramenta. Falta de ferramenta deve gerar falha explícita da operação aplicável, nunca aprovação silenciosa.\n\nIncluir no piloto uma verificação portátil executada pelo MCP em ambiente limpo local ou via SSH, sem app gráfico. Não pressupor disponibilidade do app macOS, caminhos locais do desenvolvedor ou instalação global. A prova de inicialização e distribuição do MCP foi separada na etapa 02 e deve estar concluída antes da implementação deste piloto (03).\n\n## Ajustes pendentes do usuário\n\nSelecionar as 3 a 5 regras reais, confirmar o protocolo/registro das verificações, decidir como declarar recursos de build e conferir os critérios rascunho já existentes. O nome original desta ideia é preservado abaixo como contexto; seu escopo inicial é o piloto, não uma conversão total de uma vez.\nTítulo original: Trocar a linguagem de scripts para Rust (e talvez criar um framework de testes específico para o vibedeck).\n\n## Especificação do produto — consultar antes de executar\n\nDiretório Docs: .vibedeck/docs/especificacao-do-produto/.\nComeçar pelo índice .vibedeck/docs/especificacao-do-produto/00-indice-e-como-preencher.md (MCP read_doc: especificacao-do-produto/00-indice-e-como-preencher).\nPara esta etapa, consultar funcionalidades de regras/checks, contratos de execução e aceite do piloto, seguindo os links do inventário e lendo apenas os trechos necessários. O usuário preencherá os templates; [PREENCHER], [DECIDIR], propostas e campos vazios não são requisitos aprovados.\nComparar a especificação preenchida com os requisitos desta ideia, as regras ativas e as evidências do comportamento atual. Resolver decisões bloqueantes e divergências antes da alteração afetada; não inferir aprovação de informação ausente nem promover regras automaticamente. Essa consulta complementa, sem substituir, avaliação, dependências e workflow de implementação.\n",
+  "createdAt" : "2026-10-21T17:01:25Z",
+  "dependencies" : [
+    "6AC91755-1DDC-487F-9554-344E0E95C258"
+  ],
+  "id" : "5FE68368-901F-4643-8A35-427C7EBEE15B",
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-22T01:28:16Z",
+      "details" : "Verificar build por versão e execução de várias regras usando o mesmo artefato; nenhuma regra exige cargo run em produção.",
+      "id" : "21ABA51E-0259-4320-9E3A-9C9897912251",
+      "severity" : "must",
+      "text" : "As verificações Rust compartilham uma biblioteca e um executável, sem recompilar o runner a cada regra."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-22T01:28:18Z",
+      "details" : "Comparar runner antigo e Rust nos mesmos arquivos para uma amostra de 3 a 5 regras, com sucesso, falha e não aplicabilidade; preservar códigos 0 e 77 e registrar divergências.",
+      "id" : "F2D861B5-D6A1-4807-813F-485D8584659A",
+      "severity" : "must",
+      "text" : "O piloto preserva IDs, escopo e resultados pass/fail/na das regras migradas e mantém as demais regras executáveis."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-22T01:28:20Z",
+      "details" : "Testar ferramenta ausente, retorno inválido, build com erro e zero testes; resultados devem falhar com diagnóstico em pt-BR.",
+      "id" : "9B0CE22B-7B96-4ED3-9CD6-94949D7A0B12",
+      "severity" : "must",
+      "text" : "Falhas de ferramenta, execução, protocolo ou compilação e ausência de testes esperados nunca são tratadas como aprovação."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-22T01:28:22Z",
+      "details" : "Testar subprocesso travado e cancelado e dois jobs que compartilham Swift/Cargo; declarar ou detectar recursos também quando a chamada estiver encapsulada em Rust.",
+      "id" : "3557E852-431B-41E6-B4CB-39D3425DFCB0",
+      "severity" : "must",
+      "text" : "O runner Rust preserva timeout, cancelamento e exclusão de recursos de build na integração com o executor existente."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-22T01:28:24Z",
+      "details" : "Comparar checks e hashes antes/depois; manuais continuam pending no fluxo automático, must falhando continua bloqueando e na não oculta erro de execução.",
+      "id" : "40A0F723-DF7E-4095-8A80-2CE504CDD862",
+      "severity" : "must",
+      "text" : "A migração mantém os contratos de checks, hashes, regras manuais e bloqueios de conclusão do VibeDeck."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-22T01:28:26Z",
+      "details" : "Validar caminhos, arquivos, JSON e resultados em CI nativo; testes que exigem SwiftUI são identificados como específicos de macOS e não comprovam suporte das outras plataformas.",
+      "id" : "1A0D224B-BFEF-467D-96D1-C38488E50D19",
+      "severity" : "must",
+      "text" : "As verificações portáveis do piloto são testadas nativamente em macOS, Linux e Windows, com limitações de ferramentas específicas declaradas."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-22T01:28:28Z",
+      "details" : "Registrar o mapeamento regra/comando e uma forma explícita de voltar ao comando anterior; não apagar regras, IDs ou dados humanos.",
+      "id" : "1EC94AC8-F557-4FDB-B0A8-3333C0B35C75",
+      "severity" : "must",
+      "text" : "O piloto mantém os comandos anteriores recuperáveis e só remove uma implementação antiga após demonstrar paridade."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-22T01:28:29Z",
+      "details" : "Separar compilação e execução fria/quente; medir tempo total e processos, registrar comandos/ambiente e analisar manutenção. Evitar limiar numérico de desempenho sem linha de base.",
+      "id" : "38A4FFBF-4E48-48BF-BC53-A1D76AFA7018",
+      "severity" : "should",
+      "text" : "O piloto registra medições antes/depois e a decisão de expandir a migração com base em evidências."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-22T01:28:31Z",
+      "details" : "Uma falha no grupo deve produzir atribuição verificável; nenhum teste ausente ou não executado gera pass.",
+      "id" : "29631CFD-8E20-4C98-AE73-2FBC1E5619D2",
+      "severity" : "should",
+      "text" : "Builds e testes repetidos são agrupados quando possível, preservando diagnóstico e resultado individual de cada regra."
+    }
+  ],
+  "status" : "exploring",
+  "tags" : [
+    "core",
+    "rust",
+    "regras",
+    "testes",
+    "multiplataforma",
+    "manutenibilidade"
+  ],
+  "title" : "03 — Migrar piloto de regras e scripts para Rust",
+  "updatedAt" : "2026-10-22T14:49:42Z"
+}

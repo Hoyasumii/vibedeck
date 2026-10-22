@@ -101,4 +101,61 @@ import Testing
         #expect(write["mcp_servers.external.enabled"] == .bool(false))
         #expect(Set(CodexReadTools.specs.array!.compactMap { $0["name"]?.string }) == ["Read", "Grep", "Glob"])
     }
+
+    @Test @MainActor func writingJobsUseAppMCPWhileReadOnlyKeepsIntegrationsDisabled() {
+        let root = URL(fileURLWithPath: "/tmp/project with spaces")
+        let config: JSONValue = .object(["config": .object(["mcp_servers": .object([
+            "vibedeck": .object(["command": .string("untrusted"), "enabled": .bool(false)]),
+            "external": .object(["enabled": .bool(true)])
+        ])])])
+        let write = CodexReadOnly.overrides(config: config, workspaceWrites: true, root: root, cli: "/app/Helpers/vibedeck")
+        let server = write["mcp_servers.vibedeck"]
+        #expect(server?["command"] == .string("python3"))
+        #expect(server?["required"] == .bool(true))
+        #expect(server?["args"]?.array?.suffix(3) == [.string("mcp"), .string("--root"), .string(root.path)].suffix(3))
+        #expect(server?["args"]?.array?.contains(.string("/app/Helpers/vibedeck")) == true)
+        #expect(write["mcp_servers.vibedeck.enabled"] == .bool(true))
+        #expect(write["mcp_servers.external.enabled"] == .bool(false))
+        #expect(write["features.shell_tool"] == nil)
+        #expect(write["features.unified_exec"] == nil)
+
+        let read = CodexReadOnly.overrides(config: config, workspaceWrites: false, root: root, cli: "/app/Helpers/vibedeck")
+        #expect(read["mcp_servers.vibedeck"] == nil)
+        #expect(read["mcp_servers.vibedeck.enabled"] == .bool(false))
+        #expect(read["mcp_servers.external.enabled"] == .bool(false))
+        #expect(read["features.shell_tool"] == .bool(false))
+        #expect(read["features.unified_exec"] == .bool(false))
+    }
+
+    /// Exercises the real app-server/MCP transport, without starting a model turn or spending tokens.
+    @Test @MainActor func liveWritingMCPRunsRuleScriptsOutsideCommandSandboxWhenRequested() async throws {
+        guard ProcessInfo.processInfo.environment["VIBEDECK_CODEX_MCP_SMOKE"] == "1" else { return }
+        let root = try fixture()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = try ProjectStore.initialize(at: root)
+        var rule = Rule(text: "Script pode usar sandbox-exec")
+        rule.test = RuleTest(mode: .script, command: "/usr/bin/sandbox-exec -p '(version 1)(allow default)' /usr/bin/true", ruleHash: rule.contentHash)
+        _ = try store.addRule(rule, toTopic: "Validação")
+        let cli = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().appending(path: ".build/debug/vibedeck").path
+        let rpc = CodexRPC()
+        defer { rpc.stop() }
+        try await rpc.start(root: root)
+        let config = try await rpc.request("config/read", params: ["includeLayers": .bool(false)])
+        var params = CodexProtocol.threadParameters(root: root, mode: .default)
+        params["approvalPolicy"] = .string("never")
+        params["ephemeral"] = .bool(true)
+        params["config"] = .object(CodexReadOnly.overrides(config: config, workspaceWrites: true, root: root, cli: cli))
+        let started = try await rpc.request("thread/start", params: params)
+        let thread = try #require(started["thread"]?["id"]?.string)
+        let result = try await rpc.request("mcpServer/tool/call", params: [
+            "threadId": .string(thread), "server": .string("vibedeck"), "tool": .string("submit_rule_check"),
+            "arguments": .object(["task": .string("Smoke MCP do Resolver"), "files": .array([]), "results": .array([])])
+        ])
+        #expect(result["isError"] != .bool(true))
+        let check = try #require(store.listChecks().first)
+        #expect(check.passed)
+        #expect(check.results.first?.source == .script)
+        #expect(check.results.first?.exitCode == 0)
+    }
 }

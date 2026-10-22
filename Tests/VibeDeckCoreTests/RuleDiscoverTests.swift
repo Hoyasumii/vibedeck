@@ -235,6 +235,20 @@ private func newStore() throws -> ProjectStore {
         }
     }
 
+    @Test func viableVerdictApprovesIdeaWithPendingDependencyWithoutPromoting() throws {
+        let store = try newStore()
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let (main, _) = try store.createIdea(title: "Com dependência")
+        let (dep, _) = try store.createIdea(title: "Pendente")
+        try store.updateIdea(main) { $0.status = .exploring; $0.rules = [Rule(text: "R")] }
+        try store.addIdeaDependencies(main, [dep])
+        let saved = try store.updateIdea(main) { RuleDiscoverVerdict(viable: true).apply(to: &$0) }.idea
+        #expect(saved.status == .approved)
+        #expect(saved.promotedTopic == nil)
+        #expect(try store.listTopics().isEmpty)
+        #expect(throws: VibeDeckError.self) { try store.implementableIdea(main) }
+    }
+
     @Test func savedNonviableVerdictPreservesEveryStatus() {
         for status in IdeaStatus.allCases {
             var idea = Idea(title: "Avaliação")

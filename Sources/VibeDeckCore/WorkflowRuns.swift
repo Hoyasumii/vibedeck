@@ -204,6 +204,16 @@ public struct WorkflowRun: Codable, Equatable, Identifiable, Sendable {
 
     public var isFinished: Bool { status == .done || status == .stopped }
 
+    /// A transition taken: from a step to the next one (`to` nil = the run ended there).
+    public struct Hop: Hashable, Sendable {
+        public var from: String
+        public var to: String?
+        public init(from: String, to: String?) { self.from = from; self.to = to }
+    }
+
+    /// Transitions recorded in the history of the current cycle, loops and branches included.
+    public var traversed: Set<Hop> { Set(currentCycle.map { Hop(from: $0.step, to: $0.next) }) }
+
     /// Answers already given to a step (it reads them before starting, instead of asking again).
     public func answers(for step: String) -> [WorkflowQuestion] {
         questions.filter { $0.step == step && !$0.isOpen }
@@ -561,6 +571,8 @@ extension ProjectStore {
         guard IdeaImplementation.isEligible(idea) else {
             throw VibeDeckError.invalidWorkflow("a ideia precisa estar aprovada e ter uma avaliação viável atual.")
         }
+        // Dependencies are reread from disk on start, resume and restart.
+        _ = try implementableIdea(ideaRef)
         if let existing = try ideaRun(idea, workflow: workflow) {
             if !restart { return (existing.ref, try resumeRun(existing.ref)) }
             var run = existing.run

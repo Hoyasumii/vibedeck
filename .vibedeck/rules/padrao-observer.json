@@ -1,0 +1,30 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-22T14:56:19Z",
+  "description" : "Um sujeito notifica observadores interessados sem conhecê-los, desacoplando quem emite de quem reage.",
+  "id" : "2D48D181-426B-4E52-9481-A196B38BAAC1",
+  "rules" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: o emissor expõe inscrição/cancelamento (callback, AsyncStream, Combine, delegate) e não referencia tipos de quem reage.",
+      "id" : "810BEAF7-23AE-4201-BE49-CA2F33289958",
+      "severity" : "must",
+      "text" : "O emissor não conhece os observadores concretos"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: observadores são removidos ao fim do ciclo de vida, sem vazar memória nem retain cycles.",
+      "id" : "229A8236-DD0B-4A8B-92F4-796C4426A415",
+      "severity" : "must",
+      "text" : "Toda inscrição tem cancelamento claro"
+    }
+  ],
+  "sourcePattern" : "observer",
+  "tags" : [
+    "padrao"
+  ],
+  "title" : "Padrão: Observer"
+}

@@ -16,8 +16,10 @@ final class AISession {
     var ideaRequest: IdeaRequest?
     @ObservationIgnored private var ideaIntentTask: Task<Void, Never>?
 
+    /// Same Core gate as the workflow path: an idea with pending dependencies never opens the mode choice.
     func requestIdeaImplementation(_ idea: Idea) {
         guard !isWorking, IdeaImplementation.isEligible(idea) else { return }
+        do { _ = try ProjectStore(root: root).implementableIdea(idea.id.uuidString) } catch { return fail(error.localizedDescription) }
         ideaRequest = IdeaRequest(ideaID: idea.id)
     }
 
@@ -49,11 +51,8 @@ final class AISession {
                 try Task.checkCancellation()
                 isWorking = false
                 if intent.mode != .none, let ref = intent.idea {
-                    let idea = try project.loadIdea(project.resolveIdeaSlug(ref))
-                    guard IdeaImplementation.isEligible(idea) else {
-                        fail("A ideia precisa estar aprovada e ter uma avaliação viável atual antes de implementar.")
-                        return
-                    }
+                    // Blocked (not eligible or pending dependencies): `fail` below, nothing reaches the provider.
+                    let idea = try project.implementableIdea(ref).idea
                     ideaRequest = IdeaRequest(ideaID: idea.id, mode: intent.mode, workflow: intent.workflow)
                 } else {
                     send(text, mentions: mentions, attachments: attachments, inspectIdeas: false)
@@ -137,6 +136,11 @@ final class AISession {
 
     private var workflowRef: String?
     private var workflowProject: ProjectStore?
+    /// Agents and subagents of the open chat, from provider events only.
+    private(set) var processes = AgentProcessTracker()
+    /// Run panel next to the chat: shown when a workflow starts or resumes, hidden or expanded by the user.
+    var runPanelVisible = false
+    var runPanelExpanded = false
     private var selectedProviderKey: String { "aiProvider.\(store.dir.lastPathComponent)" }
     let root: URL
     private(set) var entries: [Entry] = []
@@ -290,6 +294,8 @@ final class AISession {
         provider = chat.provider
         if !provider.capabilities.permissionModes.contains(permissionMode) { permissionMode = .default }
         current = chat
+        processes = AgentProcessTracker(restoring: chat.agentProcesses)
+        runPanelVisible = chat.workflowRun != nil; runPanelExpanded = false
         if provider == .codex { refreshCodex() }
         entries = chat.messages.map(Entry.init)
         lastCost = nil
@@ -310,6 +316,7 @@ final class AISession {
     private func persist() {
         guard var chat = current else { return }
         chat.messages = entries.compactMap(\.message)
+        chat.agentProcesses = processes.processes
         guard !chat.messages.isEmpty || chat.sessionId != nil || store.load(chat.id) != nil else {
             current = chat
             return
@@ -498,6 +505,7 @@ final class AISession {
         let transport: (any AIConversationTransport)? = provider == .claude ? claudeTransport : codexTransport
         Task { try? await transport?.interrupt(); transport?.stop() }
         claudeTransport = nil; activeClaudeSettings = nil; codexTransport = nil
+        processes.providerEnded()
         finishUsage("cancelled")
         pending = []; isWorking = false; isThinking = false
         turnWaiter?.resume(throwing: CancellationError()); turnWaiter = nil
@@ -529,6 +537,7 @@ final class AISession {
         ideaIntentTask?.cancel(); ideaIntentTask = nil
         ideaRequest = nil
         finishUsage("cancelled")
+        processes.providerEnded()
         persist()
         codexTask?.cancel(); codexTask = nil
         workflowTask?.cancel(); workflowTask = nil
@@ -638,6 +647,7 @@ final class AISession {
             guard let self, self.claudeTransport === transport else { return }
             if transport?.resumeFailed == true { self.current?.sessionId = nil }
             self.claudeTransport = nil
+            self.processes.providerEnded()
             self.fail(message)
         }
         claudeTransport = transport; acceptingEvents = true
@@ -666,6 +676,7 @@ final class AISession {
     // MARK: Events
 
     private func handle(_ event: ClaudeEvent) {
+        processes.apply(event, provider: provider)
         switch event {
         case .initialized(let id, let model, let commands):
             if !commands.isEmpty { reportedCommands = commands }
@@ -717,7 +728,7 @@ final class AISession {
             lastCost = result.costUSD
             if result.isError, let text = result.text, !text.isEmpty { entries.append(Entry(kind: .error(text))) }
             persist()
-        case .ignored:
+        case .agents, .ignored:
             break
         }
     }
@@ -809,6 +820,7 @@ extension AISession {
             transport.onDisconnect = { [weak self] message in
                 guard let self else { return }
                 self.codexTransport = nil
+                self.processes.providerEnded()
                 self.pending = []
                 self.turnWaiter?.resume(throwing: CodexRPCError.server(message)); self.turnWaiter = nil
                 self.fail(message)
@@ -980,6 +992,8 @@ extension AISession {
         guard RemoteExecution.available(run.provider, root: root) else { fail("\(run.provider.title) não está instalado; esta execução pertence a ele."); return }
         newChat()
         current?.title = "Workflow · \((try? store.loadWorkflow(run.workflow).title) ?? run.workflow)"
+        current?.workflowRun = ref
+        runPanelVisible = true; runPanelExpanded = false
         requestedPage = .chat
         workflowRef = ref; workflowProject = store
         isWorking = true
@@ -991,6 +1005,8 @@ extension AISession {
         turnOutput = ""
         isWorking = true
         try await RemoteExecution.synchronize(root: root)
+        // The previous step's session is replaced: Claude's process ends; Codex's old thread is no longer followed.
+        processes.providerEnded(as: provider == .claude ? .interrupted : .unconfirmed)
         if provider == .codex { try await prepareCodexThread(fresh: true, settings: settings) }
         else { try await prepareClaude(settings: settings, fresh: true) }
         turnOutput = ""; acceptingEvents = true

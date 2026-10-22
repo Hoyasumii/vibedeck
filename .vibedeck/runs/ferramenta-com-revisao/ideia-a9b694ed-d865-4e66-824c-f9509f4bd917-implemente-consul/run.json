@@ -1,0 +1,53 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/workflow-run.schema.json",
+  "createdAt" : "2026-10-21T21:36:24Z",
+  "cycle" : 1,
+  "history" : [
+    {
+      "at" : "2026-10-21T21:38:57Z",
+      "cycle" : 1,
+      "next" : "implementar",
+      "step" : "planejar",
+      "summary" : "Saída completa em `.vibedeck/runs/ferramenta-com-revisao/ideia-a9b694ed-d865-4e66-824c-f9509f4bd917-implemente-consul/outputs/A244DA4D-C1D0-4853-96D9-D32589F1FFCF.md` (2961 caracteres). Leia quando necessário; não é um resumo do conteúdo.",
+      "verdict" : "PLANEJADO"
+    },
+    {
+      "at" : "2026-10-21T22:08:59Z",
+      "cycle" : 1,
+      "next" : "revisar",
+      "step" : "implementar",
+      "summary" : "Saída completa em `.vibedeck/runs/ferramenta-com-revisao/ideia-a9b694ed-d865-4e66-824c-f9509f4bd917-implemente-consul/outputs/4B716C27-93F2-46C3-BA47-887A61D99685.md` (3449 caracteres). Leia quando necessário; não é um resumo do conteúdo.",
+      "verdict" : "IMPLEMENTADO"
+    },
+    {
+      "at" : "2026-10-21T22:19:24Z",
+      "cycle" : 1,
+      "next" : "implementar",
+      "step" : "revisar",
+      "summary" : "Saída completa em `.vibedeck/runs/ferramenta-com-revisao/ideia-a9b694ed-d865-4e66-824c-f9509f4bd917-implemente-consul/outputs/70B7FA08-044B-4ADC-9EF6-D19A71C6A5D9.md` (2617 caracteres). Leia quando necessário; não é um resumo do conteúdo.",
+      "verdict" : "AJUSTAR"
+    },
+    {
+      "at" : "2026-10-21T22:50:48Z",
+      "cycle" : 1,
+      "next" : "revisar",
+      "step" : "implementar",
+      "summary" : "Saída completa em `.vibedeck/runs/ferramenta-com-revisao/ideia-a9b694ed-d865-4e66-824c-f9509f4bd917-implemente-consul/outputs/69430258-DE46-4813-B78B-5B27BA4BCA3C.md` (1943 caracteres). Leia quando necessário; não é um resumo do conteúdo.",
+      "verdict" : "IMPLEMENTADO"
+    },
+    {
+      "at" : "2026-10-21T23:02:23Z",
+      "cycle" : 1,
+      "step" : "revisar",
+      "summary" : "Saída completa em `.vibedeck/runs/ferramenta-com-revisao/ideia-a9b694ed-d865-4e66-824c-f9509f4bd917-implemente-consul/outputs/2DCE9C94-E2D8-4A2F-8570-01D98FC90260.md` (1871 caracteres). Leia quando necessário; não é um resumo do conteúdo.",
+      "verdict" : "APROVADO"
+    }
+  ],
+  "id" : "EE95B31D-B339-45EF-B605-52595793DD1E",
+  "input" : "Ideia A9B694ED-D865-4E66-824C-F9509F4BD917. Implemente consultando get_idea pelo UUID; leia a descrição e as regras e siga o tópico promovido, quando houver.",
+  "provider" : "claude",
+  "reason" : "a etapa revisar terminou com APROVADO e nenhuma transição se aplica",
+  "status" : "done",
+  "updatedAt" : "2026-10-21T23:02:23Z",
+  "workflow" : "ferramenta-com-revisao"
+}

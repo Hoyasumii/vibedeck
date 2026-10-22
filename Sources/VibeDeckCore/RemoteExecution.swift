@@ -9,10 +9,7 @@ public enum RemoteExecution {
         let connection = SSHConnection(workspace.destination)
         let name = program ?? process.executableURL?.lastPathComponent ?? ""
         var body: String
-        if let command { body = command }
-        else {
-            body = "command -v " + SSHConnection.quote(name) + " >/dev/null 2>&1 || { printf '%s\\n' " + SSHConnection.quote("Ferramenta remota ausente: \(name). Instale no servidor ou selecione outro provedor manualmente.") + " >&2; exit 127; }; exec " + ([name] + (process.arguments ?? [])).map(SSHConnection.quote).joined(separator: " ")
-        }
+        body = command ?? launcher(name, arguments: process.arguments ?? [])
         let exports = environment.filter { $0.key.range(of: "^[A-Za-z_][A-Za-z_0-9]*$", options: .regularExpression) != nil }
             .map { "export " + $0.key + "=" + SSHConnection.quote($0.value) + "; " }.joined()
         body = connection.inDirectory(exports + body)
@@ -20,6 +17,23 @@ public enum RemoteExecution {
         process.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
         process.arguments = connection.commandArguments(login)
         process.currentDirectoryURL = nil
+    }
+    /// Usual per-user install dirs. A login shell that is not interactive skips ~/.bashrc
+    /// (where nvm, npm and the Claude installer put PATH), so the tool must be found here.
+    static let searchDirectories = ["$HOME/.local/bin", "$HOME/.claude/local", "$HOME/.npm-global/bin", "$HOME/.bun/bin",
+                                    "$HOME/.volta/bin", "$HOME/.cargo/bin", "/usr/local/bin", "/opt/homebrew/bin",
+                                    "$HOME/.nvm/versions/node/*/bin", "$HOME/.local/share/fnm/node-versions/*/installation/bin"]
+    /// Shell body that finds `name` on the server (PATH, install dirs, then an interactive shell) and execs it.
+    static func launcher(_ name: String, arguments: [String]) -> String {
+        let tool = SSHConnection.quote(name), found = "command -v " + tool + " >/dev/null 2>&1"
+        // Plain sh does the globbing: zsh aborts on unmatched patterns.
+        let scan = "for d in " + searchDirectories.map { "\"" + $0.replacingOccurrences(of: "/*/", with: "\"/*/\"") + "\"" }.joined(separator: " ")
+            + "; do [ -x \"$d/$1\" ] && { printf %s \"$d\"; exit 0; }; done; exit 1"
+        let interactive = "\"${SHELL:-/bin/sh}\" -ic " + SSHConnection.quote("command -v " + tool) + " </dev/null 2>/dev/null | tail -n 1"
+        return found + " || { d=$(/bin/sh -c " + SSHConnection.quote(scan) + " sh " + tool + ") && PATH=\"$d:$PATH\"; }; "
+            + found + " || { p=$(" + interactive + "); case \"$p\" in /*) [ -x \"$p\" ] && PATH=\"${p%/*}:$PATH\";; esac; }; "
+            + "export PATH; " + found + " || { printf '%s\\n' " + SSHConnection.quote("Ferramenta remota ausente: \(name). Instale no servidor ou selecione outro provedor manualmente.")
+            + " >&2; exit 127; }; exec " + ([name] + arguments).map(SSHConnection.quote).joined(separator: " ")
     }
     /// Engine-generated workflow state must reach the server before the next provider call.
     /// Conflicts or connection failures still block the action; nothing is executed locally.

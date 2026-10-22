@@ -1,0 +1,46 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-22T14:56:19Z",
+  "description" : "Uma operação de negócio que não pertence a uma única entidade ou objeto de valor é expressa como serviço de domínio.",
+  "id" : "26F63455-4683-486C-A33F-C0B70175B94C",
+  "rules" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: inspecione as operações e identifique a regra de negócio e os conceitos de domínio que precisam participar de sua execução.",
+      "id" : "62C7B35D-18DE-4E78-AC63-E99E762D6B70",
+      "severity" : "must",
+      "text" : "Operações do serviço expressam regras que não pertencem a uma única entidade ou objeto de valor"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: inspecione os atributos e confirme que os dados de uma execução não são retidos como estado de negócio para a próxima.",
+      "id" : "BA09B967-4A58-4966-88B4-AC825568FCA7",
+      "severity" : "must",
+      "text" : "Serviços de domínio não mantêm estado de negócio entre chamadas"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: inspecione as dependências e confirme que persistência e integrações são acessadas por contratos, sem implementação concreta embutida no serviço.",
+      "id" : "643EF822-1A1D-4CF1-8C9B-52015EF9AEB0",
+      "severity" : "must",
+      "text" : "Dependências de infraestrutura entram por abstrações"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: execute testes das operações com valores de domínio e dublês das dependências externas.",
+      "id" : "D30A3518-E10A-4D60-AA43-8AFFBE0C8B9E",
+      "severity" : "should",
+      "text" : "Serviços de domínio têm testes das regras de negócio"
+    }
+  ],
+  "sourcePattern" : "domain-service",
+  "tags" : [
+    "padrao"
+  ],
+  "title" : "Padrão: Serviço de domínio"
+}

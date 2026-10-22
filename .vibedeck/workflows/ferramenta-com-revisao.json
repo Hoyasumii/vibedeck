@@ -1,0 +1,51 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/workflow.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-21T21:36:20Z",
+  "id" : "64FCD055-CCCE-43BB-8E71-B349D070FE25",
+  "input" : "<objetivo e critérios de aceite>",
+  "maxSteps" : 10,
+  "steps" : [
+    {
+      "id" : "planejar",
+      "kind" : "skill",
+      "ref" : "planejamento-de-ferramenta-3",
+      "transitions" : [
+        {
+          "to" : "implementar"
+        }
+      ]
+    },
+    {
+      "id" : "implementar",
+      "kind" : "command",
+      "maxVisits" : 3,
+      "note" : "Use o objetivo da execução e o plano da etapa anterior.",
+      "ref" : "desenvolver-ferramenta-3",
+      "transitions" : [
+        {
+          "to" : "revisar",
+          "verdict" : "IMPLEMENTADO"
+        }
+      ]
+    },
+    {
+      "id" : "revisar",
+      "kind" : "agent",
+      "maxVisits" : 3,
+      "ref" : "revisor-de-ferramentas-3",
+      "transitions" : [
+        {
+          "to" : "implementar",
+          "verdict" : "AJUSTAR"
+        }
+      ]
+    }
+  ],
+  "summary" : "Planejar → implementar → revisar, com até três rodadas de ajustes.",
+  "tags" : [
+    "kit"
+  ],
+  "title" : "Ferramenta com revisão",
+  "updatedAt" : "2026-10-21T21:36:20Z"
+}

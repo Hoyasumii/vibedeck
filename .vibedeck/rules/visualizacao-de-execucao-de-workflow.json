@@ -1,0 +1,162 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-21T20:36:04Z",
+  "description" : "Regras vindas da ideia \"Visualização de Execução de Workflow\".",
+  "id" : "77404D5C-F972-4F9D-B240-22086F3CC036",
+  "paths" : [
+    "Sources/VibeDeckApp/Workflow*.swift",
+    "Sources/VibeDeckApp/ClaudeChatPage.swift",
+    "Sources/VibeDeckApp/ClaudeSession.swift",
+    "Sources/VibeDeckApp/ProjectModel.swift",
+    "Sources/VibeDeckCore/WorkflowRuns.swift"
+  ],
+  "rules" : [
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T19:47:39Z",
+      "details" : "Verificar iniciando um workflow e retomando uma execução existente pelos fluxos disponíveis no app.",
+      "id" : "F80A66F8-2C86-42AA-A131-1A9A2C6CA2E3",
+      "severity" : "must",
+      "text" : "Iniciar ou retomar um workflow no app abre automaticamente seu visualizador ao lado do chat da execução."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T19:47:39Z",
+      "details" : "Verificar que arrastar a divisão altera a largura dos dois painéis.",
+      "id" : "870B2DF6-F6BA-4B95-95D2-DBAF8451BE17",
+      "severity" : "must",
+      "text" : "O usuário pode ajustar a largura do visualizador arrastando a divisão entre ele e o chat."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T19:47:39Z",
+      "details" : "Expandir e restaurar durante uma execução, conferindo a preservação da conversa e do progresso exibido.",
+      "id" : "F65A0E08-0809-4409-96C1-E1F49B1D6E0E",
+      "severity" : "must",
+      "text" : "O visualizador oferece uma ação para expandir sua área e retornar à disposição ao lado do chat."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T19:47:39Z",
+      "details" : "Ocultar durante uma etapa, aguardar seu avanço e reabrir; o painel deve mostrar o estado atualizado.",
+      "id" : "B3CF1132-4F01-41D1-86C2-81C8EDE82964",
+      "severity" : "must",
+      "text" : "O usuário pode ocultar e reabrir o visualizador sem interromper a execução."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T19:47:39Z",
+      "details" : "Inspecionar a composição da interface e conferir um workflow com ramificação e retorno a uma etapa anterior.",
+      "id" : "321D15F8-6D7F-4140-A855-BAE58AE8BD55",
+      "severity" : "must",
+      "text" : "O visualizador de execução reutiliza o componente WorkflowDiagram para representar as etapas e transições."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T19:47:39Z",
+      "details" : "Avançar a execução e conferir que o destaque acompanha current, sem permanecer na etapa anterior.",
+      "id" : "8DE3EBD5-FF3B-464A-BFB3-123E5F9D05BB",
+      "severity" : "must",
+      "text" : "O diagrama destaca a etapa indicada por WorkflowRun.current enquanto houver uma etapa atual."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T19:47:39Z",
+      "details" : "Executar uma ramificação e um loop; conferir que somente as transições registradas no histórico recebem o destaque de caminho percorrido.",
+      "id" : "36D14219-120E-437E-B470-B00929D427A8",
+      "severity" : "must",
+      "text" : "O diagrama diferencia as transições efetivamente percorridas das transições ainda não percorridas, usando o histórico da execução."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T19:47:39Z",
+      "details" : "Verificar a apresentação correspondente a cada WorkflowRunStatus; aguardar resposta não deve aparecer como trabalho ativo de um agente.",
+      "id" : "38BF2DE2-F442-4E95-86B3-CC6800F6D2EB",
+      "severity" : "must",
+      "text" : "O visualizador distingue execução em andamento, aguardando resposta, concluída e interrompida."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T19:47:39Z",
+      "details" : "Salvar, renomear e recarregar uma conversa; conferir que ela continua associada à mesma execução.",
+      "id" : "40C53438-8B31-4099-8192-B0B3139C89F5",
+      "severity" : "must",
+      "text" : "A conversa persiste uma referência à execução do workflow independente de seu título e do texto das mensagens."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T19:47:39Z",
+      "details" : "Reabrir conversas de execuções concluídas e interrompidas após reiniciar o app e conferir o estado e o caminho registrados.",
+      "id" : "C09EACB5-6B6F-4085-96BC-B16D3B6A5637",
+      "severity" : "must",
+      "text" : "Reabrir uma conversa vinculada a um workflow permite consultar seu visualizador após concluir, interromper ou reiniciar o app."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T19:47:39Z",
+      "details" : "Alternar entre duas conversas de workflows e uma conversa sem workflow; conferir que não há progresso herdado de outra conversa.",
+      "id" : "84724C3C-7ED3-4E51-B547-63E23C2A854D",
+      "severity" : "must",
+      "text" : "O visualizador apresenta somente a execução vinculada à conversa selecionada."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T19:47:39Z",
+      "details" : "Iniciar um agente que delegue trabalho e conferir entradas distintas, com identificação e estado, para o agente e seu subagente.",
+      "id" : "1E036723-75C7-45B1-9476-120DF925CD4A",
+      "severity" : "must",
+      "text" : "O visualizador apresenta cada agente ou subagente em execução como um processo identificado individualmente."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T19:47:39Z",
+      "details" : "Simular dois subagentes com intervalos de execução sobrepostos e verificar que ambos permanecem em andamento até seus respectivos términos.",
+      "id" : "EA3AC6C5-F0F9-4B2D-AA2B-C33627A7710E",
+      "severity" : "must",
+      "text" : "Todos os agentes e subagentes executados simultaneamente aparecem como processos em andamento ao mesmo tempo."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T19:47:39Z",
+      "details" : "Fornecer eventos de dois agentes pais com subagentes e verificar que cada filho aparece associado ao pai correto.",
+      "id" : "0E0889F3-EB2D-4035-8E8E-DC3211FE986E",
+      "severity" : "must",
+      "text" : "Cada subagente exibido identifica seu agente pai quando essa relação é informada pelo provedor."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T19:47:39Z",
+      "details" : "Enviar uma resposta que apenas mencione agentes e conferir que ela não cria processos; eventos reais devem criar e atualizar as entradas correspondentes.",
+      "id" : "4836A141-32B6-4B6B-958E-59F981BA563E",
+      "severity" : "must",
+      "text" : "A identificação e o estado dos processos exibidos derivam de eventos de execução, sem inferir agentes a partir do texto das respostas."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T19:47:39Z",
+      "details" : "Cobrir sucesso, falha e cancelamento com dois processos simultâneos; finalizar um deles não deve finalizar o outro.",
+      "id" : "875913D0-81D1-4297-AA38-38FF8EBBF5C6",
+      "severity" : "must",
+      "text" : "Um processo deixa de aparecer em andamento quando sua conclusão, falha ou interrupção é confirmada."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T19:47:39Z",
+      "details" : "Validar os adaptadores dos dois provedores com eventos de início e término de agentes simultâneos.",
+      "id" : "7A180C28-A5B8-4E1B-B97A-0D4FA950D014",
+      "severity" : "must",
+      "text" : "A visualização de agentes e subagentes funciona com Claude Code e Codex."
+    },
+    {
+      "author" : "ai",
+      "createdAt" : "2026-10-20T19:47:39Z",
+      "details" : "Reabrir uma conversa após encerrar o provedor; conferir que registros antigos não aparecem como processos ainda rodando.",
+      "id" : "B8521F37-88EA-4084-88D0-080C2041E9DA",
+      "severity" : "must",
+      "text" : "Ao reabrir uma conversa, um processo salvo só aparece como em andamento após confirmação de que continua ativo."
+    }
+  ],
+  "sourceIdea" : "E8CBF97F-9556-44A5-8271-8EAA61030CB3",
+  "title" : "Visualização de Execução de Workflow"
+}

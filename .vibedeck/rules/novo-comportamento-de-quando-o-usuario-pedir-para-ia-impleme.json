@@ -22,6 +22,12 @@
       "details" : "Verificar os casos approved com avaliação viável atual, avaliação ausente, inviável ou com fingerprint diferente do contentFingerprint, além de status diferente de approved.",
       "id" : "3939AE62-29B3-4CE0-A52A-D07D78036C5E",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/3939ae62.sh",
+        "generatedAt" : "2026-10-21T15:12:47Z",
+        "mode" : "script",
+        "ruleHash" : "bb52573f8fce3d66"
+      },
       "text" : "A escolha do modo de implementação só se aplica a ideias com status approved, readiness.viable=true e readiness.fingerprint igual ao contentFingerprint."
     },
     {
@@ -30,6 +36,12 @@
       "details" : "Com uma ideia elegível e pelo menos um workflow no projeto, clicar em Implementar deve apresentar Workflow, Execução padrão e Cancelar antes de iniciar a implementação.",
       "id" : "975D245B-E108-4EFB-8531-0D025E5AEF52",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/975d245b.sh",
+        "generatedAt" : "2026-10-21T15:12:47Z",
+        "mode" : "script",
+        "ruleHash" : "3b996e7d3e11bae3"
+      },
       "text" : "O botão Implementar de uma ideia elegível deve solicitar a escolha entre workflow e execução padrão antes de iniciar a implementação."
     },
     {
@@ -38,6 +50,12 @@
       "details" : "No chat do app, pedir a implementação de uma ideia elegível sem indicar o modo deve apresentar a escolha antes de executar alterações ou iniciar um workflow.",
       "id" : "7C96A9C8-340D-4E7B-B77D-C0A66851A2F9",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/7c96a9c8.sh",
+        "generatedAt" : "2026-10-21T15:12:47Z",
+        "mode" : "script",
+        "ruleHash" : "9b35460cd43b1d99"
+      },
       "text" : "Um pedido no chat do app para implementar uma ideia elegível, sem modo explícito, deve aguardar a escolha entre workflow e execução padrão."
     },
     {
@@ -46,6 +64,12 @@
       "details" : "Verificar que chamadas diretas pelo CLI e pelo MCP continuam funcionando sem solicitar a nova escolha de modo.",
       "id" : "F6D23E52-5042-4EF3-9D22-BE6054F64CF4",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/f6d23e52.sh",
+        "generatedAt" : "2026-10-21T15:12:47Z",
+        "mode" : "script",
+        "ruleHash" : "5a71db3406740e46"
+      },
       "text" : "A nova pergunta de modo de implementação deve ficar restrita ao app, sem ser exigida de IAs externas pelo CLI ou MCP."
     },
     {
@@ -54,6 +78,12 @@
       "details" : "Enviar no chat um pedido explícito de execução padrão e verificar que o seletor de modo não aparece.",
       "id" : "2EC0AE3E-D46B-4F39-9B48-8276DC6344EB",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/2ec0ae3e.sh",
+        "generatedAt" : "2026-10-21T15:12:47Z",
+        "mode" : "script",
+        "ruleHash" : "ed637d9b2c5e796e"
+      },
       "text" : "Um pedido explícito de implementação pela execução padrão deve seguir esse modo sem repetir a pergunta de modo."
     },
     {
@@ -62,6 +92,12 @@
       "details" : "Enviar um pedido que nomeie um workflow existente e verificar que ele é selecionado sem abrir a pergunta entre workflow e execução padrão.",
       "id" : "B931C93F-2EBE-4A59-9856-009CCCECC025",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/b931c93f.sh",
+        "generatedAt" : "2026-10-21T15:12:47Z",
+        "mode" : "script",
+        "ruleHash" : "b5c2287ae4d917be"
+      },
       "text" : "Um pedido explícito de implementação com um workflow existente deve selecionar esse workflow sem repetir a pergunta de modo."
     },
     {
@@ -70,6 +106,12 @@
       "details" : "Com workflows no projeto, escolher Workflow e verificar que o usuário pode selecionar qual deles executar.",
       "id" : "F2157EB6-6145-4ABA-87A5-FCCE8C8CDBFE",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/f2157eb6.sh",
+        "generatedAt" : "2026-10-21T15:12:47Z",
+        "mode" : "script",
+        "ruleHash" : "a7d543a33c79c718"
+      },
       "text" : "A opção Workflow deve permitir selecionar um workflow existente no projeto."
     },
     {
@@ -78,6 +120,12 @@
       "details" : "Com pelo menos um workflow no projeto, abrir a seleção e verificar o acesso ao catálogo para adicionar um workflow antes de selecioná-lo para implementação.",
       "id" : "7E0054D4-F8A3-4144-8C58-B53E1C4B5F2B",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/7e0054d4.sh",
+        "generatedAt" : "2026-10-21T15:12:47Z",
+        "mode" : "script",
+        "ruleHash" : "e97d612c98ab3e01"
+      },
       "text" : "Quando houver workflows no projeto, o seletor de workflow da implementação deve oferecer acesso à adição de workflows do catálogo."
     },
     {
@@ -86,6 +134,12 @@
       "details" : "Com a lista de workflows vazia, verificar que a escolha oferece somente Execução padrão e Cancelar, sem seleção de workflow nem acesso ao catálogo nesse diálogo.",
       "id" : "AEFCDB67-BC3D-46F0-A764-7E81EC82C8B4",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/aefcdb67.sh",
+        "generatedAt" : "2026-10-21T15:12:47Z",
+        "mode" : "script",
+        "ruleHash" : "5c4711030f272b97"
+      },
       "text" : "Se o projeto não tiver workflows, a escolha de implementação deve oferecer apenas execução padrão e cancelar."
     },
     {
@@ -94,6 +148,12 @@
       "details" : "Cancelar o seletor e verificar que não houve envio do prompt de implementação, criação ou retomada de execução, nem promoção da ideia causada por esse pedido.",
       "id" : "D008570A-BD7C-477E-85FE-2730F2307C2B",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/d008570a.sh",
+        "generatedAt" : "2026-10-21T15:12:48Z",
+        "mode" : "script",
+        "ruleHash" : "4a880443d8db9d45"
+      },
       "text" : "Cancelar a escolha de implementação deve encerrar o pedido sem iniciar a implementação nem promover a ideia."
     },
     {
@@ -102,6 +162,12 @@
       "details" : "Escolher Execução padrão e verificar que o chat recebe o prompt produzido por IdeaImplementation.prompt, sem criar uma execução de workflow.",
       "id" : "A3EFE728-C709-4B69-B5D3-7CE3FBE5414D",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/a3efe728.sh",
+        "generatedAt" : "2026-10-21T15:12:48Z",
+        "mode" : "script",
+        "ruleHash" : "68956e0e9766bd1d"
+      },
       "text" : "A execução padrão deve usar o fluxo de implementação por IdeaImplementation.prompt."
     },
     {
@@ -110,6 +176,12 @@
       "details" : "Escolher um workflow e verificar que sua execução recebe uma referência recuperável da ideia, permitindo ler a descrição e as regras correspondentes.",
       "id" : "7B7C27C6-AA8A-4A70-AB5C-1AE771D9AE05",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/7b7c27c6.sh",
+        "generatedAt" : "2026-10-21T15:12:48Z",
+        "mode" : "script",
+        "ruleHash" : "69773ca54ad42867"
+      },
       "text" : "A execução por workflow deve receber a identificação da ideia que será implementada como parte de sua entrada."
     },
     {
@@ -118,6 +190,12 @@
       "details" : "Iniciar o mesmo workflow para a mesma ideia após editar seu título ou descrição e verificar que a execução anterior ainda é reconhecida como pertencente àquela ideia.",
       "id" : "AA2E3BF6-2963-44E6-A6E4-169EB3829341",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/aa2e3bf6.sh",
+        "generatedAt" : "2026-10-21T15:12:48Z",
+        "mode" : "script",
+        "ruleHash" : "0c3ec9d841ba2276"
+      },
       "text" : "A identificação de uma execução para a mesma ideia e workflow deve permanecer estável quando o título ou a descrição da ideia mudar."
     },
     {
@@ -126,6 +204,12 @@
       "details" : "Criar uma execução para a ideia e o workflow selecionado e solicitar nova implementação; verificar a pergunta Retomar ou Reiniciar, inclusive quando o workflow foi indicado explicitamente no chat.",
       "id" : "624C3483-D3C4-4DDA-BF50-760262C15A86",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/624c3483.sh",
+        "generatedAt" : "2026-10-21T15:12:48Z",
+        "mode" : "script",
+        "ruleHash" : "2a56a07c79c99ac3"
+      },
       "text" : "Quando já existir uma execução do workflow escolhido para a mesma ideia, o app deve perguntar se o usuário deseja retomar ou reiniciar antes de continuar."
     },
     {
@@ -134,6 +218,12 @@
       "details" : "Pausar uma execução com progresso registrado, escolher Retomar e verificar que o histórico permanece e a execução continua do estado persistido.",
       "id" : "04EEB887-C1AC-4D76-A08A-3FC1E017BBEC",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/04eeb887.sh",
+        "generatedAt" : "2026-10-21T15:12:48Z",
+        "mode" : "script",
+        "ruleHash" : "bd4b7555587bb39d"
+      },
       "text" : "Escolher Retomar deve continuar a execução existente a partir do estado persistido, sem reiniciar etapas já concluídas."
     },
     {
@@ -142,6 +232,12 @@
       "details" : "Usar uma execução parcialmente concluída, escolher Reiniciar e verificar que a próxima etapa passa a ser a etapa inicial do workflow.",
       "id" : "7D9E4052-9E5D-41E6-AFD3-6B03D1FA810E",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/7d9e4052.sh",
+        "generatedAt" : "2026-10-21T15:12:48Z",
+        "mode" : "script",
+        "ruleHash" : "f1f8d5f5a956a3a1"
+      },
       "text" : "Escolher Reiniciar deve começar a execução pela etapa inicial do workflow selecionado."
     },
     {
@@ -150,6 +246,12 @@
       "details" : "Abrir a escolha com uma ideia elegível, alterar externamente seu conteúdo para invalidar a avaliação e confirmar; verificar que a implementação não inicia com a avaliação anterior.",
       "id" : "C7F89480-6587-425D-BD4D-D595EBD56133",
       "severity" : "must",
+      "test" : {
+        "command" : ".vibedeck/tests/novo-comportamento-de-quando-o-usuario-pedir-para-ia-impleme/c7f89480.sh",
+        "generatedAt" : "2026-10-21T15:12:48Z",
+        "mode" : "script",
+        "ruleHash" : "b5805e1965620303"
+      },
       "text" : "Ao confirmar o modo de implementação, o app deve revalidar a elegibilidade da ideia usando seu conteúdo atual."
     }
   ],

@@ -1,0 +1,30 @@
+{
+  "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/rule-topic.schema.json",
+  "author" : "human",
+  "createdAt" : "2026-10-22T14:56:19Z",
+  "description" : "Constrói objetos complexos passo a passo, separando a construção da representação final.",
+  "id" : "821A33C3-7B89-4F69-B442-AD47FE6846BC",
+  "rules" : [
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: não há inicializadores com longas listas de parâmetros opcionais; a montagem é encadeada e legível.",
+      "id" : "533F55F2-6E59-48F8-8BB4-42E9CB5773CD",
+      "severity" : "must",
+      "text" : "Objetos com muitos parâmetros opcionais são montados por um builder"
+    },
+    {
+      "author" : "human",
+      "createdAt" : "2026-10-22T14:56:19Z",
+      "details" : "Verificar: build() valida invariantes e não devolve objeto parcial.",
+      "id" : "F8DA6028-19D7-4155-BCCF-42EDFD3D0B63",
+      "severity" : "must",
+      "text" : "O resultado do builder é válido ou a construção falha"
+    }
+  ],
+  "sourcePattern" : "builder",
+  "tags" : [
+    "padrao"
+  ],
+  "title" : "Padrão: Builder"
+}
