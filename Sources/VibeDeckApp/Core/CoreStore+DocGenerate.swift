@@ -28,8 +28,9 @@ extension CoreStore {
         let text: String
         do {
             text = try await call("doc_generate_validate", ["answer": String(decoding: answer, as: UTF8.self)], idempotent: true)
-        } catch let error as CoreError {
-            throw VibeDeckError.docGenerationInvalidAnswer.wrapping(error)
+        } catch CoreError.tool {
+            // O Core rejeitou a resposta (JSON fora do contrato): o AIReadOnlyOperation tenta a recuperação única.
+            throw VibeDeckError.docGenerationInvalidAnswer
         }
         let rows = try CoreStore.decode([Row].self, from: text, what: "doc_generate_validate")
         return rows.map { DocGenerate.Document(title: $0.title, content: $0.content) }

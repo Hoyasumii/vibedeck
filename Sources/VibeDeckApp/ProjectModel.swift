@@ -934,27 +934,21 @@ final class ProjectModel {
 
     // MARK: Docs
 
-    /// All chosen documents are one undoable action. A failed batch rolls back only its new files.
+    /// All chosen documents are one undoable action. O Core grava tudo ou nada (`doc_generate_apply`, author=ai);
+    /// a validação de limites já foi feita pelo Core e a folha só entrega propostas aceitáveis.
     @discardableResult
     func acceptGeneratedDocs(_ proposed: [DocGenerate.Document], undo: UndoManager?, group: String = "") -> Bool {
-        let documents = DocGenerate.validated(proposed)
-        guard !documents.isEmpty else { return false }
+        guard !proposed.isEmpty else { return false }
+        if isReadOnly { errorMessage = Self.offlineMessage; return false }
         Task {
-            var created: [String] = []
             do {
-                let path = try store.normalizedGroupPath(group, allowRoot: true)
-                for document in documents {
-                    let destination = try store.normalizedGroupPath(document.group ?? path, allowRoot: true)
-                    let reference: String? = destination.isEmpty ? nil : destination + "/" + Slug.make(document.title)
-                    created.append(try await store.createDoc(title: document.title, body: document.content, reference: reference, generated: true))
-                }
+                let created = try await store.docGenerateApply(proposed, group: group)
                 var snapshot: [String: String] = [:]
                 for slug in created { snapshot[slug] = try await store.readDoc(slug) }
                 await refreshDocs()
                 undo?.registerUndo(withTarget: self) { model in model.toggleGeneratedDocs(snapshot, remove: true, undo: undo) }
                 undo?.setActionName("Gerar documentos")
             } catch {
-                for slug in created { try? await store.deleteDoc(slug) }
                 await refreshDocs()
                 errorMessage = error.localizedDescription
             }
@@ -1085,6 +1079,15 @@ final class ProjectModel {
             let text = try await self.store.readDoc(slug)
             self.docTexts[slug] = text
             self.externalDocChange[slug, default: 0] += 1
+            self.reloadDocs()
+        }
+    }
+
+    /// Re-vincula um .md da raiz (`link_doc`); o desvínculo (`deleteDoc`) persiste no Core.
+    func linkDoc(file: String) {
+        persist { [weak self] in
+            guard let self = self else { return }
+            try await self.store.linkDoc(file: file)
             self.reloadDocs()
         }
     }

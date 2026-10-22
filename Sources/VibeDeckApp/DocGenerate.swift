@@ -16,6 +16,8 @@ final class DocGenerateRunner {
     }
 
     private(set) var state: State = .idle
+    /// Limites informados pelo Core na última geração (`doc_generate_prompt`).
+    private(set) var maxContentLength = 40_000
     @ObservationIgnored private var task: Task<Void, Never>?
     var isRunning: Bool { state == .running }
     var isActive: Bool { state != .idle }
@@ -36,10 +38,13 @@ final class DocGenerateRunner {
         state = .running
         task = Task {
             do {
-                let existingDocs = try await store.listDocs()
+                let plan = try await store.docGeneratePlan()
+                maxContentLength = plan.maxContentLength
                 let documents = try await AIReadOnlyOperation.run(root: store.root, provider: provider,
-                    operation: "Gerar documentos", prompt: DocGenerate.prompt(existing: existingDocs),
-                    schema: DocGenerate.schema, request: request, parse: DocGenerate.parse)
+                    operation: "Gerar documentos", prompt: plan.prompt,
+                    schema: plan.schema, request: request, store: store) { data in
+                    try await store.docGenerateValidate(answer: data)
+                }
                 try Task.checkCancellation()
                 state = .ready(documents)
             } catch is CancellationError {
@@ -115,8 +120,8 @@ struct DocGenerateSheet: View {
                                     } else {
                                         TextEditor(text: $document.content).font(.body.monospaced()).frame(height: 200)
                                     }
-                                    if DocGenerate.validated([document]).isEmpty {
-                                        Text("Informe título e conteúdo; o conteúdo deve ter até 40.000 caracteres.")
+                                    if !document.isAcceptable(maxContentLength: runner.maxContentLength) {
+                                        Text("Informe título e conteúdo; o conteúdo deve ter até \(runner.maxContentLength) caracteres.")
                                             .font(.caption).foregroundStyle(.orange)
                                     }
                                 }
@@ -136,7 +141,7 @@ struct DocGenerateSheet: View {
                     LoggedButton("Aceitar selecionados") { accept(documents.filter { selected.contains($0.id) }) }.loggedControl(control: LogControls.docGenerateButton4, label: LogControls.docGenerateLabel4)
                         .disabled(validSelected.isEmpty)
                     LoggedButton("Aceitar todos") { accept(documents) }.loggedControl(control: LogControls.docGenerateButton5, label: LogControls.docGenerateLabel5)
-                        .disabled(DocGenerate.validated(documents).isEmpty)
+                        .disabled(!documents.contains { $0.isAcceptable(maxContentLength: runner.maxContentLength) })
                         .keyboardShortcut(.defaultAction)
                 }
             }.padding()
@@ -152,7 +157,7 @@ struct DocGenerateSheet: View {
     }
 
     private var validSelected: [DocGenerate.Document] {
-        DocGenerate.validated(documents.filter { selected.contains($0.id) })
+        documents.filter { selected.contains($0.id) && $0.isAcceptable(maxContentLength: runner.maxContentLength) }
     }
     private func load(_ proposal: [DocGenerate.Document]) {
         documents = proposal
@@ -161,7 +166,8 @@ struct DocGenerateSheet: View {
     private func accept(_ chosen: [DocGenerate.Document]) {
         var chosen = chosen
         for i in chosen.indices { chosen[i].group = destinationGroup }
-        if model.acceptGeneratedDocs(chosen, undo: undo) { close() }
+        chosen = chosen.filter { $0.isAcceptable(maxContentLength: runner.maxContentLength) }
+        if model.acceptGeneratedDocs(chosen, undo: undo, group: destinationGroup) { close() }
         else { saveError = model.errorMessage }
     }
     private func close() { runner.cancel(); dismiss() }

@@ -23,7 +23,7 @@ final class ReviewDiscoverRunner {
         task = Task {
             do {
                 let answer = try await AIReadOnlyOperation.run(root: store.root, provider: provider,
-                    operation: "Descubra", prompt: prompt, schema: ReviewDiscover.schema) { data in
+                    operation: "Descubra", prompt: prompt, schema: ReviewDiscover.schema, store: store) { data in
                     let value = try JSONDecoder().decode(JSONValue.self, from: data)
                     guard value["fields"]?.array != nil, value["rules"]?.array != nil else { throw VibeDeckError.discoverInvalidAnswer }
                     let answer = try JSONDecoder().decode(ReviewDiscover.Answer.self, from: data)

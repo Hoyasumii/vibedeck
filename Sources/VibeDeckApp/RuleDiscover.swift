@@ -112,7 +112,7 @@ final class RuleDiscoverRunner {
         task = Task {
             do {
                 let next = try await AIReadOnlyOperation.run(root: store.root, provider: provider, operation: "Descubra regras",
-                                                             prompt: prompt, schema: schema, parse: parse)
+                                                             prompt: prompt, schema: schema, store: store, parse: parse)
                 guard !Task.isCancelled else { return }
                 complete(next, for: subject)
             } catch is CancellationError {
