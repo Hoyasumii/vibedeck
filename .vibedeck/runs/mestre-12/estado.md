@@ -16,8 +16,8 @@ D11 paridade total de dados | D12 remover Core Swift após paridade | D13 Sonnet
 D-MERGE (usuário): ao terminar tudo, abrir PRs e mergear na main resolvendo conflitos (atenção: merge na main dispara deploy do worker)
 
 ## Trilhas
-- CORE: F01 APROVADO (f01/). F02 APROVADO: fundação+MCP stdio; prova local limpa (usuário sem toolchain, env -i, binário musl estático) e via SSH (sshd local) com list_ideas/add_idea/get_idea, cancel ignorado, EOF→0, sem órfão após desconexão (f02/prova.log). F04: ideas integrada; demais áreas em andamento
-- APP: APP-1 compilou na CI macOS (antes de desativar). APP-2a casca V2 escrita, NÃO compilada. D2 regras revisadas
+- CORE: F01/F02 APROVADOS. F03 piloto (4 regras reais + runner) passa. F04: 10 áreas integradas (project, docs, reviews, rules, ideas, stack, resources, workflows, ai + recursos MCP); 358 testes; contrato MCP ok (só nuvem removida). Verificação independente de paridade em andamento. Pendente: onboarding (MUD-001) no core, unificar gate de revisões com regras, F05.
+- APP: APP-1 compilou na CI. APP-2a casca V2 escrita (não compilada). APP-2b em andamento: app como cliente MCP do Core Rust, remoção de VibeDeckCore/CLI Swift e da nuvem na UI.
 - SITE: SITE-1 APROVADO (typecheck, validate 10 schemas + 464 dados, 102 rotas ok; verificado pelo coordenador)
 
 ## Donos
@@ -34,3 +34,4 @@ D-MERGE (usuário): ao terminar tudo, abrir PRs e mergear na main resolvendo con
 ## PR
 - Hoyasumii/vibedeck#11 (draft, CI)
 - 2026-10-22 usuário: remover CI/CD por enquanto; recriar ao final. Cópias em ci-desativado/. APP sem compilação até recriar (sem Swift local).
+- 2026-10-22 17:11 interrupção do usuário parou 7 agentes; retomados nos mesmos worktrees às 17:47, sem perda.
