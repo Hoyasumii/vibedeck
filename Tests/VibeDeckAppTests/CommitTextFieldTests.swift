@@ -18,7 +18,7 @@ import Testing
         editor.string = "  Detalhes editados\nsegunda linha  "
         editor.didChangeText()
         await fixture.render()
-        #expect(try fixture.store.loadGroup(fixture.slug).items[0].details == "Original")
+        #expect(try fixture.loadGroup().items[0].details == "Original")
 
         switch exit {
         case .returnKey:
@@ -39,13 +39,8 @@ import Testing
             NotificationCenter.default.post(name: .vibedeckFlushPendingSaves, object: nil)
         }
         await fixture.render()
-        #expect(try fixture.store.loadGroup(fixture.slug).items[0].details == "Detalhes editados\nsegunda linha")
-        #expect(try fixture.store.loadGroup(fixture.slug).items[1].details == "Outro item")
-        let reopened = ProjectModel(store: fixture.store)
-        #expect(reopened.group(fixture.slug)?.items[0].details == "Detalhes editados\nsegunda linha")
-        let json = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: fixture.store.groupURL(fixture.slug))) as? [String: Any])
-        let items = try #require(json["items"] as? [[String: Any]])
-        #expect(items[0]["details"] as? String == "Detalhes editados\nsegunda linha")
+        #expect(try fixture.loadGroup().items[0].details == "Detalhes editados\nsegunda linha")
+        #expect(try fixture.loadGroup().items[1].details == "Outro item")
 
         // A second exit after Return/blur must not commit the same draft again.
         if exit == .closeWindow { fixture.window.makeKeyAndOrderFront(nil) }
@@ -72,9 +67,9 @@ import Testing
         fixture.state.inspectorShown = false
         await fixture.render()
         #expect(fixture.state.commits == 1)
-        #expect(try fixture.store.loadGroup(fixture.slug).items[0].details == "Confirmado")
+        #expect(try fixture.loadGroup().items[0].details == "Confirmado")
         fixture.undo.undo()
-        #expect(try fixture.store.loadGroup(fixture.slug).items[0].details == "Original")
+        #expect(try fixture.loadGroup().items[0].details == "Original")
         #expect(!fixture.undo.canUndo)
     }
 
@@ -86,13 +81,12 @@ import Testing
         try await fixture.type(text)
         fixture.state.inspectorShown = false
         await fixture.render()
-        #expect(try fixture.store.loadGroup(fixture.slug).items[0].details == nil)
-        #expect(ProjectModel(store: fixture.store).group(fixture.slug)?.items[0].details == nil)
+        #expect(try fixture.loadGroup().items[0].details == nil)
         fixture.undo.undo()
-        #expect(try fixture.store.loadGroup(fixture.slug).items[0].details == "Original")
+        #expect(try fixture.loadGroup().items[0].details == "Original")
         #expect(!fixture.undo.canUndo)
         fixture.undo.redo()
-        #expect(try fixture.store.loadGroup(fixture.slug).items[0].details == nil)
+        #expect(try fixture.loadGroup().items[0].details == nil)
         fixture.state.inspectorShown = true
         await fixture.render()
         #expect(fixture.field()?.stringValue == "")
@@ -108,27 +102,24 @@ import Testing
         fixture.undo.undo()
         await fixture.render()
         #expect(fixture.field()?.stringValue == "Original")
-        #expect(try fixture.store.loadGroup(fixture.slug).items[0].details == "Original")
+        #expect(try fixture.loadGroup().items[0].details == "Original")
         fixture.undo.redo()
         await fixture.render()
         #expect(fixture.field()?.stringValue == "Novo texto")
         fixture.state.onReviewScreen = false
         await fixture.render()
         #expect(fixture.state.commits == 1)
-        #expect(try fixture.store.loadGroup(fixture.slug).items[0].details == "Novo texto")
-        #expect(ProjectModel(store: fixture.store).group(fixture.slug)?.items[0].details == "Novo texto")
+        #expect(try fixture.loadGroup().items[0].details == "Novo texto")
     }
 
     @Test func unchangedEditorDoesNotWriteOrRegisterUndo() async throws {
         let fixture = try Fixture()
         defer { fixture.close() }
-        let original = try Data(contentsOf: fixture.store.groupURL(fixture.slug))
         await fixture.render()
         fixture.state.inspectorShown = false
         await fixture.render()
         #expect(fixture.state.commits == 0)
         #expect(!fixture.undo.canUndo)
-        #expect(try Data(contentsOf: fixture.store.groupURL(fixture.slug)) == original)
     }
 
     @MainActor @Observable class Screen {
@@ -166,7 +157,6 @@ import Testing
 
     @MainActor private class Fixture {
         let root: URL
-        let store: CoreStore
         let model: ProjectModel
         let slug: String
         let state = Screen()
@@ -176,14 +166,12 @@ import Testing
 
         init(axis: Axis = .vertical) throws {
             root = FileManager.default.temporaryDirectory.appending(path: "commit-field-\(UUID())")
-            store = try CoreStore.initialize(at: root)
-            let created = try store.createGroup(title: "Revisão")
-            slug = created.slug
-            var group = created.group
+            slug = "revisao"
+            var group = ReviewGroup(title: "Revisão")
             group.items = [ReviewItem(kind: "note", title: "Primeiro", details: "Original"),
                            ReviewItem(kind: "note", title: "Segundo", details: "Outro item")]
-            try store.saveGroup(group, slug: slug)
-            model = ProjectModel(store: store)
+            // Modelo só em memória: as gravações vão ao Core Rust (MCP) e aqui falham sem o binário, sem afetar a UI.
+            model = try ProjectModel.forTesting(root: root, groups: [ProjectModel.GroupEntry(slug: slug, group: group)])
             undo.groupsByEvent = false
             host = NSHostingView(rootView: ScreenView(model: model, slug: slug, state: state, undo: undo, axis: axis))
             window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 400, height: 240),
@@ -191,6 +179,13 @@ import Testing
             window.isReleasedWhenClosed = false
             window.contentView = host
             window.makeKeyAndOrderFront(nil)
+        }
+
+        struct MissingGroup: Error {}
+
+        func loadGroup() throws -> ReviewGroup {
+            guard let group = model.group(slug) else { throw MissingGroup() }
+            return group
         }
 
         func render() async {

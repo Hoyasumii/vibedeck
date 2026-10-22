@@ -333,16 +333,6 @@ enum AgentsGuide {
     tecnologias da stack e padrões aceitam `tags`.
     Use `set_tags` (MCP) ou `vibedeck tag <doc|review|rules|idea|agent|command|skill|workflow|stack|pattern> <ref> <tags...>`.
 
-    ## Sessões na nuvem
-
-    Codex: use `provider: "codex"` e `environment` no MCP, ou `--provider codex --env <id>` na CLI.
-    O ambiente também pode ficar em `codexCloudEnvironment` no projeto.
-
-    `start_cloud_session` / `vibedeck cloud start "<tarefa>"` cria uma sessão do Claude Code na nuvem sobre o
-    GitHub. Ela só é criada se a branch padrão local for **igual** à `origin` (`cloud_check` / `vibedeck cloud check`);
-    se não for, peça ao usuário para dar push/pull. Alterações não commitadas exigem `allow_dirty`. Só crie
-    sessões na nuvem quando o usuário pedir.
-
     ## Logs
 
     Ações `ui.*` (botões, menus, atalhos, seleções e confirmação de campos) e reações `store.*`, `ai.*`,
@@ -395,7 +385,6 @@ enum AgentsGuide {
     vibedeck workflows new "Revisão" && vibedeck workflows step revisao <agente> && vibedeck workflows route revisao <de> <para> --when "..."
     vibedeck workflows show revisao | vibedeck workflows flow revisao --input "..."
     vibedeck runs start revisao --input "PR 12" | vibedeck runs next revisao/pr-12 | vibedeck runs show revisao/pr-12
-    vibedeck cloud check --json                  # branch local == GitHub? (pré-requisito da nuvem)
     ```
 
     MCP: `vibedeck mcp install` (registra `vibedeck mcp` no Claude Code)

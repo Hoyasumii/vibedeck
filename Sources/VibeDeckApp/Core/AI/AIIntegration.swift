@@ -18,7 +18,7 @@ enum AIIntegrationError: LocalizedError, Sendable {
 
 enum AIFeature: String, CaseIterable, Sendable {
     case chat, planning, questions, workflows, discover, documents, graphAnalysis, ruleVerification, testGeneration
-    case agents, commands, skills, mcp, rulesHook, cloud, compact, usage, claudeCollection
+    case agents, commands, skills, mcp, rulesHook, compact, usage, claudeCollection
 }
 enum AIFeatureSupport: Equatable, Sendable {
     case native, equivalent, unavailable(String)

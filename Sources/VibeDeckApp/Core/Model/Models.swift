@@ -30,7 +30,6 @@ struct Project: Codable, Equatable, Sendable {
     var stack: [StackItem]
     /// Code patterns the AI must follow (TDD, hexagonal…), in display order; each one is enforced by its rule topic.
     var patterns: [ProjectPattern]
-    var codexCloudEnvironment: String?
     var reviewKinds: [ReviewKind]
 
     init(name: String, description: String? = nil) {
@@ -43,12 +42,11 @@ struct Project: Codable, Equatable, Sendable {
         self.claude = []
         self.stack = []
         self.patterns = []
-        self.codexCloudEnvironment = nil
         self.reviewKinds = ReviewKind.defaults
     }
 
     enum CodingKeys: String, CodingKey {
-        case schema = "$schema", version, id, name, description, links, claude, stack, patterns, codexCloudEnvironment, reviewKinds
+        case schema = "$schema", version, id, name, description, links, claude, stack, patterns, reviewKinds
     }
 
     init(from decoder: Decoder) throws {
@@ -62,7 +60,6 @@ struct Project: Codable, Equatable, Sendable {
         claude = try c.decodeIfPresent([ClaudeItem].self, forKey: .claude) ?? []
         stack = try c.decodeIfPresent([StackItem].self, forKey: .stack) ?? []
         patterns = try c.decodeIfPresent([ProjectPattern].self, forKey: .patterns) ?? []
-        codexCloudEnvironment = try c.decodeIfPresent(String.self, forKey: .codexCloudEnvironment)
         let kinds = try c.decodeIfPresent([ReviewKind].self, forKey: .reviewKinds) ?? []
         reviewKinds = kinds.isEmpty ? ReviewKind.defaults : kinds
     }
@@ -78,7 +75,6 @@ struct Project: Codable, Equatable, Sendable {
         if !claude.isEmpty { try c.encode(claude, forKey: .claude) }
         if !stack.isEmpty { try c.encode(stack, forKey: .stack) }
         if !patterns.isEmpty { try c.encode(patterns, forKey: .patterns) }
-        try c.encodeIfPresent(codexCloudEnvironment, forKey: .codexCloudEnvironment)
         try c.encode(reviewKinds, forKey: .reviewKinds)
     }
 

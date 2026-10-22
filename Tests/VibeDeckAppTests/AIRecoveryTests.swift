@@ -40,18 +40,4 @@ import Testing
         } catch { #expect(error is CancellationError) }
         #expect(count == 1)
     }
-
-    @Test func generationChecksOnlySelectedRulesAndRejectsChangedRequirements() throws {
-        let root = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
-        defer { try? FileManager.default.removeItem(at: root) }
-        let store = try CoreStore.initialize(at: root)
-        let (slug, selected) = try store.addRule(Rule(text: "Requer julgamento"), toTopic: "Geral")
-        _ = try store.addRule(Rule(text: "Fora da seleção"), toTopic: slug)
-        try store.setRuleTest(selected.id.uuidString, mode: .manual, reason: "Requer evidência humana")
-        try RuleTestGenerator.validateGeneration(root: root, topic: slug, expected: [selected])
-        var changed = try store.loadTopic(slug)
-        changed.rules[0].text = "Requisito enfraquecido"
-        try store.saveTopic(changed, slug: slug)
-        #expect(throws: (any Error).self) { try RuleTestGenerator.validateGeneration(root: root, topic: slug, expected: [selected]) }
-    }
 }

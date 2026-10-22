@@ -165,8 +165,12 @@ final class CoreClient: @unchecked Sendable {
     private var notificationHandler: (@Sendable (String, [String: Any]) -> Void)?
     private(set) var serverInstructions: String?
 
-    init(location: CoreLocation) {
+    /// Para testes: inicia este executável em vez do binário `vibedeck`.
+    private let invocationOverride: CoreInvocation?
+
+    init(location: CoreLocation, invocationOverride: CoreInvocation? = nil) {
         self.location = location
+        self.invocationOverride = invocationOverride
         // Escrever num pipe fechado não pode derrubar o app.
         signal(SIGPIPE, SIG_IGN)
     }
@@ -290,7 +294,7 @@ final class CoreClient: @unchecked Sendable {
     }
 
     private func startSession() async throws -> Session {
-        let invocation = try CoreLocator.invocation(for: location)
+        let invocation = try invocationOverride ?? CoreLocator.invocation(for: location)
         let process = Process()
         process.executableURL = invocation.executable
         process.arguments = invocation.arguments

@@ -35,7 +35,7 @@ enum Slug {
     }
 }
 
-enum Markdown {
+enum MarkdownText {
     /// Title from YAML frontmatter `title:` or the first `# ` heading.
     static func title(of text: String) -> String? {
         let (front, body) = frontmatter(of: text)

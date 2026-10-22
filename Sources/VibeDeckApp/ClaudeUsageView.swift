@@ -82,7 +82,7 @@ struct ClaudeUsageView: View {
     static let cliPath: String? = {
         let fm = FileManager.default
         let candidates = [
-            Bundle.main.bundleURL.appending(path: "Contents/Helpers/vibedeck").path,
+            CoreLocator.binary()?.path ?? "",
             Bundle.main.executableURL?.deletingLastPathComponent().appending(path: "vibedeck").path ?? "",
             fm.homeDirectoryForCurrentUser.appending(path: ".local/bin/vibedeck").path,
         ]

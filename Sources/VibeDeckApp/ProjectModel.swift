@@ -261,6 +261,14 @@ final class ProjectModel {
         }
     }
 
+    /// Modelo em memória para testes de interface (as gravações vão ao Core e falham sem o binário, sem afetar a memória).
+    static func forTesting(root: URL, project: Project = Project(name: "Teste"), groups: [GroupEntry] = []) throws -> ProjectModel {
+        let store = try CoreStore(root: root)
+        let snapshot = CoreSnapshot(project: project, docs: [], groups: groups.map { CoreEntry(slug: $0.slug, value: $0.group) },
+                                    topics: [], ideas: [], agents: [], commands: [], skills: [], workflows: [])
+        return ProjectModel(store: store, snapshot: snapshot)
+    }
+
     // MARK: Gravação e releitura
 
     /// Enfileira uma gravação no Core. Falha: mostra o erro e relê tudo (a memória otimista não vale mais).
@@ -870,7 +878,7 @@ final class ProjectModel {
 
     func saveDoc(_ slug: String, text: String) {
         docTexts[slug] = text
-        let title = Markdown.title(of: text) ?? slug
+        let title = MarkdownText.title(of: text) ?? slug
         if let i = docs.firstIndex(where: { $0.slug == slug }), docs[i].title != title {
             docs[i].title = title
         }
@@ -1574,8 +1582,8 @@ final class ProjectModel {
 
     /// Check of the dependencies against the ideas in memory; a pending one shows the error.
     func ideaDependenciesMet(_ slug: String) -> Bool {
-        guard let idea = idea(slug) else { return true }
-        let blockers = ideaDependencyBlockers(idea)
+        guard let current = self.idea(slug) else { return true }
+        let blockers = ideaDependencyBlockers(current)
         guard blockers.isEmpty else {
             errorMessage = VibeDeckError.ideaNotImplementable(blockers.map(\.message)).localizedDescription
             return false
@@ -1602,9 +1610,9 @@ final class ProjectModel {
 
     /// Deletes the idea's topic and releases the idea (draft rules stay). Undo restores both records.
     func unpromoteIdea(_ slug: String, undo: UndoManager?) {
-        guard let idea = idea(slug) else { return }
+        guard let idea = self.idea(slug) else { return }
         let topicSlug = idea.promotedTopic
-        let topicValue = topicSlug.flatMap { topic($0) }
+        let topicValue = topicSlug.flatMap { self.topic($0) }
         Task {
             do {
                 await writeChain?.value
@@ -2032,8 +2040,8 @@ extension ProjectModel {
     /// Globs da ideia que já não casam com nenhum arquivo do projeto (renomeado ou apagado desde a sugestão).
     /// Só projetos locais: em SSH a lista de arquivos não está disponível e nada é considerado obsoleto.
     func unmatchedIdeaPaths(_ slug: String) -> [String] {
-        guard let idea = idea(slug), !idea.paths.isEmpty, !store.isRemote else { return [] }
+        guard let current = self.idea(slug), !current.paths.isEmpty, !store.isRemote else { return [] }
         let files = ClaudeCompletion.projectFiles(root: store.root, limit: RuleDiscover.fileLimit).filter { !$0.hasSuffix("/") }
-        return idea.paths.filter { glob in !files.contains { Glob.matches(glob, path: $0) } }
+        return current.paths.filter { glob in !files.contains { Glob.matches(glob, path: $0) } }
     }
 }
