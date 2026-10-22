@@ -128,7 +128,7 @@ enum BuildToolLock {
         var visited = Set<URL>()
         func readReferences(_ source: String, directory: URL) {
             let code = source.split(separator: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("#") }.joined(separator: "\n")
-            for match in code.matches(of: /[A-Za-z0-9_.\/-]+\.(sh|py)\b/) {
+            for match in code.matches(of: #/[A-Za-z0-9_.\/-]+\.(sh|py)\b/#) {
                 let path = String(match.0)
                 let direct = path.hasPrefix("/") ? URL(fileURLWithPath: path) : base.appending(path: path)
                 let candidates = [direct, directory.appending(path: path),

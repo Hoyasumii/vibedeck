@@ -5,6 +5,9 @@ import Observation
 /// are driven by VibeDeck and saved on disk. Legacy chat storage remains compatible.
 @Observable @MainActor
 final class AISession {
+    // Cache das sugestões de comandos registrados (usado pela extensão de sugestões).
+    @ObservationIgnored private var registeredLoadedAt = Date.distantPast
+    @ObservationIgnored private var registeredCache: [ClaudeSuggestion] = []
     struct IdeaRequest: Identifiable {
         let id = UUID()
         let actionID = VDLog.actionID
@@ -992,8 +995,6 @@ extension AISession {
         }
         return registeredCache
     }
-    @ObservationIgnored private var registeredLoadedAt = Date.distantPast
-    private var registeredCache: [ClaudeSuggestion] = []
 
     private func handleLocalCommand(_ text: String) -> Bool {
         if text == "/clear" { if let id = current?.id { clear(id) }; return true }

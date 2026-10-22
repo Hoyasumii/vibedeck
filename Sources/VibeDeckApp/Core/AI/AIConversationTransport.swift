@@ -139,7 +139,9 @@ struct AIConversationConfiguration: Sendable {
     private var requests: [String: (id: JSONValue, method: String, params: JSONValue)] = [:]
     private var items: [String: JSONValue] = [:]
     private var completedTurns = Set<String>()
-    init(rpc: CodexRPC = CodexRPC()) {
+    init(rpc: CodexRPC? = nil) {
+        // Criado aqui (no MainActor) e não no argumento padrão, que é avaliado fora do ator.
+        let rpc = rpc ?? CodexRPC()
         self.rpc = rpc
         rpc.onNotification = { [weak self] method, params in
             guard let self else { return }
