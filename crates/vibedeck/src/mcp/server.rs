@@ -306,11 +306,8 @@ impl Server {
                     Err(_) => (Err(format!("Falha interna na ferramenta {name}")), false),
                 };
                 match &result {
-                    Ok(_) => logs::info(
-                        "mcp.tool_called",
-                        "Ferramenta executada",
-                        &[("tool", name), ("ms", &ms())],
-                    ),
+                    #[rustfmt::skip]
+                    Ok(_) => logs::info("mcp.tool_called", "Ferramenta executada", &[("tool", name), ("ms", &ms())]),
                     Err(_) => logs::log(
                         if expected {
                             LogLevel::Warning

@@ -131,11 +131,8 @@ where
     T: Into<OsString> + Clone,
 {
     use clap::{CommandFactory, FromArgMatches};
-    logs::configure(
-        LogComponent::Cli,
-        Some(env!("CARGO_PKG_VERSION")),
-        Some(LogStore::default_store()),
-    );
+    #[rustfmt::skip]
+    logs::configure(LogComponent::Cli, Some(env!("CARGO_PKG_VERSION")), Some(LogStore::default_store()));
     let parsed = Cli::command()
         .try_get_matches_from(args)
         .and_then(|m| Cli::from_arg_matches(&m).map(|cli| (cli, command_path(&m))));
@@ -151,11 +148,8 @@ where
     let ms = || started.elapsed().as_millis().to_string();
     match execute(cli) {
         Ok(code) => {
-            logs::info(
-                "cli.command_completed",
-                "Comando executado",
-                &[("command", &path), ("ms", &ms())],
-            );
+            #[rustfmt::skip]
+            logs::info("cli.command_completed", "Comando executado", &[("command", &path), ("ms", &ms())]);
             code
         }
         Err(e) => {
@@ -239,11 +233,8 @@ fn execute(cli: Cli) -> Result<i32, CliError> {
         Command::Mcp(mcp) => match mcp.command.unwrap_or(McpCommand::Serve { app: mcp.app }) {
             McpCommand::Serve { app } => {
                 let root = locate_root(cli.root.as_deref())?;
-                logs::configure(
-                    LogComponent::Mcp,
-                    Some(env!("CARGO_PKG_VERSION")),
-                    Some(LogStore::default_store()),
-                );
+                #[rustfmt::skip]
+                logs::configure(LogComponent::Mcp, Some(env!("CARGO_PKG_VERSION")), Some(LogStore::default_store()));
                 logs::set_project(Some(&root));
                 LogStore::default_store().prune(vibedeck_core::time::now());
                 if let Ok(store) = vibedeck_core::Store::open(&root) {
