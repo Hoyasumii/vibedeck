@@ -320,13 +320,19 @@ final class ProjectModel {
         let store = try CoreStore(root: root)
         let snapshot = CoreSnapshot(project: project, docs: [], groups: groups.map { CoreEntry(slug: $0.slug, value: $0.group) },
                                     topics: [], ideas: [], agents: [], commands: [], skills: [], workflows: [])
-        return ProjectModel(store: store, snapshot: snapshot)
+        let model = ProjectModel(store: store, snapshot: snapshot)
+        model.isMemoryOnly = true
+        return model
     }
+
+    /// Só em testes: a memória é a fonte da verdade; gravações e releituras não vão ao Core.
+    @ObservationIgnored private(set) var isMemoryOnly = false
 
     // MARK: Gravação e releitura
 
     /// Enfileira uma gravação no Core. Falha: mostra o erro e relê tudo (a memória otimista não vale mais).
     private func persist(_ work: @escaping () async throws -> Void) {
+        if isMemoryOnly { return }
         if isReadOnly {
             errorMessage = Self.offlineMessage
             restoreLastRead()
@@ -372,7 +378,7 @@ final class ProjectModel {
     }
 
     func refresh(_ area: Area) async {
-        if isReadOnly { return }
+        if isReadOnly || isMemoryOnly { return }
         defer { scheduleCacheCapture() }
         switch area {
         case .project: await refreshProject()

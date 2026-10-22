@@ -19,6 +19,7 @@ import Testing
 }
 
 /// Servidor MCP falso em `/bin/sh`: responde `initialize` e `tools/call` pelo id da requisição.
+/// O JSONSerialization escapa a barra (`"tools\/call"`), por isso o padrão do método não fixa a barra.
 @Suite(.serialized) struct CoreClientTests {
     private func fakeServer() throws -> (CoreClient, URL) {
         let dir = FileManager.default.temporaryDirectory.appending(path: "fake-mcp-\(UUID())")
@@ -33,7 +34,7 @@ import Testing
               printf '{"jsonrpc":"2.0","id":%s,"result":{"protocolVersion":"2025-06-18","capabilities":{},"serverInfo":{"name":"fake","version":"0"},"instructions":"oi"}}\\n' "$id";;
             *'"name":"falha"'*)
               printf '{"jsonrpc":"2.0","id":%s,"result":{"content":[{"type":"text","text":"deu ruim"}],"isError":true}}\\n' "$id";;
-            *'"method":"tools/call"'*)
+            *'"method":"tools'*'call"'*)
               printf '{"jsonrpc":"2.0","id":%s,"result":{"content":[{"type":"text","text":"ola"}],"isError":false}}\\n' "$id";;
           esac
         done
