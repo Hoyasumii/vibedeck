@@ -75,3 +75,16 @@ extension CoreStore {
         return try await loadRun(ref)
     }
 }
+
+extension CoreStore {
+    /// Recomeça a execução da primeira etapa, em novo ciclo (`workflow_run_restart`, só no modo --app).
+    func restartRun(_ ref: String) async throws -> WorkflowRun {
+        _ = try await call("workflow_run_restart", ["run": ref])
+        return try await loadRun(ref)
+    }
+
+    /// Solta ideias e padrões promovidos para tópico inexistente (`release_orphaned`, só no modo --app).
+    func releaseOrphaned() async throws {
+        _ = try await call("release_orphaned")
+    }
+}

@@ -1250,15 +1250,16 @@ final class ProjectModel {
             var execution: (ref: String, run: WorkflowRun)?
             if let workflowSlug {
                 let existing = ideaRun(idea, workflow: workflowSlug)
-                if let existing, !restart {
-                    // Retoma a mesma execução (uma parada volta a andar).
-                    let resumed = try await store.resumeRun(existing.slug)
-                    execution = (existing.slug, resumed)
+                if let existing {
+                    // Retoma a mesma execução (uma parada volta a andar) ou reinicia da primeira etapa.
+                    let run: WorkflowRun
+                    if restart { run = try await store.restartRun(existing.slug) } else { run = try await store.resumeRun(existing.slug) }
+                    execution = (existing.slug, run)
                 } else {
                     let started = try await store.startRun(workflowSlug, input: IdeaImplementation.workflowInput(idea), provider: provider)
                     let run = try await store.loadRun(started.ref)
                     execution = (started.ref, run)
-                    if existing == nil { before.runRef = started.ref }
+                    before.runRef = started.ref
                 }
             }
             await refreshIdeas(); await refreshTopics(); await refreshRuns()
@@ -1311,20 +1312,58 @@ final class ProjectModel {
 
     // MARK: Agents
 
-    /// Adiciona itens do catálogo de kits (`add_kit`).
+    /// Adiciona itens do catálogo de kits (`add_kit`). Um único passo de desfazer remove (e refaz) os itens criados.
     @discardableResult
     func addKitItems(_ refs: [String], undo: UndoManager?) -> Bool {
+        let name = "Adicionar itens do catálogo"
         Task {
             do {
                 await writeChain?.value
+                let before = kitKeys()
                 _ = try await store.call("add_kit", ["items": refs])
-                reloadKitItems()
+                await refresh(.agents); await refresh(.commands); await refresh(.skills); await refresh(.workflows)
+                var toggles: [(Bool) -> Void] = []
+                for entry in agents where !before.contains("agent/" + entry.slug) {
+                    let slug = entry.slug, value = entry.value
+                    toggles.append { [weak self] remove in self?.toggleCreatedItem(.agent, slug, value, remove: remove, name: name, undo: nil) }
+                }
+                for entry in commands where !before.contains("command/" + entry.slug) {
+                    let slug = entry.slug, value = entry.value
+                    toggles.append { [weak self] remove in self?.toggleCreatedItem(.command, slug, value, remove: remove, name: name, undo: nil) }
+                }
+                for entry in skills where !before.contains("skill/" + entry.slug) {
+                    let slug = entry.slug, value = entry.value
+                    toggles.append { [weak self] remove in self?.toggleCreatedItem(.skill, slug, value, remove: remove, name: name, undo: nil) }
+                }
+                for entry in workflows where !before.contains("workflow/" + entry.slug) {
+                    let slug = entry.slug, value = entry.value
+                    toggles.append { [weak self] remove in self?.toggleCreatedItem(.workflow, slug, value, remove: remove, name: name, undo: nil) }
+                }
+                if !toggles.isEmpty { registerKitUndo(toggles, remove: true, name: name, undo: undo) }
             } catch {
                 VDLog.error(error, event: "store.kit_add_failed", project: store.root, component: .app)
                 errorMessage = error.localizedDescription
             }
         }
         return true
+    }
+
+    private func kitKeys() -> Set<String> {
+        var keys = Set<String>()
+        for entry in agents { keys.insert("agent/" + entry.slug) }
+        for entry in commands { keys.insert("command/" + entry.slug) }
+        for entry in skills { keys.insert("skill/" + entry.slug) }
+        for entry in workflows { keys.insert("workflow/" + entry.slug) }
+        return keys
+    }
+
+    private func registerKitUndo(_ toggles: [(Bool) -> Void], remove: Bool, name: String, undo: UndoManager?) {
+        guard let undo = undo else { return }
+        undo.registerUndo(withTarget: self) { model in
+            for toggle in toggles { toggle(remove) }
+            model.registerKitUndo(toggles, remove: !remove, name: name, undo: undo)
+        }
+        undo.setActionName(name)
     }
 
     private func reloadKitItems() {

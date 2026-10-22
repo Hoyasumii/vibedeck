@@ -37,3 +37,22 @@ extension CoreStore {
         try await setTags(kind: "pattern", ref: id, tags: tags)
     }
 }
+
+/// Uma linha do catálogo de padrões do Core (`pattern_catalog`). O catálogo vive só no Core.
+struct PatternCatalogEntry: Decodable, Equatable, Identifiable, Sendable {
+    var id: String
+    var name: String
+    var category: String
+    var summary: String
+    var rules: [String]
+    var inProject: Bool
+    var aliases: [String]?
+}
+
+extension CoreStore {
+    func patternCatalog(query: String? = nil) async throws -> [PatternCatalogEntry] {
+        var args: [String: Any] = [:]
+        if let query = query, !query.isEmpty { args["query"] = query }
+        return try await callJSON("pattern_catalog", args, as: [PatternCatalogEntry].self, idempotent: true)
+    }
+}

@@ -43,7 +43,6 @@ enum VibeDeckError: LocalizedError, Equatable {
     case skillIconsUnavailable(String)
     case unknownStackIcons([String: [String]])
     case stackItemNotFound(String)
-    case unknownPatterns([String: [String]])
     case patternNotFound(String)
     case ssh(String)
     case graph(String)
@@ -103,11 +102,6 @@ enum VibeDeckError: LocalizedError, Equatable {
                 return "- \(name)" + (suggestions.isEmpty ? "" : " (sugestões: \(suggestions.joined(separator: ", ")))")
             }.joined(separator: "\n")
         case .stackItemNotFound(let s): "Tecnologia não encontrada na stack: \(s)"
-        case .unknownPatterns(let unknown):
-            "Padrão(ões) desconhecido(s) no catálogo; nada foi alterado:\n" + unknown.keys.sorted().map { name in
-                let suggestions = unknown[name] ?? []
-                return "- \(name)" + (suggestions.isEmpty ? "" : " (sugestões: \(suggestions.joined(separator: ", ")))")
-            }.joined(separator: "\n") + "\nVeja `pattern_catalog` / `vibedeck patterns catalog`, ou crie um padrão personalizado."
         case .ssh(let s): "SSH: \(s)"
         case .graph(let s): "Grafo: \(s)"
         case .patternNotFound(let s): "Padrão não encontrado no projeto: \(s)"

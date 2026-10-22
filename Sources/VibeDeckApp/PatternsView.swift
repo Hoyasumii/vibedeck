@@ -146,6 +146,8 @@ private struct PatternPicker: View {
     @State private var rules = ""
     @State private var note = ""
     @State private var paths = ""
+    @State private var entries: [PatternCatalogEntry] = []
+    @State private var catalogError: String?
 
     private var current: Set<String> { Set(model.project.patterns.map(\.id)) }
 
@@ -164,6 +166,7 @@ private struct PatternPicker: View {
                 if custom { customForm } else { catalog }
             }
             .frame(width: 640, height: 440)
+            .task { await loadCatalog() }
             Divider()
             HStack {
                 Text(custom ? "Cada linha de regras vira uma regra obrigatória." : "\(picked.count) selecionado(s) · cada padrão cria um tópico de regras")
@@ -181,11 +184,14 @@ private struct PatternPicker: View {
 
     private var catalog: some View {
         List {
+            if let catalogError = catalogError {
+                Text(catalogError).font(.caption).foregroundStyle(.red)
+            }
             ForEach(PatternCategory.all.filter { category in
-                PatternCatalog.all.contains { $0.category == category }
+                entries.contains { $0.category == category }
             }, id: \.self) { category in
                 Section(PatternCategory.label(category)) {
-                    ForEach(PatternCatalog.all.filter { $0.category == category }) { row($0) }
+                    ForEach(entries.filter { $0.category == category }) { row($0) }
                 }
             }
             Section("Escopo e nota (opcionais, valem para os selecionados)") {
@@ -196,7 +202,7 @@ private struct PatternPicker: View {
         }
     }
 
-    private func row(_ template: PatternTemplate) -> some View {
+    private func row(_ template: PatternCatalogEntry) -> some View {
         let added = current.contains(template.id)
         let isPicked = added || picked.contains(template.id)
         return LoggedButton {
@@ -219,7 +225,7 @@ private struct PatternPicker: View {
         }.loggedControl(control: "patterns_view.button_10", label: "Ativar controle")
         .buttonStyle(.plain)
         .disabled(added)
-        .help(template.rules.map { "• " + $0.text }.joined(separator: "\n"))
+        .help(template.rules.map { "• " + $0 }.joined(separator: "\n"))
     }
 
     private var customForm: some View {
@@ -237,6 +243,15 @@ private struct PatternPicker: View {
             LoggedTextField("Nota", text: $note, prompt: Text("Como o projeto aplica")).loggedField(control: "patternsview.text_6", label: "Nota")
         }
         .formStyle(.grouped)
+    }
+
+    private func loadCatalog() async {
+        do {
+            entries = try await model.store.patternCatalog()
+            catalogError = nil
+        } catch {
+            catalogError = error.localizedDescription
+        }
     }
 
     private var parseRules: [String] {
