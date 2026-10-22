@@ -228,9 +228,13 @@ fn hook_install_status_uninstall() {
     let p = Project::new();
     let (code, out, _) = p.cli(&["hook", "install"]);
     let local = p.path().join(".claude/settings.local.json");
+    // O CLI imprime o caminho canônico da raiz (no macOS, /var é link para /private/var).
+    let shown = std::fs::canonicalize(p.path())
+        .unwrap()
+        .join(".claude/settings.local.json");
     assert_eq!(
         (code, out),
-        (0, format!("Hook ligado em {}.\n", local.display()))
+        (0, format!("Hook ligado em {}.\n", shown.display()))
     );
     let settings: Value = serde_json::from_slice(&std::fs::read(&local).unwrap()).unwrap();
     let cmd = settings["hooks"]["Stop"][0]["hooks"][0]["command"]
@@ -244,7 +248,7 @@ fn hook_install_status_uninstall() {
 
     let (_, out, _) = p.cli(&["hook"]);
     assert!(
-        out.contains(&format!("claude local: ligado ({})", local.display())),
+        out.contains(&format!("claude local: ligado ({})", shown.display())),
         "{out}"
     );
     assert!(out.contains("claude project: desligado"));
@@ -286,7 +290,7 @@ fn hook_install_status_uninstall() {
         (code, out),
         (
             0,
-            format!("Hook do VibeDeck removido de {}.\n", local.display())
+            format!("Hook do VibeDeck removido de {}.\n", shown.display())
         )
     );
     let (_, out, _) = p.cli(&["hook", "status", "--json"]);
