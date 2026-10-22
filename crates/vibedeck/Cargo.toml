@@ -14,3 +14,4 @@ vibedeck-core = { path = "../vibedeck-core" }
 serde.workspace = true
 serde_json.workspace = true
 clap = { version = "4", features = ["derive"] }
+chrono = { version = "0.4.45", default-features = false, features = ["std", "clock"] }

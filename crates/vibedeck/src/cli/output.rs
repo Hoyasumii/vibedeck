@@ -2,13 +2,10 @@
 
 use serde::Serialize;
 
-/// Imprime `value` como JSON em stdout, com `\n` final.
-///
-/// INTEGRAÇÃO: trocar por `vibedeck_core::json` (emissor VDJSON: chaves ordenadas, `" : "`, sem
-/// escapar `/`, `[\n\n]` para vazio) quando existir. Até lá: pretty do serde_json.
+/// Imprime `value` em stdout no formato VDJSON (o mesmo dos arquivos do projeto), com `\n` final.
 pub fn print_json<T: Serialize>(value: &T) -> Result<(), super::CliError> {
-    let text =
-        serde_json::to_string_pretty(value).map_err(|e| super::CliError::new(e.to_string()))?;
-    println!("{text}");
+    let bytes =
+        vibedeck_core::json::encode(value).map_err(|e| super::CliError::new(e.to_string()))?;
+    print!("{}", String::from_utf8_lossy(&bytes));
     Ok(())
 }

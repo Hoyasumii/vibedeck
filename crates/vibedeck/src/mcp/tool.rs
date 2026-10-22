@@ -33,9 +33,32 @@ impl From<String> for ToolError {
     }
 }
 
-/// Contexto entregue aos handlers. Integração: aqui entra o `ProjectStore` do core.
+/// Contexto entregue aos handlers: raiz do projeto e acesso ao store do core.
 pub struct ToolCtx {
     pub root: PathBuf,
+}
+
+impl ToolCtx {
+    /// Store do projeto (aberto a cada chamada: arquivos podem mudar entre chamadas).
+    pub fn store(&self) -> Result<vibedeck_core::Store, ToolError> {
+        vibedeck_core::Store::open(&self.root).map_err(ToolError::from)
+    }
+}
+
+impl From<vibedeck_core::Error> for ToolError {
+    fn from(e: vibedeck_core::Error) -> Self {
+        ToolError(e.to_string())
+    }
+}
+
+/// Resultado JSON de tool no formato VDJSON (pretty, chaves ordenadas), como o Swift.
+pub fn json_text<T: serde::Serialize + ?Sized>(value: &T) -> Result<String, ToolError> {
+    let bytes = vibedeck_core::json::encode(value).map_err(|e| ToolError(e.to_string()))?;
+    let mut text = String::from_utf8_lossy(&bytes).into_owned();
+    if text.ends_with('\n') {
+        text.pop();
+    }
+    Ok(text)
 }
 
 pub type Handler = Box<dyn Fn(&ToolCtx, &Args) -> Result<String, ToolError> + Send + Sync>;

@@ -10,6 +10,17 @@
 #[allow(dead_code)]
 pub mod output;
 
+pub mod ai;
+pub mod docs;
+pub mod ideas;
+pub mod onboarding;
+pub mod project;
+pub mod resources;
+pub mod reviews;
+pub mod rules;
+pub mod stack;
+pub mod workflows;
+
 use clap::{Args, Parser, Subcommand};
 use std::ffi::OsString;
 use std::fmt;
@@ -38,6 +49,26 @@ pub struct Cli {
 pub enum Command {
     /// Servidor MCP por stdio (ou instalação nos agentes).
     Mcp(McpArgs),
+    #[command(flatten)]
+    Project(project::Command),
+    #[command(flatten)]
+    Docs(docs::Command),
+    #[command(flatten)]
+    Reviews(reviews::Command),
+    #[command(flatten)]
+    Rules(rules::Command),
+    #[command(flatten)]
+    Ideas(ideas::Command),
+    #[command(flatten)]
+    Stack(stack::Command),
+    #[command(flatten)]
+    Resources(resources::Command),
+    #[command(flatten)]
+    Workflows(workflows::Command),
+    #[command(flatten)]
+    Ai(ai::Command),
+    #[command(flatten)]
+    Onboarding(onboarding::Command),
 }
 
 #[derive(Args, Debug)]
@@ -103,8 +134,53 @@ where
     }
 }
 
+/// Contexto dos comandos: diretório de partida (`-C`) e acesso ao projeto.
+#[allow(dead_code)]
+pub struct Context {
+    pub root_arg: Option<PathBuf>,
+}
+
+#[allow(dead_code)]
+impl Context {
+    /// Raiz do projeto (sobe até `vibedeck.json`).
+    pub fn root(&self) -> Result<PathBuf, CliError> {
+        locate_root(self.root_arg.as_deref())
+    }
+
+    /// Store do projeto.
+    pub fn store(&self) -> Result<vibedeck_core::Store, CliError> {
+        let root = self.root()?;
+        vibedeck_core::Store::open(&root).map_err(|e| CliError::new(e.to_string()))
+    }
+
+    /// Diretório de partida sem exigir projeto (para `init`).
+    pub fn start_dir(&self) -> Result<PathBuf, CliError> {
+        start_dir(self.root_arg.as_deref())
+    }
+}
+
+impl From<vibedeck_core::Error> for CliError {
+    fn from(e: vibedeck_core::Error) -> Self {
+        CliError::new(e.to_string())
+    }
+}
+
 fn execute(cli: Cli) -> Result<i32, CliError> {
+    let ctx = Context {
+        root_arg: cli.root.clone(),
+    };
     match cli.command {
+        Command::Project(c) => project::run(c, &ctx),
+        Command::Docs(c) => docs::run(c, &ctx),
+        Command::Reviews(c) => reviews::run(c, &ctx),
+        Command::Rules(c) => rules::run(c, &ctx),
+        Command::Ideas(c) => ideas::run(c, &ctx),
+        Command::Stack(c) => stack::run(c, &ctx),
+        Command::Resources(c) => resources::run(c, &ctx),
+        Command::Workflows(c) => workflows::run(c, &ctx),
+        Command::Ai(c) => ai::run(c, &ctx),
+        Command::Onboarding(c) => onboarding::run(c, &ctx),
+
         Command::Mcp(mcp) => match mcp.command.unwrap_or(McpCommand::Serve) {
             McpCommand::Serve => {
                 let root = locate_root(cli.root.as_deref())?;
