@@ -33,3 +33,4 @@ D-MERGE (usuário): ao terminar tudo, abrir PRs e mergear na main resolvendo con
 
 ## PR
 - Hoyasumii/vibedeck#11 (draft, CI)
+- 2026-10-22 usuário: remover CI/CD por enquanto; recriar ao final. Cópias em ci-desativado/. APP sem compilação até recriar (sem Swift local).
