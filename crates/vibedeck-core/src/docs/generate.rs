@@ -3,8 +3,11 @@
 
 use serde::Deserialize;
 
-use super::DocInfo;
 use super::error::{DocError, Result};
+use super::{DocInfo, create_generated_doc, delete_doc};
+use crate::paths;
+use crate::slug;
+use crate::store::Store;
 
 pub const MAX_DOCUMENTS: usize = 8;
 pub const MAX_CONTENT_LENGTH: usize = 40_000;
@@ -48,6 +51,75 @@ Se não houver nada útil para acrescentar, retorne documents vazio."
 pub fn parse(data: &[u8]) -> Result<Vec<Document>> {
     let answer: Answer = serde_json::from_slice(data).map_err(|_| DocError::InvalidAnswer)?;
     Ok(validated(answer.documents))
+}
+
+/// Documento aceito pelo app: o `group` (destino local) nunca vem da IA.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct Accepted {
+    pub title: String,
+    pub content: String,
+    #[serde(default)]
+    pub group: Option<String>,
+}
+
+/// Decodifica `[{title, content, group?}]` (ou `{"documents": [...]}`) das propostas editadas pelo app.
+pub fn decode_accepted(data: &[u8]) -> Result<Vec<Accepted>> {
+    #[derive(Deserialize)]
+    struct Wrapped {
+        documents: Vec<Accepted>,
+    }
+    serde_json::from_slice::<Vec<Accepted>>(data)
+        .or_else(|_| serde_json::from_slice::<Wrapped>(data).map(|w| w.documents))
+        .map_err(|_| DocError::InvalidAnswer)
+}
+
+/// Grava as propostas aceitas (`acceptGeneratedDocs`): valida com os mesmos limites, destino `group` por
+/// documento (ou o padrão `group`), `author: ai`. Tudo ou nada: se um falhar, apaga os já criados.
+/// Devolve os slugs criados.
+pub fn apply(store: &Store, documents: &[Accepted], group: &str) -> Result<Vec<String>> {
+    let kept: Vec<Accepted> = documents
+        .iter()
+        .filter(|d| {
+            validated(vec![Document {
+                title: d.title.clone(),
+                content: d.content.clone(),
+            }])
+            .len()
+                == 1
+        })
+        .cloned()
+        .take(MAX_DOCUMENTS)
+        .collect();
+    if kept.is_empty() {
+        return Err(DocError::InvalidAnswer);
+    }
+    let default = paths::normalize_group_path(group, true)?;
+    let mut created: Vec<String> = Vec::new();
+    let result = (|| -> Result<()> {
+        for d in &kept {
+            let destination = match &d.group {
+                Some(g) => paths::normalize_group_path(g, true)?,
+                None => default.clone(),
+            };
+            let title = d.title.trim();
+            let reference = (!destination.is_empty())
+                .then(|| format!("{destination}/{}", slug::make(title)));
+            created.push(create_generated_doc(
+                store,
+                title,
+                d.content.trim(),
+                reference.as_deref(),
+            )?);
+        }
+        Ok(())
+    })();
+    if let Err(e) = result {
+        for slug in &created {
+            let _ = delete_doc(store, slug);
+        }
+        return Err(e);
+    }
+    Ok(created)
 }
 
 /// Reaproveitado na aceitação, para que propostas editadas obedeçam aos mesmos limites.
