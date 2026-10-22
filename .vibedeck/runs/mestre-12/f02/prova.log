@@ -1,0 +1,25 @@
+== local (usuário limpo, env -i, sem toolchain)
+protocolVersion 2025-06-18 server {'name': 'vibedeck', 'version': '0.1.0'}
+tools 7
+list_ideas isError False chars 12526
+add_idea False {   "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema
+get_idea False
+desconhecida isError True
+exit 0 stderr bytes 0
+OK
+== ssh
+protocolVersion 2025-06-18 server {'name': 'vibedeck', 'version': '0.1.0'}
+tools 7
+list_ideas isError False chars 12526
+add_idea False {   "$schema" : "https://vibedeck-schema.alanreisanjo.workers.dev/v1/idea.schema
+get_idea False
+desconhecida isError True
+exit 0 stderr bytes 0
+OK
+prova-ssh-f02.json
+quando-a-ideia-for-aprovada-pela-ia-marcar-a-ideia-como-apro.json
+== desconexão ssh no meio (kill do cliente)
+rc=124
+sem processo órfão
+/home/prova/vibedeck: ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), static-pie linked, BuildID[sha1]=1c44985a770aded4bcce2a5790b449fa96679c91, stripped
+cli ssh ideas: 44

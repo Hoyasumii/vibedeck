@@ -16,8 +16,8 @@ D11 paridade total de dados | D12 remover Core Swift após paridade | D13 Sonnet
 D-MERGE (usuário): ao terminar tudo, abrir PRs e mergear na main resolvendo conflitos (atenção: merge na main dispara deploy do worker)
 
 ## Trilhas
-- CORE: F01 inventário CLI/MCP feito (f01/), dados em andamento; workspace+CI criados
-- APP: APP-1 escrito (DesignSystem/), aguardando CI macOS; D2 regras revisadas
+- CORE: F01 APROVADO (f01/). F02 APROVADO: fundação+MCP stdio; prova local limpa (usuário sem toolchain, env -i, binário musl estático) e via SSH (sshd local) com list_ideas/add_idea/get_idea, cancel ignorado, EOF→0, sem órfão após desconexão (f02/prova.log). F04: ideas integrada; demais áreas em andamento
+- APP: APP-1 compilou na CI macOS (antes de desativar). APP-2a casca V2 escrita, NÃO compilada. D2 regras revisadas
 - SITE: SITE-1 APROVADO (typecheck, validate 10 schemas + 464 dados, 102 rotas ok; verificado pelo coordenador)
 
 ## Donos
