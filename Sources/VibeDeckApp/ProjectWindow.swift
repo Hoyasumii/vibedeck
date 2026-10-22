@@ -77,7 +77,7 @@ struct ProjectWindow: View {
     private var activeTabKey: String { "activeTab.\(model.project.id.uuidString)" }
     private var expandedKey: String { "expanded.\(model.project.id.uuidString)" }
 
-    var body: some View {
+    private var splitView: some View {
         NavigationSplitView {
             sidebar
                 .navigationSplitViewColumnWidth(min: 200, ideal: 240, max: 320)
@@ -95,6 +95,10 @@ struct ProjectWindow: View {
         } detail: {
             detail
         }
+    }
+
+    private var withContext: some View {
+        splitView
         .onChange(of: claude.requestedPage) { _, page in
             switch page {
             case .chat: openInNewTab(.claude)
@@ -110,6 +114,44 @@ struct ProjectWindow: View {
         .focusedSceneValue(\.logProjectRoot, model.store.root)
         .focusedSceneValue(\.claudeSession, claude)
         .focusedSceneValue(\.closeActiveTab, tabs.count > 1 ? CloseTabAction(tab: activeTab) { closeTab(activeTab) } : nil)
+    }
+
+    // Split in stages: one long modifier chain is too much for the type-checker in CI.
+    var body: some View {
+        withLifecycle
+            .sheet(item: $newName) { prompt in createItem(prompt) }
+            .sheet(item: Binding(get: { claude.ideaRequest }, set: { claude.ideaRequest = $0 })) { request in
+                IdeaImplementationSheet(request: request)
+                    .environment(model)
+                    .environment(claude)
+                    .environment(\.logProject, model.store.root)
+            }
+            .alert("Erro", isPresented: errorPresented) {
+                LoggedButton("OK") { model.errorMessage = nil }.loggedControl(control: "project_window.button_1", label: "OK")
+            } message: { Text(model.errorMessage ?? "") }
+    }
+
+    private var errorPresented: Binding<Bool> {
+        Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })
+    }
+
+    private func createItem(_ prompt: NewNamePrompt) -> some View {
+        NamePromptSheet(title: prompt.title, placeholder: prompt.placeholder) { name in
+            switch prompt {
+            case .doc: if let slug = model.createDoc(title: name) { selection = .doc(slug) }
+            case .group: if let slug = model.createGroup(title: name) { selection = .group(slug) }
+            case .topic: if let slug = model.createTopic(title: name) { selection = .topic(slug) }
+            case .idea: if let slug = model.createIdea(title: name) { selection = .idea(slug) }
+            case .agent: if let slug = model.createAgent(title: name) { selection = .agent(slug) }
+            case .command: if let slug = model.createCommand(title: name) { selection = .command(slug) }
+            case .skill: if let slug = model.createSkill(title: name) { selection = .skill(slug) }
+            case .workflow: if let slug = model.createWorkflow(title: name) { selection = .workflow(slug) }
+            }
+        }
+    }
+
+    private var withLifecycle: some View {
+        withContext
         .task {
             model.startWatching()
             restoreState()
@@ -145,29 +187,6 @@ struct ProjectWindow: View {
             claude.stop()
             claude.terminals.keys.forEach(claude.closeTerminal)
         }
-        .sheet(item: $newName) { prompt in
-            NamePromptSheet(title: prompt.title, placeholder: prompt.placeholder) { name in
-                switch prompt {
-                case .doc: if let slug = model.createDoc(title: name) { selection = .doc(slug) }
-                case .group: if let slug = model.createGroup(title: name) { selection = .group(slug) }
-                case .topic: if let slug = model.createTopic(title: name) { selection = .topic(slug) }
-                case .idea: if let slug = model.createIdea(title: name) { selection = .idea(slug) }
-                case .agent: if let slug = model.createAgent(title: name) { selection = .agent(slug) }
-                case .command: if let slug = model.createCommand(title: name) { selection = .command(slug) }
-                case .skill: if let slug = model.createSkill(title: name) { selection = .skill(slug) }
-                case .workflow: if let slug = model.createWorkflow(title: name) { selection = .workflow(slug) }
-                }
-            }
-        }
-        .sheet(item: Binding(get: { claude.ideaRequest }, set: { claude.ideaRequest = $0 })) { request in
-            IdeaImplementationSheet(request: request)
-                .environment(model)
-                .environment(claude)
-                .environment(\.logProject, model.store.root)
-        }
-        .alert("Erro", isPresented: Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })) {
-            LoggedButton("OK") { model.errorMessage = nil }.loggedControl(control: "project_window.button_1", label: "OK")
-        } message: { Text(model.errorMessage ?? "") }
     }
 
     private var sidebar: some View {
