@@ -1,54 +1,45 @@
 import SwiftUI
 
-/// Indicador de ambiente SSH da barra de status (prancha 19): conectado, offline com pendências ou com conflito.
-/// O Core roda no servidor (MCP por SSH); aqui se reabre a conexão e se mostra o estado.
+/// Indicador de ambiente SSH da barra de status (prancha 19): SSH conectado, Reconectando (próxima tentativa em Ns)
+/// ou Offline (somente leitura). O Core roda no servidor (MCP por SSH); o estado vem do `RemoteLink` do modelo.
 struct V2RemoteEnvironmentSegment: View {
-    @State private var status: RemoteProjectStatus
+    let link: RemoteLink
     @State private var showing = false
     @Environment(AISession.self) private var claude
 
-    @Environment(ProjectModel.self) private var model
+    private var host: String { link.host }
 
-    init(workspace: RemoteWorkspace) {
-        _status = State(initialValue: RemoteProjectStatus(workspace))
+    private func seconds(until date: Date, now: Date) -> Int {
+        max(0, Int(date.timeIntervalSince(now).rounded(.up)))
     }
 
-    private enum Kind { case connecting, connected, offline }
-
-    private var kind: Kind {
-        if status.error != nil { return .offline }
-        return status.connected ? .connected : .connecting
-    }
-
-    private var host: String {
-        let destination = status.workspace.destination
-        return destination.user + "@" + destination.host
-    }
-
-    private var detail: String {
-        switch kind {
-        case .connecting: return "conectando…"
+    private func detail(now: Date) -> String {
+        switch link.state {
         case .connected: return "conectado"
-        case .offline: return "offline"
+        case .connecting: return "reconectando…"
+        case .waiting(let until): return "reconectando · próxima tentativa em \(seconds(until: until, now: now))s"
+        case .offline: return "offline (somente leitura)"
         }
     }
 
     private var dot: Color {
-        switch kind {
-        case .connecting: return DesignTokens.Colors.inkFaint
-        case .connected: return DesignTokens.Colors.done
-        case .offline: return DesignTokens.Colors.brand
-        }
+        link.isConnected ? DesignTokens.Colors.done : DesignTokens.Colors.brand
     }
 
     private var tint: Color {
-        switch kind {
-        case .offline: return DesignTokens.Colors.brandText
-        default: return DesignTokens.Colors.inkMuted
-        }
+        link.isConnected ? DesignTokens.Colors.inkMuted : DesignTokens.Colors.brandText
     }
 
     var body: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            segment(now: context.date)
+        }
+        .foregroundStyle(tint)
+        .popover(isPresented: $showing) { panel }
+        .sheet(isPresented: credentialsBinding) { credentialsSheet }
+    }
+
+    private func segment(now: Date) -> some View {
         V2StatusSegment(control: "v2_status_bar.environment", label: "Estado da conexão SSH") {
             showing.toggle()
         } content: {
@@ -56,29 +47,43 @@ struct V2RemoteEnvironmentSegment: View {
             Text("SSH · " + host)
             HStack(spacing: DesignTokens.Space.s1) {
                 Circle().fill(dot).frame(width: 6, height: 6)
-                Text(detail)
+                Text(detail(now: now))
             }
         }
-        .foregroundStyle(tint)
-        .accessibilityLabel("Ambiente: SSH em \(host), \(detail)")
-        .popover(isPresented: $showing) { panel }
-        .sheet(isPresented: $status.credentials) { credentialsSheet }
-        .task {
-            status.store = model.store
-            await status.reconnect()
-        }
+        .accessibilityLabel("Ambiente: SSH em \(host), \(detail(now: now))")
+    }
+
+    private var credentialsBinding: Binding<Bool> {
+        Binding(get: { link.credentials }, set: { link.credentials = $0 })
+    }
+
+    private var passwordBinding: Binding<String> {
+        Binding(get: { link.password }, set: { link.password = $0 })
+    }
+
+    private var rememberBinding: Binding<Bool> {
+        Binding(get: { link.remember }, set: { link.remember = $0 })
     }
 
     // MARK: Painel de estado
 
+    private var summary: String {
+        switch link.state {
+        case .connected: return "Conectado. O Core roda no servidor e as edições são gravadas lá."
+        case .connecting: return "Conectando…"
+        case .waiting: return "Sem conexão. Reconectando automaticamente (1, 2, 4… até 60 s). Somente leitura até reconectar."
+        case .offline: return "Offline. Somente leitura: a última leitura está em cache neste Mac."
+        }
+    }
+
     private var panel: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Space.s2) {
-            Text(status.workspace.destination.title)
+            Text(link.workspace.destination.title)
                 .font(DesignTokens.Typography.headline)
                 .textSelection(.enabled)
-            Text(status.message).font(DesignTokens.Typography.callout)
+            Text(summary).font(DesignTokens.Typography.callout)
             actions
-            if let error = status.error {
+            if let error = link.error {
                 Text(error)
                     .font(DesignTokens.Typography.callout)
                     .foregroundStyle(DesignTokens.Colors.fix)
@@ -94,9 +99,10 @@ struct V2RemoteEnvironmentSegment: View {
 
     private var actions: some View {
         HStack {
-            LoggedButton("Reconectar") { Task { await status.reconnect() } }
+            LoggedButton("Reconectar") { link.reconnectNow() }
                 .loggedControl(control: "v2_ssh.reconnect", label: "Reconectar")
-            LoggedButton("Senha…") { status.credentials = true }
+                .disabled(link.isConnected)
+            LoggedButton("Senha…") { link.credentials = true }
                 .loggedControl(control: "v2_ssh.password", label: "Senha")
             LoggedButton("Terminal SSH") { claude.openTerminal() }
                 .loggedControl(control: "v2_ssh.terminal", label: "Terminal SSH")
@@ -106,19 +112,46 @@ struct V2RemoteEnvironmentSegment: View {
     private var credentialsSheet: some View {
         VStack(alignment: .leading, spacing: DesignTokens.Space.s4) {
             Text("Reconectar ao servidor").font(DesignTokens.Typography.headline)
-            SecureField("Senha ou frase secreta", text: $status.password)
-            Toggle("Guardar no Chaves do macOS", isOn: $status.remember.logging(control: "v2_ssh.remember", label: "Guardar no Chaves do macOS", project: status.workspace.root))
+            SecureField("Senha ou frase secreta", text: passwordBinding)
+            Toggle("Guardar no Chaves do macOS", isOn: rememberBinding.logging(control: "v2_ssh.remember", label: "Guardar no Chaves do macOS", project: link.workspace.root))
             LoggedButton("Conectar") {
-                Task {
-                    do { try SSHCredentials.store(status.remember ? status.password : nil, for: status.workspace.destination) }
-                    catch { status.error = error.localizedDescription; return }
-                    await status.reconnect()
-                    status.credentials = false
-                }
+                do { try SSHCredentials.store(link.remember ? link.password : nil, for: link.workspace.destination) }
+                catch { link.error = error.localizedDescription; return }
+                link.credentials = false
+                link.reconnectNow()
             }
             .loggedControl(control: "v2_ssh.connect", label: "Conectar")
         }
         .padding(DesignTokens.Space.s6)
         .frame(width: 420)
+    }
+}
+
+/// Aviso do modo offline: leitura da última cópia, edição desabilitada até reconectar.
+struct V2OfflineBanner: View {
+    let link: RemoteLink
+
+    private var readTime: String {
+        guard let date = link.lastRead else { return "" }
+        return " (lida em " + date.formatted(date: .abbreviated, time: .shortened) + ")"
+    }
+
+    var body: some View {
+        HStack(spacing: DesignTokens.Space.s2) {
+            VDIcon(.terminal, size: 13)
+            Text("Sem conexão com \(link.host): somente leitura. Mostrando a última leitura\(readTime). Edição desabilitada até reconectar.")
+                .font(DesignTokens.Typography.callout)
+                .lineLimit(2)
+            Spacer(minLength: DesignTokens.Space.s2)
+            LoggedButton("Reconectar") { link.reconnectNow() }
+                .loggedControl(control: "v2_offline_banner.reconnect", label: "Reconectar")
+                .buttonStyle(.glass)
+        }
+        .foregroundStyle(DesignTokens.Colors.brandText)
+        .padding(.horizontal, DesignTokens.Space.s3)
+        .padding(.vertical, DesignTokens.Space.s2)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(DesignTokens.Colors.brand.opacity(0.12))
+        .accessibilityElement(children: .combine)
     }
 }

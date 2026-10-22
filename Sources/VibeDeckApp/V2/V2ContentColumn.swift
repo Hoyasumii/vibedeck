@@ -52,6 +52,7 @@ struct V2ContentColumn: View {
                     .buttonStyle(.borderless)
                     .help("Novo item em \(concept.title)")
                     .accessibilityLabel("Novo item em \(concept.title)")
+                    .disabled(model.isReadOnly)
             }
         }
         .padding(.horizontal, DesignTokens.Space.s3)
@@ -188,6 +189,7 @@ struct V2ContentColumn: View {
                 LoggedButton("Adicionar") { onAdd(section) }
                     .loggedControl(control: "v2_content_column.empty_add", label: "Adicionar")
                     .buttonStyle(.glass)
+                    .disabled(model.isReadOnly)
             }
             .frame(maxHeight: .infinity)
         } else if rows.isEmpty {
@@ -213,6 +215,7 @@ struct V2ContentColumn: View {
             .loggedControl(control: "v2_content_column.open", label: "Abrir")
         LoggedButton("Editar tags…") { editingTags = row }
             .loggedControl(control: "v2_content_column.edit_tags", label: "Editar tags")
+            .disabled(model.isReadOnly)
         if let url = model.fileURL(for: row.id) {
             LoggedButton("Mostrar no Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
                 .loggedControl(control: "v2_content_column.reveal", label: "Mostrar no Finder")
@@ -223,6 +226,7 @@ struct V2ContentColumn: View {
             model.delete(row.id)
         }
         .loggedControl(control: "v2_content_column.trash", label: "Mover para o Lixo")
+        .disabled(model.isReadOnly)
     }
 
     // MARK: Lista de páginas (Referências, Projeto)

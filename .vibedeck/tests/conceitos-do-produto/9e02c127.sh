@@ -104,6 +104,7 @@ LOCAL_OK = {APP + p for p in (
     "Core/AI/AIPromptPolicy.swift",                                # snapshots de contexto e uso de IA da máquina, fora do repo
     "RuleExecutionModel.swift",                                    # cache de duração dependente da máquina; regras/resultados continuam no repo
     "AppSettingsView.swift",                                       # limite de scripts simultâneos: depende dos núcleos da máquina
+    "Core/RemoteLink.swift",                                       # cache de leitura offline do projeto SSH (cópia da máquina; a fonte é o servidor)
     "Core/Support/Logging.swift",                                  # logs de erros/crashes da máquina, fora do repo e do git
 )}
 for f in swift:

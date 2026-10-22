@@ -56,7 +56,6 @@ struct ProjectWindowV2Content: View {
     @Environment(\.openSettings) private var openSettings
     @State private var model: ProjectModel
     @State private var claude: AISession
-    @State private var workspace: RemoteWorkspace?
     @State private var space: V2Space = .project
     @State private var conceptBySpace: [V2Space: V2Concept] = [:]
     @State private var selection: SidebarItem?
@@ -69,7 +68,6 @@ struct ProjectWindowV2Content: View {
     init(root: URL, model: ProjectModel) {
         _model = State(initialValue: model)
         _claude = State(initialValue: AISession(root: root, projectId: model.project.id, core: model.store))
-        _workspace = State(initialValue: RemoteWorkspace.existing(at: root))
     }
 
     // MARK: Estado derivado
@@ -152,6 +150,7 @@ struct ProjectWindowV2Content: View {
 
     private var shell: some View {
         VStack(spacing: 0) {
+            offlineBanner
             HStack(spacing: 0) {
                 rail
                 splitView
@@ -160,6 +159,13 @@ struct ProjectWindowV2Content: View {
         }
         // O header da janela tem a mesma cor do conteúdo (sem faixa de toolbar separada).
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+    }
+
+    @ViewBuilder
+    private var offlineBanner: some View {
+        if model.isReadOnly, let link = model.link {
+            V2OfflineBanner(link: link)
+        }
     }
 
     private var rail: some View {
@@ -171,8 +177,7 @@ struct ProjectWindowV2Content: View {
     }
 
     private var statusBar: some View {
-        V2StatusBar(workspace: workspace,
-                    onOpenChecks: { show(.rules) },
+        V2StatusBar(onOpenChecks: { show(.rules) },
                     onOpenTerminal: { selection = .terminal($0) })
     }
 
@@ -216,6 +221,7 @@ struct ProjectWindowV2Content: View {
             expandedAI
         } else {
             detailContent
+                .disabled(model.isReadOnly)
                 .transition(.opacity)
                 .id(detailIdentity)
                 .animation(.easeInOut(duration: DesignTokens.Motion.base), value: selection)

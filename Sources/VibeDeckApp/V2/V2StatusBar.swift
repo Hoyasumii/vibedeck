@@ -3,7 +3,6 @@ import SwiftUI
 /// Barra de status inferior (prancha 19): uso da IA, tarefa em andamento, ambiente (Local / SSH),
 /// último check, terminal e branch.
 struct V2StatusBar: View {
-    let workspace: RemoteWorkspace?
     let onOpenChecks: () -> Void
     let onOpenTerminal: (UUID) -> Void
 
@@ -110,8 +109,8 @@ struct V2StatusBar: View {
 
     @ViewBuilder
     private var environmentSegment: some View {
-        if let workspace {
-            V2RemoteEnvironmentSegment(workspace: workspace)
+        if let link = model.link {
+            V2RemoteEnvironmentSegment(link: link)
         } else {
             HStack(spacing: DesignTokens.Space.s2) {
                 VDIcon(.folder, size: 13)
