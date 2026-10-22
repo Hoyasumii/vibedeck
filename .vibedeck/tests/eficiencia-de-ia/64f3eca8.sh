@@ -8,7 +8,7 @@ bad() { echo "$1"; fail=1; }
 A=Sources/VibeDeckApp/AIReadOnlyOperation.swift
 grep -q 'guard recover(error) else { throw error }' "$A" || bad "$A: só respostas inválidas aceitas por recover() podem ser recuperadas"
 grep -q 'guard attempt == 1 else' "$A" || bad "$A: a recuperação deve ser limitada a uma tentativa"
-grep -q 'AIPromptPolicy.recovery(prompt' "$A" || bad "$A: a recuperação deve reutilizar o prompt original"
+grep -q 'plan?.prompt ?? prompt' "$A" || bad "$A: a recuperação deve reutilizar o prompt original"
 grep -qE 'catch is CancellationError' "$A" || bad "$A: cancelamento não pode virar recuperação"
 grep -qE 'fallback|downgrade' "$A" && bad "$A: recuperação não pode trocar modelo ou provedor"
 grep -q 'func invalidAnswerGetsOneRecoveryWithoutChangingSettings' Tests/VibeDeckAppTests/AIRecoveryTests.swift || bad "AIRecoveryTests: teste da recuperação única ausente"

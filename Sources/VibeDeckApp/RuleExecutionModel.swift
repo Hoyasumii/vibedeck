@@ -150,9 +150,7 @@ extension ProjectModel {
     func startRuleExecution(topic: String? = nil, withAI: Bool = false, provider: AIProvider = .claude,
                             concurrency: Int? = RuleExecutionModel.configuredConcurrency,
                             providerAvailable: (AIProvider) -> Bool = { $0.isInstalled },
-                            verify: @escaping @MainActor (URL, AIProvider, RuleTopic, String, [Rule], [RuleResult], CoreStore?) async throws -> [RuleResult] = { root, provider, topic, slug, rules, scripts, store in
-                                try await RuleVerificationAI.run(root: root, provider: provider, topic: topic, slug: slug, rules: rules, scripts: scripts, store: store)
-                            }) {
+                            verify: (@MainActor (URL, AIProvider, RuleTopic, String, [Rule], [RuleResult]) async throws -> [RuleResult])? = nil) {
         guard ruleExecution?.active != true, !isGeneratingTests, runningTests.isEmpty else { return }
         guard !withAI || RemoteWorkspace.existing(at: store.root) != nil || providerAvailable(provider) else { errorMessage = "\(provider.title) não está instalado."; return }
         let snapshot: [(slug: String, topic: RuleTopic)] = topics.filter { topic == nil || $0.slug == topic }.map { (slug: $0.slug, topic: $0.value) }
@@ -165,6 +163,10 @@ extension ProjectModel {
         }
         runningTests = Set(snapshot.map(\.slug) + ["*"])
         let store = store
+        let verify: @MainActor (URL, AIProvider, RuleTopic, String, [Rule], [RuleResult]) async throws -> [RuleResult] = verify
+            ?? { root, provider, topic, slug, rules, scripts in
+                try await RuleVerificationAI.run(root: root, provider: provider, topic: topic, slug: slug, rules: rules, scripts: scripts, store: store)
+            }
         let work = Task {
             defer { runningTests = []; execution.ended = .now }
             let scriptIDs = execution.steps.filter { !$0.ai }.map(\.id)
@@ -216,7 +218,7 @@ extension ProjectModel {
                     let ids = rules.map(\.id)
                     execution.begin(ids)
                     do {
-                        let results = try await verify(store.root, provider, entry.topic, entry.slug, rules, scriptResults, store)
+                        let results = try await verify(store.root, provider, entry.topic, entry.slug, rules, scriptResults)
                         guard !execution.cancelled else {
                             execution.interrupt("Execução cancelada. Nada foi salvo.")
                             return
