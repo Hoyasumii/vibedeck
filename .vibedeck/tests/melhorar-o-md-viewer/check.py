@@ -97,7 +97,7 @@ def single_surface():
     require(EDITOR, r"(?:textView\.textStorage\?\.delegate\s*=\s*context\.coordinator|context\.coordinator\.textView\s*=\s*textView)", "coordinator não está ligado ao storage da view editável")
     for path in [DOC, IDEA]:
         require(path, r"private var mode:\s*MarkdownViewMode\s*=\s*\.edit", "modo padrão precisa ser edição")
-        content = block(source(path), r"private var content:\s*some View")
+        content = block(source(path), r"private var editorModes:\s*some View") or block(source(path), r"private var content:\s*some View")
         edit = re.search(r"case\s+\.edit:\s*(.*?)\s*case\s+\.", content, re.S)
         if not edit or edit.group(1).strip() != "editor":
             fail(path, "case .edit:", "modo de edição precisa montar apenas o editor, sem preview paralelo")
