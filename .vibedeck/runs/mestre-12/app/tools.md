@@ -1,0 +1,103 @@
+# Catálogo das tools do Core Rust (gerado do binário `vibedeck mcp`, 99 tools)
+
+Formato: nome(args; * = obrigatório) [RO = somente leitura]. Resultado sempre `content[0].text` (JSON pretty, texto livre ou markdown). Falha = `isError:true` + mensagem em português. String vazia conta como ausente. Tool inexistente: `Method not found: Tool desconhecida: <nome>`.
+
+- `get_project`() [RO]
+- `add_link`(url*:string, title:string, tags:string)
+- `list_claude_items`(kind:string=artifact|doc) [RO] — Coleção curada local.
+- `add_claude_item`(url*:string, kind*:string=artifact|doc, title:string, tags:array) — Só claude.ai, a pedido do usuário; ele escolhe o tipo.
+- `export_graph`() — Exporta graph.html offline, sem IA.
+- `read_logs`(level:string, since:string, components:array, action:string, limit:integer) [RO] — Logs sem conteúdo; filtros por nível/período/componente/ação.
+- `set_tags`(kind*:string=doc|review_group|rule_topic|idea|agent|command|skill|workflow|stack|pattern, ref*:string, tags*:array) — Substitui as tags de um registro (lista vazia remove).
+- `item_groups`(concept*:string=ideas|reviews|docs|skills, action*:string=list|create|move|rename|move_item|delete, path:string, from:string, to:string, reference:string, confirmed:boolean) — Diretórios de itens. delete exige confirmed=true se não vazio, inclusive autoria humana; só a pedido do usuário.
+- `move_rule_to_group`(rule*:string, group*:string)
+- `rename_rule_group`(topic*:string, from*:string, to*:string)
+- `list_docs`() [RO]
+- `read_doc`(slug*:string) [RO]
+- `write_doc`(reference:string, slug:string, title:string, content*:string, generated:boolean) — generated: novo doc author=ai; senão cria/sobrescreve.
+- `list_review_groups`() [RO] — Grupos com itens abertos.
+- `list_review_items`(group:string, status:string=open|in_progress|done|wontfix, kind:string) [RO]
+- `add_review_item`(group*:string, kind*:string, title*:string, details:string, priority:string=low|normal|high, file:string, route:string, component:string, selector:string, rules:array) — author=ai; grupo automático.
+- `update_review_item`(id*:string, status:string=open|in_progress|done|wontfix, priority:string=low|normal|high, title:string, details:string, kind:string, rules:array) — Atualiza item; com regras, done exige check aprovado para review_item.
+- `rules_for`(files:array, topics:array, review_item:string, include_manual:boolean, verbose:boolean) [RO] — OBRIGATÓRIO antes de concluir uma tarefa. Manuais contadas sem include_manual.
+- `submit_rule_check`(results:array, task*:string, files:array, topics:array, review_item:string, verify_manual:boolean, verbose:boolean) — Scripts; manuais pending. Com verify_manual=true, responda TODAS as manuais em results. passed=false: corrija e reenvie. Resumo; completo em disco.
+- `run_rule_tests`(files:array, topics:array, review_item:string) [RO] — Scripts sem check (0 cumpre, 77 n/a, outro viola); sem files/review_item, só topics.
+- `set_rule_test`(rule_id*:string, mode*:string=script|manual, command:string, reason:string) — Define script (raiz, $VIBEDECK_FILES, exit 0/77/outro) ou manual; editar regra desatualiza teste.
+- `list_rule_topics`() [RO]
+- `get_rule_topic`(topic*:string) [RO]
+- `add_rule_topic`(title*:string, description:string, paths:array, tags:array) — Sem paths: global.
+- `add_rule`(topic*:string, text*:string, details:string, severity:string=must|should) — author=ai; tópico automático.
+- `list_ideas`(status:string=new|exploring|approved|discarded|done) [RO] — Ideias, sem força de regra.
+- `get_idea`(idea*:string) [RO] — Ideia completa, com regras rascunho.
+- `add_idea`(reference:string, title*:string, body:string, tags:array) — author=ai; sem regras ativas.
+- `update_idea`(idea*:string, title:string, body:string, status:string=new|exploring|approved|discarded|done, tags:array, dependencies:array)
+- `add_idea_rule`(idea*:string, text*:string, details:string, severity:string=must|should) — Adiciona uma regra rascunho a uma ideia (vale após promote_idea).
+- `promote_idea`(idea*:string) — Ativa regras da ideia num tópico. Só faça isso quando o usuário pedir.
+- `unpromote_idea`(idea*:string) — Desfaz promoção: apaga tópico, regras voltam a rascunho. Só faça isso quando o usuário pedir.
+- `list_stack`() [RO]
+- `search_stack_icons`(query:string, category:string=language|frontend|backend|database|cloud|devops|tooling|testing|observability|auth|ide|ai|design|game|payments|os|social|productivity, limit:integer) [RO] — IDs para add_stack.
+- `add_stack`(icons*:array, note:string) — Atualiza badge; desconhecidas recusam tudo.
+- `remove_stack`(icons*:array) — Atualiza badge.
+- `update_stack`(icon*:string, note:string, position:integer)
+- `list_patterns`() [RO]
+- `pattern_catalog`(query:string) [RO] — Catálogo para add_pattern.
+- `add_pattern`(patterns:array, name:string, summary:string, rules:array, note:string, paths:array) — Padrões: catálogo (patterns) ou personalizado (name+rules); cada um cria tópico.
+- `remove_pattern`(patterns*:array) — Retira padrões e apaga seus tópicos de regras.
+- `update_pattern`(pattern*:string, note:string, paths:array, position:integer)
+- `add_kit`(items*:array) — Adiciona ids de kits/itens selecionados, com dependências. author=ai.
+- `list_agents`() [RO]
+- `get_agent`(agent*:string) [RO]
+- `add_agent`(provider_settings:object, title*:string, summary:string, model:string, tools:array, prompt:string, tags:array)
+- `update_agent`(provider_settings:object, agent*:string, title:string, summary:string, model:string, tools:array, prompt:string, tags:array) — Fluxo: add_agent_next_step.
+- `add_agent_next_step`(agent*:string, target*:string, kind:string=agent|command|skill, note:string) — Encadeia agente/comando/skill sobre o resultado do agente.
+- `agent_flow`(agent*:string) [RO]
+- `import_agents`(provider:string, overwrite:boolean)
+- `list_commands`() [RO]
+- `get_command`(command*:string) [RO]
+- `add_command`(provider_settings:object, title*:string, summary:string, argument_hint:string, model:string, tools:array, prompt:string, tags:array) — Aceita $ARGUMENTS.
+- `update_command`(provider_settings:object, command*:string, argument_hint:string, title:string, summary:string, model:string, tools:array, prompt:string, tags:array) — Fluxo: add_command_next_step.
+- `add_command_next_step`(command*:string, target*:string, kind:string=agent|command|skill, note:string) — Encadeia agente/comando/skill sobre o resultado do comando.
+- `command_flow`(command*:string) [RO]
+- `import_commands`(provider:string, overwrite:boolean)
+- `list_skills`() [RO]
+- `get_skill`(skill*:string) [RO]
+- `add_skill`(provider_settings:object, reference:string, title*:string, summary:string, model:string, tools:array, prompt:string, tags:array) — Cria skill (SKILL.md); summary define quando disparar.
+- `update_skill`(provider_settings:object, skill*:string, title:string, summary:string, model:string, tools:array, prompt:string, tags:array) — Fluxo: add_skill_next_step.
+- `add_skill_next_step`(skill*:string, target*:string, kind:string=agent|command|skill, note:string) — Encadeia agente/comando/skill sobre o resultado da skill.
+- `skill_flow`(skill*:string) [RO]
+- `import_skills`(provider:string, overwrite:boolean)
+- `list_workflows`() [RO]
+- `get_workflow`(workflow*:string) [RO]
+- `add_workflow`(title*:string, summary:string, input:string, max_steps:integer, tags:array) — Workflow vazio; complete com add_workflow_step/add_workflow_transition.
+- `update_workflow`(workflow*:string, title:string, summary:string, input:string, max_steps:integer, tags:array)
+- `add_workflow_step`(workflow*:string, target*:string, kind:string=agent|command|skill, note:string, max_visits:integer) — Adiciona uma etapa (a primeira é o início) e devolve o id.
+- `set_workflow_step_max_visits`(workflow*:string, step*:string, max_visits*:integer) — Limite de execuções da etapa por ciclo; estourar para a execução.
+- `remove_workflow_step`(workflow*:string, step*:string) — Remove uma etapa e as transições para ela.
+- `move_workflow_step`(workflow*:string, step*:string, position*:integer) — Move uma etapa (1 = início).
+- `add_workflow_transition`(workflow*:string, from*:string, to*:string, verdict:string, when:string) — Prioridade: verdict, when, senão (sem ambos, único por etapa); nenhuma transição = fim.
+- `remove_workflow_transition`(workflow*:string, from*:string, index*:integer) — Remove a transição `index` (1, 2, …) de uma etapa.
+- `workflow_flow`(workflow*:string, input:string) [RO] — JSON do workflow para orquestrar; siga as `rules` dele.
+- `workflow_run_start`(provider:string, workflow*:string, input:string, from:string) — Retorna {ref,action,prompt}; siga prompt em subagentes. from permite outra volta em execução parada.
+- `workflow_run_next`(run*:string) [RO] — Próxima ação: run-step, ask, decide, done ou stop.
+- `workflow_run_step`(run*:string) [RO] — Prompt da etapa atual, para o subagente que a executa.
+- `workflow_run_record`(run*:string, verdict:string, summary:string, to:string, none_holds:boolean) — Próxima ação após veredito. Em decide, avalie candidates e reenvie to ou none_holds.
+- `workflow_run_ask`(questions*:array, run*:string) — Grava perguntas ao usuário; termine a etapa com PERGUNTA na última linha.
+- `workflow_run_questions`(run*:string, open:boolean) [RO]
+- `workflow_run_answer`(run*:string, number*:integer, answer*:string) — Grava a resposta do usuário (opções separadas por "; " ou texto) e devolve a próxima ação.
+- `workflow_run_list`(workflow:string, status:string=running|waiting|done|stopped) [RO]
+- `workflow_run_show`(run*:string) [RO]
+- `workflow_run_stop`(run*:string, reason:string) — Para uma execução. Só a pedido do usuário.
+- `codex_usage`() [RO]
+- `claude_usage`() [RO] — Limites Claude pela statusline.
+- `ai_guide`(section:integer) [RO]
+- `ai_catalog`(kind*:string, offset:integer, limit:integer) [RO] — Índice sem prompts; inclui kits.
+- `ai_context`(id*:string, offset:integer, limit:integer) [RO] — Página; nextOffset continua.
+- `reorganize_prompt`() [RO] — Prompt/schema/hash.
+- `reorganize_analyze`(provider*:string, model:string, effort:string) [RO] — Somente leitura.
+- `reorganize_validate`(answer*:string, fingerprint*:string) [RO] — Valida sem gravar.
+- `reorganize_apply`(proposal*:string, acceptance*:string) — Só com aceite; conflicts exige escolha explícita.
+- `item_ai_prompt`(kind*:string, request*:string, item:string) [RO] — Prompt+schema para criar/editar agent, command, skill ou workflow com IA (não grava).
+- `item_ai_apply`(kind*:string, proposal*:string, item:string) — Valida o JSON do schema e cria (author=ai) ou, com item, substitui.
+- `ai_usage`(clear:boolean) — Consumo por tarefa; ausentes não são zero. clear só a pedido do usuário.
+- `onboarding_status`() [RO] — Início guiado: estado, etapa sugerida, stack, padrões e recursos detectados (.claude, .codex).
+- `onboarding_apply`(action*:string=skip|complete|import, items:array) — skip adia, complete conclui, import cadastra só os items escolhidos.

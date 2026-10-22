@@ -1,0 +1,531 @@
+import Foundation
+
+// MARK: - Patterns
+
+/// A code pattern the project follows (TDD, hexagonal architecture, CQRS…), kept in `vibedeck.json` under `patterns`.
+/// Its rules live in a real rule topic (`topic`, with `sourcePattern` pointing back), so `rules_for` enforces them.
+public struct ProjectPattern: Codable, Equatable, Hashable, Identifiable, Sendable {
+    /// Catalog id (`tdd`, `hexagonal`) or the slug of a custom pattern's name.
+    public var id: String
+    public var name: String
+    public var category: String?
+    public var summary: String?
+    /// How the project applies it ("hexagonal só no Core; a UI fala com casos de uso"); goes into the topic description.
+    public var note: String?
+    /// Slug of the rule topic that enforces the pattern.
+    public var topic: String?
+    public var tags: [String]
+    public var author: Author
+
+    public init(id: String, name: String, category: String? = nil, summary: String? = nil, note: String? = nil, topic: String? = nil, tags: [String] = [], author: Author = .human) {
+        self.id = id
+        self.name = name
+        self.category = category
+        self.summary = summary
+        self.note = note
+        self.topic = topic
+        self.tags = tags
+        self.author = author
+    }
+
+    enum CodingKeys: String, CodingKey { case id, name, category, summary, note, topic, tags, author }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? id
+        category = try c.decodeIfPresent(String.self, forKey: .category)
+        summary = try c.decodeIfPresent(String.self, forKey: .summary)
+        note = try c.decodeIfPresent(String.self, forKey: .note)
+        topic = try c.decodeIfPresent(String.self, forKey: .topic)
+        tags = try c.decodeIfPresent([String].self, forKey: .tags) ?? []
+        author = try c.decodeIfPresent(Author.self, forKey: .author) ?? .human
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(name, forKey: .name)
+        try c.encodeIfPresent(category, forKey: .category)
+        if let summary, !summary.isEmpty { try c.encode(summary, forKey: .summary) }
+        if let note, !note.isEmpty { try c.encode(note, forKey: .note) }
+        try c.encodeIfPresent(topic, forKey: .topic)
+        if !tags.isEmpty { try c.encode(tags, forKey: .tags) }
+        try c.encode(author, forKey: .author)
+    }
+
+    /// Description of the pattern's rule topic: what the pattern is, plus the project's note.
+    public var topicDescription: String {
+        let parts = [summary?.trimmed.nonEmpty, note?.trimmed.nonEmpty.map { "No projeto: \($0)" }].compactMap { $0 }
+        return (parts.isEmpty ? ["Padrão de projeto \(name)."] : parts).joined(separator: "\n\n")
+    }
+}
+
+public enum PatternCategory {
+    public static let all = ["practices", "architecture", "domain", "design", "custom"]
+
+    public static func label(_ id: String?) -> String {
+        switch id {
+        case "practices": "Práticas"
+        case "architecture": "Arquitetura"
+        case "domain": "Domínio"
+        case "design": "Design"
+        case "custom": "Personalizados"
+        case let other?: other.capitalized
+        case nil: "Outros"
+        }
+    }
+}
+
+/// A rule a catalog pattern brings to its topic.
+public struct PatternRule: Codable, Equatable, Hashable, Sendable {
+    public var text: String
+    public var details: String?
+    public var severity: RuleSeverity
+
+    public init(_ text: String, _ details: String? = nil, severity: RuleSeverity = .must) {
+        self.text = text
+        self.details = details
+        self.severity = severity
+    }
+}
+
+/// A pattern from the built-in catalog, with ready-made rules.
+public struct PatternTemplate: Codable, Equatable, Identifiable, Sendable {
+    public var id: String
+    public var name: String
+    public var category: String
+    public var summary: String
+    public var aliases: [String]
+    public var rules: [PatternRule]
+
+    public init(id: String, name: String, category: String, summary: String, aliases: [String] = [], rules: [PatternRule]) {
+        self.id = id
+        self.name = name
+        self.category = category
+        self.summary = summary
+        self.aliases = aliases
+        self.rules = rules
+    }
+
+    /// Exact match on id, name or alias, ignoring case, accents and punctuation ("Ports & Adapters" = "ports-adapters").
+    public func matches(exactly ref: String) -> Bool {
+        let key = Slug.make(ref)
+        return !key.isEmpty && ([id, name] + aliases).contains { Slug.make($0) == key }
+    }
+
+    public func matches(containing ref: String) -> Bool {
+        let key = Slug.make(ref)
+        return !key.isEmpty && ([id, name, summary] + aliases).contains { Slug.make($0).contains(key) }
+    }
+}
+
+public enum PatternCatalog {
+    public static func find(_ ref: String) -> PatternTemplate? {
+        all.first { $0.matches(exactly: ref) }
+    }
+
+    public static func search(_ query: String?) -> [PatternTemplate] {
+        guard let q = query?.trimmed.nonEmpty else { return all }
+        return all.filter { $0.matches(containing: q) }
+    }
+
+    /// Resolves every ref or throws (resolving nothing) with suggestions for the unknown ones.
+    public static func resolve(_ refs: [String]) throws -> [PatternTemplate] {
+        var found: [PatternTemplate] = []
+        var unknown: [String: [String]] = [:]
+        for ref in refs {
+            if let t = find(ref) {
+                if !found.contains(where: { $0.id == t.id }) { found.append(t) }
+            } else {
+                unknown[ref] = Array(search(ref).prefix(5).map(\.id))
+            }
+        }
+        if !unknown.isEmpty { throw VibeDeckError.unknownPatterns(unknown) }
+        return found
+    }
+
+    public static let all: [PatternTemplate] = [
+        // Práticas
+        PatternTemplate(
+            id: "tdd", name: "TDD", category: "practices",
+            summary: "Test-Driven Development: o teste vem antes do código; cada comportamento novo nasce de um teste que falha.",
+            aliases: ["test-driven development", "testes primeiro", "test first"],
+            rules: [
+                PatternRule("Todo comportamento novo ou corrigido tem um teste automatizado",
+                            "Escreva primeiro o teste que falha (vermelho), depois o mínimo de código para passar (verde), depois refatore.\nVerificar: a alteração vem acompanhada de testes que a exercitam; um bug corrigido ganha um teste de regressão."),
+                PatternRule("A suíte de testes passa antes de concluir",
+                            "Verificar: rode os testes do projeto e confirme que todos passam; não desative nem apague testes para fazer passar."),
+                PatternRule("O código é testável sem infraestrutura real",
+                            "Dependências externas (rede, disco, relógio, banco) entram por parâmetro ou protocolo e são trocadas por dublês nos testes.\nVerificar: os testes novos não dependem de serviços externos nem de estado global."),
+            ]),
+        PatternTemplate(
+            id: "solid", name: "SOLID", category: "practices",
+            summary: "Responsabilidade única, aberto/fechado, substituição de Liskov, segregação de interfaces e inversão de dependência.",
+            aliases: ["solid principles", "principios solid"],
+            rules: [
+                PatternRule("Cada tipo tem uma única responsabilidade",
+                            "Verificar: classes/structs/módulos novos ou alterados têm um motivo só para mudar; nada de \"Manager\" que faz tudo."),
+                PatternRule("Módulos de alto nível dependem de abstrações, não de implementações concretas",
+                            "Verificar: regras de negócio recebem protocolos/interfaces; implementações concretas são injetadas de fora."),
+                PatternRule("Interfaces são pequenas e específicas",
+                            "Verificar: nenhum protocolo novo obriga quem o implementa a métodos que não usa.", severity: .should),
+                PatternRule("Comportamento novo entra por extensão, não alterando código estável",
+                            "Verificar: prefira novos tipos/estratégias a encher de `if`/`switch` um fluxo existente.", severity: .should),
+            ]),
+        PatternTemplate(
+            id: "dependency-injection", name: "Injeção de dependência", category: "practices",
+            summary: "Os objetos recebem suas dependências de fora (construtor/parâmetro) em vez de criá-las ou buscá-las em singletons.",
+            aliases: ["di", "dependency injection", "inversao de controle", "ioc"],
+            rules: [
+                PatternRule("Dependências entram pelo construtor ou por parâmetro",
+                            "Verificar: código novo não instancia serviços concretos internamente nem acessa singletons/estado global para obtê-los."),
+                PatternRule("A montagem das dependências fica num ponto de composição",
+                            "Verificar: a criação dos objetos concretos fica no ponto de entrada (main, app, container), não espalhada pelo domínio."),
+            ]),
+        PatternTemplate(
+            id: "functional-core", name: "Núcleo funcional", category: "practices",
+            summary: "Functional core, imperative shell: lógica em funções puras e dados imutáveis; efeitos colaterais só na borda.",
+            aliases: ["functional core imperative shell", "imutabilidade", "funcoes puras", "fp"],
+            rules: [
+                PatternRule("A lógica de negócio fica em funções puras",
+                            "Mesma entrada, mesma saída, sem I/O, relógio ou aleatoriedade escondidos.\nVerificar: regras novas podem ser testadas sem mocks, só com valores."),
+                PatternRule("Dados são imutáveis por padrão",
+                            "Verificar: prefira `let`/valores/cópias com alteração a estado mutável compartilhado."),
+                PatternRule("Efeitos colaterais ficam na casca, fora do núcleo",
+                            "Verificar: I/O, persistência e chamadas externas ficam nas bordas, que chamam o núcleo puro."),
+            ]),
+        PatternTemplate(
+            id: "clean-code", name: "Clean Code", category: "practices",
+            summary: "Código legível: nomes que revelam intenção, funções pequenas, sem duplicação nem código morto.",
+            aliases: ["codigo limpo", "clean"],
+            rules: [
+                PatternRule("Funções são pequenas e fazem uma coisa",
+                            "Verificar: funções novas cabem na tela e têm um nível de abstração; extraia passos com nomes claros.", severity: .should),
+                PatternRule("Nomes revelam intenção",
+                            "Verificar: variáveis, funções e tipos dizem o que são/fazem, sem abreviações obscuras."),
+                PatternRule("Sem duplicação nem código morto",
+                            "Verificar: reaproveite o que já existe em vez de copiar; remova código comentado e não usado."),
+            ]),
+        PatternTemplate(
+            id: "bdd", name: "Desenvolvimento orientado a comportamento", category: "practices",
+            summary: "Comportamentos esperados são descritos em cenários com contexto, ação e resultado observável.",
+            aliases: ["behavior-driven development", "behaviour-driven development", "desenvolvimento guiado por comportamento", "BDD"],
+            rules: [
+                PatternRule("Cenários descrevem comportamentos observáveis",
+                            "Verificar: inspecione os cenários e confirme que seus resultados descrevem efeitos percebidos pelo usuário ou sistema consumidor, sem depender de detalhes internos."),
+                PatternRule("Cada cenário explicita contexto, ação e resultado esperado",
+                            "Verificar: confirme que cada cenário identifica suas condições iniciais, a ação executada e o resultado que deve ser observado."),
+                PatternRule("Cenários de comportamento têm testes automatizados",
+                            "Verificar: execute os testes correspondentes aos cenários e confira que suas asserções verificam os resultados esperados.", severity: .should),
+            ]),
+        PatternTemplate(
+            id: "design-by-contract", name: "Design por contrato", category: "practices",
+            summary: "Operações declaram precondições e pós-condições; objetos preservam invariantes durante suas mudanças.",
+            aliases: ["design by contract", "programação por contrato", "contratos de software", "DbC"],
+            rules: [
+                PatternRule("Operações explicitam suas precondições",
+                            "Verificar: inspecione o contrato de cada operação e identifique as condições exigidas para suas entradas e estado inicial."),
+                PatternRule("Operações explicitam suas pós-condições",
+                            "Verificar: inspecione o contrato de cada operação e identifique as garantias de saída e estado final para entradas válidas."),
+                PatternRule("Alterações preservam as invariantes do objeto",
+                            "Verificar: confira os caminhos de alteração de estado e verifique que nenhum estado público resultante viola as invariantes declaradas."),
+                PatternRule("Contratos têm testes de entradas válidas e violações",
+                            "Verificar: execute testes das precondições, pós-condições e invariantes, incluindo entradas que violam o contrato.", severity: .should),
+            ]),
+        // Arquitetura
+        PatternTemplate(
+            id: "hexagonal", name: "Arquitetura hexagonal", category: "architecture",
+            summary: "Ports & Adapters: o domínio no centro define portas (interfaces); adaptadores (UI, banco, HTTP) as implementam por fora.",
+            aliases: ["ports and adapters", "ports & adapters", "portas e adaptadores", "hexagonal architecture"],
+            rules: [
+                PatternRule("O domínio não depende de frameworks nem de infraestrutura",
+                            "Verificar: o núcleo não importa UI, banco, HTTP ou SDKs; só a linguagem e o próprio domínio."),
+                PatternRule("O domínio fala com o mundo por portas (interfaces) que ele mesmo define",
+                            "Portas de entrada (casos de uso) e de saída (repositórios, gateways) ficam no núcleo.\nVerificar: toda dependência externa nova tem uma porta no domínio."),
+                PatternRule("Adaptadores implementam as portas e ficam fora do núcleo",
+                            "Verificar: código de UI, persistência e integrações está em adaptadores que dependem do domínio, nunca o contrário."),
+                PatternRule("Os casos de uso são testáveis com adaptadores falsos",
+                            "Verificar: há testes do núcleo usando implementações em memória das portas.", severity: .should),
+            ]),
+        PatternTemplate(
+            id: "clean-architecture", name: "Clean Architecture", category: "architecture",
+            summary: "Camadas concêntricas (entidades, casos de uso, adaptadores, frameworks) com dependências apontando só para dentro.",
+            aliases: ["arquitetura limpa", "clean arch", "onion", "onion architecture"],
+            rules: [
+                PatternRule("Dependências apontam só para dentro",
+                            "Entidades ← casos de uso ← adaptadores ← frameworks.\nVerificar: nenhuma camada interna importa ou conhece uma externa."),
+                PatternRule("Cada caso de uso é uma unidade explícita",
+                            "Verificar: regras de aplicação novas ficam em casos de uso (interactors) com entrada e saída definidas, não em controllers/views."),
+                PatternRule("Dados atravessam fronteiras como estruturas simples",
+                            "Verificar: entidades e modelos de framework (ORM, DTO de rede) não vazam entre camadas; há mapeamento na fronteira.", severity: .should),
+            ]),
+        PatternTemplate(
+            id: "layered", name: "Arquitetura em camadas", category: "architecture",
+            summary: "Apresentação, aplicação, domínio e infraestrutura separados; cada camada só fala com a de baixo.",
+            aliases: ["camadas", "layers", "n-tier", "layered architecture"],
+            rules: [
+                PatternRule("Cada camada só depende da camada abaixo",
+                            "Verificar: a apresentação não acessa a infraestrutura direto; o domínio não conhece a apresentação."),
+                PatternRule("Regra de negócio não fica na camada de apresentação",
+                            "Verificar: views/controllers só orquestram e formatam; decisões de negócio estão no domínio/aplicação."),
+            ]),
+        PatternTemplate(
+            id: "mvvm", name: "MVVM", category: "architecture",
+            summary: "Model-View-ViewModel: a View só desenha e repassa eventos; o ViewModel expõe estado e ações; o Model guarda dados e regras.",
+            aliases: ["model view viewmodel", "model-view-viewmodel"],
+            rules: [
+                PatternRule("Views não contêm lógica de negócio",
+                            "Verificar: views novas só leem estado do ViewModel e chamam suas ações."),
+                PatternRule("ViewModels não dependem da camada de UI",
+                            "Verificar: o ViewModel não importa tipos de view e pode ser testado sem UI."),
+                PatternRule("ViewModels têm testes do estado e das ações", nil, severity: .should),
+            ]),
+        PatternTemplate(
+            id: "mvc", name: "MVC", category: "architecture",
+            summary: "Model-View-Controller: Model com dados e regras, View só exibe, Controller recebe a entrada e coordena.",
+            aliases: ["model view controller", "model-view-controller"],
+            rules: [
+                PatternRule("Regras de negócio ficam no Model",
+                            "Verificar: controllers não acumulam lógica de domínio; eles coordenam Model e View."),
+                PatternRule("Views não acessam dados direto",
+                            "Verificar: views recebem o que exibem; não consultam banco nem serviços."),
+            ]),
+        PatternTemplate(
+            id: "modular-monolith", name: "Monólito modular", category: "architecture",
+            summary: "Uma aplicação implantada como unidade única organiza suas responsabilidades em módulos com fronteiras explícitas.",
+            aliases: ["modular monolith", "monolito modular", "arquitetura de monólito modular"],
+            rules: [
+                PatternRule("Módulos são implantados como uma unidade",
+                            "Verificar: confira o processo de implantação e confirme que os módulos compõem uma única aplicação implantável."),
+                PatternRule("Comunicação entre módulos usa interfaces públicas",
+                            "Verificar: inspecione as dependências entre módulos e confirme que cada acesso usa uma interface declarada pública pelo módulo de destino."),
+                PatternRule("Detalhes internos de cada módulo permanecem encapsulados",
+                            "Verificar: confira que código externo ao módulo não acessa seus tipos, dados ou operações internos."),
+                PatternRule("Fronteiras dos módulos têm testes automatizados",
+                            "Verificar: execute testes que detectem dependências entre módulos fora das interfaces públicas.", severity: .should),
+            ]),
+        PatternTemplate(
+            id: "event-driven", name: "Arquitetura orientada a eventos", category: "architecture",
+            summary: "Componentes comunicam fatos ocorridos por eventos, separando produtores das reações dos consumidores.",
+            aliases: ["event-driven architecture", "event driven", "arquitetura dirigida por eventos", "EDA"],
+            rules: [
+                PatternRule("Eventos representam fatos ocorridos",
+                            "Verificar: inspecione os eventos publicados e confirme que descrevem uma ocorrência já realizada, em vez de uma solicitação de ação."),
+                PatternRule("Produtores publicam eventos sem conhecer consumidores concretos",
+                            "Verificar: inspecione os produtores e confirme que a publicação não referencia implementações concretas dos consumidores."),
+                PatternRule("Consumidores dependem do contrato do evento",
+                            "Verificar: inspecione os consumidores e confirme que interpretam os dados definidos no contrato do evento sem acessar detalhes internos do produtor."),
+                PatternRule("Consumidores têm testes de reação aos eventos",
+                            "Verificar: execute testes que entreguem eventos aos consumidores e confiram os efeitos esperados.", severity: .should),
+            ]),
+        // Domínio
+        PatternTemplate(
+            id: "ddd", name: "DDD", category: "domain",
+            summary: "Domain-Driven Design: o código usa a linguagem do negócio, com entidades, objetos de valor, agregados e contextos delimitados.",
+            aliases: ["domain-driven design", "domain driven design", "design orientado a dominio"],
+            rules: [
+                PatternRule("O código usa a linguagem ubíqua do domínio",
+                            "Verificar: tipos, métodos e eventos têm os nomes que o negócio usa, não nomes técnicos genéricos."),
+                PatternRule("Regras de negócio vivem nas entidades e objetos de valor, não em serviços anêmicos",
+                            "Verificar: invariantes são garantidas dentro do próprio modelo; nada de entidade só com getters/setters."),
+                PatternRule("Agregados protegem suas invariantes e são alterados só pela raiz",
+                            "Verificar: código externo não altera entidades internas de um agregado diretamente; referências entre agregados são por id."),
+                PatternRule("Contextos delimitados não se misturam",
+                            "Verificar: conceitos de um contexto não são importados direto em outro; há tradução (anticorrupção) na fronteira.", severity: .should),
+            ]),
+        PatternTemplate(
+            id: "cqrs", name: "CQRS", category: "domain",
+            summary: "Command Query Responsibility Segregation: comandos alteram estado e não retornam dados; consultas leem e não alteram nada.",
+            aliases: ["command query responsibility segregation", "command query separation", "cqs"],
+            rules: [
+                PatternRule("Comandos e consultas são separados",
+                            "Verificar: uma operação nova ou altera estado (comando) ou retorna dados (consulta), nunca os dois."),
+                PatternRule("Cada comando tem um handler explícito que valida e aplica a mudança",
+                            "Verificar: comandos novos são tipos próprios com seu handler, não métodos soltos em serviços genéricos."),
+                PatternRule("Consultas não têm efeitos colaterais",
+                            "Verificar: o caminho de leitura não grava, não dispara eventos e pode usar modelos de leitura próprios."),
+            ]),
+        PatternTemplate(
+            id: "event-sourcing", name: "Event Sourcing", category: "domain",
+            summary: "O estado é derivado de uma sequência imutável de eventos de domínio, em vez de ser sobrescrito.",
+            aliases: ["eventos", "event sourced", "event store"],
+            rules: [
+                PatternRule("Mudanças de estado são registradas como eventos imutáveis",
+                            "Verificar: alterações novas geram eventos com nome no passado (PedidoCriado), sem editar ou apagar eventos antigos."),
+                PatternRule("O estado é reconstruído aplicando os eventos",
+                            "Verificar: o agregado tem funções de aplicar evento determinísticas e sem efeitos colaterais."),
+                PatternRule("Eventos são versionados quando o formato muda", nil, severity: .should),
+            ]),
+        PatternTemplate(
+            id: "repository", name: "Repository", category: "domain",
+            summary: "O domínio acessa a persistência por repositórios com interface de coleção, sem conhecer o banco.",
+            aliases: ["repositorio", "repository pattern"],
+            rules: [
+                PatternRule("Acesso a dados passa por repositórios",
+                            "Verificar: código de domínio/aplicação não faz SQL, chamadas de ORM ou de arquivo direto."),
+                PatternRule("A interface do repositório é do domínio; a implementação é da infraestrutura",
+                            "Verificar: o protocolo fica junto do domínio e fala em entidades; a implementação concreta fica fora e pode ser trocada em testes."),
+            ]),
+        PatternTemplate(
+            id: "value-object", name: "Objeto de valor", category: "domain",
+            summary: "Um conceito de domínio é definido por seus atributos, sem identidade própria, com valores imutáveis e invariantes protegidas.",
+            aliases: ["value object", "objeto de valor", "VO"],
+            rules: [
+                PatternRule("Igualdade de objetos de valor depende de seus atributos",
+                            "Verificar: inspecione a comparação de igualdade e confirme que valores com os mesmos atributos são iguais independentemente da instância."),
+                PatternRule("Objetos de valor são imutáveis",
+                            "Verificar: confira que não há operação pública que altere os atributos de uma instância após sua criação."),
+                PatternRule("A construção rejeita valores que violam invariantes",
+                            "Verificar: inspecione os caminhos de criação e confirme que entradas inválidas são rejeitadas antes de disponibilizar a instância."),
+                PatternRule("Objetos de valor têm testes de igualdade e invariantes",
+                            "Verificar: execute testes de igualdade entre instâncias e de rejeição de atributos inválidos.", severity: .should),
+            ]),
+        PatternTemplate(
+            id: "domain-service", name: "Serviço de domínio", category: "domain",
+            summary: "Uma operação de negócio que não pertence a uma única entidade ou objeto de valor é expressa como serviço de domínio.",
+            aliases: ["domain service", "servico de dominio", "serviço do domínio"],
+            rules: [
+                PatternRule("Operações do serviço expressam regras que não pertencem a uma única entidade ou objeto de valor",
+                            "Verificar: inspecione as operações e identifique a regra de negócio e os conceitos de domínio que precisam participar de sua execução."),
+                PatternRule("Serviços de domínio não mantêm estado de negócio entre chamadas",
+                            "Verificar: inspecione os atributos e confirme que os dados de uma execução não são retidos como estado de negócio para a próxima."),
+                PatternRule("Dependências de infraestrutura entram por abstrações",
+                            "Verificar: inspecione as dependências e confirme que persistência e integrações são acessadas por contratos, sem implementação concreta embutida no serviço."),
+                PatternRule("Serviços de domínio têm testes das regras de negócio",
+                            "Verificar: execute testes das operações com valores de domínio e dublês das dependências externas.", severity: .should),
+            ]),
+        // Padrões de design (GoF)
+        PatternTemplate(
+            id: "strategy", name: "Strategy", category: "design",
+            summary: "Algoritmos intercambiáveis atrás de uma interface comum, escolhidos em tempo de execução em vez de if/switch espalhados.",
+            aliases: ["estrategia", "strategy pattern"],
+            rules: [
+                PatternRule("Variações de comportamento viram implementações de um protocolo",
+                            "Verificar: não há cadeias de if/switch por tipo repetidas em vários pontos; cada variante é um tipo que implementa a mesma interface."),
+                PatternRule("O cliente depende do protocolo, não da implementação concreta",
+                            "Verificar: quem usa a estratégia recebe o protocolo por parâmetro ou injeção."),
+            ]),
+        PatternTemplate(
+            id: "observer", name: "Observer", category: "design",
+            summary: "Um sujeito notifica observadores interessados sem conhecê-los, desacoplando quem emite de quem reage.",
+            aliases: ["pub/sub", "publish subscribe", "observador", "observer pattern"],
+            rules: [
+                PatternRule("O emissor não conhece os observadores concretos",
+                            "Verificar: o emissor expõe inscrição/cancelamento (callback, AsyncStream, Combine, delegate) e não referencia tipos de quem reage."),
+                PatternRule("Toda inscrição tem cancelamento claro",
+                            "Verificar: observadores são removidos ao fim do ciclo de vida, sem vazar memória nem retain cycles."),
+            ]),
+        PatternTemplate(
+            id: "factory", name: "Factory", category: "design",
+            summary: "Centraliza a criação de objetos (Factory Method / Abstract Factory), escondendo qual tipo concreto é instanciado.",
+            aliases: ["factory method", "abstract factory", "fabrica"],
+            rules: [
+                PatternRule("A criação de variantes passa por uma fábrica",
+                            "Verificar: o código cliente não escolhe o tipo concreto com if/switch; pede à fábrica."),
+                PatternRule("A fábrica devolve o protocolo/tipo abstrato",
+                            "Verificar: o tipo de retorno é abstrato, para o cliente não depender da classe concreta."),
+            ]),
+        PatternTemplate(
+            id: "builder", name: "Builder", category: "design",
+            summary: "Constrói objetos complexos passo a passo, separando a construção da representação final.",
+            aliases: ["construtor passo a passo", "builder pattern"],
+            rules: [
+                PatternRule("Objetos com muitos parâmetros opcionais são montados por um builder",
+                            "Verificar: não há inicializadores com longas listas de parâmetros opcionais; a montagem é encadeada e legível."),
+                PatternRule("O resultado do builder é válido ou a construção falha",
+                            "Verificar: build() valida invariantes e não devolve objeto parcial."),
+            ]),
+        PatternTemplate(
+            id: "adapter", name: "Adapter", category: "design",
+            summary: "Converte a interface de um componente existente na interface que o cliente espera.",
+            aliases: ["adaptador", "wrapper", "adapter pattern"],
+            rules: [
+                PatternRule("Código de terceiros/legado é isolado por um adapter",
+                            "Verificar: o resto do código usa a interface do projeto, não a API externa diretamente."),
+                PatternRule("O adapter só traduz, sem regra de negócio",
+                            "Verificar: o adapter converte formatos e chamadas; a lógica de domínio fica fora dele."),
+            ]),
+        PatternTemplate(
+            id: "decorator", name: "Decorator", category: "design",
+            summary: "Acrescenta comportamento a um objeto envolvendo-o em outro com a mesma interface, sem herança.",
+            aliases: ["decorador", "decorator pattern"],
+            rules: [
+                PatternRule("Comportamento transversal é adicionado por composição",
+                            "Verificar: log, cache, retry etc. envolvem o objeto original com o mesmo protocolo em vez de subclasses ou flags."),
+                PatternRule("O decorator preserva o contrato do objeto decorado",
+                            "Verificar: mesma interface e mesma semântica; quem usa não distingue o decorado do original."),
+            ]),
+        PatternTemplate(
+            id: "facade", name: "Facade", category: "design",
+            summary: "Oferece uma interface simples para um subsistema complexo.",
+            aliases: ["fachada", "facade pattern"],
+            rules: [
+                PatternRule("Subsistemas complexos expõem uma fachada com poucas operações",
+                            "Verificar: os clientes chamam a fachada, não vários componentes internos em sequência."),
+                PatternRule("A fachada não duplica nem esconde regras do subsistema",
+                            "Verificar: ela delega e orquestra; a lógica continua nos componentes internos."),
+            ]),
+        PatternTemplate(
+            id: "command", name: "Command", category: "design",
+            summary: "Encapsula uma ação como objeto, permitindo enfileirar, registrar, repetir e desfazer.",
+            aliases: ["comando", "command pattern", "undo"],
+            rules: [
+                PatternRule("Ações de usuário/sistema passíveis de fila, histórico ou desfazer são objetos de comando",
+                            "Verificar: a ação tem um tipo próprio com tudo que precisa para executar (e desfazer, se aplicável)."),
+                PatternRule("Quem dispara o comando não conhece quem o executa",
+                            "Verificar: invoker e receiver ficam desacoplados pelo protocolo do comando."),
+            ]),
+        PatternTemplate(
+            id: "state", name: "State", category: "design",
+            summary: "O comportamento de um objeto muda conforme seu estado interno, modelado como tipos ou casos explícitos.",
+            aliases: ["maquina de estados", "state machine", "state pattern"],
+            rules: [
+                PatternRule("Estados e transições são explícitos",
+                            "Verificar: existe um enum/tipo por estado e as transições válidas ficam em um só lugar, sem flags booleanas combinadas."),
+                PatternRule("Transições inválidas são impossíveis ou rejeitadas",
+                            "Verificar: o código não permite ir para um estado não previsto; há teste das transições."),
+            ]),
+        PatternTemplate(
+            id: "singleton", name: "Singleton", category: "design",
+            summary: "Uma única instância compartilhada. Use com parcimônia: prefira injetar a instância.",
+            aliases: ["instancia unica", "singleton pattern"],
+            rules: [
+                PatternRule("Singletons não são acessados diretamente por quem os usa",
+                            "Verificar: o acesso ao singleton acontece na composição (raiz da app) e chega aos demais por injeção de dependência."),
+                PatternRule("O estado compartilhado é seguro para concorrência",
+                            "Verificar: acesso protegido (actor, lock ou imutabilidade)."),
+            ]),
+        PatternTemplate(
+            id: "composite", name: "Composição", category: "design",
+            summary: "Folhas e composições formam uma árvore e oferecem uma interface comum para operações sobre seus elementos.",
+            aliases: ["composite pattern", "composite", "composição", "composto"],
+            rules: [
+                PatternRule("Folhas e composições compartilham a interface consumida pelo cliente",
+                            "Verificar: inspecione os clientes e confirme que podem operar sobre uma folha ou uma composição pela mesma interface."),
+                PatternRule("Composições delegam as operações aos seus filhos",
+                            "Verificar: inspecione as operações da composição e confirme que propagam a execução aos filhos participantes."),
+                PatternRule("A estrutura de composição impede ciclos",
+                            "Verificar: inspecione a inclusão de filhos e confirme que um elemento não pode conter a si próprio ou um ancestral."),
+                PatternRule("Composições têm testes com árvores de vários níveis",
+                            "Verificar: execute testes com folhas e composições aninhadas, conferindo a propagação das operações.", severity: .should),
+            ]),
+        PatternTemplate(
+            id: "proxy", name: "Representante", category: "design",
+            summary: "Um objeto intermedeia o acesso a outro pela mesma interface, preservando seu contrato observável.",
+            aliases: ["proxy pattern", "proxy", "representante", "substituto"],
+            rules: [
+                PatternRule("O representante expõe a interface do objeto representado",
+                            "Verificar: inspecione as interfaces e confirme que o cliente usa o representante pelo contrato do objeto representado."),
+                PatternRule("O representante intermedeia o acesso ao objeto representado",
+                            "Verificar: inspecione as operações e confirme que passam pelo representante antes de acessar o objeto representado."),
+                PatternRule("O representante preserva o contrato observável da interface",
+                            "Verificar: compare entradas aceitas, saídas e erros do representante com as garantias declaradas pela interface compartilhada."),
+                PatternRule("Representantes têm testes de intermediação e contrato",
+                            "Verificar: execute testes que confiram a delegação e as garantias da interface compartilhada.", severity: .should),
+            ]),
+    ]
+}
+
+// MARK: - Store
+
