@@ -155,6 +155,8 @@ final class ProjectModel {
     let resolver = ReviewResolveRunner()
     let graphRunner: GraphRunner
     let store: CoreStore
+    /// Conexão com o servidor de um projeto SSH (nil em projeto local). Desconectado = somente leitura.
+    var link: RemoteLink?
     var project: Project
     var docs: [DocInfo] = []
     var groups: [GroupEntry] = []
@@ -177,6 +179,9 @@ final class ProjectModel {
     var latestPathMoves: [SidebarItem: SidebarItem] = [:]
     var moveRevision = 0
     @ObservationIgnored private var docViewIdentities: [String: UUID] = [:]
+    /// Última leitura completa do servidor (projeto SSH): base do modo offline e do cache em disco.
+    @ObservationIgnored private var lastReadCache: RemoteCache?
+    @ObservationIgnored private var cacheCaptureQueued = false
 
     var errorMessage: String? {
         didSet {
@@ -205,7 +210,6 @@ final class ProjectModel {
     }
 
     @ObservationIgnored private var watcher: FileWatcher?
-    @ObservationIgnored private var pollTask: Task<Void, Never>?
     /// Fila serial de gravações: a ordem das edições é a ordem no Core.
     @ObservationIgnored private var writeChain: Task<Void, Never>?
     @ObservationIgnored private var pendingWrites = 0
@@ -224,7 +228,7 @@ final class ProjectModel {
         }
     }
 
-    private init(store: CoreStore, snapshot: CoreSnapshot) {
+    private init(store: CoreStore, snapshot: CoreSnapshot, connected: Bool = true) {
         self.store = store
         self.docGenerator = DocGenerateRunner.shared(root: store.root)
         self.itemAI = ItemAIRunner.shared(root: store.root)
@@ -239,6 +243,26 @@ final class ProjectModel {
         self.skills = snapshot.skills.map { Entry(slug: $0.slug, value: $0.value) }
         self.workflows = snapshot.workflows.map { Entry(slug: $0.slug, value: $0.value) }
         for doc in snapshot.docs { docViewIdentities[doc.slug] = UUID() }
+        if let workspace = RemoteWorkspace.existing(at: store.root) {
+            let link = RemoteLink(workspace: workspace, store: store, connected: connected)
+            link.onReconnected = { [weak self] in self?.remoteChanged() }
+            link.onRemoteChanged = { [weak self] in self?.remoteChanged() }
+            self.link = link
+        }
+    }
+
+    /// Somente leitura: projeto SSH sem conexão. A UI mostra a última leitura e desabilita a edição.
+    var isReadOnly: Bool {
+        guard let link = link else { return false }
+        return !link.isConnected
+    }
+
+    static let offlineMessage = "O projeto está offline e somente leitura. Reconecte ao servidor para editar."
+
+    /// O servidor mudou (ou a conexão voltou): relê tudo e solta ideias órfãs.
+    private func remoteChanged() {
+        reloadAll()
+        releaseOrphans()
     }
 
     deinit {
@@ -254,11 +278,29 @@ final class ProjectModel {
             await model.refresh(.runs)
             await model.refresh(.checks)
             for concept in ItemConcept.allCases { await model.refreshDirectoryGroups(concept) }
+            model.link?.noteRead()
+            model.scheduleCacheCapture()
+            model.releaseOrphans()
             return model
         } catch {
+            // Projeto SSH inalcançável: abre a última leitura em modo offline (somente leitura) e reconecta sozinho.
+            if let workspace = RemoteWorkspace.existing(at: root), let cache = RemoteCache.load(for: workspace) {
+                let model = ProjectModel(store: store, snapshot: cache.snapshot, connected: false)
+                model.apply(runs: cache.runs, checks: cache.checks, docTexts: cache.docTexts)
+                model.lastReadCache = cache
+                model.link?.lastRead = cache.savedAt
+                model.link?.error = error.localizedDescription
+                return model
+            }
             store.close()
             throw error
         }
+    }
+
+    private func apply(runs: [RemoteCache.Record<WorkflowRun>], checks: [RuleCheck], docTexts: [String: String]) {
+        self.runs = runs.map { Entry(slug: $0.slug, value: $0.value) }
+        self.checks = checks
+        self.docTexts = docTexts
     }
 
     /// Modelo em memória para testes de interface (as gravações vão ao Core e falham sem o binário, sem afetar a memória).
@@ -273,6 +315,11 @@ final class ProjectModel {
 
     /// Enfileira uma gravação no Core. Falha: mostra o erro e relê tudo (a memória otimista não vale mais).
     private func persist(_ work: @escaping () async throws -> Void) {
+        if isReadOnly {
+            errorMessage = Self.offlineMessage
+            restoreLastRead()
+            return
+        }
         pendingWrites += 1
         let previous = writeChain
         writeChain = Task { [weak self] in
@@ -284,12 +331,16 @@ final class ProjectModel {
 
     private func persistFailed(_ error: Error) {
         errorMessage = error.localizedDescription
+        link?.noteFailure(error)
         deferredReloads.formUnion([.project, .docs, .groups, .topics, .ideas, .agents, .commands, .skills, .workflows, .runs])
+        // Sem conexão a memória otimista não vale mais e não dá para reler: volta à última leitura.
+        if isReadOnly { restoreLastRead() }
     }
 
     private func persistFinished() {
         pendingWrites = max(0, pendingWrites - 1)
-        guard pendingWrites == 0, !deferredReloads.isEmpty else { return }
+        if pendingWrites == 0 { scheduleCacheCapture() }
+        guard pendingWrites == 0, !deferredReloads.isEmpty, !isReadOnly else { return }
         let areas = deferredReloads
         deferredReloads = []
         for area in areas { Task { await self.refresh(area) } }
@@ -306,6 +357,8 @@ final class ProjectModel {
     }
 
     func refresh(_ area: Area) async {
+        if isReadOnly { return }
+        defer { scheduleCacheCapture() }
         switch area {
         case .project: await refreshProject()
         case .docs: await refreshDocs()
@@ -332,15 +385,9 @@ final class ProjectModel {
     }
 
     func startWatching() {
-        if store.isRemote {
-            guard pollTask == nil else { return }
-            pollTask = Task { [weak self] in
-                while !Task.isCancelled {
-                    try? await Task.sleep(nanoseconds: 6_000_000_000)
-                    if Task.isCancelled { break }
-                    self?.reloadAll()
-                }
-            }
+        if let link = link {
+            // SSH: o RemoteLink sonda `project_revision` a cada 6 s e reconecta com intervalo crescente.
+            link.start()
             return
         }
         guard watcher == nil else { return }
@@ -354,8 +401,7 @@ final class ProjectModel {
     func stopWatching() {
         watcher?.stop()
         watcher = nil
-        pollTask?.cancel()
-        pollTask = nil
+        link?.stop()
     }
 
     func reloadDirectoryGroups(_ concept: ItemConcept) {
@@ -363,6 +409,7 @@ final class ProjectModel {
     }
 
     private func refreshDirectoryGroups(_ concept: ItemConcept) async {
+        if isReadOnly { return }
         do {
             let paths = try await store.listItemDirectories(concept.rawValue)
             if directoryGroups[concept] != paths { directoryGroups[concept] = paths }
@@ -533,6 +580,68 @@ final class ProjectModel {
         if workflowsChanged { schedule(.workflows) }
         if runsChanged { schedule(.runs) }
         if checksChanged { schedule(.checks) }
+        if topicsChanged || ideasChanged || projectChanged { releaseOrphans() }
+    }
+
+    /// Ideias (e padrões) promovidos para um tópico que não existe mais voltam a rascunho: tool `release_orphaned` do Core.
+    private func releaseOrphans() {
+        Task {
+            await Task.yield()
+            guard !isReadOnly, pendingWrites == 0 else { return }
+            do {
+                if try await store.releaseOrphaned() { reloadAll() }
+            } catch {
+                logReadFailure("model.release_orphaned_failed", error)
+            }
+        }
+    }
+
+    // MARK: Cache da última leitura (projeto SSH)
+
+    /// Agenda (com atraso) a captura da leitura atual: base do modo offline e do cache em Application Support.
+    private func scheduleCacheCapture() {
+        guard let link = link, !cacheCaptureQueued else { return }
+        cacheCaptureQueued = true
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            guard let self = self else { return }
+            self.cacheCaptureQueued = false
+            guard self.pendingWrites == 0, self.deferredReloads.isEmpty, !self.isReadOnly else { return }
+            let cache = self.currentCache()
+            self.lastReadCache = cache
+            link.noteRead()
+            if let data = try? VDJSON.compactEncoder.encode(cache) { RemoteCache.save(data, for: link.workspace) }
+        }
+    }
+
+    private func currentCache() -> RemoteCache {
+        RemoteCache(
+            savedAt: Date(), project: project, docs: docs,
+            groups: groups.map { RemoteCache.Record(slug: $0.slug, value: $0.group) },
+            topics: topics.map { RemoteCache.Record(slug: $0.slug, value: $0.value) },
+            ideas: ideas.map { RemoteCache.Record(slug: $0.slug, value: $0.value) },
+            agents: agents.map { RemoteCache.Record(slug: $0.slug, value: $0.value) },
+            commands: commands.map { RemoteCache.Record(slug: $0.slug, value: $0.value) },
+            skills: skills.map { RemoteCache.Record(slug: $0.slug, value: $0.value) },
+            workflows: workflows.map { RemoteCache.Record(slug: $0.slug, value: $0.value) },
+            runs: runs.map { RemoteCache.Record(slug: $0.slug, value: $0.value) },
+            checks: checks, docTexts: docTexts)
+    }
+
+    /// Descarta edições otimistas que não chegaram ao servidor e volta à última leitura.
+    private func restoreLastRead() {
+        guard let cache = lastReadCache else { return }
+        let snapshot = cache.snapshot
+        project = snapshot.project
+        docs = snapshot.docs
+        groups = snapshot.groups.map { GroupEntry(slug: $0.slug, group: $0.value) }
+        topics = snapshot.topics.map { Entry(slug: $0.slug, value: $0.value) }
+        ideas = snapshot.ideas.map { Entry(slug: $0.slug, value: $0.value) }
+        agents = snapshot.agents.map { Entry(slug: $0.slug, value: $0.value) }
+        commands = snapshot.commands.map { Entry(slug: $0.slug, value: $0.value) }
+        skills = snapshot.skills.map { Entry(slug: $0.slug, value: $0.value) }
+        workflows = snapshot.workflows.map { Entry(slug: $0.slug, value: $0.value) }
+        apply(runs: cache.runs, checks: cache.checks, docTexts: cache.docTexts)
     }
 
     /// Um doc mudou no disco: só avisa o editor se o texto difere do que o próprio app gravou por último.
@@ -865,6 +974,7 @@ final class ProjectModel {
 
     /// Lê o doc no Core, guarda no cache e devolve o texto.
     func loadDoc(_ slug: String) async -> String {
+        if isReadOnly { return docTexts[slug] ?? "" }
         if let cached = docTexts[slug], docWriteQueued.contains(slug) { return cached }
         do {
             let text = try await store.readDoc(slug)
@@ -1320,7 +1430,7 @@ final class ProjectModel {
             do {
                 await writeChain?.value
                 let before = kitKeys()
-                _ = try await store.call("add_kit", ["items": refs])
+                _ = try await store.call("add_kit", ["items": refs, "author": "human"])
                 await refresh(.agents); await refresh(.commands); await refresh(.skills); await refresh(.workflows)
                 var toggles: [(Bool) -> Void] = []
                 for entry in agents where !before.contains("agent/" + entry.slug) {

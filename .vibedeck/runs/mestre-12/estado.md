@@ -20,8 +20,8 @@ D15 (usuário): stack/padrões em vibedeck.json atualizados para Rust
 D16 (usuário): SSH direto no servidor (MCP via ssh) + reconexão automática com intervalo crescente + estado offline somente leitura (cache da última leitura); sem edição offline nem conflito
 
 ## Trilhas
-- CORE: F01/F02 APROVADOS. F03 piloto (4 regras reais + runner) passa. F04: 10 áreas integradas (project, docs, reviews, rules, ideas, stack, resources, workflows, ai + recursos MCP); 358 testes; contrato MCP ok (só nuvem removida). Verificação independente de paridade em andamento. Pendente: onboarding (MUD-001) no core, unificar gate de revisões com regras, F05.
-- APP: APP-1 compilou na CI. APP-2a casca V2 escrita (não compilada). APP-2b em andamento: app como cliente MCP do Core Rust, remoção de VibeDeckCore/CLI Swift e da nuvem na UI.
+- CORE: todas as áreas + onboarding + consolidação + superfície do app (`mcp --app`, notificações, progresso, cancelamento); 399 testes; contrato MCP ok; paridade aprovada por verificador. Pendências em f04/pendencias.md.
+- APP: cliente MCP do Core Rust (Sources/VibeDeckApp/Core), Core/CLI Swift removidos, nuvem fora da UI, V1 removida. NÃO compilado (sem CI). Em andamento: D16 + bugs 48989eac/8a34ae9e.
 - SITE: SITE-1 APROVADO (typecheck, validate 10 schemas + 464 dados, 102 rotas ok; verificado pelo coordenador)
 
 ## Donos
@@ -39,3 +39,5 @@ D16 (usuário): SSH direto no servidor (MCP via ssh) + reconexão automática co
 - Hoyasumii/vibedeck#11 (draft, CI)
 - 2026-10-22 usuário: remover CI/CD por enquanto; recriar ao final. Cópias em ci-desativado/. APP sem compilação até recriar (sem Swift local).
 - 2026-10-22 17:11 interrupção do usuário parou 7 agentes; retomados nos mesmos worktrees às 17:47, sem perda.
+- Regras: lotes A–D reconciliados com o Rust; faltam as de interface que olhavam ProjectWindow (V1) e refresh de ruleHash das regras D2.
+- Retomada em outra sessão: RETOMAR.md.

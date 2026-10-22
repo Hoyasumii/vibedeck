@@ -395,16 +395,16 @@ enum AgentsGuide {
     Use chaves/agente SSH ou senha; guardar no Chaves do macOS exige opção explícita. Confirme a impressão
     digital do servidor desconhecido. Chave conhecida alterada bloqueia a conexão até verificar a identidade.
 
-    Navegue pelas pastas ou digite um caminho; inicializar exige confirmação. O servidor não precisa ter VibeDeck.
-    Cada edição confirmada é persistida no cache do destino e pode ser recuperada ao reabrir offline. Há
-    reconexão automática com intervalos crescentes e opção manual. Conflitos mostram as versões local e remota
-    e aguardam sua escolha. Fechar a apresentação preserva ambas. Arquivos editados offline e apagados no
-    servidor são recriados quando não há conflito registrado.
+    Navegue pelas pastas ou digite um caminho; inicializar exige confirmação. O servidor precisa ter o `vibedeck` instalado.
+    O Core roda no servidor (`vibedeck mcp --app` por SSH) e as edições são gravadas lá. Sem conexão, o app
+    reconecta sozinho com intervalo crescente (1, 2, 4, 8… até 60 s; Reconectar tenta já) e fica offline
+    somente leitura: mostra a última leitura (guardada neste Mac por projeto), com edição desabilitada e aviso.
+    Não há edição offline nem conflito. A barra de status mostra Local, SSH conectado, Reconectando (próxima
+    tentativa em Ns) ou Offline (somente leitura).
 
     Terminal, regras e IA executam no servidor, na pasta selecionada. Claude Code ou Codex deve estar instalado
     e autenticado no servidor; não há instalação, troca de provedor ou execução local automática. Use o terminal
-    SSH para autenticar. IA e regras aguardam sincronizar pendências e resolver conflitos; o terminal permanece
-    disponível. O painel distingue desconexão, sincronização, pendências, conflitos e sincronização concluída.
+    SSH para autenticar.
 
     """
 }

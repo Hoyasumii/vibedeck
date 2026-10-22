@@ -167,6 +167,7 @@ final class RemoteLink {
         } catch {
             self.error = error.localizedDescription
             attempt += 1
+            forceNow = false
             scheduleNext()
         }
     }
@@ -197,6 +198,18 @@ struct RemoteCache: Codable {
     var runs: [Record<WorkflowRun>]
     var checks: [RuleCheck]
     var docTexts: [String: String]
+
+    var snapshot: CoreSnapshot {
+        CoreSnapshot(
+            project: project, docs: docs,
+            groups: groups.map { CoreEntry(slug: $0.slug, value: $0.value) },
+            topics: topics.map { CoreEntry(slug: $0.slug, value: $0.value) },
+            ideas: ideas.map { CoreEntry(slug: $0.slug, value: $0.value) },
+            agents: agents.map { CoreEntry(slug: $0.slug, value: $0.value) },
+            commands: commands.map { CoreEntry(slug: $0.slug, value: $0.value) },
+            skills: skills.map { CoreEntry(slug: $0.slug, value: $0.value) },
+            workflows: workflows.map { CoreEntry(slug: $0.slug, value: $0.value) })
+    }
 
     static func url(for workspace: RemoteWorkspace) -> URL? {
         guard let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return nil }

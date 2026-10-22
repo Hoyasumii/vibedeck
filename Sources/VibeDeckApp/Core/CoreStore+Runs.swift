@@ -84,7 +84,14 @@ extension CoreStore {
     }
 
     /// Solta ideias e padrões promovidos para tópico inexistente (`release_orphaned`, só no modo --app).
-    func releaseOrphaned() async throws {
-        _ = try await call("release_orphaned")
+    /// Devolve true se algo foi solto (o chamador relê o projeto).
+    func releaseOrphaned() async throws -> Bool {
+        let text = try await call("release_orphaned")
+        guard let object = (try? JSONSerialization.jsonObject(with: Data(text.utf8))) as? [String: Any] else { return false }
+        return ["ideas", "patterns"].contains { key in
+            if let list = object[key] as? [Any] { return !list.isEmpty }
+            if let count = object[key] as? NSNumber { return count.intValue != 0 }
+            return false
+        }
     }
 }

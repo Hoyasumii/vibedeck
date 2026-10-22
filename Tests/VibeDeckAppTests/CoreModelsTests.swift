@@ -43,4 +43,27 @@ import Testing
         #expect(back.destination.host == "exemplo.com" && back.destination.port == 2222 && back.destination.directory == "/srv/app")
         #expect(RemoteWorkspace.existing(at: URL(fileURLWithPath: "/tmp")) == nil)
     }
+
+    @Test func reconnectBackoffGrowsUpToSixtySeconds() {
+        let delays = (0..<9).map { RemoteBackoff.delay(attempt: $0) }
+        #expect(delays == [1, 2, 4, 8, 16, 32, 60, 60, 60])
+    }
+
+    @Test func remoteCacheRoundTrips() throws {
+        let cache = RemoteCache(savedAt: Date(timeIntervalSince1970: 1_700_000_000), project: Project(name: "Remoto"), docs: [],
+                                groups: [], topics: [], ideas: [], agents: [], commands: [], skills: [], workflows: [],
+                                runs: [], checks: [], docTexts: ["a": "# A"])
+        let data = try VDJSON.compactEncoder.encode(cache)
+        let back = try VDJSON.decoder.decode(RemoteCache.self, from: data)
+        #expect(back.project == cache.project && back.docTexts == cache.docTexts)
+        #expect(back.snapshot.project.name == "Remoto")
+    }
+
+    @Test func patternCatalogDecodesTheCoreRows() throws {
+        let json = """
+        [{"id":"tdd","name":"TDD","category":"practices","summary":"Teste primeiro","rules":["Teste antes"],"inProject":false,"aliases":["test first"]}]
+        """
+        let rows = try CoreStore.decode([PatternCatalogEntry].self, from: json, what: "pattern_catalog")
+        #expect(rows.count == 1 && rows[0].id == "tdd" && rows[0].rules == ["Teste antes"] && !rows[0].inProject)
+    }
 }
