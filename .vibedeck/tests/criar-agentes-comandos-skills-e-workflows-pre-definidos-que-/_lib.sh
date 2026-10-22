@@ -1,12 +1,13 @@
 # Helpers do tópico criar-agentes-comandos-skills-e-workflows-pre-definidos-que- (use com `source`).
+# O catálogo e a instalação vivem no Core Rust (crates/vibedeck-core); o app só seleciona e chama o MCP (`add_kit`).
 cd "${VIBEDECK_ROOT:-.}"
-CAT=Sources/VibeDeckCore/KitCatalog.swift
-INST=Sources/VibeDeckCore/KitInstallation.swift
+KITS=crates/vibedeck-core/src/resources/kits.rs
+PERSONA=crates/vibedeck-core/src/resources/persona.rs
+ASSETS=crates/vibedeck-core/assets/kits
+CORET=crates/vibedeck-core/tests/resources_core.rs
 VIEW=Sources/VibeDeckApp/KitCatalogView.swift
 PMODEL=Sources/VibeDeckApp/ProjectModel.swift
-CORET=Tests/VibeDeckCoreTests/KitCatalogTests.swift
-APPT=Tests/VibeDeckAppTests/KitCatalogAppTests.swift
-SCOPE='^Sources/VibeDeckCore/Kit[^/]*\.swift$|^Sources/VibeDeckCore/AIPromptPolicy\.swift$|^Sources/VibeDeckCore/ProjectStore\.swift$|^Sources/VibeDeckApp/KitCatalogView\.swift$|^Sources/VibeDeckApp/ProjectModel\.swift$|^Tests/Vibe[^/]*/KitCatalog[^/]*\.swift$'
+SCOPE='^crates/vibedeck-core/src/resources/(kits|persona)\.rs$|^crates/vibedeck-core/assets/kits/|^crates/vibedeck-core/tests/resources_core\.rs$|^crates/vibedeck/src/(cli|mcp/tools)/resources\.rs$|^Sources/VibeDeckApp/(KitCatalogView|ProjectModel)\.swift$|^Sources/VibeDeckApp/Core/Model/Kit[^/]*\.swift$'
 fail=0
 applies() {
   [ -z "${VIBEDECK_FILES:-}" ] && return 0
@@ -20,5 +21,5 @@ forbid() {
     fail=1
   fi
 }
-for f in "$CAT" "$INST" "$VIEW" "$PMODEL" "$CORET" "$APPT"; do [ -f "$f" ] || { echo "$f: arquivo ausente"; exit 1; }; done
+for f in "$KITS" "$PERSONA" "$VIEW" "$PMODEL" "$ASSETS/manutencao.json" "$ASSETS/novas-ferramentas.json" "$ASSETS/guidance.txt" crates/vibedeck-core/src/ai/policy_instructions.txt; do [ -f "$f" ] || { echo "$f: arquivo ausente"; exit 1; }; done
 finish() { exit "$fail"; }

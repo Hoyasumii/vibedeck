@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
-has $RE 'onEvent must never run concurrently' "falta o teste de reentrada"
-hasF $RE 'if !inside.try()' "o callback do teste deve detectar reentrada"
-before $PS 'state\.lock\(\)$' 'onEvent\(\.finished' "o .finished deve ser entregue com o lock do estado tomado"
-hasF $PS 'onEvent(.started(' "o .started deve ser entregue pelo laço (com o lock do estado)"
+hasF $EXEC 'on_event: &(dyn Fn(RuleScriptEvent) + Sync),' "on_event deve ser Fn + Sync"
+before $EXEC 'let mut guard = lock\(&shared\);' 'on_event\(RuleScriptEvent::Started' "o Started deve ser entregue pelo laço (com o lock do estado)"
+before $EXEC 'let mut g = lock\(&shared\);' 'on_event\(RuleScriptEvent::Finished' "o Finished deve ser entregue com o lock do estado tomado"
 finish

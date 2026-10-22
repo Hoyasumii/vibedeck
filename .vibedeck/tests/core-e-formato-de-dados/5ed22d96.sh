@@ -1,22 +1,38 @@
 #!/usr/bin/env bash
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
-# init(from:) só exige (try c.decode) os campos essenciais; o resto é decodeIfPresent ?? default.
-applies '(^|/)Sources/VibeDeckCore/'
-grep -q 'func lenientHandWrittenTopicAndIdea(' Tests/VibeDeckCoreTests/RulesTests.swift || { echo "Tests/VibeDeckCoreTests/RulesTests.swift: teste de referência lenientHandWrittenTopicAndIdea sumiu"; exit 1; }
+# Structs de leitura (derive Deserialize, ou *Wire quando há `from =`) só exigem os campos essenciais; o resto tem #[serde(default...)].
+applies '(^|/)crates/vibedeck-core/src/model/'
 python3 -I - <<'PY'
 import glob, re, sys
-# Campos essenciais por modelo. Chave nova obrigatória deve virar decodeIfPresent com default.
-ESSENTIAL = {"title", "name", "url", "text",            # modelos principais
-             "ref", "to", "step", "question", "workflow", "number",  # referências de workflow/execução
-             "topic", "ruleId", "verdict", "id", "icon",  # resposta/resultado de regra, catálogos
-             "usedPercentage"}                          # JSON externo de uso do Claude
+# Campos essenciais (sem eles o registro não faz sentido). Campo novo obrigatório deve virar `default`/`nd`.
+ESSENTIAL = {"title", "name", "url", "text",                       # modelos principais
+             "id", "label", "icon", "kind", "status", "provider",   # ids/catálogos, enums de registros que só nascem completos
+             "topic", "rule_id", "verdict", "mode", "rule_hash", "generated_at",   # resposta/teste de regra
+             "step", "to", "output", "completed", "question", "number", "workflow", "cycle"}  # workflows/execuções
 bad = 0
-req = re.compile(r'try\s+\w+\.decode\([^)]*,\s*forKey:\s*\.(\w+)\)')
-for f in sorted(glob.glob("Sources/VibeDeckCore/*.swift")):
-    for n, l in enumerate(open(f).read().split("\n"), 1):
-        m = req.search(l)
-        if m and m.group(1) not in ESSENTIAL:
-            print(f"{f}:{n}: '{m.group(1)}' é obrigatório; use decodeIfPresent ?? default: {l.strip()}"); bad += 1
+for f in sorted(glob.glob("crates/vibedeck-core/src/model/*.rs")):
+    s = open(f).read()
+    s = s[:s.find("#[cfg(test)]")] if "#[cfg(test)]" in s else s
+    for m in re.finditer(r'((?:[ \t]*#\[[^\n]*\]\n)+)[ \t]*(?:pub )?struct (\w+)\s*\{', s):
+        attrs, name = m.groups()
+        if not re.search(r'derive\([^)]*Deserialize', attrs) or "from =" in attrs: continue
+        i, depth = m.end(), 1
+        while depth and i < len(s):
+            depth += {"{": 1, "}": -1}.get(s[i], 0); i += 1
+        body = re.sub(r'#\[(?:serde|derive)\(.*?\)\]', lambda mm: mm.group(0).replace("\n", " "), s[m.end():i - 1], flags=re.S)
+        pend = ""
+        for line in body.split("\n"):
+            t = line.strip()
+            if t.startswith("#["): pend += t; continue
+            if not t or t.startswith("//"): continue
+            fm = re.match(r'(?:pub )?(\w+):\s*(.+?),?$', t)
+            if fm:
+                n, ty = fm.groups()
+                if not ty.startswith("Option<") and "default" not in pend and n not in ESSENTIAL:
+                    line_no = s[:m.start()].count("\n") + 1
+                    print(f"{f}:{line_no}: {name}.{n} é obrigatório; use #[serde(default, deserialize_with = \"nd\")] (decodeIfPresent ?? default)"); bad += 1
+            pend = ""
 sys.exit(1 if bad else 0)
 PY
+cargo_tests vibedeck-core null_counts_as_absent project_children_defaults idea_readiness_dependencies_and_defaults rule_topic_author_and_rule_test rule_check_milliseconds_and_defaults

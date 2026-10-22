@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 @MainActor @Observable
 final class ReorganizeRunner {
@@ -14,39 +13,21 @@ final class ReorganizeRunner {
     @ObservationIgnored private var task: Task<Void, Never>?
     @ObservationIgnored private var generation = UUID()
     var isRunning: Bool { state == .running }
-    func start(store: ProjectStore, provider: AIProvider,
-               available: (AIProvider) -> Bool = { $0.isInstalled },
-               request: ((String, AIProviderSettings) async throws -> Data)? = nil) {
+    /// Analisa o projeto no Core (`reorganize_analyze`): ele roda a IA lendo o projeto e devolve a proposta já validada.
+    func start(store: CoreStore, provider: AIProvider) {
         guard state == .idle else { return }
-        guard RemoteWorkspace.existing(at: store.root) != nil || available(provider) else { state = .failed("Selecione um provedor de IA instalado no painel IA."); return }
         generation = UUID(); let run = generation
         state = .running
+        let settings = AIReadOnlyOperation.settings(provider)
         task = Task {
-            var lease: String?
             do {
-                lease = try await ReorganizeLease.shared.acquire(store.root)
-                let fingerprint = try store.reorganizeFingerprint()
-                let prompt = try ReorganizeDiscover.prompt(store: store)
-                let proposal = try await AIReadOnlyOperation.run(root: store.root, provider: provider,
-                    operation: "Reorganizar", prompt: prompt, schema: ReorganizeDiscover.schema,
-                    request: request, recover: { error in
-                        if let error = error as? ReorganizeError, case .stale = error { return false }
-                        return true
-                    }) { data in
-                        try ReorganizeDiscover.parse(data, store: store, fingerprint: fingerprint)
-                    }
+                let proposal = try await store.reorganizeAnalyze(provider: provider, settings: settings)
                 try Task.checkCancellation()
-                guard run == generation else { if let lease { await ReorganizeLease.shared.release(lease) }; return }
-                guard try store.reorganizeFingerprint() == fingerprint else { throw ReorganizeError.stale }
+                guard run == generation else { return }
                 state = .ready(proposal)
             } catch {
-                if run == generation, !Task.isCancelled {
-                    state = .failed(error is ReorganizeError ? error.localizedDescription :
-                        (error.localizedDescription == VibeDeckError.discoverFailed(AIPromptPolicy.incomplete).localizedDescription
-                            ? ReorganizeError.invalidJSON.localizedDescription : error.localizedDescription))
-                }
+                if run == generation, !Task.isCancelled { state = .failed(error.localizedDescription) }
             }
-            if let lease { await ReorganizeLease.shared.release(lease) }
         }
     }
     func cancel() { generation = UUID(); task?.cancel(); task = nil; state = .idle }
@@ -162,43 +143,26 @@ struct ReorganizeSheet: View {
         proposal.actions.filter { ids.contains($0.id) && ($0.kind != .conflict || !(conflicts[$0.id] ?? "").isEmpty) }.map(\.id)
     }
     private func accept(_ proposal: ReorganizeDiscover.Proposal, ids: Set<String>) {
-        if model.acceptReorganization(proposal, acceptance: .init(selected: eligible(proposal, ids: ids), conflicts: conflicts), undo: undo) {
-            runner.cancel(); dismiss()
-        } else {
-            error = model.errorMessage
-            do {
-                blockers = try model.store.reorganizationBlockers(proposal,
-                    acceptance: .init(selected: eligible(proposal, ids: ids), conflicts: conflicts))
-                if !blockers.isEmpty {
-                    error = "Nada foi aplicado. Há \(blockers.count) ação(ões) que bloqueiam o aceite. Desmarque-as para aceitar as demais."
-                }
-            } catch {
+        let acceptance = ReorganizeDiscover.Acceptance(selected: eligible(proposal, ids: ids), conflicts: conflicts)
+        Task {
+            if await model.acceptReorganization(proposal, acceptance: acceptance, undo: undo) {
+                runner.cancel(); dismiss()
+            } else {
                 blockers = [:]
-                self.error = error.localizedDescription
+                error = model.errorMessage
             }
         }
     }
 }
 
 extension ProjectModel {
+    /// Aplica as ações aceitas (`reorganize_apply`). Desfazer exige `reorganize_restore` no Core (PEDIDO-CORE).
     @discardableResult
-    func acceptReorganization(_ proposal: ReorganizeDiscover.Proposal, acceptance: ReorganizeDiscover.Acceptance, undo: UndoManager?) -> Bool {
+    func acceptReorganization(_ proposal: ReorganizeDiscover.Proposal, acceptance: ReorganizeDiscover.Acceptance, undo: UndoManager?) async -> Bool {
         do {
-            let receipt = try store.applyReorganization(proposal, acceptance: acceptance)
+            let receipt = try await store.reorganizeApply(proposal, acceptance: acceptance)
             reloadAfterReorganization(receipt.pathMoves)
-            if !receipt.before.isEmpty || !receipt.after.isEmpty || !receipt.createdDirectories.isEmpty {
-                undo?.registerUndo(withTarget: self) { model in model.toggleReorganization(receipt, forward: false, undo: undo) }
-                undo?.setActionName("Reorganizar")
-            }
             return true
         } catch { errorMessage = error.localizedDescription; return false }
-    }
-    private func toggleReorganization(_ receipt: ReorganizeReceipt, forward: Bool, undo: UndoManager?) {
-        do {
-            try store.restoreReorganization(receipt, forward: forward)
-            reloadAfterReorganization(forward ? receipt.pathMoves : Dictionary(uniqueKeysWithValues: receipt.pathMoves.filter { receipt.before[$0.value] == nil }.map { ($0.value, $0.key) }))
-            undo?.registerUndo(withTarget: self) { model in model.toggleReorganization(receipt, forward: !forward, undo: undo) }
-            undo?.setActionName("Reorganizar")
-        } catch { errorMessage = error.localizedDescription }
     }
 }

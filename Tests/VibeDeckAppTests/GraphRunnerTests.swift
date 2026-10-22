@@ -1,13 +1,14 @@
 import Foundation
 import Testing
-import VibeDeckCore
 @testable import VibeDeckApp
 
 @Suite(.serialized) @MainActor struct GraphRunnerTests {
     private let emptySemantic: JSONValue = .object(["nodes": .array([]), "links": .array([])])
     private var fixtureGraph: JSONValue { .object(["nodes": .array([.object(["id": .string("a"), "label": .string("A")])]), "links": .array([])]) }
     private func root() throws -> URL {
-        try ProjectStore.initialize(at: FileManager.default.temporaryDirectory.appending(path: "graph-runner-\(UUID())")).root
+        let url = FileManager.default.temporaryDirectory.appending(path: "graph-runner-\(UUID())")
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        return url
     }
     private func writeGraph(_ root: URL) throws {
         try AtomicFile.write(VDJSON.encode(fixtureGraph), to: root.appending(path: "graphify-out/graph.json"))
@@ -27,7 +28,6 @@ import VibeDeckCore
         try AtomicFile.write(Data("old HTML".utf8), to: root.appending(path: "graphify-out/graph.html"))
         let runner = GraphRunner.shared(root: root)
         #expect(runner === GraphRunner.shared(root: root.appending(path: ".")))
-        #expect(ProjectModel(store: ProjectStore(root: root)).graphRunner === runner)
         var analyses = 0
         runner.start(root: root, provider: .codex, available: { _ in true }, extract: { _ in }, analyze: { _, stage, provider in
             analyses += 1

@@ -3,9 +3,9 @@ name: Worker
 on:
   push:
     branches: [main]
-    paths: ["worker/**", "schema/**", ".github/workflows/worker.yml"]
+    paths: ["worker/**", "schema/**", "vibedeck.json", ".vibedeck/**", ".github/workflows/worker.yml"]
   pull_request:
-    paths: ["worker/**", "schema/**", ".github/workflows/worker.yml"]
+    paths: ["worker/**", "schema/**", "vibedeck.json", ".vibedeck/**", ".github/workflows/worker.yml"]
   workflow_dispatch:
 
 defaults:
@@ -25,6 +25,8 @@ jobs:
       - run: npm ci
       - run: npm run sync
       - run: npm run typecheck
+      - run: npm run validate
+      - run: npm run test
 
   deploy:
     needs: check

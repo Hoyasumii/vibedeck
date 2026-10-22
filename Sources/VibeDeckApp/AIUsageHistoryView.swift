@@ -1,8 +1,9 @@
 import SwiftUI
-import VibeDeckCore
 
 struct AIUsageHistoryView: View {
     let root: URL
+    /// Dentro de Projeto › Consumo de IA (V2): sem botão Fechar nem tamanho mínimo de janela.
+    var embedded = false
     @State private var records: [AIUsageRecord] = []
     @State private var errorMessage: String?
     @Environment(\.dismiss) private var dismiss
@@ -16,7 +17,9 @@ struct AIUsageHistoryView: View {
                     do { try AIUsageStore(root: root).clear(); reload() }
                     catch { errorMessage = error.localizedDescription }
                 }.loggedControl(control: "aiusage_history_view.button_1", label: "Limpar métricas").disabled(records.isEmpty)
-                LoggedButton("Fechar") { dismiss() }.loggedControl(control: "aiusage_history_view.button_2", label: "Fechar")
+                if !embedded {
+                    LoggedButton("Fechar") { dismiss() }.loggedControl(control: "aiusage_history_view.button_2", label: "Fechar")
+                }
             }
             Text("Tokens informados pelo provedor. Chamadas externas podem não estar incluídas. Caracteres medem a entrada da tarefa, sem instruções de sistema e leituras posteriores.")
                 .font(.caption).foregroundStyle(.secondary)
@@ -35,7 +38,7 @@ struct AIUsageHistoryView: View {
                 }
             }
         }
-        .padding().frame(minWidth: 620, minHeight: 360)
+        .padding().frame(minWidth: embedded ? nil : 620, minHeight: embedded ? nil : 360)
         .task {
             while !Task.isCancelled {
                 reload()

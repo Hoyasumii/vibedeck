@@ -56,32 +56,32 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "/, /v1 e /v1/ devolvem {name, schemas:{...}} com todos os schemas de schema/v1. Schema novo entra nesse índice, em SchemaURL (Models.swift) e na linha \"Schemas:\" do guia de referência (AgentsGuide.swift → .vibedeck/guide.md; o AGENTS.md compacto não a repete, por economia de tokens).\nVerificar: índice do worker, SchemaURL, a linha \"Schemas:\" do guide.md e os arquivos de schema/v1 listam o mesmo conjunto.",
+      "details" : "/, /v1 e /v1/ devolvem {name, schemas:{...}} com todos os schemas de schema/v1. Schema novo entra nesse índice, nos nomes que o Core Rust passa a `schema_url(...)` (crates/vibedeck-core/src/model), no `SchemaURL` do app e na linha \"Schemas:\" do guia de referência (crates/vibedeck-core/src/ai/guide_reference.md → .vibedeck/guide.md; o AGENTS.md compacto não a repete, por economia de tokens).\nVerificar: índice do worker, `schema_url`, `SchemaURL` do app, a linha \"Schemas:\" do guide.md e os arquivos de schema/v1 listam o mesmo conjunto.",
       "id" : "CD3057F2-1C45-4F09-A9C7-7EC146998DFA",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/worker-e-schemas/cd3057f2.sh",
-        "generatedAt" : "2026-10-09T15:19:21Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "reason" : "Mesmo conjunto de schemas no índice do worker, em SchemaURL, na linha Schemas: do guide.md/AgentsGuide.swift e em schema/v1; chaves do índice iguais aos nomes do SchemaURL.",
-        "ruleHash" : "67c30d83f2bbaec1"
+        "ruleHash" : "dbca5c75983653ff"
       },
       "text" : "O índice lista todos os schemas"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "Os arquivos gravados pelo app têm $schema = SchemaURL.*; o $id de cada schema/v1/*.schema.json deve ser a mesma URL, para os editores resolverem.\nVerificar: `grep \"\\$id\" schema/v1/*.json` usa a base de Models.swift.",
+      "details" : "Os arquivos gravados pelo Core têm $schema = `schema_url(...)` (base `SCHEMA_BASE`, em crates/vibedeck-core/src/model/project.rs); o $id de cada schema/v1/*.schema.json deve ser a mesma URL, para os editores resolverem.\nVerificar: `grep \"\\$id\" schema/v1/*.json` usa a base de SCHEMA_BASE.",
       "id" : "0A89A5BC-A21B-465C-AE44-9099C3D77A9B",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/worker-e-schemas/0a89a5bc.sh",
-        "generatedAt" : "2026-10-09T01:24:02Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "reason" : "O $id de cada schema/*/*.schema.json é igual à URL derivada de SchemaURL.base em Models.swift.",
-        "ruleHash" : "1940a99ecf47dd8b"
+        "ruleHash" : "57d8cc083ff59fb4"
       },
-      "text" : "O $id dos schemas bate com SchemaURL.base"
+      "text" : "O $id dos schemas bate com SCHEMA_BASE"
     },
     {
       "author" : "ai",

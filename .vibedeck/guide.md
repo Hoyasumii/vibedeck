@@ -31,17 +31,26 @@ na ordem, com `note` dizendo como o projeto usa cada uma. Antes de implementar a
 `remove_stack` / `vibedeck stack remove <ids…>`, `update_stack` / `vibedeck stack note <id> "..."`; ache ids com
 `search_stack_icons` / `vibedeck stack search <texto>`. O badge da stack no README.md (bloco
 `<!-- vibedeck:stack:start -->`) é regravado a cada mudança; não o edite à mão.
+Sem MCP, use o CLI; sem ambos, leia `stack` e suas notas diretamente em `vibedeck.json`.
+O badge mostra tecnologias, mas não inclui as notas de uso.
 
 ## Padrões de projeto — siga ao implementar
 
 `patterns` no `vibedeck.json` lista os padrões de código que o projeto adotou (TDD, arquitetura hexagonal, DDD,
 CQRS…), com `note` dizendo como o projeto aplica cada um. Antes de implementar, leia os padrões (`list_patterns` /
 `vibedeck patterns --json`) e escreva o código seguindo-os, para manter o projeto consistente.
-Cada padrão tem um tópico de regras em `.vibedeck/rules/` (`sourcePattern` aponta para ele; `paths` dá o escopo),
+Cada padrão aponta por `topic` para um tópico em `.vibedeck/rules/` (`paths` dá o escopo),
 então as regras dele chegam pelo `rules_for` e são cobradas no check como qualquer outra.
 Para mudar: `pattern_catalog` / `vibedeck patterns catalog` mostra o catálogo; `add_pattern` / `vibedeck patterns add <ids…> --ai`
 (ou `--custom "<nome>" --rule "..."`), `remove_pattern` / `vibedeck patterns remove <id>` (apaga o tópico),
 `update_pattern` / `vibedeck patterns note|paths <id> ...`. Apagar o tópico de um padrão retira o padrão.
+`list_patterns` e `vibedeck://patterns` incluem notas, regras e escopos. Já `vibedeck patterns --json`
+retorna os registros do manifesto: consulte também `rules_for` / `vibedeck rules for <arquivos> --json`
+antes de implementar. Sem MCP/CLI, leia `patterns` em `vibedeck.json`, abra os tópicos referidos por
+`topic` em `.vibedeck/rules/` e os demais tópicos aplicáveis: `paths` vazio é global; com globs,
+só vale quando algum arquivo da tarefa casa. `sourcePattern` no tópico identifica o padrão.
+Releia notas, regras e escopos após mudanças; o contexto não é uma cópia fixa no prompt.
+Ausência de `patterns` (ou lista vazia) significa nenhum padrão cadastrado, sem dispensar as outras regras.
 
 ## Estrutura
 
@@ -283,16 +292,6 @@ Docs (frontmatter `tags: [a, b]`), grupos de revisão, tópicos de regras, ideia
 tecnologias da stack e padrões aceitam `tags`.
 Use `set_tags` (MCP) ou `vibedeck tag <doc|review|rules|idea|agent|command|skill|workflow|stack|pattern> <ref> <tags...>`.
 
-## Sessões na nuvem
-
-Codex: use `provider: "codex"` e `environment` no MCP, ou `--provider codex --env <id>` na CLI.
-O ambiente também pode ficar em `codexCloudEnvironment` no projeto.
-
-`start_cloud_session` / `vibedeck cloud start "<tarefa>"` cria uma sessão do Claude Code na nuvem sobre o
-GitHub. Ela só é criada se a branch padrão local for **igual** à `origin` (`cloud_check` / `vibedeck cloud check`);
-se não for, peça ao usuário para dar push/pull. Alterações não commitadas exigem `allow_dirty`. Só crie
-sessões na nuvem quando o usuário pedir.
-
 ## Logs
 
 Ações `ui.*` (botões, menus, atalhos, seleções e confirmação de campos) e reações `store.*`, `ai.*`,
@@ -345,7 +344,6 @@ vibedeck skills list | vibedeck agents next <agente> <skill> --kind skill | vibe
 vibedeck workflows new "Revisão" && vibedeck workflows step revisao <agente> && vibedeck workflows route revisao <de> <para> --when "..."
 vibedeck workflows show revisao | vibedeck workflows flow revisao --input "..."
 vibedeck runs start revisao --input "PR 12" | vibedeck runs next revisao/pr-12 | vibedeck runs show revisao/pr-12
-vibedeck cloud check --json                  # branch local == GitHub? (pré-requisito da nuvem)
 ```
 
 MCP: `vibedeck mcp install` (registra `vibedeck mcp` no Claude Code)

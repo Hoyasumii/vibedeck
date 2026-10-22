@@ -1,10 +1,15 @@
 # Helpers compartilhados pelos scripts do tópico botao-de-descubra-em-onde-e-regras-nas-revisoes (use com `source`).
 cd "${VIBEDECK_ROOT:-.}"
-CORE=Sources/VibeDeckCore/ReviewDiscover.swift
+# O Descubra de revisões vive no código de domínio do app (ReviewDiscoverLogic.swift, usado pela UI) e tem um
+# gêmeo no Core Rust (crates/vibedeck-core/src/reviews/discover.rs, com testes); os scripts conferem os dois.
+CORE=Sources/VibeDeckApp/Core/Discover/ReviewDiscoverLogic.swift
 APP=Sources/VibeDeckApp/ReviewDiscover.swift
 VIEW=Sources/VibeDeckApp/ReviewGroupView.swift
-TESTS=Tests/VibeDeckCoreTests/ReviewDiscoverTests.swift
-SCOPE='^Sources/VibeDeckCore/ReviewDiscover\.swift$|^Sources/VibeDeckApp/ReviewDiscover[^/]*\.swift$|^Sources/VibeDeckApp/ReviewGroupView\.swift$|^Tests/VibeDeckCoreTests/ReviewDiscoverTests\.swift$'
+RS=crates/vibedeck-core/src/reviews/discover.rs
+OPERATION=Sources/VibeDeckApp/AIReadOnlyOperation.swift
+# Processo do claude (restrito, com timeout e cancelamento): AIReadOnlyProcess.run, chamado por AIReadOnlyOperation.
+PROC=Sources/VibeDeckApp/Core/AI/AIReadOnlyProcess.swift
+SCOPE='^Sources/VibeDeckApp/Core/Discover/ReviewDiscoverLogic\.swift$|^Sources/VibeDeckApp/ReviewDiscover[^/]*\.swift$|^Sources/VibeDeckApp/ReviewGroupView\.swift$|^Sources/VibeDeckApp/AIReadOnlyOperation\.swift$|^Sources/VibeDeckApp/Core/AI/AIReadOnlyProcess\.swift$|^crates/vibedeck-core/src/reviews/discover\.rs$'
 fail=0
 
 # applies [regex extra]: sai com 77 se VIBEDECK_FILES não está vazio e nenhum arquivo casa com o escopo (+ extra).
@@ -35,20 +40,22 @@ body() {
     f { print; match($0, /^ */); if (RLENGTH==ind && $0 ~ /^ *}/) exit }' "$1"
 }
 
-# run_tests <Suite/test>...: confere que os @Test existem e roda só eles (Swift Testing).
-run_tests() {
-  local args=() spec name
-  for spec in "$@"; do
-    name="${spec##*/}"
-    grep -qE "func ${name}\(" "$TESTS" || { echo "$TESTS: teste '${name}' não existe mais (${spec})"; exit 1; }
-    args+=(--filter "${spec}")
-  done
-  swift build --build-tests >/dev/null 2>&1 || { swift build --build-tests 2>&1 | tail -20; exit 1; }
-  local out
-  if ! out=$(swift test --skip-build "${args[@]}" 2>&1); then
-    printf '%s\n' "$out" | tail -40; exit 1
+# rtest <nome>...: confere que os testes Rust do Descubra existem em discover.rs (rodam em `cargo test -p vibedeck-core reviews::discover`).
+rtest() {
+  local n
+  for n in "$@"; do grep -qE "fn ${n}\(" "$RS" || { echo "$RS: teste '${n}' não existe"; fail=1; }; done
+}
+
+# Código do Core Rust sem o módulo de testes (os testes citam de propósito o que é proibido no código).
+RSC=$(mktemp); trap 'rm -f "$RSC"' EXIT
+[ -f "$RS" ] && awk '/^#\[cfg\(test\)\]/{exit} {print}' "$RS" > "$RSC"
+# forbid_rs <regex ERE> <motivo>: como forbid, mas só no código (não nos testes) de discover.rs.
+forbid_rs() {
+  local hits
+  if hits=$(grep -nE -- "$1" "$RSC"); then
+    printf '%s\n' "$hits" | while IFS= read -r h; do echo "$RS:${h%%:*}: $2"; done
+    fail=1
   fi
-  printf '%s\n' "$out" | grep "Test run with [1-9][0-9]* test" >/dev/null || { echo "nenhum teste rodou para: $*"; printf '%s\n' "$out" | tail -10; exit 1; }
 }
 
 finish() { [ $fail -eq 0 ] || exit 1; }

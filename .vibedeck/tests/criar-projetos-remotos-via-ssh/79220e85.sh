@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 # 79220E85: ao reconectar, pendências sem conflito são enviadas.
-set -euo pipefail
-source "$(dirname "$0")/_lib.sh"
-applies
-needF $WS '} else if server == ancestor || (server == nil && local != nil) {' "pendências sem conflito devem ser enviadas"
-needF $WS 'try transport.replace(path, expected: server, with: local)' "o envio deve usar a versão local"
-in_body $SHEET 'func synchronize\(force' 'connect\(password: secret\)' "a reconexão deve preceder o envio"
-run_tests durableEditsDeletionAndRestart workflowStateSynchronizesBeforeProviderAndStillBlocksConflicts
-finish
+# APOSENTADA por D16 (nada a verificar: sem espelho/sincronização/conflito): o projeto SSH não tem mais espelho local: o Core Rust roda no servidor (ssh host vibedeck mcp -C <pasta>) e o app só fala MCP com ele (RemoteWorkspace.swift, CoreStore.sshLocation), sem cache, edição offline, pendências nem conflitos.
+# Decisão D16 (estado.md): SSH direto + reconexão com intervalo crescente + offline somente leitura; sem edição offline nem conflito.
+# Sai com 77 (n/a) em vez de passar; o motivo também está em `details` da regra.
+exit 77

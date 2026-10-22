@@ -1,11 +1,13 @@
 import Foundation
 import Observation
-import VibeDeckCore
 
 /// Conversations for both providers. Wire protocols live in the Core transports; workflow transitions
 /// are driven by VibeDeck and saved on disk. Legacy chat storage remains compatible.
 @Observable @MainActor
 final class AISession {
+    // Cache das sugestões de comandos registrados (usado pela extensão de sugestões).
+    @ObservationIgnored private var registeredLoadedAt = Date.distantPast
+    @ObservationIgnored private var registeredCache: [ClaudeSuggestion] = []
     struct IdeaRequest: Identifiable {
         let id = UUID()
         let actionID = VDLog.actionID
@@ -19,28 +21,37 @@ final class AISession {
     /// Same Core gate as the workflow path: an idea with pending dependencies never opens the mode choice.
     func requestIdeaImplementation(_ idea: Idea) {
         guard !isWorking, IdeaImplementation.isEligible(idea) else { return }
-        do { _ = try ProjectStore(root: root).implementableIdea(idea.id.uuidString) } catch { return fail(error.localizedDescription) }
-        ideaRequest = IdeaRequest(ideaID: idea.id)
+        Task {
+            do {
+                _ = try await core.implementableIdea(idea.id.uuidString)
+                ideaRequest = IdeaRequest(ideaID: idea.id)
+            } catch { fail(error.localizedDescription) }
+        }
     }
 
     /// Resolve intent before sending anything to a writing-capable conversation.
     private func inspectIdeaRequest(_ text: String, mentions: [UUID], attachments: [URL]) {
-        let project = ProjectStore(root: root)
+        let project = core
         isWorking = true
         ideaIntentTask = Task {
             defer { ideaIntentTask = nil }
             do {
-                let ideas = try project.listIdeas()
-                let workflows = try project.listWorkflows()
+                let ideas = try await project.listIdeas()
+                let workflows = try await project.listWorkflows()
+                if ideas.isEmpty {
+                    isWorking = false
+                    send(text, mentions: mentions, attachments: attachments, inspectIdeas: false)
+                    return
+                }
                 let context = entries.suffix(8).compactMap { entry -> String? in
                     switch entry.kind { case .user(let t), .assistant(let t): return t; default: return nil }
                 }.joined(separator: "\n")
                 let intent = try await AIReadOnlyOperation.run(root: root, provider: provider,
                     operation: "Identificar implementação de ideia",
-                    prompt: IdeaImplementation.intentPrompt(text, context: context, ideas: ideas.map { ($0.slug, $0.idea) }, workflows: workflows),
-                    schema: IdeaImplementation.intentSchema) { data in
+                    prompt: IdeaImplementation.intentPrompt(text, context: context, ideas: ideas.map { (slug: $0.slug, idea: $0.value) }, workflows: workflows.map { (slug: $0.slug, workflow: $0.value) }),
+                    schema: IdeaImplementation.intentSchema, store: project) { data in
                         let intent = try VDJSON.decoder.decode(IdeaImplementation.ChatIntent.self, from: data)
-                        guard intent.mode == .none || ideas.contains(where: { $0.idea.id.uuidString == intent.idea }) else {
+                        guard intent.mode == .none || ideas.contains(where: { $0.value.id.uuidString == intent.idea }) else {
                             throw VibeDeckError.discoverFailed("Referência de ideia inválida.")
                         }
                         guard intent.workflow == nil || workflows.contains(where: { $0.slug == intent.workflow }) else {
@@ -52,7 +63,7 @@ final class AISession {
                 isWorking = false
                 if intent.mode != .none, let ref = intent.idea {
                     // Blocked (not eligible or pending dependencies): `fail` below, nothing reaches the provider.
-                    let idea = try project.implementableIdea(ref).idea
+                    let idea = try await project.implementableIdea(ref).idea
                     ideaRequest = IdeaRequest(ideaID: idea.id, mode: intent.mode, workflow: intent.workflow)
                 } else {
                     send(text, mentions: mentions, attachments: attachments, inspectIdeas: false)
@@ -135,7 +146,7 @@ final class AISession {
     }
 
     private var workflowRef: String?
-    private var workflowProject: ProjectStore?
+    private var workflowProject: CoreStore?
     /// Agents and subagents of the open chat, from provider events only.
     private(set) var processes = AgentProcessTracker()
     /// Run panel next to the chat: shown when a workflow starts or resumes, hidden or expanded by the user.
@@ -196,8 +207,12 @@ final class AISession {
     @ObservationIgnored private var needsRestart = false
     private let currentKey: String
 
-    init(root: URL, projectId: UUID) {
+    /// O Core do projeto (mesmo cliente MCP do `ProjectModel`).
+    let core: CoreStore
+
+    init(root: URL, projectId: UUID, core: CoreStore) {
         self.root = root
+        self.core = core
         store = ClaudeChatStore.forProject(projectId)
         currentKey = "claudeChat.\(projectId.uuidString)"
         chosenModel = ClaudeModel(rawValue: UserDefaults.standard.string(forKey: "claudeModel") ?? "") ?? .automatic
@@ -345,18 +360,13 @@ final class AISession {
     func send(_ text: String, mentions: [UUID] = [], attachments: [URL] = [], inspectIdeas: Bool = true) {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !isWorking, ideaRequest == nil else { return }
-        do { try RemoteWorkspace.existing(at: root)?.requireSynchronized() }
-        catch { fail(error.localizedDescription); return }
         if provider == .codex, handleLocalCommand(text) { return }
         let paths = attachments.map(\.path)
         guard !text.isEmpty || !paths.isEmpty else { return }
         if inspectIdeas, !text.isEmpty {
-            do {
-                if try !ProjectStore(root: root).listIdeas().isEmpty {
-                    inspectIdeaRequest(text, mentions: mentions, attachments: attachments)
-                    return
-                }
-            } catch { fail(error.localizedDescription); return }
+            // Sem ideias no projeto a inspeção devolve o envio normal (ver `inspectIdeaRequest`).
+            inspectIdeaRequest(text, mentions: mentions, attachments: attachments)
+            return
         }
         if needsRestart, !isWorking { stop() }
         if current == nil { current = ClaudeChat(title: ClaudeChat.untitled, provider: provider) }
@@ -368,9 +378,16 @@ final class AISession {
         entries.append(Entry(kind: .user(text), mentions: mentioned.map(\.id), attachments: paths))
         isWorking = true
         persist()
-        let expanded: String
-        do { expanded = try ProjectStore(root: root).expandAICommand(text) }
-        catch { fail(error.localizedDescription); return }
+        starting = Task {
+            let expanded: String
+            do { expanded = try await core.expandAICommand(text) }
+            catch { fail(error.localizedDescription); return }
+            await launchExpanded(text: text, expanded: expanded, paths: paths, mentioned: mentioned, chatId: chatId)
+        }
+    }
+
+    /// Segunda metade de `send`: com o texto já expandido (comando/agente/skill), monta o prompt e chama o provedor.
+    private func launchExpanded(text: String, expanded: String, paths: [String], mentioned: [ClaudeChat], chatId: UUID) async {
         var wire = ClaudeChat.wireText(expanded, mentioning: mentioned, attachments: paths, provider: provider, contextStore: AIContextStore(root: root), includeFullChats: includeFullMentions)
         if !shellContext.isEmpty {
             wire = shellContext.joined(separator: "\n") + "\n\n" + wire
@@ -387,7 +404,7 @@ final class AISession {
             codexTask = Task {
                 do {
                     try await connectCodex()
-                    let options = try ProjectStore(root: root).commandProviderSettings(wireCommand, provider: .codex, availableModels: codexModels.map(\.id), fallback: effectiveCodexModel)
+                    let options = try await core.commandProviderSettings(wireCommand, provider: .codex, availableModels: codexModels.map(\.id), fallback: effectiveCodexModel)
                     if let warning = options?.warning { entries.append(Entry(kind: .notice(warning))) }
                     try await prepareCodexThread(settings: options?.settings)
                     guard current?.id == chatId else { return }
@@ -397,7 +414,7 @@ final class AISession {
         } else {
             starting = Task {
                 do {
-                    let options = try ProjectStore(root: root).commandProviderSettings(text, provider: .claude, availableModels: [], fallback: nil)
+                    let options = try await core.commandProviderSettings(text, provider: .claude, availableModels: [], fallback: nil)
                     try await prepareClaude(settings: options?.settings)
                     guard current?.id == chatId else { return }
                     turnOutput = ""; acceptingEvents = true
@@ -491,11 +508,14 @@ final class AISession {
         ideaIntentTask?.cancel(); ideaIntentTask = nil
         current?.pendingPlan = nil
         if let ref = workflowRef, let store = workflowProject {
-            if !turnOutput.isEmpty, let run = try? store.loadRun(ref), let step = run.current, run.checkpoint?.completed != true,
-               let output = try? store.saveRunOutput(ref, output: turnOutput) {
-                try? store.checkpointRun(ref, checkpoint: .init(step: step, output: output, completed: false))
+            let partial = turnOutput
+            Task {
+                if !partial.isEmpty, let run = try? await store.loadRun(ref), let step = run.current, run.checkpoint?.completed != true,
+                   let output = try? await store.saveRunOutput(ref, output: partial) {
+                    try? await store.checkpointRun(ref, checkpoint: .init(step: step, output: output, completed: false))
+                }
+                try? await store.stopRun(ref, reason: "Interrompido pelo usuário")
             }
-            _ = try? store.stopRun(ref, reason: "Interrompido pelo usuário")
         }
         workflowTask?.cancel(); workflowTask = nil
         codexTask?.cancel(); codexTask = nil
@@ -932,14 +952,17 @@ extension AISession {
     private func answerWorkflow(_ request: ClaudePermissionRequest, _ answers: [String: [String]]) {
         if request.id == "workflow-questions" {
             guard let ref = workflowRef, let store = workflowProject else { return }
-            do {
-                for (text, number) in workflowQuestions {
-                    guard let selected = answers[text], !selected.isEmpty else { continue }
-                    _ = try store.answerRun(ref, number: number, answer: selected.joined(separator: ", "))
-                }
-                pending.removeAll { $0.id == request.id }
-                workflowTask = Task { await continueWorkflow(ref, store: store) }
-            } catch { fail(error.localizedDescription) }
+            let questions = workflowQuestions
+            Task {
+                do {
+                    for (text, number) in questions {
+                        guard let selected = answers[text], !selected.isEmpty else { continue }
+                        _ = try await store.answerRun(ref, number: number, answer: selected.joined(separator: ", "))
+                    }
+                    pending.removeAll { $0.id == request.id }
+                    workflowTask = Task { await continueWorkflow(ref, store: store) }
+                } catch { fail(error.localizedDescription) }
+            }
             return
         }
     }
@@ -951,15 +974,26 @@ extension AISession {
         return suggestions
     }
 
+    /// Comandos, skills e agentes do projeto como sugestões de `/`: cache relido em segundo plano a cada digitação (no máximo a cada 5 s).
     private func registeredSuggestions() -> [ClaudeSuggestion] {
-        var suggestions: [ClaudeSuggestion] = []
-        do {
-            let store = ProjectStore(root: root)
-            suggestions += ((try? store.listCommands()) ?? []).map { ClaudeSuggestion(kind: .command, name: "/" + $0.slug, detail: $0.command.summary) }
-            suggestions += ((try? store.listSkills()) ?? []).map { ClaudeSuggestion(kind: .command, name: "/" + $0.slug, detail: $0.skill.summary) }
-            suggestions += ((try? store.listAgents()) ?? []).map { ClaudeSuggestion(kind: .command, name: "/agent:" + $0.slug, detail: $0.agent.summary) }
+        if Date().timeIntervalSince(registeredLoadedAt) > 5 {
+            registeredLoadedAt = Date()
+            let core = self.core
+            Task {
+                var suggestions: [ClaudeSuggestion] = []
+                if let commands = try? await core.listCommands() {
+                    suggestions += commands.map { ClaudeSuggestion(kind: .command, name: "/" + $0.slug, detail: $0.value.summary) }
+                }
+                if let skills = try? await core.listSkills() {
+                    suggestions += skills.map { ClaudeSuggestion(kind: .command, name: "/" + $0.slug, detail: $0.value.summary) }
+                }
+                if let agents = try? await core.listAgents() {
+                    suggestions += agents.map { ClaudeSuggestion(kind: .command, name: "/agent:" + $0.slug, detail: $0.value.summary) }
+                }
+                registeredCache = suggestions
+            }
         }
-        return suggestions
+        return registeredCache
     }
 
     private func handleLocalCommand(_ text: String) -> Bool {
@@ -979,19 +1013,22 @@ extension AISession {
     }
 
     // The VibeDeck engine owns transitions for both providers; each step starts a clean session.
-    func executeWorkflow(_ workflow: String, input: String?, from: String? = nil, store: ProjectStore) {
-        do {
-            try RemoteWorkspace.existing(at: root)?.requireSynchronized()
-            let (ref, run, _) = try store.startRun(workflow, input: input, from: from, provider: provider)
-            resumeWorkflow(ref, run: run, store: store)
-        } catch { fail(error.localizedDescription) }
+    func executeWorkflow(_ workflow: String, input: String?, from: String? = nil, store: CoreStore) {
+        let provider = self.provider
+        Task {
+            do {
+                let started = try await store.startRun(workflow, input: input, from: from, provider: provider)
+                let run = try await store.loadRun(started.ref)
+                resumeWorkflow(started.ref, run: run, store: store)
+            } catch { fail(error.localizedDescription) }
+        }
     }
-    func resumeWorkflow(_ ref: String, run: WorkflowRun, store: ProjectStore) {
+    func resumeWorkflow(_ ref: String, run: WorkflowRun, store: CoreStore) {
         guard !isWorking else { return }
         if provider != run.provider { selectProvider(run.provider) }
         guard RemoteExecution.available(run.provider, root: root) else { fail("\(run.provider.title) não está instalado; esta execução pertence a ele."); return }
         newChat()
-        current?.title = "Workflow · \((try? store.loadWorkflow(run.workflow).title) ?? run.workflow)"
+        current?.title = "Workflow · \(run.workflow)"
         current?.workflowRun = ref
         runPanelVisible = true; runPanelExpanded = false
         requestedPage = .chat
@@ -1026,14 +1063,14 @@ extension AISession {
         }
     }
 
-    private func continueWorkflow(_ ref: String, store: ProjectStore) async {
+    private func continueWorkflow(_ ref: String, store: CoreStore) async {
         do {
             isWorking = true
             try await RemoteExecution.synchronize(root: root)
             if provider == .codex { try await connectCodex() }
             let action = try await AIWorkflowRunner.run(ref: ref, store: store, cli: ClaudeUsageView.cliPath ?? "vibedeck", settings: { ref in
                 let session = AIReadOnlyOperation.settings(self.provider)
-                let resource = try store.runProviderSettings(ref, availableModels: self.provider == .codex ? self.codexModels.map(\.id) : [], fallback: session.model).settings
+                let resource = try await store.runProviderSettings(ref, availableModels: self.provider == .codex ? self.codexModels.map(\.id) : [], fallback: session.model).settings
                 return try AISettingsResolver.resolve(provider: self.provider, resource: resource, session: session)
             }, execute: { prompt, settings, title in
                 try await self.workflowTurn(prompt, settings: settings, operation: title)
@@ -1042,7 +1079,7 @@ extension AISession {
                 let conditions = String(decoding: try VDJSON.encode(candidates), as: UTF8.self)
                 let prompt = "Avalie as condições na ordem sobre a saída da etapa. Retorne {\"to\":\"id\"} para a primeira condição verdadeira, ou {\"to\":null}.\nCondições: \(conditions)\nSaída: \(output). Leia a fonte para avaliar; ausência de evidência não torna uma condição verdadeira."
                 let schema = #"{"type":"object","properties":{"to":{"type":["string","null"]}},"required":["to"],"additionalProperties":false}"#
-                return try await AIReadOnlyOperation.run(root: self.root, provider: self.provider, operation: "Workflow · Transição", prompt: prompt, schema: schema) { data in
+                return try await AIReadOnlyOperation.run(root: self.root, provider: self.provider, operation: "Workflow · Transição", prompt: prompt, schema: schema, store: store) { data in
                     let value = try JSONDecoder().decode(JSONValue.self, from: data)
                     guard let target = value["to"], target == .null || target.string != nil else { throw AIIntegrationError.invalidTransition }
                     if let id = target.string, !candidates.contains(where: { $0.to == id }) { throw AIIntegrationError.invalidTransition }
@@ -1063,7 +1100,7 @@ extension AISession {
                 pending = [.init(requestId: "workflow-questions", toolName: "AskUserQuestion", input: ["questions": .array(questions)])]
                 isWorking = true
             } else {
-                let run = try store.loadRun(ref)
+                let run = try await store.loadRun(ref)
                 let rows = run.history.enumerated().map { "\($0.offset + 1) | \($0.element.step) | \($0.element.verdict ?? "—")" }.joined(separator: "\n")
                 entries.append(Entry(kind: .notice("Workflow \(run.status.rawValue): \(action.reason)\n\(rows)")))
                 isWorking = false; workflowRef = nil; workflowProject = nil

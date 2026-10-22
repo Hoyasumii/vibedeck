@@ -1,21 +1,20 @@
 #!/usr/bin/env bash
-# Pergunta de modo restrita ao app: CLI e MCP sem a nova escolha
 set -euo pipefail
 . "$(dirname "$0")/_lib.sh"
 applies "$SCOPE"
-for f in "$CLI" "$MCP"; do
-  none "$f" 'ideaRequest|IdeaRequest|ChatIntent|intentPrompt|intentSchema|requestIdeaImplementation|IdeaImplementationSheet|implementIdeaRun|isEligible' "CLI/MCP não devem usar o fluxo de escolha de modo do app"
+# Pergunta de modo restrita ao app: CLI e MCP sem a nova escolha
+for d in "$CLI_DIR" "$MCP_DIR"; do
+  for f in $(find "$d" -name '*.rs'); do
+    none "$f" 'ideaRequest|IdeaRequest|ChatIntent|intent_prompt|intentPrompt|intent_schema|requestIdeaImplementation|IdeaImplementationSheet|implement_idea_run|choose_mode|implementation_mode' "CLI/MCP não devem usar o fluxo de escolha de modo do app"
+  done
 done
-hasF "$CLI" 'try store.startRun(workflow, input: input, from: from, provider: provider)' "runs start do CLI deve continuar chamando startRun diretamente"
-hasF "$MCP" 'try store.startRun(req("workflow"), input: str("input")' "MCP deve continuar chamando startRun diretamente"
-# startRun do Core não depende da elegibilidade/modo da ideia
-none "$RUNS" 'func startRun[^{]*\{[^}]*isEligible' "startRun não deve exigir elegibilidade"
-sr=$(block Sources/VibeDeckCore/ProjectStore.swift 'func startRun(')
-[ -z "$sr" ] && sr=$(block "$RUNS" 'func startRun(')
-[ -n "$sr" ] || { echo "startRun não encontrado no Core"; bad=1; }
-if grep -nE 'IdeaImplementation|ideaRequest|ChatIntent' <<<"$sr"; then echo "startRun do Core passou a depender do modo de implementação"; bad=1; fi
-# O modo é app-only: os tipos de sessão/folha ficam no target do app
-for f in Sources/VibeDeckCore/*.swift; do
-  none "$f" 'IdeaImplementationSheet|ideaRequest' "folha/pedido de modo não pode estar no Core"
-done
+# start_run do Core não depende da elegibilidade/modo da ideia.
+sr=$(awk '/^pub fn start_run\(/{f=1} f{print} f&&/^}/{exit}' "$WFOPS")
+[ -n "$sr" ] || { echo "$WFOPS: start_run não encontrado no Core"; bad=1; }
+if grep -nE 'is_eligible|IdeaImplementation|implementable_idea|ChatIntent' <<<"$sr"; then echo "$WFOPS: start_run do Core passou a depender do modo/elegibilidade da ideia"; bad=1; fi
+# CLI e MCP continuam chamando start_run diretamente.
+grep -rq 'wf::start_run(' "$MCP_DIR/tools/workflows.rs" || grep -rqE 'start_run\(' "$MCP_DIR/tools/workflows.rs" || { echo "$MCP_DIR/tools/workflows.rs: workflow_run_start deve chamar start_run"; bad=1; }
+grep -rqE 'start_run\(' "$CLI_DIR/workflows.rs" || { echo "$CLI_DIR/workflows.rs: runs start deve chamar start_run"; bad=1; }
+# O modo é app-only: os tipos de sessão/folha ficam no app (nenhum no Core Rust).
+if grep -rnE 'IdeaImplementationSheet|ideaRequest' crates --include=*.rs; then echo "folha/pedido de modo não pode estar no Core Rust"; bad=1; fi
 finish

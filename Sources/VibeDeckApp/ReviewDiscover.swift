@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 /// Runs one "Descubra" call for a review item: a read-only `claude -p` with a timeout that can be cancelled.
 /// The answer only becomes a proposal; the inspector applies it after the user accepts.
@@ -16,7 +15,7 @@ final class ReviewDiscoverRunner {
 
     var isRunning: Bool { state == .running }
 
-    func start(item: ReviewItem, kind: String, topics: [(slug: String, topic: RuleTopic)], store: ProjectStore, provider: AIProvider = .claude) {
+    func start(item: ReviewItem, kind: String, topics: [(slug: String, topic: RuleTopic)], store: CoreStore, provider: AIProvider = .claude) {
         guard RemoteExecution.available(provider, root: store.root) else { state = .failed("\(provider.title) não está instalado."); return }
         cancel()
         state = .running
@@ -24,7 +23,7 @@ final class ReviewDiscoverRunner {
         task = Task {
             do {
                 let answer = try await AIReadOnlyOperation.run(root: store.root, provider: provider,
-                    operation: "Descubra", prompt: prompt, schema: ReviewDiscover.schema) { data in
+                    operation: "Descubra", prompt: prompt, schema: ReviewDiscover.schema, store: store) { data in
                     let value = try JSONDecoder().decode(JSONValue.self, from: data)
                     guard value["fields"]?.array != nil, value["rules"]?.array != nil else { throw VibeDeckError.discoverInvalidAnswer }
                     let answer = try JSONDecoder().decode(ReviewDiscover.Answer.self, from: data)
@@ -60,56 +59,6 @@ final class ReviewDiscoverRunner {
 
     func dismiss() {
         if !isRunning { state = .idle }
-    }
-
-    // MARK: Process
-
-    /// stdout of the call. Terminates the process on cancellation and after `ReviewDiscover.timeout`.
-    nonisolated static func run(executable: URL, root: URL, input: String, schema: String? = nil, settings: AIProviderSettings = .init()) async throws -> Data {
-        let path = ClaudeCode.childPATH()
-        let process = Process()
-        process.executableURL = executable
-        process.currentDirectoryURL = root
-        process.arguments = ReviewDiscover.arguments()
-        if let model = settings.model { process.arguments?.append(contentsOf: ["--model", model]) }
-        if let effort = settings.effort { process.arguments?.append(contentsOf: ["--effort", effort]) }
-        if let schema, let index = process.arguments?.firstIndex(of: "--json-schema") {
-            process.arguments?[index + 1] = schema
-        }
-        var environment = ProcessInfo.processInfo.environment
-        environment["PATH"] = path
-        process.environment = environment
-        let stdin = Pipe(), stdout = Pipe(), stderr = Pipe()
-        process.standardInput = stdin
-        process.standardOutput = stdout
-        process.standardError = stderr
-        do { try process.run() } catch { throw VibeDeckError.discoverFailed(error.localizedDescription) }
-        try? stdin.fileHandleForWriting.write(contentsOf: Data(input.utf8))
-        try? stdin.fileHandleForWriting.close()
-
-        let timedOut = VDLog.detached {
-            try? await Task.sleep(for: ReviewDiscover.timeout)
-            guard !Task.isCancelled, process.isRunning else { return false }
-            process.terminate()
-            return true
-        }
-        defer { timedOut.cancel() }
-        let output = await withTaskCancellationHandler {
-            await VDLog.detached {
-                // Drain stderr concurrently so a chatty hook can't fill the pipe and block the process.
-                let errors = VDLog.detached { stderr.fileHandleForReading.readDataToEndOfFile() }
-                let data = stdout.fileHandleForReading.readDataToEndOfFile()
-                _ = await errors.value
-                process.waitUntilExit()
-                return data
-            }.value
-        } onCancel: {
-            if process.isRunning { process.terminate() }
-        }
-        try Task.checkCancellation()
-        timedOut.cancel()
-        if await timedOut.value { throw VibeDeckError.discoverTimedOut }
-        return output
     }
 }
 

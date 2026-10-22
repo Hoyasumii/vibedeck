@@ -238,14 +238,14 @@
       "category" : "language",
       "icon" : "swift",
       "name" : "Swift",
-      "note" : "Swift 6.2 / SwiftPM; app em SwiftUI (Liquid Glass, macOS 26), CLI com swift-argument-parser e MCP com o swift-sdk"
+      "note" : "Swift 6.2 / SwiftPM; app macOS em SwiftUI (Liquid Glass, macOS 26) que fala com o Core Rust via MCP"
     },
     {
       "author" : "ai",
       "category" : "os",
       "icon" : "apple",
       "name" : "Apple",
-      "note" : "App nativo macOS 26; o CLI/MCP também compila em Linux"
+      "note" : "App nativo macOS 26; Core, CLI e MCP em Rust também compilam em Linux"
     },
     {
       "author" : "ai",
@@ -265,13 +265,15 @@
       "author" : "human",
       "category" : "language",
       "icon" : "rust",
-      "name" : "Rust"
+      "name" : "Rust",
+      "note" : "Core (crates/vibedeck-core), CLI e MCP stdio (crates/vibedeck)"
     },
     {
       "author" : "human",
       "category" : "backend",
       "icon" : "mcp",
-      "name" : "MCP"
+      "name" : "MCP",
+      "note" : "Servidor MCP stdio embutido no CLI Rust; o app macOS o consome"
     },
     {
       "author" : "human",

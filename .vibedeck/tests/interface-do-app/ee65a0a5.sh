@@ -14,11 +14,12 @@ for f in Sources/VibeDeckApp/VibeDeckApp.swift Sources/VibeDeckApp/WelcomeView.s
     bad "$f:$n" "min-size no root da janela (${line#"${line%%[![:space:]]*}"})"
   done < <(grep -nE "$pat" "$f" || true)
 done
-# ProjectWindow: o body raiz é o NavigationSplitView; o frame(width:) do sheet é permitido, minWidth/minHeight não.
-f=Sources/VibeDeckApp/ProjectWindow.swift
+# Janela V2 (V2ProjectWindow): o body raiz é trilho + NavigationSplitView; o frame(width:) do sheet é permitido, minWidth/minHeight não.
+f=Sources/VibeDeckApp/V2/V2ProjectWindow.swift
+[ -f "$f" ] || bad "$f" "janela V2 ausente"
 while IFS=: read -r n line; do
   [[ "${line%%//*}" =~ (minWidth|minHeight) ]] || continue
-  bad "$f:$n" "minWidth/minHeight no ProjectWindow raiz"
+  bad "$f:$n" "minWidth/minHeight na janela V2 raiz"
 done < <(grep -nE 'minWidth|minHeight' "$f" || true)
 # Raiz: o WindowGroup deve renderizar RootView sem modificador de frame.
 awk '/WindowGroup\(/{g=1} g&&/RootView\(root:/{print; exit}' Sources/VibeDeckApp/VibeDeckApp.swift | grep  'RootView(root: \$root)$' >/dev/null \

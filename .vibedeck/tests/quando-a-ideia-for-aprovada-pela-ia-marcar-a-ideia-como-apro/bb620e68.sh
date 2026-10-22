@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# documentação de Salvar avaliação + approved
 set -euo pipefail
-cd "${VIBEDECK_ROOT:-.}"
-for f in README.md .vibedeck/guide.md Sources/VibeDeckCore/AgentsGuide.swift; do
-  grep -q 'Salvar avaliação' "$f" && grep 'Salvar avaliação' "$f" | grep 'approved' >/dev/null || { echo "$f: falta 'Salvar avaliação' com 'approved'"; exit 1; }
+source "$(dirname "$0")/_lib.sh"
+applies
+# BB620E68 (should): README, .vibedeck/guide.md e o guia embutido no Core documentam Salvar avaliação + approved.
+for f in README.md .vibedeck/guide.md "$GUIDE"; do
+  grep 'Salvar avaliação' "$f" | grep 'approved' >/dev/null || bad "$f: falta 'Salvar avaliação' com 'approved'"
 done
+finish

@@ -4,6 +4,7 @@
   "description" : "O caminho humano → IA → regras → check → done que o produto inteiro sustenta.",
   "id" : "CAD17832-86AB-439F-A0F0-8BFF0B4F3A6E",
   "paths" : [
+    "crates/**",
     "Sources/**",
     "schema/**"
   ],
@@ -16,7 +17,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/fluxo-padrao/ea7c01e6.sh",
-        "generatedAt" : "2026-10-09T12:34:17Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
         "ruleHash" : "9571e9edae3b0cc1"
       },
@@ -30,7 +31,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/fluxo-padrao/8f28f353.sh",
-        "generatedAt" : "2026-10-09T01:42:20Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
         "ruleHash" : "498da7b174599e4d"
       },
@@ -44,7 +45,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/fluxo-padrao/3a31b517.sh",
-        "generatedAt" : "2026-10-09T12:34:17Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
         "ruleHash" : "ef74ed6f5e732512"
       },
@@ -72,7 +73,7 @@
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/fluxo-padrao/09c9f3a9.sh",
-        "generatedAt" : "2026-10-09T01:42:20Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
         "ruleHash" : "0fea249e156a3ffd"
       },

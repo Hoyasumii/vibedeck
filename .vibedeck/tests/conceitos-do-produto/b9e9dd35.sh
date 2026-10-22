@@ -2,37 +2,43 @@
 # Todo conceito aceita tags e entra no filtro #tag (docs, links, grupos, tópicos, ideias e os conceitos novos).
 set -euo pipefail
 cd "${VIBEDECK_ROOT:-.}"
-if [ -n "${VIBEDECK_FILES:-}" ] && ! printf "%s\n" "$VIBEDECK_FILES" | grep -E "^Sources/|^schema/" >/dev/null; then exit 77; fi
+if [ -n "${VIBEDECK_FILES:-}" ] && ! printf "%s\n" "$VIBEDECK_FILES" | grep -E "^(Sources|crates)/|^schema/" >/dev/null; then exit 77; fi
 python3 -I - <<'PY'
 import re, glob, sys
 bad = 0
 def fail(msg):
     global bad; print(msg); bad = 1
-core = {f: open(f).read() for f in glob.glob("Sources/VibeDeckCore/*.swift")}
+def strip_tests(s): return s[:s.find("#[cfg(test)]")] if "#[cfg(test)]" in s else s
+M = "crates/vibedeck-core/src/"
+core = {f: strip_tests(open(f).read()) for f in sorted(glob.glob(M + "model/*.rs"))}
 def struct_body(name):
     for f, s in core.items():
-        m = re.search(r"public struct %s\b[^{]*\{" % name, s)
+        m = re.search(r"pub struct %s\s*\{" % name, s)
         if m:
             i, depth = m.end(), 1
             while depth and i < len(s):
                 depth += {"{": 1, "}": -1}.get(s[i], 0); i += 1
             return f, s[m.start():i], s[:m.start()].count("\n") + 1
     return None, None, None
-# Conceitos: registros de arquivo próprio (SlugRecord), entidades com autoria de primeiro nível, Link e DocInfo.
-# Ficam de fora partes de outro conceito (Rule de um tópico, ReviewItem de um grupo) e históricos (RuleCheck).
-concepts = set(re.findall(r"extension (\w+): SlugRecord", core["Sources/VibeDeckCore/ProjectStore.swift"]))
+# Conceitos: registros de arquivo próprio, entidades com autoria de primeiro nível, Link e a coleção Claude. Ficam de fora partes de outro
+# conceito (Rule de um tópico, ReviewItem de um grupo) e históricos (RuleCheck, WorkflowRun).
+concepts = {"Idea", "ReviewGroup", "RuleTopic", "Workflow", "Link", "ClaudeItem", "StackItem", "ProjectPattern"}
 for f, s in core.items():
-    for m in re.finditer(r"public struct (\w+)\b[^{]*\{", s):
+    for m in re.finditer(r"pub struct (\w+)\s*\{", s):
         _, body, _ = struct_body(m.group(1))
-        if body and re.search(r"public var author: Author", body): concepts.add(m.group(1))
-concepts |= {"Link", "DocInfo"}
-concepts -= {"Rule", "ReviewItem", "RuleCheck"}
+        if body and re.search(r"pub author: Author", body) and not m.group(1).endswith("Wire"): concepts.add(m.group(1))
+concepts -= {"Rule", "ReviewItem", "RuleCheck", "RuleResult", "WorkflowRun"}
 for name in sorted(concepts):
     f, body, line = struct_body(name)
     if body is None: fail(f"struct {name} não encontrada"); continue
-    if not re.search(r"public var tags: \[String\]", body):
+    if not re.search(r"pub tags: Vec<String>", body):
         fail(f"{f}:{line}: conceito {name} não tem tags")
-# Filtro #tag: cada seção da lista entrega tags às linhas e permite editá-las.
+persona = core[M + "model/persona.rs"]
+if not re.search(r"pub tags: Vec<String>", persona):
+    fail(M + "model/persona.rs: Agent/Command/Skill (macro) sem tags")
+docs = open(M + "docs/markdown.rs").read()
+if "pub fn tags_of" not in docs: fail(M + "docs/markdown.rs: docs sem tags no frontmatter (tags_of)")
+# Filtro #tag no app: cada seção da lista entrega tags às linhas e permite editá-las.
 pm = open("Sources/VibeDeckApp/ProjectModel.swift").read()
 rows = re.search(r"func rows\(for section: SidebarSection\).*?\n    \}\n", pm, re.S)
 if not rows: fail("Sources/VibeDeckApp/ProjectModel.swift: rows(for:) não encontrado")
@@ -43,9 +49,11 @@ else:
     for kind in sorted(set(re.findall(r"SectionRow\(id: \.(\w+)\(", rows.group(0)))):
         if not st or f"case .{kind}(" not in st.group(0):
             fail(f"Sources/VibeDeckApp/ProjectModel.swift: setTags não edita tags de .{kind}")
+# V2: o filtro por #tag mora em V2ListFilter (coluna de conteúdo e tabela do detalhe o compartilham).
+lf = open("Sources/VibeDeckApp/V2/V2ListFilter.swift").read()
 sl = open("Sources/VibeDeckApp/SectionListView.swift").read()
-if not re.search(r"\.searchable\(text: \$search, tokens: \$tokens", sl) or "#tag" not in sl:
-    fail("Sources/VibeDeckApp/SectionListView.swift: lista sem filtro por #tag")
+if 'hasPrefix("#")' not in lf or "filter.matches" not in sl:
+    fail("Sources/VibeDeckApp/V2/V2ListFilter.swift: lista sem filtro por #tag")
 lv = open("Sources/VibeDeckApp/LinksView.swift").read()
 if not re.search(r"\.tags\.contains", lv): fail("Sources/VibeDeckApp/LinksView.swift: links não filtráveis por tag")
 # Schemas dos conceitos descrevem tags.

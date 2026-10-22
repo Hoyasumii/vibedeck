@@ -8,11 +8,12 @@ applies() {
   printf '%s\n' "$VIBEDECK_FILES" | grep -E "$1" >/dev/null || exit 77
 }
 
-# build_cli: compila o vibedeck do código atual e exporta VD (caminho do binário).
+# build_cli: compila o vibedeck (Rust) do código atual e exporta VD (caminho do binário); VIBEDECK_BIN pula a compilação.
 build_cli() {
   local out
-  if ! out=$(swift build --product vibedeck 2>&1); then printf '%s\n' "$out" | tail -20; exit 1; fi
-  VD="$(swift build --product vibedeck --show-bin-path)/vibedeck"
+  if [ -n "${VIBEDECK_BIN:-}" ]; then VD="$VIBEDECK_BIN"; [ -x "$VD" ] || { echo "VIBEDECK_BIN inválido: $VD"; exit 1; }; return; fi
+  if ! out=$(cargo build --release -q -p vibedeck 2>&1); then printf '%s\n' "$out" | tail -20; exit 1; fi
+  VD="${CARGO_TARGET_DIR:-$VD_SRC/target}/release/vibedeck"
   [ -x "$VD" ] || { echo "binário do vibedeck não encontrado em $VD"; exit 1; }
 }
 

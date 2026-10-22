@@ -26,6 +26,8 @@ enquanto um arquivo alterado na sessão tiver regras sem check aprovado posterio
 
 ## Trabalho eficiente com IA
 
+Antes de implementar, leia .vibedeck/AGENTS.md, stack/patterns e notas em vibedeck.json e regras
+aplicáveis em .vibedeck/rules/ (paths são globs; vazio é global).
 Trabalhe por escopo: objetivo, restrições, evidências e critério de conclusão. Use busca e leia trechos
 relevantes antes de ampliar o contexto; consulte o grafo por consulta quando disponível, sem exigir grafo.
 Preserve requisitos, decisões do usuário, falhas pendentes, regras e etapas explícitas do workflow.
@@ -37,10 +39,9 @@ o que ficou incompleto e sugira um modelo mais capaz. Responda de forma concisa 
 
 ## Antes de implementar
 
-Consulte stack, padrões (`vibedeck stack|patterns --json`) e itens de revisão abertos da área.
-Registros via CLI/MCP, com author=ai; preserve dados humanos, ids e schemas. Não edite este guia nem checks.
-Ideias só viram regras quando o usuário pedir a promoção. Em workflows e importações, informe o provider
-(codex no Codex) e respeite modelo, permissões, transições, decisões do usuário e limites.
+Consulte revisões abertas. CLI/MCP: author=ai; preserve dados humanos, ids e schemas.
+Não edite guia nem checks. Promova ideias só a pedido. Workflows/importações: provider
+(codex no Codex); respeite modelo, permissões, transições, decisões do usuário e limites.
 
 ## Documentação sob demanda
 
@@ -62,8 +63,7 @@ Leia só a seção necessária: `vibedeck ai guide --section <n>`, MCP `ai_guide
 12: Workflows
 13: Execuções de workflows
 14: Tags
-15: Sessões na nuvem
-16: Logs
-17: Regras gerais para agentes
-18: Comandos úteis
-19: Projetos SSH
+15: Logs
+16: Regras gerais para agentes
+17: Comandos úteis
+18: Projetos SSH

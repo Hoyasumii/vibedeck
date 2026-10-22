@@ -1,6 +1,5 @@
 import SwiftUI
 import WebKit
-import VibeDeckCore
 
 /// One runner per canonical project root, shared even across windows and reopened tabs.
 @MainActor @Observable
@@ -22,9 +21,11 @@ final class GraphRunner {
     typealias Analyze = (ProjectGraph, URL, AIProvider) async throws -> JSONValue
 
     func start(root: URL, provider: AIProvider, available: (AIProvider) -> Bool = { $0.isInstalled },
-               extract: Extract? = nil, analyze: Analyze? = nil) {
+               extract: Extract? = nil, analyze: Analyze? = nil, store: CoreStore? = nil) {
         guard state != .running else { return }
-        guard RemoteWorkspace.existing(at: root) != nil || available(provider) else { state = .failed("\(provider.title) não está disponível. Instale o provedor selecionado."); return }
+        // PEDIDO-CORE (graph_generate): o grafo semântico de projetos SSH precisa rodar no servidor; por ora só projetos locais.
+        guard RemoteWorkspace.existing(at: root) == nil else { state = .failed("O grafo ainda não está disponível em projetos SSH."); return }
+        guard available(provider) else { state = .failed("\(provider.title) não está disponível. Instale o provedor selecionado."); return }
         state = .running; cancelled = false; progress = "Preparando cópia do projeto…"
         task = Task {
             var snapshot: URL?
@@ -49,7 +50,7 @@ final class GraphRunner {
                 progress = "Analisando documentos e conceitos com \(provider.title)…"
                 let semantic: JSONValue
                 if let analyze { semantic = try await analyze(graph, stage, provider) }
-                else { semantic = try await Self.analyze(graph: graph, snapshot: stage, root: root, provider: provider) }
+                else { semantic = try await Self.analyze(graph: graph, snapshot: stage, root: root, provider: provider, store: store) }
                 let merged = try await VDLog.detached { try graph.merging(semantic).generated(at: .now, provider: provider) }.value
                 progress = "Validando JSON e visualização offline…"
                 try await VDLog.detached {
@@ -161,7 +162,7 @@ final class GraphRunner {
         _ = try connection.run("test ! -L graphify-out || exit 45; if test -e graphify-out; then mv graphify-out " + saved + " || exit; fi; if mv " + target + " graphify-out; then rm -rf " + saved + "; else test ! -e " + saved + " || mv " + saved + " graphify-out; exit 1; fi")
     }
 
-    private static func analyze(graph: ProjectGraph, snapshot: URL, root: URL, provider: AIProvider) async throws -> JSONValue {
+    private static func analyze(graph: ProjectGraph, snapshot: URL, root: URL, provider: AIProvider, store: CoreStore?) async throws -> JSONValue {
         let candidates = graph.nodes.prefix(400).map { node in
             "\(node["id"]?.string ?? ""): \(node["label"]?.string ?? "") — \(node["source_file"]?.string ?? "")"
         }.joined(separator: "\n")
@@ -180,7 +181,7 @@ final class GraphRunner {
         """
         let schema = #"{"type":"object","required":["nodes","links"],"properties":{"nodes":{"type":"array","maxItems":80,"items":{"type":"object","required":["id","label","source_file","source_location","_origin"],"properties":{"id":{"type":"string"},"label":{"type":"string"},"source_file":{"type":"string"},"source_location":{"type":"string"},"_origin":{"type":"string","enum":["semantic"]}}}},"links":{"type":"array","maxItems":160,"items":{"type":"object","required":["source","target","relation","confidence","_origin","source_file","source_location"],"properties":{"source":{"type":"string"},"target":{"type":"string"},"relation":{"type":"string"},"confidence":{"type":"string","enum":["EXTRACTED","INFERRED","AMBIGUOUS"]},"_origin":{"type":"string","enum":["semantic"]},"source_file":{"type":"string"},"source_location":{"type":"string"}}}}}}"#
         return try await AIReadOnlyOperation.run(root: root, provider: provider, operation: "Analisar grafo",
-                                                prompt: prompt, schema: schema) { data in
+                                                prompt: prompt, schema: schema, store: store) { data in
             let value = try VDJSON.decoder.decode(JSONValue.self, from: data)
             guard let nodes = value["nodes"]?.array, nodes.count <= 80,
                   let links = value["links"]?.array, links.count <= 160 else {
@@ -223,7 +224,7 @@ struct GraphView: View {
             }
             ToolbarItem {
                 if runner.state != .running, !AIProvider.installed(in: providerRoot).isEmpty {
-                    LoggedButton("Atualizar", systemImage: "arrow.clockwise") { runner.start(root: model.store.root, provider: provider) }.loggedControl(control: "graph_view.button_2", label: "Atualizar")
+                    LoggedButton("Atualizar", systemImage: "arrow.clockwise") { runner.start(root: model.store.root, provider: provider, store: model.store) }.loggedControl(control: "graph_view.button_2", label: "Atualizar")
                 }
             }
         }
@@ -245,7 +246,7 @@ struct GraphView: View {
             Label(title, systemImage: "point.3.connected.trianglepath.dotted")
         } description: { Text(message) } actions: {
             if !AIProvider.installed(in: providerRoot).isEmpty {
-                LoggedButton("Gerar grafo") { runner.start(root: model.store.root, provider: provider) }.loggedControl(control: "graph_view.button_3", label: "Gerar grafo")
+                LoggedButton("Gerar grafo") { runner.start(root: model.store.root, provider: provider, store: model.store) }.loggedControl(control: "graph_view.button_3", label: "Gerar grafo")
                     .disabled(runner.state == .running)
             }
         }

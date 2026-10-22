@@ -1,6 +1,3 @@
-#if canImport(VibeDeckCore)
-import VibeDeckCore
-#endif
 import AppKit
 import SwiftUI
 
@@ -8,9 +5,7 @@ import SwiftUI
 /// native undo. Each doc gets its own UndoManager, kept alive across autosaves and doc switches.
 /// With `importFiles`, dropped or pasted files are handed over and the returned markdown is inserted.
 struct MarkdownEditor: NSViewRepresentable {
-    #if canImport(VibeDeckCore)
     @Environment(\.logProject) private var logProject
-    #endif
     @Binding var text: String
     let undoManager: UndoManager
     var autoFocus = true
@@ -222,24 +217,18 @@ struct MarkdownEditor: NSViewRepresentable {
         func confirmEditing() {
             guard let id = editingAction else { return }
             editingAction = nil
-            #if canImport(VibeDeckCore)
             VDLog.withAction(control: "markdown_editor.content", label: "Editor de Markdown", project: parent.logProject, id: id) {}
-            #endif
         }
 
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
             if parent.text != textView.string {
-                #if canImport(VibeDeckCore)
                 let id = VDLog.actionID ?? editingAction ?? UUID().uuidString
                 editingAction = id
                 parent.onEditingAction?(id)
                 VDLog.$actionID.withValue(id) {
                     VDLog.$projectRoot.withValue(parent.logProject) { parent.text = textView.string }
                 }
-                #else
-                parent.text = textView.string
-                #endif
             }
             scheduleRender()
         }

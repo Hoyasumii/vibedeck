@@ -27,13 +27,15 @@ need() { grep -Eq -- "$2" <<<"$1" || bad "$F: $3"; }
 # deny <texto> <regex> <motivo>: falha (com linha) se o regex aparece no texto.
 deny() { local hit; hit=$(grep -E -- "$2" <<<"$1" || true); [ -z "$hit" ] || bad "$3:"$'\n'"$hit"; }
 
-# run_tests <test>...: confere que os @Test existem em LinkViewerTests e roda só eles.
+# run_tests <test>...: confere que os @Test existem em LinkViewerTests e roda só eles (se houver swift).
 run_tests() {
   local args=() name
   for name in "$@"; do
     grep -qE "func ${name}\(" "$T" || { echo "$T: teste '${name}' não existe mais"; exit 1; }
     args+=(--filter "LinkViewerTests/${name}")
   done
+  # Fora do macOS (mesmo com Swift instalado, como no ubuntu-latest) só a análise estática acima e a existência dos testes valem; swift test roda no macOS.
+  { [ "$(uname -s)" = Darwin ] && command -v swift >/dev/null 2>&1; } || { echo "cobertura estática OK; swift test só roda no macOS"; return 0; }
   swift build --build-tests >/dev/null 2>&1 || { swift build --build-tests 2>&1 | tail -20; exit 1; }
   local out
   if ! out=$(swift test --skip-build "${args[@]}" 2>&1); then printf '%s\n' "$out" | tail -40; exit 1; fi

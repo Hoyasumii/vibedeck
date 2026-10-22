@@ -5,21 +5,18 @@
   "id" : "E5BF5637-6D48-4531-8DC4-4B71B6702485",
   "paths" : [
     "Sources/VibeDeckApp/ProjectModel.swift",
-    "Sources/VibeDeckCore/ProjectStore.swift",
+    "crates/vibedeck-core/src/docs/**",
+    "crates/vibedeck-core/src/ai/process.rs",
+    "crates/vibedeck-core/src/ai/codex.rs",
+    "crates/vibedeck-core/src/ai/provider.rs",
     "Sources/VibeDeckApp/DocView.swift",
     "Sources/VibeDeckApp/SectionListView.swift",
     "Sources/VibeDeckApp/RuleDiscover.swift",
     "Sources/VibeDeckApp/AIReadOnlyOperation.swift",
-    "Sources/VibeDeckCore/RuleDiscover.swift",
     "Sources/VibeDeckApp/ReviewDiscover.swift",
-    "Sources/VibeDeckCore/ReviewDiscover.swift",
-    "Sources/VibeDeckCore/Stack.swift",
-    "Sources/VibeDeckCore/AIPromptPolicy.swift",
-    "Sources/vibedeck/CLI.swift",
-    "Sources/vibedeck/MCPServer.swift",
-    "Tests/VibeDeckCoreTests/ReviewDiscoverTests.swift",
-    "Tests/VibeDeckCoreTests/ProjectStoreTests.swift",
-    "Sources/VibeDeckCore/AgentsGuide.swift",
+    "Sources/VibeDeckApp/DocGenerate.swift",
+    "crates/vibedeck/src/cli/docs.rs",
+    "crates/vibedeck/src/mcp/tools/docs.rs",
     "Sources/VibeDeckApp/MarkdownPreview.swift"
   ],
   "rules" : [
@@ -31,7 +28,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-gerar-documentos/90397722.sh",
-        "generatedAt" : "2026-10-09T19:17:05Z",
+        "generatedAt" : "2026-10-22T18:47:29Z",
         "mode" : "script",
         "ruleHash" : "d545a98d96ac87fb"
       },
@@ -45,7 +42,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-gerar-documentos/83d8da0a.sh",
-        "generatedAt" : "2026-10-09T19:17:05Z",
+        "generatedAt" : "2026-10-22T19:25:08Z",
         "mode" : "script",
         "ruleHash" : "b504f453d039ff0c"
       },
@@ -59,7 +56,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-gerar-documentos/f0aaab3e.sh",
-        "generatedAt" : "2026-10-09T19:17:05Z",
+        "generatedAt" : "2026-10-22T19:34:36Z",
         "mode" : "script",
         "ruleHash" : "8917d18d26a96813"
       },
@@ -68,42 +65,42 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-09T17:43:03Z",
-      "details" : "Verificar que a criação usa ProjectStore e que o doc gerado tem author=ai.",
+      "details" : "Verificar que a criação usa a operação do Core (docs::create_generated_doc / create_doc com Author::Ai, também pelo MCP write_doc com generated: true) e que o doc gerado tem author=ai.",
       "id" : "FCF3BA40-0E98-4755-928E-FDB201812383",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-gerar-documentos/fcf3ba40.sh",
-        "generatedAt" : "2026-10-09T19:17:05Z",
+        "generatedAt" : "2026-10-22T19:34:36Z",
         "mode" : "script",
-        "ruleHash" : "a7ac41610911fa0d"
+        "ruleHash" : "ee6af39585493434"
       },
       "text" : "Cada documento aceito é criado com author=ai, por operação do Core, e fica disponível no CLI e no MCP."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-09T17:43:03Z",
-      "details" : "Teste do Core: gerar duas vezes com o mesmo título produz dois docs com slugs distintos e o original intacto.",
+      "details" : "Teste pelo binário: gerar duas vezes com o mesmo título (docs new --ai) produz dois docs com slugs distintos e o original intacto.",
       "id" : "778E9BF5-D317-4BDF-A0B2-5BDB3169B385",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-gerar-documentos/778e9bf5.sh",
-        "generatedAt" : "2026-10-09T19:17:05Z",
+        "generatedAt" : "2026-10-22T18:47:29Z",
         "mode" : "script",
-        "ruleHash" : "64e47b37e0605842"
+        "ruleHash" : "f0428d96c4644550"
       },
-      "text" : "A geração nunca sobrescreve nem apaga documento existente; se o slug já existe, usa Slug.make + uniqueSlug."
+      "text" : "A geração nunca sobrescreve nem apaga documento existente; se o slug já existe, usa slug::make + slug::unique."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-09T17:43:03Z",
-      "details" : "Teste com resposta inválida: nenhum doc criado e mensagem de erro exibida.",
+      "details" : "Teste do parser do Core (generate.rs: strict_json_and_empty_documents): resposta inválida vira DocError::InvalidAnswer, nenhum doc é criado e a mensagem de erro em pt-BR é exibida.",
       "id" : "DA211AC8-6BAC-47E8-BD90-07DD335F2D57",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-gerar-documentos/da211ac8.sh",
-        "generatedAt" : "2026-10-09T19:17:05Z",
+        "generatedAt" : "2026-10-22T19:34:36Z",
         "mode" : "script",
-        "ruleHash" : "afd6b7c929430534"
+        "ruleHash" : "ad629e64f2c6f3ac"
       },
       "text" : "A resposta da IA é JSON validado; se o parse falhar, o app mostra erro claro em pt-BR e não cria nenhum documento."
     },
@@ -115,7 +112,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-gerar-documentos/2ce9184c.sh",
-        "generatedAt" : "2026-10-09T19:17:05Z",
+        "generatedAt" : "2026-10-22T19:25:08Z",
         "mode" : "script",
         "ruleHash" : "dc3678b93528364f"
       },
@@ -143,7 +140,7 @@
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-gerar-documentos/205f9706.sh",
-        "generatedAt" : "2026-10-09T19:17:05Z",
+        "generatedAt" : "2026-10-22T18:47:29Z",
         "mode" : "script",
         "ruleHash" : "1ba7a3dbb4a71527"
       },
@@ -157,7 +154,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-gerar-documentos/26b70328.sh",
-        "generatedAt" : "2026-10-09T19:17:05Z",
+        "generatedAt" : "2026-10-22T19:34:36Z",
         "mode" : "script",
         "ruleHash" : "a429574b591844f8"
       },
@@ -166,84 +163,84 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-09T18:46:21Z",
-      "details" : "Verificar que o novo tipo de Core está em Sources/VibeDeckCore, é coberto por teste em Tests/VibeDeckCoreTests e o App só chama essa API.",
+      "details" : "Verificar que o tipo está em crates/vibedeck-core/src/docs/generate.rs (Rust puro, sem UI, disco ou processos), é coberto por testes de unidade no mesmo arquivo e o App só chama essa API (prompt, schema, parse).",
       "id" : "5DC6AE92-7086-42E6-B8B7-930C63954281",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-gerar-documentos/5dc6ae92.sh",
-        "generatedAt" : "2026-10-09T19:17:05Z",
+        "generatedAt" : "2026-10-22T19:34:36Z",
         "mode" : "script",
-        "ruleHash" : "8961f4f10bc34ada"
+        "ruleHash" : "a3920d2eab4a2b0f"
       },
       "text" : "A lógica de montar o prompt, validar o JSON da IA e converter em propostas de documento fica no Core (como ReviewDiscover/RuleDiscover), sem depender de SwiftUI."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-09T18:46:21Z",
-      "details" : "Teste unitário do validador com resposta JSON contendo documentos vazios; a proposta não os inclui.",
+      "details" : "Teste unitário do validador (generate.rs: strict_json_and_empty_documents) com resposta JSON contendo documentos vazios; a proposta não os inclui.",
       "id" : "C5D852BD-F0D4-4FCC-8A92-A9ADFA42BBD9",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-gerar-documentos/c5d852bd.sh",
-        "generatedAt" : "2026-10-09T19:17:05Z",
+        "generatedAt" : "2026-10-22T18:47:29Z",
         "mode" : "script",
-        "ruleHash" : "c131a73c6e677fc9"
+        "ruleHash" : "f3e87769d94b2016"
       },
       "text" : "Documentos da proposta com título vazio ou conteúdo vazio após trim são descartados antes de mostrar a proposta."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-09T18:46:21Z",
-      "details" : "Teste do validador com mais de 8 documentos: a proposta tem no máximo 8.",
+      "details" : "Teste do validador (generate.rs: limits_and_prompt) com mais de 8 documentos: a proposta tem no máximo 8.",
       "id" : "9BDC1723-D1FA-4950-807A-F65530A41737",
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-gerar-documentos/9bdc1723.sh",
-        "generatedAt" : "2026-10-09T19:17:05Z",
+        "generatedAt" : "2026-10-22T18:47:29Z",
         "mode" : "script",
-        "ruleHash" : "5ca5a79750a8526c"
+        "ruleHash" : "9761744702b5f673"
       },
       "text" : "Limitar o número de documentos por geração (máximo de 8) e o tamanho de cada conteúdo; o excedente é descartado antes da proposta."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-09T18:46:21Z",
-      "details" : "Verificar que a chamada de geração não passa workspaceWrites: true (CodexReadOnly.run) e não usa a lista 'Read Edit Write Glob Grep Bash' de ClaudeStream.swift:95.",
+      "details" : "Verificar que a chamada de geração não passa workspaceWrites: true (CodexReadOnly), que o Core Rust usa sandbox read-only (ai/codex.rs) e --tools/--allowedTools restritos a Read, Grep e Glob (ai/process.rs), e que não existe a lista 'Read Edit Write Glob Grep Bash'.",
       "id" : "81D69362-44FE-474D-A375-A5A77EADAAB2",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-gerar-documentos/81d69362.sh",
-        "generatedAt" : "2026-10-09T19:17:05Z",
+        "generatedAt" : "2026-10-22T19:25:08Z",
         "mode" : "script",
-        "ruleHash" : "03d48c6d9c7fc648"
+        "ruleHash" : "3649979bcae2ad2e"
       },
       "text" : "Se o provedor ativo for o Codex, a geração roda em modo somente leitura (workspaceWrites=false); se for o Claude Code, com allowedTools restrito a Read, Glob e Grep."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-09T18:46:21Z",
-      "details" : "Teste: aceitar proposta e verificar o arquivo no disco, a leitura pelo ProjectStore e a presença na lista.",
+      "details" : "Teste: criar docs gerados pelo binário (docs new --ai) e verificar o arquivo no disco, a leitura pelo CLI e, no app, o refreshDocs após o aceite.",
       "id" : "488ADC70-B8B4-4BF2-BAE9-C796935FA6D6",
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-gerar-documentos/488adc70.sh",
-        "generatedAt" : "2026-10-09T19:17:05Z",
+        "generatedAt" : "2026-10-22T18:47:29Z",
         "mode" : "script",
-        "ruleHash" : "4e418e62ccfceeeb"
+        "ruleHash" : "9a13c489a6ee6711"
       },
-      "text" : "Documentos aceitos pela geração são gravados via AtomicFile.write em .vibedeck/docs com o JSON/formato de documento existente, e aparecem ao vivo na lista de Docs sem recarregar manualmente."
+      "text" : "Documentos aceitos pela geração são gravados via write_atomic em .vibedeck/docs com o JSON/formato de documento existente, e aparecem ao vivo na lista de Docs sem recarregar manualmente."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-09T18:46:21Z",
-      "details" : "Procurar a menção no README e conferir as strings novas em pt-BR.",
+      "details" : "Procurar a menção no README, em .vibedeck/guide.md e no guia embutido do Core (ai/guide_reference.md) e conferir as strings novas em pt-BR.",
       "id" : "8B870FEB-13EA-4F82-AA41-4C23080923F1",
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/botao-de-gerar-documentos/8b870feb.sh",
-        "generatedAt" : "2026-10-09T19:17:05Z",
+        "generatedAt" : "2026-10-22T19:34:36Z",
         "mode" : "script",
-        "ruleHash" : "f74ed1cf5145ee65"
+        "ruleHash" : "3d2b447552cfd69e"
       },
       "text" : "O README e o guia (.vibedeck/guide.md) documentam a geração de documentos e o texto visível ao usuário (botão, progresso, erros) está em pt-BR."
     }

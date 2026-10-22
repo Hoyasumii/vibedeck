@@ -1,36 +1,38 @@
 #!/usr/bin/env bash
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
-# encode(to:): opcionais com encodeIfPresent; tags/paths só se não vazios.
-applies '(^|/)Sources/VibeDeckCore/'
+# Serialize: opcionais com skip_serializing_if = "Option::is_none" (ou opt_str_empty); tags/paths/coleções opcionais só se não vazios.
+applies '(^|/)crates/vibedeck-core/src/model/'
 python3 -I - <<'PY'
 import glob, re, sys
+# Coleções que o schema/Swift sempre gravam (mesmo vazias): arrays obrigatórios do arquivo.
+ALWAYS = {"links", "items", "rules", "results", "files", "topics", "warnings", "failures", "steps", "review_kinds", "options"}
 bad = 0
-decl = re.compile(r'^    (?:(?:public|private|fileprivate|internal)\s+)*(?:let|var)\s+(\w+)\s*:\s*([^={]+?)\s*(?:=.*)?$')
-for f in sorted(glob.glob("Sources/VibeDeckCore/*.swift")):
-    lines = open(f).read().split("\n")
-    i = 0
-    while i < len(lines):
-        if not re.match(r'^(?:public )?struct \w+', lines[i]): i += 1; continue
-        j = i + 1
-        while j < len(lines) and lines[j] != "}": j += 1
-        block = lines[i:j]
-        types = {}
-        for l in block:
-            m = decl.match(l)
-            if m and "{" not in l: types[m.group(1)] = m.group(2).strip()
-        k = next((x for x, l in enumerate(block) if "func encode(to" in l), None)
-        if k is not None:
-            for x in range(k + 1, len(block)):
-                if block[x] == "    }": break
-                m = re.match(r'^\s*try\s+\w+\.encode\((\w+),\s*forKey:', block[x])
-                if not m: continue
-                name = m.group(1)
-                t = types.get(name, "")
-                if t.endswith("?"):
-                    print(f"{f}:{i+x+1}: '{name}' é opcional; use encodeIfPresent"); bad += 1
-                elif name in ("tags", "paths"):
-                    print(f"{f}:{i+x+1}: '{name}' vazio deve ser omitido: if !{name}.isEmpty {{ ... }}"); bad += 1
-        i = j + 1
+for f in sorted(glob.glob("crates/vibedeck-core/src/model/*.rs")):
+    s = open(f).read()
+    s = s[:s.find("#[cfg(test)]")] if "#[cfg(test)]" in s else s
+    for m in re.finditer(r'((?:[ \t]*#\[[^\n]*\]\n)+)[ \t]*(?:pub )?struct (\w+)\s*\{', s):
+        attrs, name = m.groups()
+        if not re.search(r'derive\([^)]*Serialize', attrs): continue
+        i, depth = m.end(), 1
+        while depth and i < len(s):
+            depth += {"{": 1, "}": -1}.get(s[i], 0); i += 1
+        body = re.sub(r'#\[(?:serde|derive)\(.*?\)\]', lambda mm: mm.group(0).replace("\n", " "), s[m.end():i - 1], flags=re.S)
+        pend = ""
+        for line in body.split("\n"):
+            t = line.strip()
+            if t.startswith("#["): pend += t; continue
+            if not t or t.startswith("//"): continue
+            fm = re.match(r'(?:pub )?(\w+):\s*(.+?),?$', t)
+            if fm:
+                n, ty = fm.groups()
+                ln = s[:m.start()].count("\n") + 1
+                if "skip_serializing_if" not in pend and "skip_serializing" not in pend:
+                    if ty.startswith("Option<"):
+                        print(f"{f}:{ln}: {name}.{n} é opcional; use skip_serializing_if = \"Option::is_none\""); bad += 1
+                    elif n in ("tags", "paths") :
+                        print(f"{f}:{ln}: {name}.{n} vazio deve ser omitido (skip_serializing_if = \"vec_empty\")"); bad += 1
+            pend = ""
 sys.exit(1 if bad else 0)
 PY
+cargo_tests vibedeck-core unknown_keys_are_dropped every_managed_json_roundtrips

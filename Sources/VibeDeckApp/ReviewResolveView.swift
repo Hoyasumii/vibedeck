@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 /// Drives "Resolver": questions and plan with read-only tools, explicit acceptance, then writes one item at a time.
 /// One runner per project (owned by `ProjectModel`), so only one Resolver runs at once. Status changes go through
@@ -96,7 +95,7 @@ final class ReviewResolveRunner {
                 do {
                     let reply = try await AIReadOnlyOperation.run(
                         root: model?.store.root ?? URL(fileURLWithPath: "/"), provider: provider, operation: "Resolver (plano)",
-                        prompt: prompt, schema: ReviewResolve.schema) { data in
+                        prompt: prompt, schema: ReviewResolve.schema, store: model?.store) { data in
                         try ReviewResolve.parse(data, allowQuestions: allowQuestions)
                     }
                     guard !Task.isCancelled else { return }
@@ -152,10 +151,11 @@ final class ReviewResolveRunner {
         guard isUnchanged(item) else { return .failed("O item mudou antes da execução; nada foi alterado.") }
         let prompt = ReviewResolve.executionPrompt(item: item, kind: entries[index].kind, plan: plan, answers: entries[index].answered)
         let started = Date.now
-        try await RuleTestGenerator.run(root: model.store.root, prompt: prompt, provider: provider, operation: "Resolver")
+        try await RuleTestGenerator.run(root: model.store.root, store: model.store, prompt: prompt, provider: provider, operation: "Resolver")
         try Task.checkCancellation()
         let store = model.store
-        let problems = await VDLog.detached { ReviewResolve.verify(store: store, item: item, files: plan.files, verifiedSince: started) }.value
+        let problems = await ReviewResolve.verify(store: store, item: item, files: plan.files, verifiedSince: started,
+                                                  checks: model.checks, topics: model.topics.map(\.value))
         try Task.checkCancellation()
         guard problems.isEmpty else {
             return .failed("Check não aprovado; o item continua como estava.\n" + problems.joined(separator: "\n"))

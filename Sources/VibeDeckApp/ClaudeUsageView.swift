@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 /// Limites do Claude Code (sessão de 5h e semana) no rodapé da sidebar. Só existe quando o Claude Code
 /// está na máquina; os números vêm da statusline dele, via `vibedeck usage record`.
@@ -83,7 +82,7 @@ struct ClaudeUsageView: View {
     static let cliPath: String? = {
         let fm = FileManager.default
         let candidates = [
-            Bundle.main.bundleURL.appending(path: "Contents/Helpers/vibedeck").path,
+            CoreLocator.binary()?.path ?? "",
             Bundle.main.executableURL?.deletingLastPathComponent().appending(path: "vibedeck").path ?? "",
             fm.homeDirectoryForCurrentUser.appending(path: ".local/bin/vibedeck").path,
         ]

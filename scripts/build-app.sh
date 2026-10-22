@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# Builds build/VibeDeck.app (SwiftUI app + bundled `vibedeck` CLI) and the installer
+# Builds build/VibeDeck.app (SwiftUI app + the Rust Core `vibedeck` bundled in Contents/MacOS) and the installer
 # build/VibeDeck-<version>.dmg (drag VibeDeck onto the Applications shortcut).
+# The app talks to the bundled binary over MCP (`vibedeck mcp -C <root>`), locally or through ssh.
 #   scripts/build-app.sh                 release build + DMG
 #   scripts/build-app.sh --install-cli   also symlinks the CLI into ~/.local/bin
 #   CONFIG=debug scripts/build-app.sh    debug build
 #   CONFIG=debug scripts/build-app.sh --no-dmg   local development, app only
+#   VIBEDECK_BIN=/path/to/vibedeck scripts/build-app.sh   use a prebuilt universal binary (CI) instead of cargo build
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/env.sh
@@ -23,17 +25,32 @@ for arg in "$@"; do
 done
 
 CONFIG="${CONFIG:-release}"
-VERSION="$(grep -m1 'version: "' Sources/vibedeck/CLI.swift | sed -E 's/.*version: "([^"]+)".*/\1/')"
+VERSION="$(grep -m1 '^version = "' Cargo.toml | sed -E 's/.*version = "([^"]+)".*/\1/')"
 echo "→ swift build -c $CONFIG ${SDKROOT:+(SDK: $(basename "$SDKROOT"))}"
-# Build both executables in one plan, sharing dependency work and scheduling.
 swift build -c "$CONFIG"
 BIN="$(swift build -c "$CONFIG" --show-bin-path)"
 
+# Rust Core: the single `vibedeck` binary (CLI + MCP server) that the app launches.
+if [[ -n "${VIBEDECK_BIN:-}" ]]; then
+  CORE="$VIBEDECK_BIN"
+else
+  if [[ "$CONFIG" == "release" ]]; then
+    echo "→ cargo build --release -p vibedeck"
+    cargo build --release -p vibedeck
+    CORE="target/release/vibedeck"
+  else
+    echo "→ cargo build -p vibedeck"
+    cargo build -p vibedeck
+    CORE="target/debug/vibedeck"
+  fi
+fi
+[[ -x "$CORE" ]] || { echo "Binário do Core não encontrado: $CORE" >&2; exit 1; }
+
 APP="build/VibeDeck.app"
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Helpers" "$APP/Contents/Resources"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN/VibeDeckApp" "$APP/Contents/MacOS/VibeDeck"
-cp "$BIN/vibedeck" "$APP/Contents/Helpers/vibedeck"
+cp "$CORE" "$APP/Contents/MacOS/vibedeck"
 # SwiftPM resource bundles (MarkdownUI etc.), if any.
 find "$BIN" -maxdepth 1 -name '*.bundle' -exec cp -R {} "$APP/Contents/Resources/" \;
 # Icon: regenerate with `swift scripts/make-icon.swift` after changing the mark.
@@ -68,8 +85,8 @@ echo "✓ $APP"
 
 if [[ "$INSTALL_CLI" == true ]]; then
   mkdir -p "$HOME/.local/bin"
-  ln -sf "$PWD/$APP/Contents/Helpers/vibedeck" "$HOME/.local/bin/vibedeck"
-  echo "✓ CLI: ~/.local/bin/vibedeck → $APP/Contents/Helpers/vibedeck"
+  ln -sf "$PWD/$APP/Contents/MacOS/vibedeck" "$HOME/.local/bin/vibedeck"
+  echo "✓ CLI: ~/.local/bin/vibedeck → $APP/Contents/MacOS/vibedeck"
 fi
 
 if [[ "$BUILD_DMG" == false ]]; then

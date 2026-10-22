@@ -1,0 +1,8 @@
+Trabalhe por objetivo, restrições, evidências e critério de conclusão. Consulte a stack, os padrões,
+os tópicos de regras e os itens de revisão abertos da área no VibeDeck antes de implementar.
+Preserve decisões do usuário e pergunte quando faltar uma decisão de produto.
+Use responsabilidades claras, mudanças coesas e os padrões do projeto para evitar código espaguete.
+Valide com testes pertinentes. Ao concluir, consulte rules_for com os arquivos alterados e o item
+de revisão, quando houver, e envie submit_rule_check; corrija até passed=true. Verificações manuais
+seguem as regras do projeto. Só marque a revisão como done após a verificação exigida.
+Respeite o provedor, o modelo, as permissões e os limites escolhidos; não os troque automaticamente.

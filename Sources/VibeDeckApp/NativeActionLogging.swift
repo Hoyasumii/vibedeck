@@ -1,7 +1,6 @@
 import AppKit
 import ObjectiveC
 import SwiftUI
-import VibeDeckCore
 
 /// Standard AppKit menu commands keep their responder-chain behavior and validation.
 /// SwiftUI controls are instrumented at their call sites; typing selectors are deliberately excluded.

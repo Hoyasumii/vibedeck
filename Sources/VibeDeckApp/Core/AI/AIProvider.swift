@@ -1,0 +1,88 @@
+import Foundation
+
+enum AIProvider: String, Codable, CaseIterable, Sendable {
+    case claude, codex
+    var title: String { self == .claude ? "Claude" : "Codex" }
+    var executable: URL? { self == .claude ? ClaudeCode.executable : CodexCode.executable }
+    var isInstalled: Bool { executable != nil }
+    static func installed(in root: URL?) -> [AIProvider] {
+        guard let root else { return installed }
+        return RemoteExecution.providers(root: root)
+    }
+    static var installed: [AIProvider] { allCases.filter(\.isInstalled) }
+}
+
+struct AIProviderSettings: Codable, Equatable, Sendable {
+    var model: String?
+    var effort: String?
+    init(model: String? = nil, effort: String? = nil) { self.model = model; self.effort = effort }
+}
+
+enum CodexCode {
+    static let executable: URL? = locate()
+    static var isInstalled: Bool { executable != nil }
+    static func locate(home: URL = FileManager.default.homeDirectoryForCurrentUser,
+                       path: String? = ProcessInfo.processInfo.environment["PATH"],
+                       isExecutable: (String) -> Bool = { FileManager.default.isExecutableFile(atPath: $0) },
+                       loginShellLookup: () -> String? = { ClaudeCode.loginShell("command -v codex") }) -> URL? {
+        let dirs = ClaudeCode.candidateDirectories(home: home, path: path) + [home.appending(path: ".npm-global/bin").path, home.appending(path: ".cargo/bin").path]
+        for dir in dirs {
+            let file = URL(fileURLWithPath: dir).appending(path: "codex")
+            if isExecutable(file.path) { return file }
+        }
+        if let file = loginShellLookup()?.trimmingCharacters(in: .whitespacesAndNewlines), file.hasPrefix("/"), isExecutable(file) { return URL(fileURLWithPath: file) }
+        return nil
+    }
+}
+
+struct CodexModel: Equatable, Sendable, Identifiable {
+    var id: String
+    var title: String
+    var efforts: [String]
+    var isDefault: Bool
+    static func list(_ response: JSONValue) -> [CodexModel] {
+        (response["data"]?.array ?? []).compactMap {
+            guard let model = $0["model"]?.string, $0["hidden"]?.bool != true else { return nil }
+            return CodexModel(id: model, title: $0["displayName"]?.string ?? model,
+                              efforts: $0["supportedReasoningEfforts"]?.array?.compactMap { $0["reasoningEffort"]?.string } ?? [],
+                              isDefault: $0["isDefault"]?.bool ?? false)
+        }
+    }
+}
+
+struct CodexSkill: Equatable, Sendable {
+    var name: String
+    var description: String
+    var path: String
+    static func list(_ response: JSONValue) -> [CodexSkill] {
+        (response["data"]?.array ?? []).flatMap { $0["skills"]?.array ?? [] }.compactMap {
+            guard $0["enabled"]?.bool != false, let name = $0["name"]?.string, let path = $0["path"]?.string else { return nil }
+            return CodexSkill(name: name, description: $0["description"]?.string ?? "", path: path)
+        }
+    }
+}
+
+struct CodexRateLimit: Equatable, Sendable, Identifiable {
+    var id: String
+    var usedPercent: Double
+    var minutes: Double
+    var resetsAt: Date?
+    static func list(_ response: JSONValue) -> [CodexRateLimit] {
+        let buckets = response["rateLimitsByLimitId"]?.object ?? ["codex": response["rateLimits"] ?? .null]
+        return buckets.keys.sorted().flatMap { key in
+            ["primary", "secondary"].compactMap { window in
+                guard let value = buckets[key]?[window], let used = value["usedPercent"]?.number else { return nil }
+                return CodexRateLimit(id: "\(key) · \(window)", usedPercent: used, minutes: value["windowDurationMins"]?.number ?? 0,
+                                      resetsAt: value["resetsAt"]?.number.map { Date(timeIntervalSince1970: $0) })
+            }
+        }
+    }
+}
+
+enum CodexQueries {
+    @MainActor static func limits(root: URL) async throws -> JSONValue {
+        let rpc = CodexRPC(); defer { rpc.stop() }
+        try await rpc.start(root: root)
+        return try await rpc.request("account/rateLimits/read")
+    }
+}

@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 struct KitCatalogButton: View {
     @Environment(ProjectModel.self) private var model

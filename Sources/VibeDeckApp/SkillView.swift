@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 /// Same page as `AgentView`, for a skill: `SKILL.md`-like instructions (triggered by the description) plus its flow.
 struct SkillView: View {
@@ -31,11 +30,10 @@ struct SkillView: View {
                     }
                 }
         }
-        .inspector(isPresented: $showFlow) {
+        .detailContext(isPresented: $showFlow) {
             NextStepsInspector(owner: .skill(slug), steps: skill.nextSteps, mutate: { actionName, change in
                 model.mutateSkill(slug, actionName, undo: undo) { change(&$0.nextSteps) }
             }, open: open)
-            .inspectorColumnWidth(min: 260, ideal: 320, max: 440)
         }
         .navigationTitle(skill.title)
         .navigationSubtitle("\(skill.model ?? "modelo herdado") · \(skill.nextSteps.count) próximo(s) passo(s)")

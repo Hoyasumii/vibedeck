@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 # F6C6F8A2: arquivo editado offline e apagado no servidor é recriado no caminho original.
-set -euo pipefail
-source "$(dirname "$0")/_lib.sh"
-applies
-needF $WS '(server == nil && local != nil)' "apagado no servidor + editado localmente deve ser recriado"
-in_body $WS 'public func replace\(' 'mkdir -p " \+ SSHConnection\.quote\(parent' "a recriação deve restaurar as pastas do caminho original"
-run_tests recreateFileDeletedOnServer
-finish
+# APOSENTADA por D16 (nada a verificar: sem espelho/sincronização/conflito): o projeto SSH não tem mais espelho local: o Core Rust roda no servidor (ssh host vibedeck mcp -C <pasta>) e o app só fala MCP com ele (RemoteWorkspace.swift, CoreStore.sshLocation), sem cache, edição offline, pendências nem conflitos.
+# Decisão D16 (estado.md): SSH direto + reconexão com intervalo crescente + offline somente leitura; sem edição offline nem conflito.
+# Sai com 77 (n/a) em vez de passar; o motivo também está em `details` da regra.
+exit 77

@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 struct RuleTopicView: View {
     @Environment(\.logProject) private var providerRoot
@@ -31,9 +30,8 @@ struct RuleTopicView: View {
                 model.mutateTopic(slug, action, undo: undo) { change(&$0.rules) }
             }
         }
-        .inspector(isPresented: $showChecks) {
+        .detailContext(isPresented: $showChecks) {
             ChecksList(slug: slug, checks: model.checks(forTopic: slug), rules: topic.rules)
-                .inspectorColumnWidth(min: 260, ideal: 300, max: 420)
         }
         .navigationTitle(topic.title)
         .navigationSubtitle("\(topic.rules.count) regra(s) · \(topic.isGlobal ? "vale para toda tarefa" : "\(topic.paths.count) escopo(s)")")
@@ -204,15 +202,14 @@ struct RuleListEditor: View {
         .sheet(item: $movingRule) { rule in
             NamePromptSheet(title: "Mover regra para grupo", placeholder: "Grupo/subgrupo") { name in
                 let storePath = name
-                guard let group = try? ProjectStore(root: URL(fileURLWithPath: "/")).normalizedGroupPath(storePath, allowRoot: true) else { return }
+                guard let group = try? CoreStore.normalizedGroupPath(storePath, allowRoot: true) else { return }
                 update(rule.id, "Mover regra") { $0.group = group.isEmpty ? nil : group }
             }
         }
         .sheet(item: $movingRuleGroup) { p in
             NamePromptSheet(title: "Mover ou renomear grupo de regras", placeholder: "Novo caminho grupo/subgrupo") { destination in
                 do {
-                    let store = ProjectStore(root: logProject ?? URL(fileURLWithPath: "/"))
-                    let updated = try store.ruleGroupRenamed(rules, from: p.path, to: destination)
+                    let updated = try CoreStore.ruleGroupRenamed(rules, from: p.path, to: destination)
                     mutate("Mover grupo de regras") { $0 = updated }
                 } catch { groupError = error.localizedDescription }
             }
@@ -234,7 +231,7 @@ struct RuleListEditor: View {
 
     private func ruleBranch(_ parent: String) -> AnyView {
         AnyView(Group {
-            ForEach(ruleGroups.filter { ProjectStore.groupPath(of: $0) == parent }, id: \.self) { group in
+            ForEach(ruleGroups.filter { CoreStore.groupPath(of: $0) == parent }, id: \.self) { group in
                 DisclosureGroup(isExpanded: Binding(get: { !collapsedRuleGroups.contains(group) }, set: { if $0 { collapsedRuleGroups.remove(group) } else { collapsedRuleGroups.insert(group) } })) {
                     ruleBranch(group)
                 } label: { Label(String(group.split(separator: "/").last ?? ""), systemImage: "folder") }

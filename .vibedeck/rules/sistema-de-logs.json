@@ -5,13 +5,13 @@
   "description" : "Regras vindas da ideia \"Sistema de Logs\".",
   "id" : "375D80ED-D712-493B-8854-5BB7EF68DFEF",
   "paths" : [
-    "Sources/VibeDeckCore/Logging.swift",
+    "crates/vibedeck-core/src/project/logs.rs",
+    "Sources/VibeDeckApp/Core/Support/Logging.swift",
     "Sources/VibeDeckApp/DiagnosticsView.swift",
-    "Tests/VibeDeckCoreTests/LoggingTests.swift",
     "Sources/VibeDeckApp/ProjectModel.swift",
     "Sources/VibeDeckApp/VibeDeckApp.swift",
-    "Sources/vibedeck/CLI.swift",
-    "Sources/vibedeck/MCPServer.swift"
+    "crates/vibedeck/src/cli/**",
+    "crates/vibedeck/src/mcp/**"
   ],
   "rules" : [
     {
@@ -22,7 +22,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/sistema-de-logs/9ede76df.sh",
-        "generatedAt" : "2026-10-14T14:13:45Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
         "ruleHash" : "b83bfaddb49aeacf"
       },
@@ -36,7 +36,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/sistema-de-logs/1a0d7d95.sh",
-        "generatedAt" : "2026-10-14T14:13:45Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
         "ruleHash" : "3b1094a61cbef475"
       },
@@ -45,14 +45,14 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-12T03:07:42Z",
-      "details" : "grep dos eventos novos em VDLog.* confere o padrão ^[a-z]+\\.[a-z_]+$.",
+      "details" : "grep dos eventos novos em VDLog.* (app) e logs::* (Core Rust) confere o padrão ^[a-z]+\\.[a-z_]+$.",
       "id" : "DD69DD51-3E4C-4BF8-A2D4-9862E4318002",
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/sistema-de-logs/dd69dd51.sh",
-        "generatedAt" : "2026-10-14T14:13:45Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
-        "ruleHash" : "d1dd759792324add"
+        "ruleHash" : "7f6c3ae2a9117497"
       },
       "text" : "Eventos de ação usam o prefixo \"ui.\" e eventos de reação usam o prefixo da área que reagiu (store., ai., rules., cli., mcp.), no formato area.verbo_em_snake_case."
     },
@@ -64,7 +64,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/sistema-de-logs/1f7205c4.sh",
-        "generatedAt" : "2026-10-14T14:13:46Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
         "ruleHash" : "04d525d049f08107"
       },
@@ -78,23 +78,23 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/sistema-de-logs/31465510.sh",
-        "generatedAt" : "2026-10-14T14:13:46Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
-        "ruleHash" : "5ace43b6805b0f6b"
+        "ruleHash" : "2b1c3d5c157e3741"
       },
-      "text" : "Toda gravação de dados do projeto feita pelo ProjectModel registra uma entrada info com o caminho relativo do arquivo e o nome da ação de undo."
+      "text" : "Toda gravação de dados do projeto (pelo app ou pelo Core Rust) registra uma entrada info com o caminho relativo do arquivo e o nome da ação de undo."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-12T03:07:42Z",
-      "details" : "Rodar um comando do CLI que altere um item com o app aberto e conferir a entrada de reação do app.",
+      "details" : "Rodar um comando do CLI que altere um item com o app aberto e conferir a entrada de reação do app. Gravações do próprio app não geram essa entrada: o app guarda a revisão do Core (project_revision) após cada gravação e ignora o evento do FSEvents cuja revisão é a mesma (eco); durante uma gravação do app o evento não é logado como external.",
       "id" : "BE4A2B46-5296-45AF-A8D4-4196AE2C387C",
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/sistema-de-logs/be4a2b46.sh",
-        "generatedAt" : "2026-10-14T14:13:46Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "script",
-        "ruleHash" : "67f148812663cd9f"
+        "ruleHash" : "8f7b4c62f4a9e488"
       },
       "text" : "Mudanças externas aplicadas ao vivo pelo app (arquivo alterado fora do app) registram uma entrada info com o arquivo relativo e a origem external."
     },
@@ -106,7 +106,7 @@
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/sistema-de-logs/48331e51.sh",
-        "generatedAt" : "2026-10-14T14:13:46Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
         "ruleHash" : "9287e15a65e49e86"
       },
@@ -115,14 +115,14 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-12T03:07:42Z",
-      "details" : "Teste em LoggingTests: registrar edição de um doc e verificar que o texto do doc não aparece no arquivo .jsonl.",
+      "details" : "Teste do módulo de logs do Core (higieniza_campos_longos) e inspeção das chamadas de log: o texto do conteúdo (docs, prompts, argumentos) não aparece no arquivo .jsonl.",
       "id" : "0EF292E8-4006-4535-A964-0AEEA9C49B5E",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/sistema-de-logs/0ef292e8.sh",
-        "generatedAt" : "2026-10-14T14:13:46Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
-        "ruleHash" : "8584b9c9c6a71271"
+        "ruleHash" : "613deb7553db1bfd"
       },
       "text" : "Logs de ação e reação nunca guardam conteúdo de prompts, docs, ideias, regras, campos de texto ou argumentos de ferramenta; só nomes, slugs, ids, caminhos relativos, tamanhos e códigos."
     },
@@ -134,7 +134,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/sistema-de-logs/cccd7127.sh",
-        "generatedAt" : "2026-10-14T14:13:46Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
         "ruleHash" : "bbfba04f3a72bab2"
       },
@@ -148,7 +148,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/sistema-de-logs/59cb0494.sh",
-        "generatedAt" : "2026-10-14T14:13:46Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
         "ruleHash" : "da8f685692fc808b"
       },
@@ -162,7 +162,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/sistema-de-logs/f5f9a4ec.sh",
-        "generatedAt" : "2026-10-14T14:13:46Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
         "ruleHash" : "a698b3b11d569ac9"
       },
@@ -176,7 +176,7 @@
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/sistema-de-logs/4e84a4a5.sh",
-        "generatedAt" : "2026-10-14T14:13:46Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
         "ruleHash" : "f7fb97d93cb9c0b9"
       },
@@ -185,30 +185,30 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-12T03:07:42Z",
-      "details" : "Inspecionar LogStore.append e o diretório ~/Library/Application Support/VibeDeck/logs.",
+      "details" : "Inspecionar LogStore::append (logs.rs) e o diretório de logs.",
       "id" : "C1E42BBD-9081-4046-9AC6-3F74FB9B912B",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/sistema-de-logs/c1e42bbd.sh",
-        "generatedAt" : "2026-10-14T14:13:46Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
-        "ruleHash" : "138bf4f547511732"
+        "ruleHash" : "2b4d030e3006716d"
       },
-      "text" : "Os logs continuam fora do projeto, em Application Support, como JSON Lines por dia com O_APPEND, e não passam por AtomicFile.write."
+      "text" : "Os logs continuam fora do projeto (macOS: Application Support/VibeDeck/logs; Linux: $XDG_STATE_HOME/vibedeck/logs), como JSON Lines por dia em modo append, e não passam por store::write_atomic nem AtomicFile.write."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-12T03:07:42Z",
-      "details" : "swift test --filter LoggingTests passa.",
+      "details" : "cargo test -p vibedeck-core --lib project::logs passa.",
       "id" : "3C88AD3B-3D3C-4F6B-BCE0-F00E68186264",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/sistema-de-logs/3c88ad3b.sh",
-        "generatedAt" : "2026-10-14T14:13:46Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
-        "ruleHash" : "8fbee4c89c59b92a"
+        "ruleHash" : "9518fd59572a4381"
       },
-      "text" : "O formato de entrada novo (id de correlação, control, label) vem com teste em LoggingTests cobrindo codificação, decodificação tolerante e o filtro por ação."
+      "text" : "O formato de entrada novo (id de correlação, control, label) vem com teste no módulo de logs do Core Rust cobrindo codificação, decodificação tolerante e o filtro por ação."
     },
     {
       "author" : "ai",
@@ -217,7 +217,7 @@
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/sistema-de-logs/b58b4b28.sh",
-        "generatedAt" : "2026-10-14T14:13:46Z",
+        "generatedAt" : "2026-10-22T18:52:14Z",
         "mode" : "script",
         "ruleHash" : "5860afa9e6f0967d"
       },

@@ -5,5 +5,5 @@ others=$(grep -rl 'ruleScriptConcurrency' Sources schema vibedeck.json .vibedeck
 [ -z "$others" ] || { echo "a chave ruleScriptConcurrency só pode existir em Sources/VibeDeckApp; achei em: $others"; bad=1; }
 grep -rq 'ruleScriptConcurrency' Sources/VibeDeckApp || { echo "chave do limite não encontrada em Sources/VibeDeckApp"; bad=1; }
 L=.vibedeck/tests/conceitos-do-produto/9e02c127.sh
-for f in $MODEL $SETTINGS; do hasF $L "\"$f\"" "$f lê/grava o limite e precisa estar no LOCAL_OK"; done
+for f in RuleExecutionModel.swift AppSettingsView.swift; do hasF $L "\"$f\"" "$f lê/grava o limite e precisa estar no LOCAL_OK"; done
 finish

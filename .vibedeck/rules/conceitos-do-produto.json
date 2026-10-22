@@ -5,20 +5,21 @@
   "id" : "FC670148-BC6E-455E-9285-597610F9A400",
   "paths" : [
     "Sources/**",
+    "crates/**",
     "schema/**"
   ],
   "rules" : [
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:33:31Z",
-      "details" : "vibedeck.json (nome, links, reviewKinds) + .vibedeck/ (docs/*.md, reviews/*.json, rules/*.json, ideas/*.json, checks/*.json). Nada de banco, cache oculto ou estado que só o app conhece: o que aparece na tela tem que estar no disco.\nVerificar: um conceito novo ou campo novo é salvo nesses arquivos e descrito no schema e no AGENTS.md.",
+      "details" : "vibedeck.json (nome, links, reviewKinds) + .vibedeck/ (docs/*.md, reviews/*.json, rules/*.json, ideas/*.json, checks/*.json). Nada de banco, cache oculto ou estado que só o app conhece: o que aparece na tela tem que estar no disco. O que o Core Rust grava (crates/vibedeck-core/src/model) tem campo em schema/v1; só dados da máquina (logs, uso de IA, preferências de UI) ficam fora do repo.\nVerificar: um conceito novo ou campo novo é salvo nesses arquivos e descrito no schema e no guia (crates/vibedeck-core/src/ai/guide_reference.md → AGENTS.md).",
       "id" : "9E02C127-7793-4588-A770-0E817687B02F",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/conceitos-do-produto/9e02c127.sh",
-        "generatedAt" : "2026-10-09T01:27:12Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
-        "ruleHash" : "ee57bc59526c67c3"
+        "ruleHash" : "7fcf65db4b24f7da"
       },
       "text" : "Os dados do projeto vivem em arquivos do repo, legíveis por humano e IA"
     },
@@ -30,7 +31,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/conceitos-do-produto/116aea24.sh",
-        "generatedAt" : "2026-10-09T01:27:12Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "08d26ae7b59b49d6"
       },
@@ -44,7 +45,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/conceitos-do-produto/f7531e2b.sh",
-        "generatedAt" : "2026-10-09T01:27:12Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "afadd8e4e63ca631"
       },
@@ -58,7 +59,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/conceitos-do-produto/be018170.sh",
-        "generatedAt" : "2026-10-09T01:27:12Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "f6f73c1fe391f8e4"
       },
@@ -72,7 +73,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/conceitos-do-produto/257d96b2.sh",
-        "generatedAt" : "2026-10-09T01:27:12Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "66d2c4a59e5a1d27"
       },
@@ -86,7 +87,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/conceitos-do-produto/54a2d6b0.sh",
-        "generatedAt" : "2026-10-09T01:27:12Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "55cc75cdc246333e"
       },
@@ -100,7 +101,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/conceitos-do-produto/6e22946d.sh",
-        "generatedAt" : "2026-10-09T01:27:12Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "c9833be5458b5512"
       },
@@ -114,7 +115,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/conceitos-do-produto/c637a278.sh",
-        "generatedAt" : "2026-10-09T01:27:12Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "d6557f5f59ad7d48"
       },
@@ -123,14 +124,14 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:33:31Z",
-      "details" : "Itens de revisão, regras e ideias têm author. O que vem do app é human; o que vem do MCP ou do CLI com --ai é ai, e o app mostra \"Criado por IA\". A IA não apaga o que é de humano.\nVerificar: entidade nova com autoria tem o campo author e o badge no app.",
+      "details" : "Itens de revisão, regras e ideias têm author. O que vem do app é human (ai só quando o app grava uma proposta de IA); o que vem do MCP ou do CLI com --ai é ai (o catálogo MCP da IA não tem ferramentas de apagar; só o modo `--app`, usado pelo app, apaga, a pedido do humano), e o app mostra \"Criado por IA\". A IA não apaga o que é de humano.\nVerificar: entidade nova com autoria tem o campo author e o badge no app.",
       "id" : "C9BEE6A5-C314-4547-AE52-52D116B11220",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/conceitos-do-produto/c9bee6a5.sh",
-        "generatedAt" : "2026-10-09T01:27:12Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
-        "ruleHash" : "001a1697d7ca0d82"
+        "ruleHash" : "bebb47ecb70ce062"
       },
       "text" : "Autoria human/ai sempre registrada"
     },
@@ -142,7 +143,7 @@
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/conceitos-do-produto/b9e9dd35.sh",
-        "generatedAt" : "2026-10-09T01:27:12Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
         "ruleHash" : "d4014df16aabd2fe"
       },
@@ -151,14 +152,14 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T04:24:18Z",
-      "details" : "Toda feature que depende de IA (importar agentes, executar agentes/fluxos, Descubra, etc.) exige um provedor suportado instalado na máquina do usuário: Claude Code ou Codex, detectados por AIProvider (AIProvider.installed / provider.isInstalled). Se nenhum for detectado, as opções não são mostradas na UI (botões, menus, seções), em vez de aparecerem desabilitadas ou darem erro; uma feature que só existe para um dos provedores só aparece quando ele está instalado. Fora do app, o Codex também é suportado onde o protocolo é compatível: servidor MCP, CLI e o hook de regras (`vibedeck hook install --agent codex`). Outros provedores não são suportados por ora.\nVerificar: sem Claude Code e sem Codex instalados, nenhuma opção de IA aparece no app; a detecção é única (AIProvider) e reutilizada por toda feature nova de IA",
+      "details" : "Toda feature que depende de IA (importar agentes, executar agentes/fluxos, Descubra, etc.) exige um provedor suportado instalado na máquina do usuário: Claude Code ou Codex, detectados por AIProvider no app (AIProvider.installed / provider.isInstalled) e por `ai::provider::Provider::executable` no Core Rust. Se nenhum for detectado, as opções não são mostradas na UI (botões, menus, seções), em vez de aparecerem desabilitadas ou darem erro; uma feature que só existe para um dos provedores só aparece quando ele está instalado. Fora do app, o Codex também é suportado onde o protocolo é compatível: servidor MCP, CLI e o hook de regras (`vibedeck hook install --agent codex`). Outros provedores não são suportados por ora.\nVerificar: sem Claude Code e sem Codex instalados, nenhuma opção de IA aparece no app; a detecção é única (AIProvider no app, ai/provider.rs no Core) e reutilizada por toda feature nova de IA",
       "id" : "A31D4912-A7FA-4E2A-B1C2-CC27D577177B",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/conceitos-do-produto/a31d4912.sh",
-        "generatedAt" : "2026-10-09T01:27:12Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
-        "ruleHash" : "248e56105c29005c"
+        "ruleHash" : "fe2568d01314a785"
       },
       "text" : "Funcionalidades de IA do app exigem um provedor suportado (Claude Code ou Codex); sem nenhum na máquina, nem aparecem"
     }

@@ -6,8 +6,9 @@
   "id" : "80CB7A58-DDE1-40C5-8F13-E00B7675A57B",
   "paths" : [
     "Sources/VibeDeckApp/IdeaView.swift",
-    "Sources/VibeDeckCore/Rules.swift",
-    "Tests/VibeDeckCoreTests/RulesTests.swift"
+    "Sources/VibeDeckApp/Core/Model/Rules.swift",
+    "Tests/VibeDeckAppTests/IdeaImplementationPromptTests.swift",
+    "crates/vibedeck-core/src/ideas.rs"
   ],
   "rules" : [
     {
@@ -111,16 +112,16 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-13T17:24:43Z",
-      "details" : "Verificar em Tests/VibeDeckCoreTests/RulesTests.swift casos com topic não nil e nil, checando slug, título e menção ao tópico ou às regras rascunho.",
+      "details" : "Verificar em Tests/VibeDeckAppTests/IdeaImplementationPromptTests.swift casos com topic não nil e nil, checando slug, título e menção ao tópico (get_rule_topic) ou às regras rascunho. O gêmeo Rust é ideas::implementation_prompt (crates/vibedeck-core/src/ideas.rs).",
       "id" : "197CD570-7A87-4D8D-9A05-2C328273F8AE",
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/para-agilizar-o-desenvolvimento-seria-bom-se-no-app-tivesse-/197cd570.sh",
-        "generatedAt" : "2026-10-14T14:13:57Z",
+        "generatedAt" : "2026-10-22T19:25:34Z",
         "mode" : "script",
-        "ruleHash" : "70e4334d52ad33f9"
+        "ruleHash" : "48af02ba9908c687"
       },
-      "text" : "Mudar o texto do prompt de IdeaImplementation.prompt exige teste em RulesTests cobrindo o prompt com e sem tópico promovido."
+      "text" : "Mudar o texto do prompt de IdeaImplementation.prompt exige teste em Tests/VibeDeckAppTests cobrindo o prompt com e sem tópico promovido."
     },
     {
       "author" : "ai",

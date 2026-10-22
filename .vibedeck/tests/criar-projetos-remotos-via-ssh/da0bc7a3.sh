@@ -5,7 +5,7 @@ source "$(dirname "$0")/_lib.sh"
 applies
 needF $SHEET 'SecureField("Senha ou frase secreta (opcional)", text: $password)' "falta o campo de senha na conexão"
 in_body $SHEET 'private func connect\(\)' 'connection\.connect\(password: secret\)' "a senha deve ser usada na conexão"
-B=$(body $CONN 'public func connect\(')
+B=$(body $CONN 'func connect\(')
 for p in 'environment\["SSH_ASKPASS"\] = helper\.path' 'environment\["SSH_ASKPASS_REQUIRE"\] = "force"' 'environment\["VIBEDECK_SSH_PASSWORD"\] = password' 'NumberOfPasswordPrompts=1' 'environment: environment'; do
   grep -qE -- "$p" <<<"$B" || { echo "$CONN (connect): falta '$p' na autenticação por senha"; fail=1; }
 done

@@ -3,11 +3,11 @@
 # new → exploring → approved → promote_idea continua possível.
 set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
-applies '^Sources/vibedeck/|^Sources/VibeDeckCore/(Models|ProjectStore)\.swift$'
+applies '^crates/vibedeck(-core)?/src/(cli/|mcp/|reviews/|ideas\.rs|model/|store\.rs)'
 build_cli
 new_project
 fail=0
-M=Sources/vibedeck/MCPServer.swift
+M=crates/vibedeck/src/mcp/tools
 
 c2=$(call 2 add_idea '{"title":"Ideia de teste","body":"surgiu durante o trabalho"}')
 c3=$(call 3 update_idea '{"idea":"ideia-de-teste","status":"exploring"}')

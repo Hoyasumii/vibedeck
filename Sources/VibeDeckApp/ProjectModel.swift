@@ -1,7 +1,6 @@
 import Foundation
 import Observation
 import SwiftUI
-import VibeDeckCore
 
 enum SidebarSection: String, CaseIterable, Hashable {
     case docs, groups, topics, ideas, agents, commands, skills, workflows
@@ -52,6 +51,9 @@ enum SidebarItem: Hashable {
     case links
     case claudeItems
     case graph
+    case integrations
+    case usage
+    case checksHistory
     case claude
     case terminal(UUID)
     case section(SidebarSection)
@@ -71,6 +73,9 @@ enum SidebarItem: Hashable {
         case .links: "links"
         case .claudeItems: "claudeItems"
         case .graph: "graph"
+        case .integrations: "integrations"
+        case .usage: "usage"
+        case .checksHistory: "checksHistory"
         case .claude: "claude"
         case .terminal(let id): "terminal:\(id.uuidString)"
         case .section(let section): "section:\(section.rawValue)"
@@ -92,6 +97,9 @@ enum SidebarItem: Hashable {
         else if key == "links" { self = .links }
         else if key == "claudeItems" { self = .claudeItems }
         else if key == "graph" { self = .graph }
+        else if key == "integrations" { self = .integrations }
+        else if key == "usage" { self = .usage }
+        else if key == "checksHistory" { self = .checksHistory }
         else if key == "claude" { self = .claude }
         else if key.hasPrefix("terminal:") {
             guard let id = UUID(uuidString: String(key.dropFirst(9))) else { return nil }
@@ -119,7 +127,7 @@ enum SidebarItem: Hashable {
     /// The sidebar section this item lives in (expanded while it is selected).
     var section: SidebarSection? {
         switch self {
-        case .stack, .patterns, .links, .claudeItems, .graph, .claude, .terminal: nil
+        case .stack, .patterns, .links, .claudeItems, .graph, .integrations, .usage, .checksHistory, .claude, .terminal: nil
         case .section(let section): section
         case .doc: .docs
         case .group: .groups
@@ -144,8 +152,9 @@ struct SectionRow: Identifiable, Hashable {
     var dimmed = false
 }
 
-/// In-memory mirror of a project folder. Every mutation is written to disk immediately;
-/// external changes (CLI, MCP, AI editing files) are picked up through FSEvents.
+/// Espelho em memória de um projeto. Leitura e escrita passam pelo Core Rust (MCP, via `CoreStore`): a UI
+/// altera a memória na hora (otimista), a gravação vai para uma fila serial, e uma alteração externa
+/// (CLI, IA, outro app) é relida pelo FSEvents (projeto local) ou por polling (SSH).
 @MainActor
 @Observable
 final class ProjectModel {
@@ -154,7 +163,9 @@ final class ProjectModel {
     /// "Resolver" in reviews: one run per project at a time.
     let resolver = ReviewResolveRunner()
     let graphRunner: GraphRunner
-    let store: ProjectStore
+    let store: CoreStore
+    /// Conexão com o servidor de um projeto SSH (nil em projeto local). Desconectado = somente leitura.
+    var link: RemoteLink?
     var project: Project
     var docs: [DocInfo] = []
     var groups: [GroupEntry] = []
@@ -176,9 +187,10 @@ final class ProjectModel {
     var directoryGroups: [ItemConcept: [String]] = [:]
     var latestPathMoves: [SidebarItem: SidebarItem] = [:]
     var moveRevision = 0
-    @ObservationIgnored private var docIdentities: [String: String] = [:]
     @ObservationIgnored private var docViewIdentities: [String: UUID] = [:]
-    @ObservationIgnored private var pathMoveBatch: [SidebarItem: SidebarItem]?
+    /// Última leitura completa do servidor (projeto SSH): base do modo offline e do cache em disco.
+    @ObservationIgnored private var lastReadCache: RemoteCache?
+    @ObservationIgnored private var cacheCaptureQueued = false
 
     var errorMessage: String? {
         didSet {
@@ -201,9 +213,23 @@ final class ProjectModel {
         var id: String { slug }
     }
 
+    /// Áreas que podem ser relidas do Core.
+    enum Area: Hashable {
+        case project, docs, groups, topics, ideas, agents, commands, skills, workflows, runs, checks
+    }
+
     @ObservationIgnored private var watcher: FileWatcher?
-    /// Last bytes the app wrote per file path, so our own writes don't trigger reloads.
-    @ObservationIgnored private var lastWritten: [String: Data] = [:]
+    /// Fila serial de gravações: a ordem das edições é a ordem no Core.
+    @ObservationIgnored private var writeChain: Task<Void, Never>?
+    @ObservationIgnored private var pendingWrites = 0
+    /// Revisão do Core (`project_revision`) logo depois da última gravação do próprio app: o eco do FSEvents tem a mesma.
+    @ObservationIgnored private var ownRevision: String?
+    @ObservationIgnored private var capturingOwnRevision = false
+    /// Releituras pedidas enquanto havia gravação em andamento (reler antes de gravar traria o dado velho).
+    @ObservationIgnored private var deferredReloads = Set<Area>()
+    /// Texto mais recente dos docs: cache de leitura e filtro das mudanças que o próprio app causou.
+    @ObservationIgnored private var docTexts: [String: String] = [:]
+    @ObservationIgnored private var docWriteQueued = Set<String>()
 
     /// `try?` that logs the failure instead of hiding it; behavior is unchanged (nil on error).
     @discardableResult
@@ -214,30 +240,196 @@ final class ProjectModel {
         }
     }
 
-    init(store: ProjectStore) {
+    private init(store: CoreStore, snapshot: CoreSnapshot, connected: Bool = true) {
         self.store = store
         self.docGenerator = DocGenerateRunner.shared(root: store.root)
         self.itemAI = ItemAIRunner.shared(root: store.root)
         self.graphRunner = GraphRunner.shared(root: store.root)
-        self.project = Self.logged("model.load_project_failed", root: store.root) { try store.loadProject() } ?? Project(name: store.root.lastPathComponent)
-        Self.logged("model.ensure_directories_failed", root: store.root) { try store.ensureDirectories() }
-        Self.logged("model.agents_guide_failed", root: store.root) { try store.refreshAgentsGuideIfNeeded() }
-        // Topics deleted while the app was closed unpromote their ideas.
-        _ = Self.logged("model.release_ideas_failed", root: store.root) { try store.releaseOrphanedIdeas() }
-        _ = Self.logged("model.release_patterns_failed", root: store.root) { try store.releaseOrphanedPatterns() }
-        reloadDocs()
-        reloadGroups()
-        reloadTopics()
-        reloadIdeas()
-        reloadAgents()
-        reloadCommands()
-        reloadSkills()
-        reloadWorkflows()
-        reloadRuns()
-        reloadChecks()
+        self.project = snapshot.project
+        self.docs = snapshot.docs
+        self.groups = snapshot.groups.map { GroupEntry(slug: $0.slug, group: $0.value) }
+        self.topics = snapshot.topics.map { Entry(slug: $0.slug, value: $0.value) }
+        self.ideas = snapshot.ideas.map { Entry(slug: $0.slug, value: $0.value) }
+        self.agents = snapshot.agents.map { Entry(slug: $0.slug, value: $0.value) }
+        self.commands = snapshot.commands.map { Entry(slug: $0.slug, value: $0.value) }
+        self.skills = snapshot.skills.map { Entry(slug: $0.slug, value: $0.value) }
+        self.workflows = snapshot.workflows.map { Entry(slug: $0.slug, value: $0.value) }
+        for doc in snapshot.docs { docViewIdentities[doc.slug] = UUID() }
+        if let workspace = RemoteWorkspace.existing(at: store.root) {
+            let link = RemoteLink(workspace: workspace, store: store, connected: connected)
+            link.onReconnected = { [weak self] in self?.remoteChanged() }
+            link.onRemoteChanged = { [weak self] in self?.remoteChanged() }
+            self.link = link
+        }
+    }
+
+    /// Somente leitura: projeto SSH sem conexão. A UI mostra a última leitura e desabilita a edição.
+    var isReadOnly: Bool {
+        guard let link = link else { return false }
+        return !link.isConnected
+    }
+
+    static let offlineMessage = "O projeto está offline e somente leitura. Reconecte ao servidor para editar."
+
+    /// O servidor mudou (ou a conexão voltou): relê tudo e solta ideias órfãs.
+    private func remoteChanged() {
+        reloadAll()
+        releaseOrphans()
+    }
+
+    deinit {
+        store.close()
+    }
+
+    /// Abre o projeto: inicia o Core (local ou SSH), lê tudo e devolve o modelo pronto. Lança se o Core não responde.
+    static func open(root: URL) async throws -> ProjectModel {
+        let store = try CoreStore(root: root)
+        do {
+            let snapshot = try await store.loadSnapshot()
+            let model = ProjectModel(store: store, snapshot: snapshot)
+            await model.refresh(.runs)
+            await model.refresh(.checks)
+            for concept in ItemConcept.allCases { await model.refreshDirectoryGroups(concept) }
+            model.link?.noteRead()
+            model.scheduleCacheCapture()
+            model.releaseOrphans()
+            return model
+        } catch {
+            // Projeto SSH inalcançável: abre a última leitura em modo offline (somente leitura) e reconecta sozinho.
+            if let workspace = RemoteWorkspace.existing(at: root), let cache = RemoteCache.load(for: workspace) {
+                let model = ProjectModel(store: store, snapshot: cache.snapshot, connected: false)
+                model.apply(runs: cache.runs, checks: cache.checks, docTexts: cache.docTexts)
+                model.lastReadCache = cache
+                model.link?.lastRead = cache.savedAt
+                model.link?.error = error.localizedDescription
+                return model
+            }
+            store.close()
+            throw error
+        }
+    }
+
+    private func apply(runs: [RemoteCache.Record<WorkflowRun>], checks: [RuleCheck], docTexts: [String: String]) {
+        self.runs = runs.map { Entry(slug: $0.slug, value: $0.value) }
+        self.checks = checks
+        self.docTexts = docTexts
+    }
+
+    /// Modelo em memória para testes de interface (as gravações vão ao Core e falham sem o binário, sem afetar a memória).
+    static func forTesting(root: URL, project: Project = Project(name: "Teste"), groups: [GroupEntry] = []) throws -> ProjectModel {
+        let store = try CoreStore(root: root)
+        let snapshot = CoreSnapshot(project: project, docs: [], groups: groups.map { CoreEntry(slug: $0.slug, value: $0.group) },
+                                    topics: [], ideas: [], agents: [], commands: [], skills: [], workflows: [])
+        let model = ProjectModel(store: store, snapshot: snapshot)
+        model.isMemoryOnly = true
+        return model
+    }
+
+    /// Só em testes: a memória é a fonte da verdade; gravações e releituras não vão ao Core.
+    @ObservationIgnored private(set) var isMemoryOnly = false
+
+    // MARK: Gravação e releitura
+
+    /// Enfileira uma gravação no Core. Falha: mostra o erro e relê tudo (a memória otimista não vale mais).
+    private func persist(_ work: @escaping () async throws -> Void) {
+        if isMemoryOnly { return }
+        if isReadOnly {
+            errorMessage = Self.offlineMessage
+            restoreLastRead()
+            return
+        }
+        pendingWrites += 1
+        let previous = writeChain
+        writeChain = Task { [weak self] in
+            await previous?.value
+            do { try await work() } catch { self?.persistFailed(error) }
+            self?.persistFinished()
+        }
+    }
+
+    private func persistFailed(_ error: Error) {
+        errorMessage = error.localizedDescription
+        link?.noteFailure(error)
+        deferredReloads.formUnion([.project, .docs, .groups, .topics, .ideas, .agents, .commands, .skills, .workflows, .runs])
+        // Sem conexão a memória otimista não vale mais e não dá para reler: volta à última leitura.
+        if isReadOnly { restoreLastRead() }
+    }
+
+    private func persistFinished() {
+        pendingWrites = max(0, pendingWrites - 1)
+        if pendingWrites == 0 {
+            scheduleCacheCapture()
+            captureOwnRevision()
+        }
+        guard pendingWrites == 0, !deferredReloads.isEmpty, !isReadOnly else { return }
+        let areas = deferredReloads
+        deferredReloads = []
+        for area in areas { Task { await self.refresh(area) } }
+    }
+
+    /// Relê uma área (agora, ou depois das gravações pendentes).
+    private func schedule(_ area: Area) {
+        if pendingWrites > 0 { deferredReloads.insert(area); return }
+        Task { await self.refresh(area) }
+    }
+
+    func reloadAll() {
+        for area in [Area.project, .docs, .groups, .topics, .ideas, .agents, .commands, .skills, .workflows, .runs, .checks] { schedule(area) }
+    }
+
+    func refresh(_ area: Area) async {
+        if isReadOnly || isMemoryOnly { return }
+        defer { scheduleCacheCapture() }
+        switch area {
+        case .project: await refreshProject()
+        case .docs: await refreshDocs()
+        case .groups: await refreshGroups()
+        case .topics: await refreshTopics()
+        case .ideas: await refreshIdeas()
+        case .agents: await refreshAgents()
+        case .commands: await refreshCommands()
+        case .skills: await refreshSkills()
+        case .workflows: await refreshWorkflows()
+        case .runs: await refreshRuns()
+        case .checks: await refreshChecks()
+        }
+    }
+
+    /// Aplica o resultado de uma leitura, a menos que uma gravação tenha começado enquanto se lia.
+    private func applicable(_ area: Area) -> Bool {
+        if pendingWrites > 0 { deferredReloads.insert(area); return false }
+        return true
+    }
+
+    private func logReadFailure(_ event: String, _ error: Error) {
+        VDLog.error(error, event: event, project: store.root, component: .app)
+    }
+
+    /// Guarda a revisão do Core depois de uma gravação do app: base para reconhecer o eco do FSEvents.
+    private func captureOwnRevision() {
+        capturingOwnRevision = true
+        Task { [weak self] in
+            guard let self = self else { return }
+            let text = try? await self.store.call("project_revision", timeout: 15)
+            if self.pendingWrites == 0 { self.ownRevision = text }
+            self.capturingOwnRevision = false
+        }
+    }
+
+    /// Verdadeiro quando o disco está como o app deixou na última gravação (o evento é só o eco dela).
+    private func isOwnEcho() async -> Bool {
+        guard let own = ownRevision else { return false }
+        guard let now = try? await store.call("project_revision", timeout: 15) else { return false }
+        return now == own
     }
 
     func startWatching() {
+        if link == nil, ownRevision == nil { captureOwnRevision() }
+        if let link = link {
+            // SSH: o RemoteLink sonda `project_revision` a cada 6 s e reconecta com intervalo crescente.
+            link.start()
+            return
+        }
         guard watcher == nil else { return }
         let watcher = FileWatcher(root: store.root) { [weak self] urls in
             Task { @MainActor in self?.handleExternalChanges(urls) }
@@ -249,29 +441,37 @@ final class ProjectModel {
     func stopWatching() {
         watcher?.stop()
         watcher = nil
+        link?.stop()
     }
 
     func reloadDirectoryGroups(_ concept: ItemConcept) {
-        directoryGroups[concept] = (try? store.listItemDirectories(concept).map(\.path)) ?? []
+        Task { await self.refreshDirectoryGroups(concept) }
+    }
+
+    private func refreshDirectoryGroups(_ concept: ItemConcept) async {
+        if isReadOnly { return }
+        do {
+            let paths = try await store.listItemDirectories(concept.rawValue)
+            if directoryGroups[concept] != paths { directoryGroups[concept] = paths }
+        } catch {
+            if directoryGroups[concept] == nil { directoryGroups[concept] = [] }
+        }
     }
 
     private func recordPathMoves(_ moved: [SidebarItem: SidebarItem]) {
         guard !moved.isEmpty else { return }
-        if pathMoveBatch != nil { pathMoveBatch?.merge(moved) { _, new in new } }
-        else { latestPathMoves = moved; moveRevision += 1 }
+        var current = latestPathMoves.filter { !exists($0.key) }
+        for (old, new) in moved { current[old] = new }
+        latestPathMoves = current
+        moveRevision += 1
         for (old, new) in moved {
             if let oldRef = old.groupedReference, let newRef = new.groupedReference {
                 let prefix = old.section == .ideas ? "idea:" : ""
                 if old.section == .docs, let identity = docViewIdentities.removeValue(forKey: oldRef) { docViewIdentities[newRef] = identity }
                 if let manager = docUndoManagers.removeValue(forKey: prefix + oldRef) { docUndoManagers[prefix + newRef] = manager }
+                if old.section == .docs, let text = docTexts.removeValue(forKey: oldRef) { docTexts[newRef] = text }
             }
         }
-    }
-
-    private func finishPathMoveBatch() {
-        let moved = pathMoveBatch ?? [:]
-        pathMoveBatch = nil
-        if !moved.isEmpty { latestPathMoves = moved; moveRevision += 1 }
     }
 
     func contentIdentity(for item: SidebarItem?) -> String {
@@ -287,8 +487,6 @@ final class ProjectModel {
     }
 
     func reloadGroupedConcept(_ concept: ItemConcept) {
-        pathMoveBatch = [:]
-        defer { finishPathMoveBatch() }
         switch concept {
         case .docs: reloadDocs()
         case .ideas: reloadIdeas()
@@ -297,220 +495,354 @@ final class ProjectModel {
         }
     }
 
+    // MARK: Grupos (diretórios)
+
     func createDirectoryGroup(_ concept: ItemConcept, path: String, undo: UndoManager? = nil) {
-        do {
-            let created = try store.createItemDirectory(concept, path: path)
-            reloadDirectoryGroups(concept)
-            undo?.registerUndo(withTarget: self) { model in model.deleteDirectoryGroup(concept, path: created, confirmed: false, undo: undo) }
-            undo?.setActionName("Criar grupo")
-        } catch { errorMessage = error.localizedDescription }
+        Task {
+            do {
+                let created = try await store.itemGroups(concept: concept.rawValue, action: "create", path: path)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                await refreshDirectoryGroups(concept)
+                undo?.registerUndo(withTarget: self) { model in model.deleteDirectoryGroup(concept, path: created, confirmed: false, undo: undo) }
+                undo?.setActionName("Criar grupo")
+            } catch { errorMessage = error.localizedDescription }
+        }
     }
 
+    /// Apaga o grupo (o Core recusa se tiver itens sem `confirmed`). Sem desfazer: o Core não devolve o conteúdo apagado.
     func deleteDirectoryGroup(_ concept: ItemConcept, path: String, confirmed: Bool, undo: UndoManager? = nil) {
-        do {
-            _ = try store.normalizedGroupPath(path)
-            let normalized = path
-            let source = try store.itemDirectoryURL(concept, path: normalized)
-            let backup = FileManager.default.temporaryDirectory.appending(path: "vibedeck-group-undo-" + UUID().uuidString)
-            try FileManager.default.copyItem(at: source, to: backup)
-            do { try store.deleteItemDirectory(concept, path: normalized, confirmed: confirmed) }
-            catch { try? ProjectFiles.remove(backup); throw error }
-            reloadGroupedConcept(concept)
-            undo?.registerUndo(withTarget: self) { model in model.restoreDirectoryGroup(concept, path: normalized, backup: backup, undo: undo) }
-            undo?.setActionName("Apagar grupo")
-            if undo == nil { try? ProjectFiles.remove(backup) }
-        } catch { errorMessage = error.localizedDescription }
-    }
-
-    private func restoreDirectoryGroup(_ concept: ItemConcept, path: String, backup: URL, undo: UndoManager?) {
-        do {
-            let target = try store.itemDirectoryURL(concept, path: path)
-            guard !FileManager.default.fileExists(atPath: target.path) else { throw VibeDeckError.groupConflict(path) }
-            try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try ProjectFiles.move(backup, to: target)
-            VDLog.info("store.group_restored", "Grupo restaurado", project: store.root, component: .app,
-                       context: ["concept": concept.rawValue, "path": path, "undo": "Apagar grupo"])
-            reloadGroupedConcept(concept)
-            undo?.registerUndo(withTarget: self) { model in model.deleteDirectoryGroup(concept, path: path, confirmed: true, undo: undo) }
-            undo?.setActionName("Apagar grupo")
-        } catch { errorMessage = error.localizedDescription }
-    }
-
-    private func undoGroupedMove(_ receipt: GroupMoveReceipt, undo: UndoManager?) {
-        do {
-            let inverse = try store.undoGroupedMove(receipt)
-            reloadGroupedConcept(receipt.concept)
-            undo?.registerUndo(withTarget: self) { model in model.undoGroupedMove(inverse, undo: undo) }
-            undo?.setActionName(receipt.isDirectory ? "Mover grupo" : "Mover item")
-        } catch { errorMessage = error.localizedDescription }
+        Task {
+            do {
+                _ = try store.normalizedGroupPath(path)
+                _ = try await store.itemGroups(concept: concept.rawValue, action: "delete", path: path, confirmed: confirmed)
+                reloadGroupedConcept(concept)
+                await refreshDirectoryGroups(concept)
+            } catch { errorMessage = error.localizedDescription }
+        }
     }
 
     func moveDirectoryGroup(_ concept: ItemConcept, from: String, to: String, undo: UndoManager?) {
-        do {
-            let receipt = try store.moveWithReceipt(concept, from: from, to: to, directory: true)
-            reloadGroupedConcept(concept)
-            undo?.registerUndo(withTarget: self) { model in model.undoGroupedMove(receipt, undo: undo) }
-            undo?.setActionName("Mover grupo")
-        } catch { errorMessage = error.localizedDescription }
+        Task {
+            do {
+                _ = try await store.itemGroups(concept: concept.rawValue, action: "move", from: from, to: to)
+                if concept == .docs {
+                    var moved: [SidebarItem: SidebarItem] = [:]
+                    for doc in docs where doc.slug.hasPrefix(from + "/") {
+                        moved[.doc(doc.slug)] = .doc(to + String(doc.slug.dropFirst(from.count)))
+                    }
+                    recordPathMoves(moved)
+                }
+                reloadGroupedConcept(concept)
+                await refreshDirectoryGroups(concept)
+                undo?.registerUndo(withTarget: self) { model in model.moveDirectoryGroup(concept, from: to, to: from, undo: undo) }
+                undo?.setActionName("Mover grupo")
+            } catch { errorMessage = error.localizedDescription }
+        }
     }
 
     func moveGroupedItem(_ item: SidebarItem, to group: String, undo: UndoManager?) {
         guard let concept = item.section?.groupedConcept, let reference = item.groupedReference else { return }
-        do {
-            let receipt = try store.moveWithReceipt(concept, from: reference, to: group, directory: false)
-            guard receipt.destination != reference else { return }
-            reloadGroupedConcept(concept)
-            undo?.registerUndo(withTarget: self) { model in model.undoGroupedMove(receipt, undo: undo) }
-            undo?.setActionName("Mover item")
-        } catch { errorMessage = error.localizedDescription }
+        Task {
+            do {
+                let destination = try await store.itemGroups(concept: concept.rawValue, action: "move_item", to: group, reference: reference)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                guard destination != reference, !destination.isEmpty else { return }
+                if concept == .docs { recordPathMoves([item: .doc(destination)]) }
+                reloadGroupedConcept(concept)
+                undo?.registerUndo(withTarget: self) { model in
+                    model.moveGroupedItem(Self.sidebarItem(concept, destination), to: CoreStore.groupPath(of: reference), undo: undo)
+                }
+                undo?.setActionName("Mover item")
+            } catch { errorMessage = error.localizedDescription }
+        }
     }
 
-    // MARK: Disk sync
+    private static func sidebarItem(_ concept: ItemConcept, _ reference: String) -> SidebarItem {
+        switch concept {
+        case .docs: return .doc(reference)
+        case .ideas: return .idea(reference)
+        case .reviews: return .group(reference)
+        case .skills: return .skill(reference)
+        }
+    }
 
-    private func handleExternalChanges(_ urls: [URL]) {
-        pathMoveBatch = [:]
-        defer { finishPathMoveBatch() }
-        var docsChanged = false, groupsChanged = false, projectChanged = false
+    // MARK: Mudanças externas
+
+    /// Eventos do FSEvents: o eco das gravações do próprio app (revisão igual à guardada) é ignorado e não vira log
+    /// "external". Durante uma gravação o evento ainda é aplicado (a releitura espera), mas não é logado como externo.
+    private func handleExternalChanges(_ allURLs: [URL]) {
+        // Origem de doc vinculado (.md na raiz): a revisão do Core só vê o link, então o texto é comparado direto.
+        let rootPath = store.root.resolvingSymlinksInPath().path
+        let rootMarkdown = allURLs.filter { FileWatcher.isRootMarkdown($0.resolvingSymlinksInPath().path, rootPath: rootPath) }
+        if !rootMarkdown.isEmpty { linkedOriginsChanged(rootMarkdown.map { $0.lastPathComponent }) }
+        let urls = allURLs.filter { !FileWatcher.isRootMarkdown($0.resolvingSymlinksInPath().path, rootPath: rootPath) }
+        if urls.isEmpty { return }
+        if pendingWrites > 0 || capturingOwnRevision {
+            applyExternalChanges(urls, logAsExternal: false)
+            return
+        }
+        Task { [weak self] in
+            guard let self = self else { return }
+            if await self.isOwnEcho() { return }
+            self.applyExternalChanges(urls, logAsExternal: true)
+            self.captureOwnRevision()
+        }
+    }
+
+    private func applyExternalChanges(_ urls: [URL], logAsExternal: Bool) {
+        var docSlugs = Set<String>()
+        var groupsChanged = false, projectChanged = false
         var topicsChanged = false, ideasChanged = false, agentsChanged = false, commandsChanged = false, skillsChanged = false, workflowsChanged = false, runsChanged = false, checksChanged = false
+        let docsPrefix = store.docsDir.resolvingSymlinksInPath().path + "/"
         for url in Set(urls.map { $0.resolvingSymlinksInPath().path }) {
-            let current = FileManager.default.contents(atPath: url)
-            if let current, current == lastWritten[url] { continue }
             let prefix = store.root.resolvingSymlinksInPath().path + "/"
-            if url.hasPrefix(prefix) {
+            if logAsExternal, url.hasPrefix(prefix) {
                 VDLog.info("store.external_changed", "Mudança externa aplicada", project: store.root, component: .app,
                            context: ["file": String(url.dropFirst(prefix.count)), "origin": "external"])
             }
-            if url.contains("/\(ProjectStore.dataDirName)/runs/") {
+            if url.contains("/\(CoreStore.dataDirName)/runs/") {
                 // Before the others: the steps' artifacts inside a run may have any name.
                 runsChanged = true
-            } else if url.hasSuffix("/" + ProjectStore.manifestName) {
+            } else if url.hasSuffix("/" + CoreStore.manifestName) {
                 projectChanged = true
-            } else if (url.contains("/docs/") || url.hasSuffix("/docs")) {
-                docsChanged = true
-                let slug = String(URL(fileURLWithPath: url).deletingPathExtension().path.dropFirst(store.docsDir.resolvingSymlinksInPath().path.count + 1))
-                externalDocChange[slug, default: 0] += 1
-            } else if (url.contains("/reviews/") || url.hasSuffix("/reviews")) {
+            } else if url.contains("/docs/") || url.hasSuffix("/docs") {
+                if url.hasPrefix(docsPrefix) {
+                    docSlugs.insert(String(URL(fileURLWithPath: url).deletingPathExtension().path.dropFirst(docsPrefix.count - 1)).trimmingCharacters(in: CharacterSet(charactersIn: "/")))
+                }
+            } else if url.contains("/reviews/") || url.hasSuffix("/reviews") {
                 groupsChanged = true
             } else if url.contains("/rules/") {
                 topicsChanged = true
-            } else if (url.contains("/ideas/") || url.hasSuffix("/ideas")) {
+            } else if url.contains("/ideas/") || url.hasSuffix("/ideas") {
                 ideasChanged = true
             } else if url.contains("/agents/") {
                 agentsChanged = true
             } else if url.contains("/commands/") {
                 commandsChanged = true
-            } else if (url.contains("/skills/") || url.hasSuffix("/skills")) {
+            } else if url.contains("/skills/") || url.hasSuffix("/skills") {
                 skillsChanged = true
             } else if url.contains("/workflows/") {
                 workflowsChanged = true
-
             } else if url.contains("/checks/") {
                 checksChanged = true
             }
         }
-        // A topic deleted outside the app (Finder, rm, CLI) unpromotes the idea it came from.
-        if topicsChanged, let released = Self.logged("model.release_ideas_failed", root: store.root, { try store.releaseOrphanedIdeas() }), !released.isEmpty { ideasChanged = true }
-        // ...and drops the pattern it enforced.
-        if topicsChanged, let dropped = Self.logged("model.release_patterns_failed", root: store.root, { try store.releaseOrphanedPatterns() }), !dropped.isEmpty { projectChanged = true }
-        if projectChanged, let p = Self.logged("model.load_project_failed", root: store.root, { try store.loadProject() }), p != project { project = p }
-        if docsChanged { reloadDocs() }
-        if groupsChanged { reloadGroups() }
-        if topicsChanged { reloadTopics() }
-        if ideasChanged { reloadIdeas() }
-        if agentsChanged { reloadAgents() }
-        if commandsChanged { reloadCommands() }
-        if skillsChanged { reloadSkills() }
-        if workflowsChanged { reloadWorkflows() }
-        if runsChanged { reloadRuns() }
-        if checksChanged { reloadChecks() }
+        if !docSlugs.isEmpty {
+            schedule(.docs)
+            for slug in docSlugs where !slug.isEmpty { noteExternalDocChange(slug) }
+        }
+        if projectChanged { schedule(.project) }
+        if groupsChanged { schedule(.groups) }
+        if topicsChanged { schedule(.topics); schedule(.ideas); schedule(.project) }
+        if ideasChanged { schedule(.ideas) }
+        if agentsChanged { schedule(.agents) }
+        if commandsChanged { schedule(.commands) }
+        if skillsChanged { schedule(.skills) }
+        if workflowsChanged { schedule(.workflows) }
+        if runsChanged { schedule(.runs) }
+        if checksChanged { schedule(.checks) }
+        if topicsChanged || ideasChanged || projectChanged { releaseOrphans() }
     }
 
-    func reloadTopics() {
-        let list = ((try? store.listTopics()) ?? []).map { Entry(slug: $0.slug, value: $0.topic) }
-        if list != topics { topics = list }
+    /// Um Markdown da raiz mudou: os docs vinculados a ele recebem o aviso de mudança externa (se o texto difere).
+    private func linkedOriginsChanged(_ names: [String]) {
+        let slugs = docs.filter { doc in
+            guard let target = doc.link?.target else { return false }
+            return names.contains(target)
+        }.map(\.slug)
+        for slug in slugs { noteExternalDocChange(slug) }
     }
 
-    func reloadIdeas() {
-        let list = ((try? store.listIdeas()) ?? []).map { Entry(slug: $0.slug, value: $0.idea) }
-        let oldPaths = Dictionary(uniqueKeysWithValues: ideas.map { ($0.value.id, $0.slug) })
-        var moved: [SidebarItem: SidebarItem] = [:]
-        for entry in list { if let old = oldPaths[entry.value.id], old != entry.slug { moved[.idea(old)] = .idea(entry.slug) } }
-        recordPathMoves(moved)
-        reloadDirectoryGroups(.ideas)
-        if list != ideas { ideas = list }
-    }
-
-    func reloadAgents() {
-        let list = ((try? store.listAgents()) ?? []).map { Entry(slug: $0.slug, value: $0.agent) }
-        if list != agents { agents = list }
-    }
-
-    func reloadCommands() {
-        let list = ((try? store.listCommands()) ?? []).map { Entry(slug: $0.slug, value: $0.command) }
-        if list != commands { commands = list }
-    }
-
-    func reloadSkills() {
-        let list = ((try? store.listSkills()) ?? []).map { Entry(slug: $0.slug, value: $0.skill) }
-        let oldPaths = Dictionary(uniqueKeysWithValues: skills.map { ($0.value.id, $0.slug) })
-        var moved: [SidebarItem: SidebarItem] = [:]
-        for entry in list { if let old = oldPaths[entry.value.id], old != entry.slug { moved[.skill(old)] = .skill(entry.slug) } }
-        recordPathMoves(moved)
-        reloadDirectoryGroups(.skills)
-        if list != skills { skills = list }
-    }
-
-    func reloadWorkflows() {
-        let list = ((try? store.listWorkflows()) ?? []).map { Entry(slug: $0.slug, value: $0.workflow) }
-        if list != workflows { workflows = list }
-    }
-
-    func reloadRuns() {
-        let list = ((try? store.listRuns()) ?? []).map { Entry(slug: $0.ref, value: $0.run) }
-        if list != runs { runs = list }
-    }
-
-    func reloadChecks() {
-        let list = (try? store.listChecks()) ?? []
-        if list != checks { checks = list }
-    }
-
-    func reloadDocs() {
-        let list = (try? store.listDocs()) ?? []
-        var identities: [String: String] = [:]
-        var moved: [SidebarItem: SidebarItem] = [:]
-        for doc in list {
-            if let attrs = try? FileManager.default.attributesOfItem(atPath: store.docURL(doc.slug).path), let inode = attrs[.systemFileNumber] as? NSNumber {
-                let key = inode.stringValue
-                identities[key] = doc.slug
-                if let old = docIdentities[key], old != doc.slug { moved[.doc(old)] = .doc(doc.slug) }
+    /// Ideias (e padrões) promovidos para um tópico que não existe mais voltam a rascunho: tool `release_orphaned` do Core.
+    private func releaseOrphans() {
+        Task {
+            await Task.yield()
+            guard !isReadOnly, pendingWrites == 0 else { return }
+            do {
+                if try await store.releaseOrphaned() { reloadAll() }
+            } catch {
+                logReadFailure("model.release_orphaned_failed", error)
             }
         }
-        docIdentities = identities
-        recordPathMoves(moved)
-        for doc in list where docViewIdentities[doc.slug] == nil { docViewIdentities[doc.slug] = UUID() }
-        docViewIdentities = docViewIdentities.filter { entry in list.contains { $0.slug == entry.key } }
-        reloadDirectoryGroups(.docs)
-        if list != docs { docs = list }
     }
 
-    func reloadGroups() {
-        let list = ((try? store.listGroups()) ?? []).map { GroupEntry(slug: $0.slug, group: $0.group) }
-        let oldPaths = Dictionary(uniqueKeysWithValues: groups.map { ($0.group.id, $0.slug) })
-        var moved: [SidebarItem: SidebarItem] = [:]
-        for entry in list { if let old = oldPaths[entry.group.id], old != entry.slug { moved[.group(old)] = .group(entry.slug) } }
-        recordPathMoves(moved)
-        reloadDirectoryGroups(.reviews)
-        if list != groups { groups = list }
-    }
+    // MARK: Cache da última leitura (projeto SSH)
 
-    private func write(_ data: Data, to url: URL) {
-        do {
-            lastWritten[url.resolvingSymlinksInPath().path] = data
-            try VDLog.$projectRoot.withValue(store.root) { try AtomicFile.write(data, to: url) }
-        } catch {
-            errorMessage = error.localizedDescription
+    /// Agenda (com atraso) a captura da leitura atual: base do modo offline e do cache em Application Support.
+    private func scheduleCacheCapture() {
+        guard let link = link, !cacheCaptureQueued else { return }
+        cacheCaptureQueued = true
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            guard let self = self else { return }
+            self.cacheCaptureQueued = false
+            guard self.pendingWrites == 0, self.deferredReloads.isEmpty, !self.isReadOnly else { return }
+            let cache = self.currentCache()
+            self.lastReadCache = cache
+            link.noteRead()
+            if let data = try? VDJSON.compactEncoder.encode(cache) { RemoteCache.save(data, for: link.workspace) }
         }
+    }
+
+    private func currentCache() -> RemoteCache {
+        RemoteCache(
+            savedAt: Date(), project: project, docs: docs,
+            groups: groups.map { RemoteCache.Record(slug: $0.slug, value: $0.group) },
+            topics: topics.map { RemoteCache.Record(slug: $0.slug, value: $0.value) },
+            ideas: ideas.map { RemoteCache.Record(slug: $0.slug, value: $0.value) },
+            agents: agents.map { RemoteCache.Record(slug: $0.slug, value: $0.value) },
+            commands: commands.map { RemoteCache.Record(slug: $0.slug, value: $0.value) },
+            skills: skills.map { RemoteCache.Record(slug: $0.slug, value: $0.value) },
+            workflows: workflows.map { RemoteCache.Record(slug: $0.slug, value: $0.value) },
+            runs: runs.map { RemoteCache.Record(slug: $0.slug, value: $0.value) },
+            checks: checks, docTexts: docTexts)
+    }
+
+    /// Descarta edições otimistas que não chegaram ao servidor e volta à última leitura.
+    private func restoreLastRead() {
+        guard let cache = lastReadCache else { return }
+        let snapshot = cache.snapshot
+        project = snapshot.project
+        docs = snapshot.docs
+        groups = snapshot.groups.map { GroupEntry(slug: $0.slug, group: $0.value) }
+        topics = snapshot.topics.map { Entry(slug: $0.slug, value: $0.value) }
+        ideas = snapshot.ideas.map { Entry(slug: $0.slug, value: $0.value) }
+        agents = snapshot.agents.map { Entry(slug: $0.slug, value: $0.value) }
+        commands = snapshot.commands.map { Entry(slug: $0.slug, value: $0.value) }
+        skills = snapshot.skills.map { Entry(slug: $0.slug, value: $0.value) }
+        workflows = snapshot.workflows.map { Entry(slug: $0.slug, value: $0.value) }
+        apply(runs: cache.runs, checks: cache.checks, docTexts: cache.docTexts)
+    }
+
+    /// Um doc mudou no disco: só avisa o editor se o texto difere do que o próprio app gravou por último.
+    private func noteExternalDocChange(_ slug: String) {
+        Task {
+            guard let text = try? await store.readDoc(slug) else { return }
+            if pendingWrites > 0 || docWriteQueued.contains(slug) { return }
+            if docTexts[slug] == text { return }
+            docTexts[slug] = text
+            externalDocChange[slug, default: 0] += 1
+        }
+    }
+
+    // MARK: Leituras
+
+    func reloadProject() { schedule(.project) }
+    func reloadTopics() { schedule(.topics) }
+    func reloadIdeas() { schedule(.ideas) }
+    func reloadAgents() { schedule(.agents) }
+    func reloadCommands() { schedule(.commands) }
+    func reloadSkills() { schedule(.skills) }
+    func reloadWorkflows() { schedule(.workflows) }
+    func reloadRuns() { schedule(.runs) }
+    func reloadChecks() { schedule(.checks) }
+    func reloadDocs() { schedule(.docs) }
+    func reloadGroups() { schedule(.groups) }
+
+    private func refreshProject() async {
+        do {
+            let loaded = try await store.loadProject()
+            guard applicable(.project) else { return }
+            if loaded != project { project = loaded }
+        } catch { logReadFailure("model.load_project_failed", error) }
+    }
+
+    private func refreshTopics() async {
+        do {
+            let list = try await store.listTopics().map { Entry(slug: $0.slug, value: $0.value) }
+            guard applicable(.topics) else { return }
+            if list != topics { topics = list }
+        } catch { logReadFailure("model.load_topics_failed", error) }
+    }
+
+    private func refreshIdeas() async {
+        do {
+            let list = try await store.listIdeas().map { Entry(slug: $0.slug, value: $0.value) }
+            guard applicable(.ideas) else { return }
+            let oldPaths = Dictionary(ideas.map { ($0.value.id, $0.slug) }, uniquingKeysWith: { first, _ in first })
+            var moved: [SidebarItem: SidebarItem] = [:]
+            for entry in list { if let old = oldPaths[entry.value.id], old != entry.slug { moved[.idea(old)] = .idea(entry.slug) } }
+            if list != ideas { ideas = list }
+            recordPathMoves(moved)
+            await refreshDirectoryGroups(.ideas)
+        } catch { logReadFailure("model.load_ideas_failed", error) }
+    }
+
+    private func refreshAgents() async {
+        do {
+            let list = try await store.listAgents().map { Entry(slug: $0.slug, value: $0.value) }
+            guard applicable(.agents) else { return }
+            if list != agents { agents = list }
+        } catch { logReadFailure("model.load_agents_failed", error) }
+    }
+
+    private func refreshCommands() async {
+        do {
+            let list = try await store.listCommands().map { Entry(slug: $0.slug, value: $0.value) }
+            guard applicable(.commands) else { return }
+            if list != commands { commands = list }
+        } catch { logReadFailure("model.load_commands_failed", error) }
+    }
+
+    private func refreshSkills() async {
+        do {
+            let list = try await store.listSkills().map { Entry(slug: $0.slug, value: $0.value) }
+            guard applicable(.skills) else { return }
+            let oldPaths = Dictionary(skills.map { ($0.value.id, $0.slug) }, uniquingKeysWith: { first, _ in first })
+            var moved: [SidebarItem: SidebarItem] = [:]
+            for entry in list { if let old = oldPaths[entry.value.id], old != entry.slug { moved[.skill(old)] = .skill(entry.slug) } }
+            if list != skills { skills = list }
+            recordPathMoves(moved)
+            await refreshDirectoryGroups(.skills)
+        } catch { logReadFailure("model.load_skills_failed", error) }
+    }
+
+    private func refreshWorkflows() async {
+        do {
+            let list = try await store.listWorkflows().map { Entry(slug: $0.slug, value: $0.value) }
+            guard applicable(.workflows) else { return }
+            if list != workflows { workflows = list }
+        } catch { logReadFailure("model.load_workflows_failed", error) }
+    }
+
+    private func refreshRuns() async {
+        do {
+            let list = try await store.listRuns().map { Entry(slug: $0.slug, value: $0.value) }
+            guard applicable(.runs) else { return }
+            if list != runs { runs = list }
+        } catch { logReadFailure("model.load_runs_failed", error) }
+    }
+
+    private func refreshChecks() async {
+        do {
+            let list = try await store.listChecks()
+            guard applicable(.checks) else { return }
+            if list != checks { checks = list }
+        } catch { logReadFailure("model.load_checks_failed", error) }
+    }
+
+    private func refreshDocs() async {
+        do {
+            let list = try await store.listDocs()
+            guard applicable(.docs) else { return }
+            for doc in list where docViewIdentities[doc.slug] == nil { docViewIdentities[doc.slug] = UUID() }
+            docViewIdentities = docViewIdentities.filter { entry in list.contains { $0.slug == entry.key } }
+            if list != docs { docs = list }
+            await refreshDirectoryGroups(.docs)
+        } catch { logReadFailure("model.load_docs_failed", error) }
+    }
+
+    private func refreshGroups() async {
+        do {
+            let list = try await store.listGroups().map { GroupEntry(slug: $0.slug, group: $0.value) }
+            guard applicable(.groups) else { return }
+            let oldPaths = Dictionary(groups.map { ($0.group.id, $0.slug) }, uniquingKeysWith: { first, _ in first })
+            var moved: [SidebarItem: SidebarItem] = [:]
+            for entry in list { if let old = oldPaths[entry.group.id], old != entry.slug { moved[.group(old)] = .group(entry.slug) } }
+            if list != groups { groups = list }
+            recordPathMoves(moved)
+            await refreshDirectoryGroups(.reviews)
+        } catch { logReadFailure("model.load_groups_failed", error) }
     }
 
     // MARK: Project / links
@@ -519,72 +851,85 @@ final class ProjectModel {
         let old = project
         change(&project)
         guard project != old else { return }
-        VDLog.$undoName.withValue(actionName) { saveProject() }
+        saveProject()
         undo?.registerUndo(withTarget: self) { model in
             model.mutateProject(actionName, undo: undo) { $0 = old }
         }
         undo?.setActionName(actionName)
     }
 
-    /// Changes the stack like `mutateProject`, then rewrites README.md's stack badge in the background.
+    /// Changes the stack like `mutateProject`. O Core mantém o badge do README ao gravar o projeto.
     func mutateStack(_ actionName: String, undo: UndoManager?, _ change: (inout [StackItem]) -> Void) {
         let old = project.stack
         var new = old
         change(&new)
         guard new != old else { return }
         project.stack = new
-        VDLog.$undoName.withValue(actionName) { saveProject() }
-        syncReadmeStack()
+        saveProject()
         undo?.registerUndo(withTarget: self) { model in
             model.mutateStack(actionName, undo: undo) { $0 = old }
         }
         undo?.setActionName(actionName)
     }
 
+    /// Último problema ao atualizar o README.md (mostrado na página Stack); o Core avisa na resposta de `add_stack`.
+    var readmeWarning: String?
+
+    private func saveProject() {
+        persist { [weak self] in
+            guard let self = self else { return }
+            try await self.store.saveProject(self.project)
+        }
+    }
+
     // MARK: Patterns
 
-    /// The patterns plus the files of their rule topics: what a pattern change touches, so undo can put it back.
+    /// The patterns plus the rule topics they enforce: what a pattern change touches, so undo can put it back.
     struct PatternsSnapshot {
         var patterns: [ProjectPattern]
-        var topics: [String: Data]
+        var topics: [String: RuleTopic]
     }
 
     private func patternsSnapshot() -> PatternsSnapshot {
-        let topics = ((try? store.listTopics()) ?? []).filter { $0.topic.sourcePattern != nil }
-        var files: [String: Data] = [:]
-        for (slug, _) in topics { files[slug] = FileManager.default.contents(atPath: store.topicURL(slug).path) }
-        return PatternsSnapshot(patterns: (try? store.loadProject().patterns) ?? project.patterns, topics: files)
+        var files: [String: RuleTopic] = [:]
+        for entry in topics where entry.value.sourcePattern != nil { files[entry.slug] = entry.value }
+        return PatternsSnapshot(patterns: project.patterns, topics: files)
     }
 
     /// Writes a snapshot back: pattern topics not in it are deleted, the others rewritten, the patterns restored.
     private func restorePatterns(_ snapshot: PatternsSnapshot, _ actionName: String, undo: UndoManager?) {
         let current = patternsSnapshot()
-        for slug in current.topics.keys where snapshot.topics[slug] == nil {
-            try? ProjectFiles.remove(store.topicURL(slug))
-        }
-        for (slug, data) in snapshot.topics where current.topics[slug] != data { VDLog.$undoName.withValue(actionName) { write(data, to: store.topicURL(slug)) } }
         project.patterns = snapshot.patterns
-        saveProject()
-        reloadTopics()
+        topics = topics.filter { snapshot.topics[$0.slug] != nil || current.topics[$0.slug] == nil }
+        for (slug, topic) in snapshot.topics {
+            if let index = topics.firstIndex(where: { $0.slug == slug }) { topics[index].value = topic } else { topics.append(Entry(slug: slug, value: topic)) }
+        }
+        persist { [weak self] in
+            guard let self = self else { return }
+            for slug in current.topics.keys where snapshot.topics[slug] == nil { try await self.store.deleteRecord(.rule, slug: slug) }
+            for (slug, topic) in snapshot.topics where current.topics[slug] != topic { try await self.store.saveRecord(.rule, slug: slug, value: topic) }
+            try await self.store.saveProject(self.project)
+        }
         undo?.registerUndo(withTarget: self) { model in model.restorePatterns(current, actionName, undo: undo) }
         undo?.setActionName(actionName)
     }
 
-    /// Runs a pattern change through the store (it also writes the pattern's rule topic), then refreshes both.
-    /// Undo restores the patterns and their topic files as they were.
-    @discardableResult
-    func changePatterns<T>(_ actionName: String, undo: UndoManager?, _ change: (ProjectStore) throws -> T) -> T? {
+    /// Runs a pattern change through the Core (it also writes the pattern's rule topic), then refreshes both.
+    /// Undo restores the patterns and their topics as they were.
+    func changePatterns(_ actionName: String, undo: UndoManager?, _ change: @escaping (CoreStore) async throws -> Void) {
         let before = patternsSnapshot()
-        do {
-            let result = try VDLog.$undoName.withValue(actionName) { try change(store) }
-            reloadProject()
-            reloadTopics()
-            undo?.registerUndo(withTarget: self) { model in model.restorePatterns(before, actionName, undo: undo) }
-            undo?.setActionName(actionName)
-            return result
-        } catch {
-            errorMessage = error.localizedDescription
-            return nil
+        Task {
+            do {
+                // Termina as gravações pendentes antes: a mudança de padrão relê o projeto no Core.
+                await writeChain?.value
+                try await change(store)
+                await refreshProject()
+                await refreshTopics()
+                undo?.registerUndo(withTarget: self) { model in model.restorePatterns(before, actionName, undo: undo) }
+                undo?.setActionName(actionName)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -593,94 +938,87 @@ final class ProjectModel {
         mutateProject("Reordenar padrões", undo: undo) { $0.patterns.move(fromOffsets: source, toOffset: destination) }
     }
 
-    private func reloadProject() {
-        if let p = try? store.loadProject(), p != project { project = p }
-    }
-
-    @ObservationIgnored private var readmeSync: Task<Void, Never>?
-    /// Last README.md sync problem (offline Skill Icons, unwritable file); shown in the Stack page.
-    var readmeWarning: String?
-
-    private func syncReadmeStack() {
-        readmeSync?.cancel()
-        let service = StackService(store: store)
-        readmeSync = Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(400))
-            guard !Task.isCancelled else { return }
-            let warning = await service.syncReadme()
-            guard !Task.isCancelled else { return }
-            self?.readmeWarning = warning
-        }
-    }
-
-    private func saveProject() {
-        guard let data = try? VDJSON.encode(project) else { return }
-        write(data, to: store.manifestURL)
-    }
-
     // MARK: Docs
 
-    /// All chosen documents are one undoable action. A failed batch rolls back only its new files.
+    /// All chosen documents are one undoable action. O Core grava tudo ou nada (`doc_generate_apply`, author=ai);
+    /// a validação de limites já foi feita pelo Core e a folha só entrega propostas aceitáveis.
     @discardableResult
     func acceptGeneratedDocs(_ proposed: [DocGenerate.Document], undo: UndoManager?, group: String = "") -> Bool {
-        let documents = DocGenerate.validated(proposed)
-        guard !documents.isEmpty else { return false }
-        var created: [String] = []
-        do {
-            let path = try store.normalizedGroupPath(group, allowRoot: true)
-            for document in documents {
-                let destination = try store.normalizedGroupPath(document.group ?? path, allowRoot: true)
-                if destination.isEmpty {
-                    created.append(try VDLog.$undoName.withValue("Gerar documentos") { try store.createGeneratedDoc(title: document.title, body: document.content) })
-                } else {
-                    let reference = destination + "/" + Slug.make(document.title)
-                    created.append(try VDLog.$undoName.withValue("Gerar documentos") { try store.createGeneratedDoc(title: document.title, body: document.content, reference: reference) })
-                }
+        guard !proposed.isEmpty else { return false }
+        if isReadOnly { errorMessage = Self.offlineMessage; return false }
+        Task {
+            do {
+                let created = try await store.docGenerateApply(proposed, group: group)
+                var snapshot: [String: String] = [:]
+                for slug in created { snapshot[slug] = try await store.readDoc(slug) }
+                await refreshDocs()
+                undo?.registerUndo(withTarget: self) { model in model.toggleGeneratedDocs(snapshot, remove: true, undo: undo) }
+                undo?.setActionName("Gerar documentos")
+            } catch {
+                await refreshDocs()
+                errorMessage = error.localizedDescription
             }
-            let snapshot = try Dictionary(uniqueKeysWithValues: created.map { ($0, try store.readDoc($0)) })
-            reloadDocs()
-            undo?.registerUndo(withTarget: self) { model in model.toggleGeneratedDocs(snapshot, remove: true, undo: undo) }
-            undo?.setActionName("Gerar documentos")
-            return true
-        } catch {
-            for slug in created { try? store.deleteDoc(slug) }
-            reloadDocs()
-            errorMessage = error.localizedDescription
-            return false
         }
+        return true
     }
 
     private func toggleGeneratedDocs(_ snapshot: [String: String], remove: Bool, undo: UndoManager?) {
-        do {
-            // Preserve documents edited externally after acceptance, and avoid overwriting on redo.
-            for (slug, text) in snapshot {
-                if remove {
-                    guard try store.readDoc(slug) == text else {
-                        throw VibeDeckError.discoverFailed("Um documento mudou após o aceite; não foi possível desfazer o lote.")
+        Task {
+            do {
+                // Preserve documents edited externally after acceptance, and avoid overwriting on redo.
+                for (slug, text) in snapshot {
+                    if remove {
+                        guard try await store.readDoc(slug) == text else {
+                            throw VibeDeckError.discoverFailed("Um documento mudou após o aceite; não foi possível desfazer o lote.")
+                        }
+                    } else if docs.contains(where: { $0.slug == slug }) {
+                        throw VibeDeckError.discoverFailed("Um documento ocupa o destino; não foi possível refazer o lote.")
                     }
-                } else if FileManager.default.fileExists(atPath: store.docURL(slug).path) {
-                    throw VibeDeckError.discoverFailed("Um documento ocupa o destino; não foi possível refazer o lote.")
                 }
-            }
-            for (slug, text) in snapshot {
-                if remove { try store.deleteDoc(slug) }
-                else { try store.writeDoc(slug, text) }
-            }
-            reloadDocs()
-            undo?.registerUndo(withTarget: self) { model in model.toggleGeneratedDocs(snapshot, remove: !remove, undo: undo) }
-            undo?.setActionName("Gerar documentos")
-        } catch { errorMessage = error.localizedDescription; reloadDocs() }
+                for (slug, text) in snapshot {
+                    if remove { try await store.deleteDoc(slug) }
+                    else { try await store.writeDoc(slug, text: text) }
+                }
+                await refreshDocs()
+                undo?.registerUndo(withTarget: self) { model in model.toggleGeneratedDocs(snapshot, remove: !remove, undo: undo) }
+                undo?.setActionName("Gerar documentos")
+            } catch { errorMessage = error.localizedDescription; await refreshDocs() }
+        }
     }
 
+    /// Cria o doc já na memória (slug escolhido aqui) e grava no Core com a mesma referência.
     func createDoc(title: String, reference: String? = nil) -> String? {
+        guard let name = title.trimmed.nonEmpty else { errorMessage = VibeDeckError.invalidName.localizedDescription; return nil }
         do {
-            let slug = try store.createDoc(title: title, reference: reference)
-            reloadDocs()
+            let slug = try newSlug(title: name, reference: reference, existing: docs.map(\.slug))
+            let text = "# \(name)\n\n"
+            docs.append(DocInfo(slug: slug, title: name, tags: [], modified: Date()))
+            docViewIdentities[slug] = UUID()
+            docTexts[slug] = text
+            persist { [weak self] in
+                guard let self = self else { return }
+                let created = try await self.store.createDoc(title: name, reference: slug)
+                if created != slug { self.reloadDocs() }
+            }
             return slug
         } catch {
             errorMessage = error.localizedDescription
             return nil
         }
+    }
+
+    /// Slug livre entre os existentes (`a/b` quando há caminho de grupo), como o Core faria.
+    private func newSlug(title: String, reference: String?, existing: [String]) throws -> String {
+        let base = try store.normalizedGroupPath(reference ?? Slug.make(title))
+        let wanted = base.contains("/") ? base : Slug.make(base)
+        var slug = wanted
+        var n = 2
+        let taken = Set(existing)
+        while taken.contains(slug) {
+            slug = "\(wanted)-\(n)"
+            n += 1
+        }
+        return slug
     }
 
     /// One undo history per doc, so Cmd+Z never crosses documents and survives switching between them.
@@ -693,54 +1031,93 @@ final class ProjectModel {
         return manager
     }
 
+    /// Texto do doc já conhecido (vazio se ainda não foi lido; use `loadDoc`).
     func readDoc(_ slug: String) -> String {
-        (try? store.readDoc(slug)) ?? ""
+        docTexts[slug] ?? ""
+    }
+
+    /// Lê o doc no Core, guarda no cache e devolve o texto.
+    func loadDoc(_ slug: String) async -> String {
+        if isReadOnly { return docTexts[slug] ?? "" }
+        if let cached = docTexts[slug], docWriteQueued.contains(slug) { return cached }
+        do {
+            let text = try await store.readDoc(slug)
+            docTexts[slug] = text
+            return text
+        } catch {
+            errorMessage = error.localizedDescription
+            return docTexts[slug] ?? ""
+        }
     }
 
     func saveDoc(_ slug: String, text: String) {
-        VDLog.$undoName.withValue(docUndoManagers[slug].map { $0.undoActionName }.flatMap { $0.isEmpty ? nil : $0 } ?? "Editar documento") { write(Data(text.utf8), to: store.docURL(slug)) }
-        docIdentities = docIdentities.filter { $0.value != slug }
-        if let attrs = try? FileManager.default.attributesOfItem(atPath: store.docURL(slug).path), let inode = attrs[.systemFileNumber] as? NSNumber { docIdentities[inode.stringValue] = slug }
-        let title = Markdown.title(of: text) ?? slug
+        docTexts[slug] = text
+        let title = MarkdownText.title(of: text) ?? slug
         if let i = docs.firstIndex(where: { $0.slug == slug }), docs[i].title != title {
             docs[i].title = title
+        }
+        guard docWriteQueued.insert(slug).inserted else { return }
+        persist { [weak self] in
+            guard let self = self else { return }
+            self.docWriteQueued.remove(slug)
+            guard let latest = self.docTexts[slug] else { return }
+            try await self.store.writeDoc(slug, text: latest)
         }
     }
 
     /// Copies files dropped/picked into a doc or idea to `.vibedeck/attachments/`; returns their markdown links.
+    /// PEDIDO-CORE (import_attachment): o Core ainda não recebe anexos.
     func importAttachments(_ urls: [URL], owner: String) -> [String] {
-        urls.compactMap { url in
-            let scoped = url.startAccessingSecurityScopedResource()
-            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-            do { return try store.importAttachment(from: url, owner: owner) } catch {
-                errorMessage = error.localizedDescription
-                return nil
-            }
-        }
+        if !urls.isEmpty { errorMessage = CoreError.unsupported("import_attachment").localizedDescription }
+        return []
     }
 
     /// Saves pasted image data as an attachment; returns its markdown link.
     func importAttachment(data: Data, name: String, owner: String) -> String? {
-        do { return try store.importAttachment(data: data, name: name, owner: owner) } catch {
-            errorMessage = error.localizedDescription
-            return nil
-        }
+        errorMessage = CoreError.unsupported("import_attachment").localizedDescription
+        return nil
     }
 
     func setDocTags(_ slug: String, _ tags: [String]) {
-        let text = Markdown.settingTags(tags, in: readDoc(slug))
-        write(Data(text.utf8), to: store.docURL(slug))
-        externalDocChange[slug, default: 0] += 1
-        reloadDocs()
+        persist { [weak self] in
+            guard let self = self else { return }
+            try await self.store.setTags(kind: "doc", ref: slug, tags: tags)
+            let text = try await self.store.readDoc(slug)
+            self.docTexts[slug] = text
+            self.externalDocChange[slug, default: 0] += 1
+            self.reloadDocs()
+        }
+    }
+
+    /// Re-vincula um .md da raiz (`link_doc`); o desvínculo (`deleteDoc`) persiste no Core.
+    func linkDoc(file: String) {
+        persist { [weak self] in
+            guard let self = self else { return }
+            try await self.store.linkDoc(file: file)
+            self.reloadDocs()
+        }
+    }
+
+    /// .md da raiz do projeto que não aparecem vinculados em `list_docs`. Só lista em projeto local: em SSH não há
+    /// forma barata de listar a raiz, então devolve vazio (o botão some).
+    func unlinkedRootMarkdown() -> [String] {
+        guard RemoteWorkspace.existing(at: store.root) == nil else { return [] }
+        let linked = Set(docs.compactMap { $0.link?.target })
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: store.root.path)) ?? []
+        return names.filter { name in
+            guard name.lowercased().hasSuffix(".md"), !name.hasPrefix("."), !linked.contains(name) else { return false }
+            var isDirectory: ObjCBool = false
+            return FileManager.default.fileExists(atPath: store.root.appending(path: name).path, isDirectory: &isDirectory) && !isDirectory.boolValue
+        }.sorted()
     }
 
     func deleteDoc(_ slug: String) {
-        do {
-            try FileManager.default.trashItem(at: store.docURL(slug), resultingItemURL: nil)
-            logRemoval(store.docURL(slug))
-            reloadDocs()
-        } catch {
-            errorMessage = error.localizedDescription
+        docs.removeAll { $0.slug == slug }
+        docTexts.removeValue(forKey: slug)
+        persist { [weak self] in
+            guard let self = self else { return }
+            try await self.store.deleteDoc(slug)
+            self.reloadDocs()
         }
     }
 
@@ -751,10 +1128,15 @@ final class ProjectModel {
     }
 
     func createGroup(title: String, reference: String? = nil) -> String? {
+        guard let name = title.trimmed.nonEmpty else { errorMessage = VibeDeckError.invalidName.localizedDescription; return nil }
         do {
-            let (slug, group) = try store.createGroup(title: title, reference: reference)
-            if let data = try? VDJSON.encode(group) { lastWritten[store.groupURL(slug).resolvingSymlinksInPath().path] = data }
-            reloadGroups()
+            let slug = try newSlug(title: name, reference: reference, existing: groups.map(\.slug))
+            let group = ReviewGroup(title: name)
+            groups.append(GroupEntry(slug: slug, group: group))
+            persist { [weak self] in
+                guard let self = self else { return }
+                try await self.store.saveRecord(.review, slug: slug, value: group)
+            }
             return slug
         } catch {
             errorMessage = error.localizedDescription
@@ -763,11 +1145,10 @@ final class ProjectModel {
     }
 
     func deleteGroup(_ slug: String) {
-        do {
-            try FileManager.default.trashItem(at: store.groupURL(slug), resultingItemURL: nil)
-            reloadGroups()
-        } catch {
-            errorMessage = error.localizedDescription
+        groups.removeAll { $0.slug == slug }
+        persist { [weak self] in
+            guard let self = self else { return }
+            try await self.store.deleteRecord(.review, slug: slug)
         }
     }
 
@@ -780,7 +1161,10 @@ final class ProjectModel {
         change(&new)
         guard new != old else { return }
         groups[index].group = new
-        if let data = try? VDJSON.encode(new) { VDLog.$undoName.withValue(actionName) { write(data, to: store.groupURL(slug)) } }
+        persist { [weak self] in
+            guard let self = self else { return }
+            try await self.store.saveRecord(.review, slug: slug, value: new)
+        }
         undo?.registerUndo(withTarget: self) { model in
             model.mutateGroup(slug, actionName, undo: undo) { $0 = old }
         }
@@ -806,37 +1190,38 @@ final class ProjectModel {
     }
 
     func createTopic(title: String) -> String? {
-        create { try store.createTopic(title: title) } url: { store.topicURL($0) } reload: { reloadTopics() }
+        guard let name = title.trimmed.nonEmpty else { errorMessage = VibeDeckError.invalidName.localizedDescription; return nil }
+        let base = Slug.make(name)
+        var slug = base
+        var n = 2
+        let taken = Set(topics.map(\.slug))
+        while taken.contains(slug) {
+            slug = "\(base)-\(n)"
+            n += 1
+        }
+        let topic = RuleTopic(title: name)
+        topics.append(Entry(slug: slug, value: topic))
+        persist { [weak self] in
+            guard let self = self else { return }
+            try await self.store.saveRecord(.rule, slug: slug, value: topic)
+        }
+        return slug
     }
 
+    /// Apaga o tópico; o Core solta a ideia e o padrão que ele impunha.
     func deleteTopic(_ slug: String) {
-        trash(store.topicURL(slug)) {
-            reloadTopics()
-            releaseOrphanedIdeas()
-            releaseOrphanedPatterns()
-        }
-    }
-
-    /// Drops patterns whose topic is gone and refreshes the project.
-    private func releaseOrphanedPatterns() {
-        do {
-            if try !store.releaseOrphanedPatterns().isEmpty { reloadProject() }
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    /// Unpromotes ideas whose topic is gone and refreshes them.
-    private func releaseOrphanedIdeas() {
-        do {
-            if try !store.releaseOrphanedIdeas().isEmpty { reloadIdeas() }
-        } catch {
-            errorMessage = error.localizedDescription
+        topics.removeAll { $0.slug == slug }
+        persist { [weak self] in
+            guard let self = self else { return }
+            try await self.store.deleteRecord(.rule, slug: slug)
+            self.reloadTopics()
+            self.reloadIdeas()
+            self.reloadProject()
         }
     }
 
     func mutateTopic(_ slug: String, _ actionName: String, undo: UndoManager?, _ change: @escaping (inout RuleTopic) -> Void) {
-        mutate(\.topics, slug, url: store.topicURL(slug), actionName, undo: undo, change)
+        mutate(\.topics, .rule, slug, actionName, undo: undo, change)
     }
 
     /// Runs the scripts of a topic's rules off the main thread and keeps each outcome in `testRuns`.
@@ -872,6 +1257,7 @@ final class ProjectModel {
         guard !jobs.isEmpty else { return }
         generatingTests = Dictionary(uniqueKeysWithValues: jobs.map { ($0.slug, .queued) })
         let root = store.root
+        let store = store
         generationTask = Task {
             await withTaskGroup(of: (String, String?).self) { group in
                 var queue = jobs[...]
@@ -882,7 +1268,7 @@ final class ProjectModel {
                         active += 1
                         group.addTask {
                             do {
-                                try await RuleTestGenerator.run(root: root, prompt: job.prompt, provider: provider,
+                                try await RuleTestGenerator.run(root: root, store: store, prompt: job.prompt, provider: provider,
                                     operation: "Gerar testes · " + job.slug, topic: job.slug, expectedRules: job.rules)
                                 return (job.slug, nil)
                             }
@@ -912,16 +1298,44 @@ final class ProjectModel {
         checks.filter { $0.topics.contains(slug) }
     }
 
+    /// Topics that apply to files/explicit refs (slug, id or title): global ones, glob matches and named ones.
+    func applicableTopics(files: [String], explicit: [String] = []) -> [Entry<RuleTopic>] {
+        let relative = files.map(store.relativePath)
+        let named = Set(explicit.compactMap { ref -> String? in
+            let lowered = ref.lowercased()
+            return topics.first { $0.slug == ref || $0.value.id.uuidString.lowercased() == lowered || $0.value.title.caseInsensitiveCompare(ref) == .orderedSame }?.slug
+        })
+        return topics.filter { entry in
+            entry.value.isGlobal || named.contains(entry.slug) || relative.contains { entry.value.matches(file: $0) }
+        }
+    }
+
     /// Why a review item can't be considered verified yet (empty = verified or not gated).
-    /// Reads disk through the store; touching `checks`/`topics` keeps SwiftUI observing them.
+    /// Mesma regra do Core (`update_review_item` recusa `done` sem check aprovado); calculada na memória para o selo da UI.
     func verificationProblems(for item: ReviewItem) -> [String] {
-        _ = (checks, topics)
-        return (try? store.verificationProblems(for: item)) ?? []
+        let required = applicableTopics(files: [item.target?.file].compactMap { $0 }, explicit: item.rules)
+        let rules = required.flatMap { entry in entry.value.rules.map { (entry.slug, $0) } }
+        guard !rules.isEmpty else { return [] }
+        guard let check = checks.first(where: { $0.reviewItem == item.id }) else {
+            return ["Nenhum check registrado para este item (tópicos: \(required.map(\.slug).joined(separator: ", ")))."]
+        }
+        if !check.passed {
+            return check.failures.map { "Falhou no último check: \($0)" }
+        }
+        let answered = Set(check.results.map(\.ruleId))
+        var problems: [String] = []
+        for (slug, rule) in rules where !answered.contains(rule.id) {
+            if !rule.testState.needsAgent {
+                problems.append("Regra nova desde o último check: [\(slug)] \(rule.text)")
+            } else if rule.severity == .must {
+                problems.append("Regra manual obrigatória sem verificação: [\(slug)] \(rule.text) (envie o check com as regras manuais respondidas)")
+            }
+        }
+        return problems
     }
 
     func requiredTopics(for item: ReviewItem) -> [String] {
-        _ = topics
-        return ((try? store.requiredTopics(for: item)) ?? []).map(\.slug)
+        applicableTopics(files: [item.target?.file].compactMap { $0 }, explicit: item.rules).map(\.slug)
     }
 
     /// Tags already used by docs, review groups, topics and ideas: the vocabulary the rules Descubra prefers.
@@ -935,44 +1349,40 @@ final class ProjectModel {
         topics.filter { $0.slug != slug }.map { .init(slug: $0.slug, title: $0.value.title, rules: $0.value.rules.map(\.text)) }
     }
 
+
     // MARK: Ideas
 
-    /// Reload from disk at every confirmation; the watcher may not have delivered an external edit yet. The Core
-    /// gate also rereads the dependencies, so a dependency reopened meanwhile blocks here.
-    func currentImplementationIdea(_ id: UUID) throws -> (slug: String, idea: Idea) {
-        let slug = try store.resolveIdeaSlug(id.uuidString)
-        let idea = try store.loadIdea(slug)
-        guard IdeaImplementation.isEligible(idea) else {
-            throw VibeDeckError.invalidWorkflow("a ideia precisa estar aprovada e ter uma avaliação viável atual. Verifique novamente.")
-        }
-        return try store.implementableIdea(slug)
+    /// A ideia que pode ser implementada agora, relida do Core (a memória pode estar um passo atrás): o gate único
+    /// para implementar (padrão ou workflow, app ou chat). Lança todos os motivos pelos quais não pode agora.
+    func currentImplementationIdea(_ id: UUID) async throws -> (slug: String, idea: Idea) {
+        try await store.implementableIdea(id.uuidString)
     }
 
-    /// Dependencies that keep the idea from being implemented, from the loaded ideas (live through the watcher).
+    /// Dependencies that keep the idea from being implemented, from the loaded ideas.
     func ideaDependencyBlockers(_ idea: Idea) -> [IdeaDependencyBlocker] {
-        IdeaImplementation.dependencyBlockers(of: idea, in: ideas.map { ($0.slug, $0.value) })
+        IdeaImplementation.dependencyBlockers(of: idea, in: ideas.map { (slug: $0.slug, idea: $0.value) })
     }
 
     /// Ideas that depend directly on `id`, derived from the other ideas' dependencies.
     func ideaDependents(_ id: UUID) -> [IdeaLink] {
-        IdeaImplementation.dependents(of: id, in: ideas.map { ($0.slug, $0.value) })
+        IdeaImplementation.dependents(of: id, in: ideas.map { (slug: $0.slug, idea: $0.value) })
     }
 
-    /// Writes through the Core validation; undo restores the previous list (validated again).
+    /// Writes through the Core validation (`update_idea`); undo restores the previous list (validated again).
     func setIdeaDependencies(_ slug: String, _ ids: [UUID], _ actionName: String, undo: UndoManager?) {
-        do {
-            let old = try store.loadIdea(slug).dependencies
-            guard old != ids else { return }
-            try VDLog.$projectRoot.withValue(store.root) {
-                try VDLog.$undoName.withValue(actionName) { try store.setIdeaDependencies(slug, ids.map(\.uuidString)) }
+        guard let old = idea(slug)?.dependencies, old != ids else { return }
+        Task {
+            do {
+                await writeChain?.value
+                _ = try await store.call("update_idea", ["idea": slug, "dependencies": ids.map(\.uuidString)])
+                await refreshIdeas()
+                VDLog.info("idea.dependencies_changed", "Dependências da ideia alteradas", project: store.root, component: .app,
+                           context: ["slug": slug, "count": String(ids.count)])
+                undo?.registerUndo(withTarget: self) { $0.setIdeaDependencies(slug, old, actionName, undo: undo) }
+                undo?.setActionName(actionName)
+            } catch {
+                errorMessage = error.localizedDescription
             }
-            reloadIdeas()
-            VDLog.info("idea.dependencies_changed", "Dependências da ideia alteradas", project: store.root, component: .app,
-                       context: ["slug": slug, "count": String(ids.count)])
-            undo?.registerUndo(withTarget: self) { $0.setIdeaDependencies(slug, old, actionName, undo: undo) }
-            undo?.setActionName(actionName)
-        } catch {
-            errorMessage = error.localizedDescription
         }
     }
 
@@ -982,70 +1392,79 @@ final class ProjectModel {
         var topicSlug: String
         var topic: RuleTopic?
         var runRef: String?
-        var run: WorkflowRun?
     }
 
     private func restoreImplementation(_ state: IdeaImplementationState, undo: UndoManager?, registerUndo: Bool = true) {
-        do {
-            let inverse = IdeaImplementationState(slug: state.slug, idea: try store.loadIdea(state.slug),
-                topicSlug: state.topicSlug, topic: try? store.loadTopic(state.topicSlug),
-                runRef: state.runRef, run: state.runRef.flatMap { try? store.loadRun($0) })
-            try VDLog.$projectRoot.withValue(store.root) {
-                try VDLog.$undoName.withValue("Implementar ideia") {
-                    try store.saveIdea(state.idea, slug: state.slug)
-                    if let topic = state.topic { try store.saveTopic(topic, slug: state.topicSlug) }
-                    else if FileManager.default.fileExists(atPath: store.topicURL(state.topicSlug).path) {
-                        try ProjectFiles.remove(store.topicURL(state.topicSlug))
-                        logRemoval(store.topicURL(state.topicSlug), undoName: "Implementar ideia")
-                    }
-                    if let ref = state.runRef {
-                        if let run = state.run { try store.saveRun(run, ref: ref) }
-                        else if FileManager.default.fileExists(atPath: store.runURL(ref).path) {
-                            try ProjectFiles.remove(store.runURL(ref))
-                            logRemoval(store.runURL(ref), undoName: "Implementar ideia")
-                        }
-                    }
-                }
-            }
-            reloadIdeas(); reloadTopics(); reloadRuns()
-            if registerUndo {
-                undo?.registerUndo(withTarget: self) { $0.restoreImplementation(inverse, undo: undo) }
-                undo?.setActionName("Implementar ideia")
-            }
-        } catch { errorMessage = error.localizedDescription }
+        let inverse = IdeaImplementationState(slug: state.slug, idea: idea(state.slug) ?? state.idea,
+                                              topicSlug: state.topicSlug, topic: topic(state.topicSlug), runRef: state.runRef)
+        if let index = ideas.firstIndex(where: { $0.slug == state.slug }) { ideas[index].value = state.idea }
+        if let restored = state.topic {
+            if let index = topics.firstIndex(where: { $0.slug == state.topicSlug }) { topics[index].value = restored }
+            else { topics.append(Entry(slug: state.topicSlug, value: restored)) }
+        } else {
+            topics.removeAll { $0.slug == state.topicSlug }
+        }
+        persist { [weak self] in
+            guard let self = self else { return }
+            try await self.store.saveRecord(.idea, slug: state.slug, value: state.idea)
+            if let restored = state.topic { try await self.store.saveRecord(.rule, slug: state.topicSlug, value: restored) }
+            else { try? await self.store.deleteRecord(.rule, slug: state.topicSlug) }
+            self.reloadIdeas(); self.reloadTopics(); self.reloadRuns()
+        }
+        if registerUndo {
+            undo?.registerUndo(withTarget: self) { $0.restoreImplementation(inverse, undo: undo) }
+            undo?.setActionName("Implementar ideia")
+        }
+    }
+
+    /// A execução de workflow ligada à ideia (mesma entrada estável), se já existe.
+    func ideaRun(_ idea: Idea, workflow: String) -> Entry<WorkflowRun>? {
+        let input = IdeaImplementation.workflowInput(idea)
+        return runs.first { $0.value.workflow == workflow && $0.value.input == input }
     }
 
     func prepareIdeaImplementation(_ id: UUID, workflow: String? = nil, restart: Bool = false,
-                                   skippingPaths: Set<String> = [], provider: AIProvider, undo: UndoManager?) throws
+                                   skippingPaths: Set<String> = [], provider: AIProvider, undo: UndoManager?) async throws
         -> (prompt: String, execution: (ref: String, run: WorkflowRun)?) {
-        let (slug, idea) = try currentImplementationIdea(id)
-        let previousTopics = try store.listTopics()
-        let previousRun = try workflow.flatMap { try store.ideaRun(idea, workflow: $0) }
+        let (slug, idea) = try await currentImplementationIdea(id)
+        let previousTopic = idea.promotedTopic.flatMap { self.topic($0) }
+        var workflowSlug: String?
         if let workflow {
-            let flow = try store.loadWorkflow(store.resolveWorkflowSlug(workflow))
-            guard !flow.steps.isEmpty else { throw VibeDeckError.invalidWorkflow("o workflow não tem etapas.") }
-            if let run = previousRun?.run, run.provider != provider {
+            guard let found = self.workflow(workflow) else { throw VibeDeckError.workflowNotFound(workflow) }
+            guard !found.steps.isEmpty else { throw VibeDeckError.invalidWorkflow("o workflow não tem etapas.") }
+            workflowSlug = workflow
+            if let run = ideaRun(idea, workflow: workflow)?.value, run.provider != provider {
                 throw VibeDeckError.invalidWorkflow("a execução pertence a outro provedor. Selecione \(run.provider.title) antes de continuar.")
             }
         }
-        return try VDLog.$projectRoot.withValue(store.root) {
-            try VDLog.$undoName.withValue("Implementar ideia") {
-                let topic = try store.promoteIdea(slug, skippingPaths: skippingPaths)
-                var before = IdeaImplementationState(slug: slug, idea: idea, topicSlug: topic,
-                    topic: previousTopics.first { $0.slug == topic }?.topic,
-                    runRef: previousRun?.ref, run: previousRun?.run)
-                do {
-                    let execution = try workflow.map { try store.implementIdeaRun(id.uuidString, workflow: $0, restart: restart, provider: provider) }
-                    before.runRef = execution?.ref
-                    reloadIdeas(); reloadTopics(); reloadRuns()
-                    undo?.registerUndo(withTarget: self) { $0.restoreImplementation(before, undo: undo) }
-                    undo?.setActionName("Implementar ideia")
-                    return (IdeaImplementation.prompt(slug: slug, idea: idea, topic: topic), execution)
-                } catch {
-                    restoreImplementation(before, undo: undo, registerUndo: false)
-                    throw error
+        guard let topic = await promoteIdea(slug, skippingPaths: skippingPaths, forImplementation: false) else {
+            throw VibeDeckError.invalidWorkflow("não foi possível promover as regras da ideia.")
+        }
+        let previousValue: RuleTopic? = idea.promotedTopic == topic ? previousTopic : nil
+        var before = IdeaImplementationState(slug: slug, idea: idea, topicSlug: topic, topic: previousValue, runRef: nil)
+        do {
+            var execution: (ref: String, run: WorkflowRun)?
+            if let workflowSlug {
+                let existing = ideaRun(idea, workflow: workflowSlug)
+                if let existing {
+                    // Retoma a mesma execução (uma parada volta a andar) ou reinicia da primeira etapa.
+                    let run: WorkflowRun
+                    if restart { run = try await store.restartRun(existing.slug) } else { run = try await store.resumeRun(existing.slug) }
+                    execution = (existing.slug, run)
+                } else {
+                    let started = try await store.startRun(workflowSlug, input: IdeaImplementation.workflowInput(idea), provider: provider)
+                    let run = try await store.loadRun(started.ref)
+                    execution = (started.ref, run)
+                    before.runRef = started.ref
                 }
             }
+            await refreshIdeas(); await refreshTopics(); await refreshRuns()
+            undo?.registerUndo(withTarget: self) { $0.restoreImplementation(before, undo: undo) }
+            undo?.setActionName("Implementar ideia")
+            return (IdeaImplementation.prompt(slug: slug, idea: idea, topic: topic), execution)
+        } catch {
+            restoreImplementation(before, undo: undo, registerUndo: false)
+            throw error
         }
     }
 
@@ -1054,20 +1473,33 @@ final class ProjectModel {
     }
 
     func createIdea(title: String, reference: String? = nil) -> String? {
-        create { try store.createIdea(title: title, reference: reference) } url: { store.ideaURL($0) } reload: { reloadIdeas() }
+        guard let name = title.trimmed.nonEmpty else { errorMessage = VibeDeckError.invalidName.localizedDescription; return nil }
+        do {
+            let slug = try newSlug(title: name, reference: reference, existing: ideas.map(\.slug))
+            let value = Idea(title: name, body: nil, tags: [], author: .human)
+            ideas.append(Entry(slug: slug, value: value))
+            persist { [weak self] in
+                guard let self = self else { return }
+                try await self.store.saveRecord(.idea, slug: slug, value: value)
+            }
+            return slug
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
     }
 
-    /// Trashes the idea and, in a git repo, commits just that removal in the background.
+    /// Apaga a ideia. (O commit automático da remoção em repositórios git deixou de existir: ver PEDIDO-CORE.)
     func deleteIdea(_ slug: String) {
-        let title = idea(slug)?.title ?? slug
-        trash(store.ideaURL(slug)) { reloadIdeas() }
-        guard !FileManager.default.fileExists(atPath: store.ideaURL(slug).path) else { return }
-        let store = store
-        VDLog.detached { store.commitIdeaRemoval(slug, title: title) }
+        ideas.removeAll { $0.slug == slug }
+        persist { [weak self] in
+            guard let self = self else { return }
+            try await self.store.deleteRecord(.idea, slug: slug)
+        }
     }
 
     func mutateIdea(_ slug: String, _ actionName: String, undo: UndoManager?, _ change: @escaping (inout Idea) -> Void) {
-        mutate(\.ideas, slug, url: store.ideaURL(slug), actionName, undo: undo) { idea in
+        mutate(\.ideas, .idea, slug, actionName, undo: undo) { idea in
             let before = idea
             change(&idea)
             if idea != before { idea.updatedAt = .now }
@@ -1076,75 +1508,66 @@ final class ProjectModel {
 
     // MARK: Agents
 
+    /// Adiciona itens do catálogo de kits (`add_kit`). Um único passo de desfazer remove (e refaz) os itens criados.
     @discardableResult
     func addKitItems(_ refs: [String], undo: UndoManager?) -> Bool {
-        do {
-            let added = try VDLog.$undoName.withValue("Adicionar itens do catálogo") { try store.addKitItems(refs) }
-            let urls = added.map { item in
-                switch item.kind {
-                case .agent: store.agentURL(item.slug)
-                case .command: store.commandURL(item.slug)
-                case .skill: store.skillURL(item.slug)
-                case .workflow: store.workflowURL(item.slug)
-                }
-            }
-            for url in urls { lastWritten[url.resolvingSymlinksInPath().path] = FileManager.default.contents(atPath: url.path) }
-            reloadKitItems()
-            undo?.registerUndo(withTarget: self) { model in
-                model.restoreKitFiles(urls.map { KitFileState(url: $0, data: nil) }, undo: undo)
-            }
-            undo?.setActionName("Adicionar itens do catálogo")
-            return true
-        } catch {
-            VDLog.error(error, event: "store.kit_add_failed", project: store.root, component: .app)
-            errorMessage = error.localizedDescription
-            return false
-        }
-    }
-
-    private struct KitFileState {
-        var url: URL
-        var data: Data?
-    }
-
-    /// Undo captures the current bytes, so redo restores identities, links and any later edits.
-    private func restoreKitFiles(_ states: [KitFileState], undo: UndoManager?) {
-        do {
-            let inverse = try states.map { state in
-                KitFileState(url: state.url, data: FileManager.default.fileExists(atPath: state.url.path)
-                             ? try Data(contentsOf: state.url) : nil)
-            }
-            for (desired, current) in zip(states, inverse) where desired.data != nil && current.data != nil {
-                throw VibeDeckError.kitRestoreConflict(desired.url.lastPathComponent)
-            }
+        let name = "Adicionar itens do catálogo"
+        Task {
             do {
-                for state in states {
-                    if let data = state.data {
-                        try VDLog.$projectRoot.withValue(store.root) {
-                            try VDLog.$undoName.withValue("Adicionar itens do catálogo") { try AtomicFile.write(data, to: state.url) }
-                        }
-                        lastWritten[state.url.resolvingSymlinksInPath().path] = data
-                    } else if FileManager.default.fileExists(atPath: state.url.path) {
-                        try ProjectFiles.remove(state.url)
-                        lastWritten.removeValue(forKey: state.url.resolvingSymlinksInPath().path)
-                        logRemoval(state.url, undoName: "Adicionar itens do catálogo")
-                    }
+                await writeChain?.value
+                let before = kitKeys()
+                _ = try await store.call("add_kit", ["items": refs, "author": "human"])
+                await refresh(.agents); await refresh(.commands); await refresh(.skills); await refresh(.workflows)
+                var toggles: [(Bool) -> Void] = []
+                for entry in agents where !before.contains("agent/" + entry.slug) {
+                    let slug = entry.slug, value = entry.value
+                    toggles.append { [weak self] remove in self?.toggleCreatedItem(.agent, slug, value, remove: remove, name: name, undo: nil) }  // undo agrupado: o passo único é registrado pelo chamador
                 }
-            } catch {
-                for state in inverse {
-                    if let data = state.data { try? AtomicFile.write(data, to: state.url) }
-                    else { try? ProjectFiles.remove(state.url) }
+                for entry in commands where !before.contains("command/" + entry.slug) {
+                    let slug = entry.slug, value = entry.value
+                    toggles.append { [weak self] remove in self?.toggleCreatedItem(.command, slug, value, remove: remove, name: name, undo: nil) }  // undo agrupado: o passo único é registrado pelo chamador
+                }
+                for entry in skills where !before.contains("skill/" + entry.slug) {
+                    let slug = entry.slug, value = entry.value
+                    toggles.append { [weak self] remove in self?.toggleCreatedItem(.skill, slug, value, remove: remove, name: name, undo: nil) }  // undo agrupado: o passo único é registrado pelo chamador
+                }
+                for entry in workflows where !before.contains("workflow/" + entry.slug) {
+                    let slug = entry.slug, value = entry.value
+                    toggles.append { [weak self] remove in self?.toggleCreatedItem(.workflow, slug, value, remove: remove, name: name, undo: nil) }  // undo agrupado: o passo único é registrado pelo chamador
                 }
                 reloadKitItems()
-                throw error
+                if !toggles.isEmpty {
+                    // Um único passo de undo: desfaz remove os itens novos; o redo os recria (registerKitUndo).
+                    undo?.registerUndo(withTarget: self) { model in
+                        for toggle in toggles { toggle(true) }
+                        model.registerKitUndo(toggles, remove: false, name: name, undo: undo)
+                    }
+                    undo?.setActionName(name)
+                }
+            } catch {
+                VDLog.error(error, event: "store.kit_add_failed", project: store.root, component: .app)
+                errorMessage = error.localizedDescription
             }
-            reloadKitItems()
-            undo?.registerUndo(withTarget: self) { $0.restoreKitFiles(inverse, undo: undo) }
-            undo?.setActionName("Adicionar itens do catálogo")
-        } catch {
-            VDLog.error(error, event: "store.kit_restore_failed", project: store.root, component: .app)
-            errorMessage = error.localizedDescription
         }
+        return true
+    }
+
+    private func kitKeys() -> Set<String> {
+        var keys = Set<String>()
+        for entry in agents { keys.insert("agent/" + entry.slug) }
+        for entry in commands { keys.insert("command/" + entry.slug) }
+        for entry in skills { keys.insert("skill/" + entry.slug) }
+        for entry in workflows { keys.insert("workflow/" + entry.slug) }
+        return keys
+    }
+
+    private func registerKitUndo(_ toggles: [(Bool) -> Void], remove: Bool, name: String, undo: UndoManager?) {
+        guard let undo = undo else { return }
+        undo.registerUndo(withTarget: self) { model in
+            for toggle in toggles { toggle(remove) }
+            model.registerKitUndo(toggles, remove: !remove, name: name, undo: undo)
+        }
+        undo.setActionName(name)
     }
 
     private func reloadKitItems() {
@@ -1156,15 +1579,27 @@ final class ProjectModel {
     }
 
     func createAgent(title: String) -> String? {
-        create { try store.createAgent(title: title) } url: { store.agentURL($0) } reload: { reloadAgents() }
+        guard let name = title.trimmed.nonEmpty else { errorMessage = VibeDeckError.invalidName.localizedDescription; return nil }
+        let slug = freeSlug(Slug.make(name), existing: agents.map(\.slug))
+        let value = Agent(title: name, summary: nil, model: nil, tools: [], prompt: "", tags: [], author: .human)
+        agents.append(Entry(slug: slug, value: value))
+        persist { [weak self] in
+            guard let self = self else { return }
+            try await self.store.saveRecord(.agent, slug: slug, value: value)
+        }
+        return slug
     }
 
     func deleteAgent(_ slug: String) {
-        trash(store.agentURL(slug)) { reloadAgents() }
+        agents.removeAll { $0.slug == slug }
+        persist { [weak self] in
+            guard let self = self else { return }
+            try await self.store.deleteRecord(.agent, slug: slug)
+        }
     }
 
     func mutateAgent(_ slug: String, _ actionName: String, undo: UndoManager?, _ change: @escaping (inout Agent) -> Void) {
-        mutate(\.agents, slug, url: store.agentURL(slug), actionName, undo: undo) { agent in
+        mutate(\.agents, .agent, slug, actionName, undo: undo) { agent in
             let before = agent
             change(&agent)
             if agent != before { agent.updatedAt = .now }
@@ -1172,11 +1607,17 @@ final class ProjectModel {
     }
 
     /// Imports Claude Code agents as VibeDeck agents. Returns how many were created.
-    func importClaudeAgents() -> Int {
+    func importClaudeAgents() async -> Int {
+        await importResources("import_agents", provider: .claude, reload: { self.reloadAgents() })
+    }
+
+    /// Importa de `.claude`/`.codex` com a tool `import_*`; devolve quantos itens foram criados.
+    func importResources(_ tool: String, provider: AIProvider, reload: () -> Void) async -> Int {
         do {
-            let slugs = try store.importClaudeAgents()
-            reloadAgents()
-            return slugs.count
+            await writeChain?.value
+            let result = try await store.importRecords(tool, provider: provider)
+            reload()
+            return result.slugs.count
         } catch {
             errorMessage = error.localizedDescription
             return 0
@@ -1190,15 +1631,27 @@ final class ProjectModel {
     }
 
     func createCommand(title: String) -> String? {
-        create { try store.createCommand(title: title) } url: { store.commandURL($0) } reload: { reloadCommands() }
+        guard let name = title.trimmed.nonEmpty else { errorMessage = VibeDeckError.invalidName.localizedDescription; return nil }
+        let slug = freeSlug(Slug.make(name), existing: commands.map(\.slug))
+        let value = Command(title: name, summary: nil, argumentHint: nil, model: nil, tools: [], prompt: "", tags: [], author: .human)
+        commands.append(Entry(slug: slug, value: value))
+        persist { [weak self] in
+            guard let self = self else { return }
+            try await self.store.saveRecord(.command, slug: slug, value: value)
+        }
+        return slug
     }
 
     func deleteCommand(_ slug: String) {
-        trash(store.commandURL(slug)) { reloadCommands() }
+        commands.removeAll { $0.slug == slug }
+        persist { [weak self] in
+            guard let self = self else { return }
+            try await self.store.deleteRecord(.command, slug: slug)
+        }
     }
 
     func mutateCommand(_ slug: String, _ actionName: String, undo: UndoManager?, _ change: @escaping (inout Command) -> Void) {
-        mutate(\.commands, slug, url: store.commandURL(slug), actionName, undo: undo) { command in
+        mutate(\.commands, .command, slug, actionName, undo: undo) { command in
             let before = command
             change(&command)
             if command != before { command.updatedAt = .now }
@@ -1206,15 +1659,8 @@ final class ProjectModel {
     }
 
     /// Imports Claude Code slash commands as VibeDeck commands. Returns how many were created.
-    func importClaudeCommands() -> Int {
-        do {
-            let slugs = try store.importClaudeCommands()
-            reloadCommands()
-            return slugs.count
-        } catch {
-            errorMessage = error.localizedDescription
-            return 0
-        }
+    func importClaudeCommands() async -> Int {
+        await importResources("import_commands", provider: .claude, reload: { self.reloadCommands() })
     }
 
     // MARK: Skills
@@ -1224,15 +1670,32 @@ final class ProjectModel {
     }
 
     func createSkill(title: String, reference: String? = nil) -> String? {
-        create { try store.createSkill(title: title, reference: reference) } url: { store.skillURL($0) } reload: { reloadSkills() }
+        guard let name = title.trimmed.nonEmpty else { errorMessage = VibeDeckError.invalidName.localizedDescription; return nil }
+        do {
+            let slug = try newSlug(title: name, reference: reference, existing: skills.map(\.slug))
+            let value = Skill(title: name, summary: nil, model: nil, tools: [], prompt: "", tags: [], author: .human)
+            skills.append(Entry(slug: slug, value: value))
+            persist { [weak self] in
+                guard let self = self else { return }
+                try await self.store.saveRecord(.skill, slug: slug, value: value)
+            }
+            return slug
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
     }
 
     func deleteSkill(_ slug: String) {
-        trash(store.skillURL(slug)) { reloadSkills() }
+        skills.removeAll { $0.slug == slug }
+        persist { [weak self] in
+            guard let self = self else { return }
+            try await self.store.deleteRecord(.skill, slug: slug)
+        }
     }
 
     func mutateSkill(_ slug: String, _ actionName: String, undo: UndoManager?, _ change: @escaping (inout Skill) -> Void) {
-        mutate(\.skills, slug, url: store.skillURL(slug), actionName, undo: undo) { skill in
+        mutate(\.skills, .skill, slug, actionName, undo: undo) { skill in
             let before = skill
             change(&skill)
             if skill != before { skill.updatedAt = .now }
@@ -1240,15 +1703,8 @@ final class ProjectModel {
     }
 
     /// Imports Claude Code skills (`SKILL.md`) as VibeDeck skills. Returns how many were created.
-    func importClaudeSkills() -> Int {
-        do {
-            let slugs = try store.importClaudeSkills()
-            reloadSkills()
-            return slugs.count
-        } catch {
-            errorMessage = error.localizedDescription
-            return 0
-        }
+    func importClaudeSkills() async -> Int {
+        await importResources("import_skills", provider: .claude, reload: { self.reloadSkills() })
     }
 
     // MARK: Workflows
@@ -1258,15 +1714,27 @@ final class ProjectModel {
     }
 
     func createWorkflow(title: String) -> String? {
-        create { try store.createWorkflow(title: title) } url: { store.workflowURL($0) } reload: { reloadWorkflows() }
+        guard let name = title.trimmed.nonEmpty else { errorMessage = VibeDeckError.invalidName.localizedDescription; return nil }
+        let slug = freeSlug(Slug.make(name), existing: workflows.map(\.slug))
+        let value = Workflow(title: name, summary: nil, input: nil, maxSteps: nil, tags: [], author: .human)
+        workflows.append(Entry(slug: slug, value: value))
+        persist { [weak self] in
+            guard let self = self else { return }
+            try await self.store.saveRecord(.workflow, slug: slug, value: value)
+        }
+        return slug
     }
 
     func deleteWorkflow(_ slug: String) {
-        trash(store.workflowURL(slug)) { reloadWorkflows() }
+        workflows.removeAll { $0.slug == slug }
+        persist { [weak self] in
+            guard let self = self else { return }
+            try await self.store.deleteRecord(.workflow, slug: slug)
+        }
     }
 
     func mutateWorkflow(_ slug: String, _ actionName: String, undo: UndoManager?, _ change: @escaping (inout Workflow) -> Void) {
-        mutate(\.workflows, slug, url: store.workflowURL(slug), actionName, undo: undo) { workflow in
+        mutate(\.workflows, .workflow, slug, actionName, undo: undo) { workflow in
             let before = workflow
             change(&workflow)
             if workflow != before { workflow.updatedAt = .now }
@@ -1278,11 +1746,14 @@ final class ProjectModel {
     }
 
     /// Starts (or resumes, with the same input) a run and returns the orchestrator prompt for the chat.
-    func startRun(_ workflow: String, input: String?, from: String? = nil) -> String? {
+    func startRun(_ workflow: String, input: String?, from: String? = nil) async -> String? {
         do {
-            let (ref, run, _) = try store.startRun(workflow, input: input, from: from)
-            reloadRuns()
-            return orchestratorPrompt(ref, run)
+            await writeChain?.value
+            let started = try await store.startRun(workflow, input: input, from: from)
+            await refreshRuns()
+            if !started.prompt.isEmpty { return started.prompt }
+            if let run = runs.first(where: { $0.slug == started.ref })?.value { return orchestratorPrompt(started.ref, run) }
+            return nil
         } catch {
             errorMessage = error.localizedDescription
             return nil
@@ -1297,16 +1768,26 @@ final class ProjectModel {
     }
 
     func stopRun(_ ref: String) {
-        do {
-            try store.stopRun(ref)
-            reloadRuns()
-        } catch {
-            errorMessage = error.localizedDescription
+        Task {
+            do {
+                try await store.stopRun(ref)
+                await refreshRuns()
+            } catch {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
     func deleteRun(_ ref: String) {
-        trash(store.runURL(ref).deletingLastPathComponent()) { reloadRuns() }
+        runs.removeAll { $0.slug == ref }
+        Task {
+            do {
+                try await store.deleteRun(ref)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            await refreshRuns()
+        }
     }
 
     /// The workflow's plan with the agents, commands and skills currently loaded.
@@ -1319,55 +1800,98 @@ final class ProjectModel {
         }
     }
 
-    /// Promotes the idea's rules to an enforced topic. Returns the topic slug.
-    /// `forImplementation`: the Core rereads the dependencies first, so one reopened while a dialog was open
-    /// blocks here with nothing promoted.
-    func promoteIdea(_ slug: String, skippingPaths: Set<String> = [], forImplementation: Bool = false) -> String? {
-        if forImplementation, !ideaDependenciesMet(slug) { return nil }
+    /// Promotes the idea's rules to an enforced topic (`promote_idea`). Returns the topic slug.
+    /// `forImplementation`: relê as dependências no Core primeiro; uma reaberta enquanto o diálogo estava aberto bloqueia aqui.
+    func promoteIdea(_ slug: String, skippingPaths: Set<String> = [], forImplementation: Bool = false) async -> String? {
+        if forImplementation, !(await ideaDependenciesMetFresh(slug)) { return nil }
         do {
-            let topic = try store.promoteIdea(slug, skippingPaths: skippingPaths)
-            reloadTopics()
-            reloadIdeas()
-            return topic
+            await writeChain?.value
+            let reply = try await store.call("promote_idea", ["idea": slug])
+            let marker = "tópico de regras: "
+            guard let range = reply.range(of: marker) else { throw CoreError.protocolError("promote_idea: \(reply)") }
+            let line = reply[range.upperBound...].split(separator: "\n", maxSplits: 1, omittingEmptySubsequences: true).first.map(String.init) ?? ""
+            let topicSlug = line.trimmingCharacters(in: .whitespaces)
+            await refreshTopics()
+            await refreshIdeas()
+            if !skippingPaths.isEmpty, topic(topicSlug) != nil {
+                mutateTopic(topicSlug, "Promover ideia", undo: nil) { $0.paths.removeAll { skippingPaths.contains($0) } }  // undo agrupado: o passo único é registrado pelo chamador
+            }
+            return topicSlug
         } catch {
             errorMessage = error.localizedDescription
             return nil
         }
     }
 
-    /// Core check of the dependencies, read from disk; a pending one (or a read failure) shows the error.
+    /// Check of the dependencies against the ideas in memory; a pending one shows the error.
     func ideaDependenciesMet(_ slug: String) -> Bool {
-        do { try store.requireIdeaDependenciesMet(slug); return true } catch {
+        guard let current = self.idea(slug) else { return true }
+        let blockers = ideaDependencyBlockers(current)
+        guard blockers.isEmpty else {
+            errorMessage = VibeDeckError.ideaNotImplementable(blockers.map(\.message)).localizedDescription
+            return false
+        }
+        return true
+    }
+
+    /// Mesma checagem, relendo as ideias no Core.
+    private func ideaDependenciesMetFresh(_ slug: String) async -> Bool {
+        do {
+            let fresh = try await store.listIdeas()
+            guard let found = fresh.first(where: { $0.slug == slug }) else { return true }
+            let blockers = IdeaImplementation.dependencyBlockers(of: found.value, in: fresh.map { (slug: $0.slug, idea: $0.value) })
+            guard blockers.isEmpty else {
+                errorMessage = VibeDeckError.ideaNotImplementable(blockers.map(\.message)).localizedDescription
+                return false
+            }
+            return true
+        } catch {
             errorMessage = error.localizedDescription
             return false
         }
     }
 
-    /// Deletes the idea's topic and releases the idea (draft rules stay). Undo restores both files.
+    /// Deletes the idea's topic and releases the idea (draft rules stay). Undo restores both records.
     func unpromoteIdea(_ slug: String, undo: UndoManager?) {
-        do {
-            let idea = try store.loadIdea(slug)
-            let topicSlug = idea.promotedTopic.flatMap { try? store.resolveTopicSlug($0) }
-            let topic = try topicSlug.map { try store.loadTopic($0) }
-            try store.unpromoteIdea(slug)
-            reloadTopics()
-            reloadIdeas()
-            undo?.registerUndo(withTarget: self) { model in
-                do {
-                    if let topicSlug, let topic { try model.store.saveTopic(topic, slug: topicSlug) }
-                    try model.store.saveIdea(idea, slug: slug)
-                } catch {
-                    model.errorMessage = error.localizedDescription
+        guard let idea = self.idea(slug) else { return }
+        let topicSlug = idea.promotedTopic
+        let topicValue = topicSlug.flatMap { self.topic($0) }
+        Task {
+            do {
+                await writeChain?.value
+                _ = try await store.call("unpromote_idea", ["idea": slug])
+                await refreshTopics()
+                await refreshIdeas()
+                undo?.registerUndo(withTarget: self) { model in
+                    if let topicSlug, let topicValue {
+                        if let index = model.topics.firstIndex(where: { $0.slug == topicSlug }) { model.topics[index].value = topicValue }
+                        else { model.topics.append(Entry(slug: topicSlug, value: topicValue)) }
+                    }
+                    if let index = model.ideas.firstIndex(where: { $0.slug == slug }) { model.ideas[index].value = idea }
+                    model.persist {
+                        if let topicSlug, let topicValue { try await model.store.saveRecord(.rule, slug: topicSlug, value: topicValue) }
+                        try await model.store.saveRecord(.idea, slug: slug, value: idea)
+                    }
+                    undo?.registerUndo(withTarget: model) { $0.unpromoteIdea(slug, undo: undo) }
+                    undo?.setActionName("Despromover ideia")
                 }
-                model.reloadTopics()
-                model.reloadIdeas()
-                undo?.registerUndo(withTarget: model) { $0.unpromoteIdea(slug, undo: undo) }
                 undo?.setActionName("Despromover ideia")
+            } catch {
+                errorMessage = error.localizedDescription
             }
-            undo?.setActionName("Despromover ideia")
-        } catch {
-            errorMessage = error.localizedDescription
         }
+    }
+
+    /// Slug livre (sem checar caminho de grupo) entre os existentes.
+    private func freeSlug(_ base: String, existing: [String]) -> String {
+        var slug = base
+        var n = 2
+        let taken = Set(existing)
+        while taken.contains(slug) {
+            slug = "\(base)-\(n)"
+            n += 1
+        }
+        return slug
     }
 
     // MARK: Sections
@@ -1408,12 +1932,38 @@ final class ProjectModel {
         }
     }
 
+    /// Ícone do doc: vínculo (`link`), vínculo quebrado (aviso) ou doc comum.
+    private static func docSymbol(_ doc: DocInfo) -> String {
+        if doc.isBroken { return "exclamationmark.triangle" }
+        return doc.isLinked ? "link" : "doc.text"
+    }
+
+    private static func docDetail(_ doc: DocInfo) -> String {
+        guard let link = doc.link else { return doc.modified.formatted(.relative(presentation: .named)) }
+        return link.broken ? "Vínculo quebrado · \(link.target)" : "Vinculado · \(link.target)"
+    }
+
+    /// A coluna de conteúdo omite grupos de revisão sem item aberto (`openCount == 0`) e ideias Implementadas (`done`).
+    /// A tabela do detalhe (`rows(for:)`) continua com todos.
+    func isOmittedFromColumn(_ item: SidebarItem) -> Bool {
+        switch item {
+        case .group(let slug): return (group(slug)?.openCount ?? 0) == 0
+        case .idea(let slug): return idea(slug)?.status == .done
+        default: return false
+        }
+    }
+
+    /// Linhas da coluna de conteúdo. O item aberto no detalhe nunca some, mesmo que mudar de status o omitiria.
+    func columnRows(for section: SidebarSection, keeping selected: SidebarItem?) -> [SectionRow] {
+        rows(for: section).filter { $0.id == selected || !isOmittedFromColumn($0.id) }
+    }
+
     func rows(for section: SidebarSection) -> [SectionRow] {
         switch section {
         case .docs:
-            docs.map {
-                SectionRow(id: .doc($0.slug), title: $0.title, symbol: "doc.text",
-                           detail: $0.modified.formatted(.relative(presentation: .named)), count: "", tags: $0.tags)
+            docs.map { doc in
+                SectionRow(id: .doc(doc.slug), title: doc.title, symbol: Self.docSymbol(doc),
+                           detail: Self.docDetail(doc), count: "", tags: doc.tags, dimmed: doc.isBroken)
             }
         case .groups:
             groups.map {
@@ -1469,7 +2019,7 @@ final class ProjectModel {
         case .command(let slug): store.commandURL(slug)
         case .skill(let slug): store.skillURL(slug)
         case .workflow(let slug): store.workflowURL(slug)
-        case .stack, .patterns, .links, .claudeItems, .graph, .claude, .terminal, .section: nil
+        case .stack, .patterns, .links, .claudeItems, .graph, .integrations, .usage, .checksHistory, .claude, .terminal, .section: nil
         }
     }
 
@@ -1481,6 +2031,9 @@ final class ProjectModel {
         case .links: "Links"
         case .claudeItems: "Claude"
         case .graph: "Grafo"
+        case .integrations: "Integrações"
+        case .usage: "Consumo de IA"
+        case .checksHistory: "Histórico"
         case .claude: "IA"
         case .terminal: "Terminal"
         case .section(let section): section.title
@@ -1503,6 +2056,9 @@ final class ProjectModel {
         case .links: "link"
         case .claudeItems: "square.stack"
         case .graph: "point.3.connected.trianglepath.dotted"
+        case .integrations: "shippingbox"
+        case .usage: "clock"
+        case .checksHistory: "clock"
         case .claude: "sparkles"
         case .terminal: "terminal"
         case .section(let section): section.symbol
@@ -1520,7 +2076,7 @@ final class ProjectModel {
     /// Whether `item` still exists in the project (pages always do; files may have been deleted).
     func exists(_ item: SidebarItem) -> Bool {
         switch item {
-        case .stack, .patterns, .links, .claudeItems, .graph, .terminal, .section: true
+        case .stack, .patterns, .links, .claudeItems, .graph, .integrations, .usage, .checksHistory, .terminal, .section: true
         case .claude: !RemoteExecution.providers(root: store.root).isEmpty
         case .doc(let slug): docs.contains { $0.slug == slug }
         case .group(let slug): group(slug) != nil
@@ -1543,7 +2099,7 @@ final class ProjectModel {
         case .command(let slug): deleteCommand(slug)
         case .skill(let slug): deleteSkill(slug)
         case .workflow(let slug): deleteWorkflow(slug)
-        case .stack, .patterns, .links, .claudeItems, .graph, .claude, .terminal, .section: break
+        case .stack, .patterns, .links, .claudeItems, .graph, .integrations, .usage, .checksHistory, .claude, .terminal, .section: break
         }
     }
 
@@ -1557,9 +2113,10 @@ final class ProjectModel {
         case .command(let slug): mutateCommand(slug, "Editar tags", undo: undo) { $0.tags = tags }
         case .skill(let slug): mutateSkill(slug, "Editar tags", undo: undo) { $0.tags = tags }
         case .workflow(let slug): mutateWorkflow(slug, "Editar tags", undo: undo) { $0.tags = tags }
-        case .stack, .patterns, .links, .claudeItems, .graph, .claude, .terminal, .section: break
+        case .stack, .patterns, .links, .claudeItems, .graph, .integrations, .usage, .checksHistory, .claude, .terminal, .section: break
         }
     }
+
 
     // MARK: Criar/editar com IA
 
@@ -1612,71 +2169,97 @@ final class ProjectModel {
             }
             return true
         }
-        do {
-            let created = try VDLog.$undoName.withValue(name) { try store.createItem(kind, proposal) }
-            let url = itemURL(kind, created)
-            let data = try Data(contentsOf: url)
-            lastWritten[url.resolvingSymlinksInPath().path] = data
-            reloadItems(kind)
-            undo?.registerUndo(withTarget: self) { model in model.toggleCreatedItem(kind, created, data, remove: true, name: name, undo: undo) }
-            undo?.setActionName(name)
-            return true
-        } catch {
-            errorMessage = error.localizedDescription
-            reloadItems(kind)
-            return false
+        // Criação: o item nasce com autor `ai` e o conteúdo da proposta.
+        let created = Slug.make(proposal.title)
+        switch kind {
+        case .agent:
+            var value = Agent(title: proposal.title, summary: nil, model: nil, tools: [], prompt: "", tags: [], author: .ai)
+            ItemDiscover.apply(proposal, to: &value)
+            let unique = freeSlug(created, existing: agents.map(\.slug))
+            agents.append(Entry(slug: unique, value: value))
+            persistCreated(.agent, unique, value, name: name, undo: undo)
+        case .command:
+            var value = Command(title: proposal.title, summary: nil, argumentHint: nil, model: nil, tools: [], prompt: "", tags: [], author: .ai)
+            ItemDiscover.apply(proposal, to: &value)
+            let unique = freeSlug(created, existing: commands.map(\.slug))
+            commands.append(Entry(slug: unique, value: value))
+            persistCreated(.command, unique, value, name: name, undo: undo)
+        case .skill:
+            var value = Skill(title: proposal.title, summary: nil, model: nil, tools: [], prompt: "", tags: [], author: .ai)
+            ItemDiscover.apply(proposal, to: &value)
+            let unique = freeSlug(created, existing: skills.map(\.slug))
+            skills.append(Entry(slug: unique, value: value))
+            persistCreated(.skill, unique, value, name: name, undo: undo)
+        case .workflow:
+            var value = Workflow(title: proposal.title, summary: nil, input: nil, maxSteps: nil, tags: [], author: .ai)
+            ItemDiscover.apply(proposal, to: &value)
+            let unique = freeSlug(created, existing: workflows.map(\.slug))
+            workflows.append(Entry(slug: unique, value: value))
+            persistCreated(.workflow, unique, value, name: name, undo: undo)
+        }
+        return true
+    }
+
+    private func persistCreated<V: Encodable & Equatable>(_ kind: CoreRecordKind, _ slug: String, _ value: V, name: String, undo: UndoManager?) {
+        persist { [weak self] in
+            guard let self = self else { return }
+            try await self.store.saveRecord(kind, slug: slug, value: value)
+        }
+        undo?.registerUndo(withTarget: self) { model in model.toggleCreatedItem(kind, slug, value, remove: true, name: name, undo: undo) }
+        undo?.setActionName(name)
+    }
+
+    private func toggleCreatedItem<V: Encodable & Equatable>(_ kind: CoreRecordKind, _ slug: String, _ value: V, remove: Bool, name: String, undo: UndoManager?) {
+        if remove {
+            removeEntry(kind, slug)
+            persist { [weak self] in
+                guard let self = self else { return }
+                try await self.store.deleteRecord(kind, slug: slug)
+            }
+        } else {
+            if entryExists(kind, slug) {
+                errorMessage = "Um item ocupa o destino; não foi possível refazer a criação."
+                return
+            }
+            persist { [weak self] in
+                guard let self = self else { return }
+                try await self.store.saveRecord(kind, slug: slug, value: value)
+                self.reloadAll()
+            }
+        }
+        undo?.registerUndo(withTarget: self) { model in model.toggleCreatedItem(kind, slug, value, remove: !remove, name: name, undo: undo) }
+        undo?.setActionName(name)
+    }
+
+    private func entryExists(_ kind: CoreRecordKind, _ slug: String) -> Bool {
+        switch kind {
+        case .agent: return agents.contains { $0.slug == slug }
+        case .command: return commands.contains { $0.slug == slug }
+        case .skill: return skills.contains { $0.slug == slug }
+        case .workflow: return workflows.contains { $0.slug == slug }
+        case .idea: return ideas.contains { $0.slug == slug }
+        case .rule: return topics.contains { $0.slug == slug }
+        case .review: return groups.contains { $0.slug == slug }
         }
     }
 
-    private func toggleCreatedItem(_ kind: ItemDiscover.Kind, _ slug: String, _ data: Data, remove: Bool, name: String, undo: UndoManager?) {
-        let url = itemURL(kind, slug)
-        if remove {
-            trash(url) { reloadItems(kind) }
-        } else if FileManager.default.fileExists(atPath: url.path) {
-            errorMessage = "Um item ocupa o destino; não foi possível refazer a criação."
-            return
-        } else {
-            VDLog.$undoName.withValue(name) { write(data, to: url) }
-            reloadItems(kind)
+    private func removeEntry(_ kind: CoreRecordKind, _ slug: String) {
+        switch kind {
+        case .agent: agents.removeAll { $0.slug == slug }
+        case .command: commands.removeAll { $0.slug == slug }
+        case .skill: skills.removeAll { $0.slug == slug }
+        case .workflow: workflows.removeAll { $0.slug == slug }
+        case .idea: ideas.removeAll { $0.slug == slug }
+        case .rule: topics.removeAll { $0.slug == slug }
+        case .review: groups.removeAll { $0.slug == slug }
         }
-        undo?.registerUndo(withTarget: self) { model in model.toggleCreatedItem(kind, slug, data, remove: !remove, name: name, undo: undo) }
-        undo?.setActionName(name)
     }
 
     // MARK: Generic helpers
 
-    private func create<V: Encodable>(_ make: () throws -> (String, V), url: (String) -> URL, reload: () -> Void) -> String? {
-        do {
-            let (slug, value) = try make()
-            if let data = try? VDJSON.encode(value) { lastWritten[url(slug).resolvingSymlinksInPath().path] = data }
-            reload()
-            return slug
-        } catch {
-            errorMessage = error.localizedDescription
-            return nil
-        }
-    }
-
-    private func logRemoval(_ url: URL, undoName: String = "Mover para o Lixo") {
-        let prefix = store.root.standardizedFileURL.path + "/"
-        guard url.standardizedFileURL.path.hasPrefix(prefix) else { return }
-        VDLog.info("store.file_removed", "Arquivo removido", project: store.root, component: .app,
-                   context: ["file": String(url.standardizedFileURL.path.dropFirst(prefix.count)), "undo": undoName])
-    }
-
-    private func trash(_ url: URL, reload: () -> Void) {
-        do {
-            try FileManager.default.trashItem(at: url, resultingItemURL: nil)
-            logRemoval(url)
-            reload()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
     /// Same contract as `mutateGroup`: write through, undo restores the previous value.
     private func mutate<V: Equatable & Encodable>(
-        _ entries: ReferenceWritableKeyPath<ProjectModel, [Entry<V>]>, _ slug: String, url: URL,
+        _ entries: ReferenceWritableKeyPath<ProjectModel, [Entry<V>]>, _ kind: CoreRecordKind, _ slug: String,
         _ actionName: String, undo: UndoManager?, _ change: @escaping (inout V) -> Void
     ) {
         guard let index = self[keyPath: entries].firstIndex(where: { $0.slug == slug }) else { return }
@@ -1685,9 +2268,12 @@ final class ProjectModel {
         change(&new)
         guard new != old else { return }
         self[keyPath: entries][index].value = new
-        if let data = try? VDJSON.encode(new) { VDLog.$undoName.withValue(actionName) { write(data, to: url) } }
+        persist { [weak self] in
+            guard let self = self else { return }
+            try await self.store.saveRecord(kind, slug: slug, value: new)
+        }
         undo?.registerUndo(withTarget: self) { model in
-            model.mutate(entries, slug, url: url, actionName, undo: undo) { $0 = old }
+            model.mutate(entries, kind, slug, actionName, undo: undo) { $0 = old }
         }
         undo?.setActionName(actionName)
     }
@@ -1695,7 +2281,7 @@ final class ProjectModel {
 
 
 extension ProjectModel {
-    /// Batch path notifications so all accepted actions update existing tabs and selection together.
+    /// Notifica os caminhos movidos por uma reorganização e relê tudo.
     func reloadAfterReorganization(_ paths: [String: String]) {
         func item(_ path: String) -> SidebarItem? {
             let parts = path.split(separator: "/")
@@ -1709,13 +2295,28 @@ extension ProjectModel {
             default: return nil
             }
         }
-        pathMoveBatch = [:]
-        defer { finishPathMoveBatch() }
         var moved: [SidebarItem: SidebarItem] = [:]
         for (old, new) in paths { if let a = item(old), let b = item(new), a != b { moved[a] = b } }
-        recordPathMoves(moved)
-        project = (try? store.loadProject()) ?? project
-        reloadDocs(); reloadGroups(); reloadTopics(); reloadIdeas()
-        reloadAgents(); reloadCommands(); reloadSkills(); reloadWorkflows()
+        notePathMoves(moved)
+        reloadAll()
+    }
+
+    /// Registra movimentos de caminho (abas e seleção acompanham).
+    func notePathMoves(_ moved: [SidebarItem: SidebarItem]) {
+        guard !moved.isEmpty else { return }
+        var current = latestPathMoves
+        for (old, new) in moved { current[old] = new }
+        latestPathMoves = current
+        moveRevision += 1
+    }
+}
+
+extension ProjectModel {
+    /// Globs da ideia que já não casam com nenhum arquivo do projeto (renomeado ou apagado desde a sugestão).
+    /// Só projetos locais: em SSH a lista de arquivos não está disponível e nada é considerado obsoleto.
+    func unmatchedIdeaPaths(_ slug: String) -> [String] {
+        guard let current = self.idea(slug), !current.paths.isEmpty, !store.isRemote else { return [] }
+        let files = ClaudeCompletion.projectFiles(root: store.root, limit: RuleDiscover.fileLimit).filter { !$0.hasSuffix("/") }
+        return current.paths.filter { glob in !files.contains { Glob.matches(glob, path: $0) } }
     }
 }

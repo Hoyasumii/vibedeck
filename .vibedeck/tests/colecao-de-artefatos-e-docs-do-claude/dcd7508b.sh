@@ -1,21 +1,18 @@
 #!/usr/bin/env bash
-# Itens da coleção disponíveis no CLI e no MCP, com --json na listagem.
+# DCD7508B: itens da coleção disponíveis no CLI e no MCP, com --json na listagem.
 set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
-applies '^Sources/vibedeck/|^Sources/VibeDeckCore/|^Tests/'
-fail=0
-bad() { echo "$1"; fail=1; }
-C=Sources/vibedeck/CLI.swift
-M=Sources/vibedeck/MCPServer.swift
-grep -q 'struct Claude: ParsableCommand' "$C" || bad "$C: comando 'claude' não existe"
-grep -A12 'struct Claude: ParsableCommand' "$C" | grep 'List.self, Add.self, Remove.self' >/dev/null || bad "$C: claude precisa de list/add/remove"
-l=$(awk '/struct Claude: ParsableCommand/{f=1} f&&/struct List: ParsableCommand/{g=1} g{print} g&&/^    }$/{exit}' "$C")
-printf '%s\n' "$l" | grep '@Flag.*var json' >/dev/null || bad "$C: claude list sem --json"
-printf '%s\n' "$l" | grep 'printJSON(items)' >/dev/null || bad "$C: claude list --json não imprime JSON"
-grep -q 'Claude.self' "$C" || bad "$C: Claude não registrado nos subcomandos"
+applies '^crates/vibedeck-core/src/project/claude\.rs$|^crates/vibedeck-core/src/model/project\.rs$|^crates/vibedeck/src/(cli|mcp/tools)/project\.rs$|^Sources/VibeDeckApp/ClaudeItemsView\.swift$'
+need "$CLI" 'Claude\(Box<ClaudeArgs>\)' "$CLI: comando 'claude' não existe"
+need "$CLI" 'Claude\(a\) => run_claude' "$CLI: comando 'claude' não está registrado"
+e=$(fn_body "$CLI" '^pub enum ClaudeCommand')
+for s in 'List(ClaudeList)' 'Add {' 'Remove {'; do grep -qF "$s" <<<"$e" || bad "$CLI: claude precisa de list/add/remove (falta $s)"; done
+l=$(fn_body "$CLI" '^pub struct ClaudeList')
+grep -q 'json: bool' <<<"$l" || bad "$CLI: claude list sem --json"
+grep -q 'return print_json(&items)' "$CLI" || bad "$CLI: claude list --json não imprime JSON"
 for t in list_claude_items add_claude_item; do
-  grep -q "Tool(name: \"$t\"" "$M" || bad "$M: tool MCP $t não declarada"
-  grep -q "case \"$t\":" "$M" || bad "$M: tool MCP $t sem implementação"
+  grep -qF "\"$t\"," "$MCP" || bad "$MCP: tool MCP $t não declarada"
 done
-grep -A6 'case "list_claude_items":' "$M" | grep 'json(' >/dev/null || bad "$M: list_claude_items deve devolver JSON"
-[ $fail -eq 0 ] || exit 1
+grep -A12 '"list_claude_items"' "$MCP" | grep 'json_text(' >/dev/null || bad "$MCP: list_claude_items deve devolver JSON"
+grep -A12 '"list_claude_items"' "$MCP" | grep -q '\.read_only()' || grep -A25 '"list_claude_items"' "$MCP" | grep -q '\.read_only()' || bad "$MCP: list_claude_items deve ser somente leitura"
+finish

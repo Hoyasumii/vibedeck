@@ -1,5 +1,4 @@
 import Foundation
-import VibeDeckCore
 
 /// Shared structured read-only calls. Only invalid answers receive one recovery, on the same model.
 @MainActor enum AIReadOnlyOperation {
@@ -13,7 +12,8 @@ import VibeDeckCore
     static func run<T>(root: URL, provider: AIProvider, operation: String, prompt: String, schema: String,
                        request: ((String, AIProviderSettings) async throws -> Data)? = nil,
                        recover: (Error) -> Bool = { _ in true },
-                       parse: (Data) throws -> T) async throws -> T {
+                       store: CoreStore? = nil,
+                       parse: (Data) async throws -> T) async throws -> T {
         let started = Date.now
         VDLog.info("ai.request_started", "Chamada de IA iniciada", project: root, component: .ai, context: ["provider": provider.rawValue, "operation": operation])
         defer { VDLog.info("ai.request_finished", "Chamada de IA encerrada", project: root, component: .ai,
@@ -42,8 +42,8 @@ import VibeDeckCore
                     usage.tokens = runner.tokens; usage.model = runner.model ?? settings.model
                 } else {
                     guard let executable = RemoteExecution.executable(provider, root: root) else { throw VibeDeckError.discoverFailed("Claude não está instalado.") }
-                    let data = try await ReviewDiscoverRunner.run(executable: executable, root: root, input: nextPrompt,
-                                                                 schema: schema, settings: settings)
+                    let data = try await AIReadOnlyProcess.run(executable: executable, root: root, input: nextPrompt,
+                                                              schema: schema, settings: settings)
                     let envelope = String(decoding: data, as: UTF8.self).split(whereSeparator: \.isNewline).reversed()
                         .compactMap { try? JSONDecoder().decode(JSONValue.self, from: Data($0.utf8)) }
                         .first { $0["type"]?.string == "result" }
@@ -63,15 +63,17 @@ import VibeDeckCore
             let result: T
             do {
                 try Task.checkCancellation()
-                result = try parse(reply)
+                result = try await parse(reply)
             } catch is CancellationError {
                 usage.finish("cancelled"); try? AIUsageStore(root: root).save(usage)
                 throw CancellationError()
             } catch {
                 usage.finish("invalid-answer"); try AIUsageStore(root: root).save(usage)
                 guard recover(error) else { throw error }
-                guard attempt == 1 else { throw VibeDeckError.discoverFailed(AIPromptPolicy.incomplete) }
-                nextPrompt = AIPromptPolicy.recovery(prompt, diagnosis: error.localizedDescription)
+                // A recuperação vem do Core (ai_recovery_prompt); sem Core (testes) ou se ele falhar, a nova tentativa reenvia o prompt original.
+                let plan = try? await store?.aiRecoveryPrompt(original: prompt, diagnosis: error.localizedDescription)
+                guard attempt == 1 else { throw VibeDeckError.discoverFailed(plan?.incomplete ?? AIPromptPolicy.incomplete) }
+                nextPrompt = plan?.prompt ?? prompt
                 continue
             }
             usage.finish("completed")

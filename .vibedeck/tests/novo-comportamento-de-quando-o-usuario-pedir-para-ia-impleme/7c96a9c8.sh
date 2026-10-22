@@ -24,5 +24,4 @@ hasF "$RULES" 'mode=ask quando não indicou o modo' "intentPrompt não define mo
 t=$(block "$SHEET" '.task {')
 grep -q 'if request.mode == .standard { confirm(restart: false) }' <<<"$t" || { echo "$WFV: .task deve confirmar apenas no modo standard explícito"; bad=1; }
 [ "$(grep -c 'confirm(' <<<"$t")" = 1 ] || { echo "$WFV: .task confirma fora do modo standard"; bad=1; }
-tests 'RuleDiscoverTests/implementationIntentContractSeparatesExplicitModesFromQuestions' implementationIntentContractSeparatesExplicitModesFromQuestions
 finish

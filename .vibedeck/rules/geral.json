@@ -7,14 +7,14 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "O AGENTS.md é regenerado a partir de Sources/VibeDeckCore/AgentsGuide.swift (refreshAgentsGuideIfNeeded reescreve quando difere), então editar à mão se perde. Para mudar o guia, mude AgentsGuide.swift. Os checks são histórico de auditoria e só são criados por submit_rule_check / `vibedeck rules check`.\nVerificar: `git diff --stat .vibedeck/AGENTS.md .vibedeck/checks` não mostra edições manuais (só arquivos novos de check).",
+      "details" : "O AGENTS.md (e o guide.md) são regenerados a partir do guia embutido no Core (crates/vibedeck-core/src/ai/guide.rs + guide_reference.md; `refresh_agents_guide` reescreve quando difere), então editar à mão se perde. Para mudar o guia, mude a fonte no Core. Os checks são histórico de auditoria e só são criados por submit_rule_check / `vibedeck rules check`.\nVerificar: `git diff --stat .vibedeck/AGENTS.md .vibedeck/checks` não mostra edições manuais (só arquivos novos de check).",
       "id" : "9D6F362B-9F0E-4661-97B3-6158B160D478",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/geral/9d6f362b.sh",
-        "generatedAt" : "2026-10-09T00:04:05Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
-        "ruleHash" : "950b548b4246ed65"
+        "ruleHash" : "e4d468c54138068f"
       },
       "text" : "Não editar .vibedeck/AGENTS.md nem .vibedeck/checks/*.json à mão"
     },
@@ -49,28 +49,28 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "Vale para rótulos e mensagens da UI, errorDescription de VibeDeckError, abstract/help do ArgumentParser em CLI.swift, descrições de ferramentas e instruções do servidor em MCPServer.swift e o AGENTS.md gerado. Comentários de código e identificadores podem ficar em inglês (padrão atual do Core e do app).\nVerificar: as strings novas/alteradas no diff estão em português.",
+      "details" : "Vale para rótulos e mensagens da UI, mensagens `#[error(\"...\")]` do Core, about/help do clap (e doc comments dos comandos) em crates/vibedeck/src/cli, descrições de ferramentas e instruções do servidor MCP em crates/vibedeck/src/mcp e o AGENTS.md gerado. Comentários de código e identificadores podem ficar em inglês (padrão atual do Core e do app).\nVerificar: as strings novas/alteradas no diff estão em português.",
       "id" : "0E5AEC71-405E-4113-AB27-615313AB2B5F",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/geral/0e5aec71.sh",
-        "generatedAt" : "2026-10-09T00:04:05Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
-        "ruleHash" : "aba54af328560d50"
+        "ruleHash" : "18be713618c5974e"
       },
       "text" : "Texto que o usuário vê fica em pt-BR"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "O README.md documenta o formato de .vibedeck/, o fluxo de regras, o build (scripts/build-app.sh, swift test, fallback de SDK), a tabela de atalhos, os comandos do CLI e o Worker. Se a tarefa muda qualquer um desses pontos, atualize a seção correspondente.\nVerificar: comparar o diff com as seções do README.",
+      "details" : "O README.md documenta o formato de .vibedeck/, o fluxo de regras, o build (cargo build do Core, scripts/build-app.sh, scripts/test.sh, fallback de SDK), a tabela de atalhos, os comandos do CLI e o Worker. Se a tarefa muda qualquer um desses pontos, atualize a seção correspondente.\nVerificar: comparar o diff com as seções do README.",
       "id" : "306A20B6-E1FA-4BE4-96E8-2B854A3D0BC6",
       "severity" : "should",
       "test" : {
-        "generatedAt" : "2026-10-09T00:04:05Z",
+        "generatedAt" : "2026-10-22T18:57:25Z",
         "mode" : "manual",
         "reason" : "Depende de julgamento: comparar o diff com as seções do README (formato de .vibedeck/, fluxo de regras, build, atalhos, comandos do CLI, Worker) e decidir se algo documentado mudou; não dá para decidir por script.",
-        "ruleHash" : "cc40c001b8c6216a"
+        "ruleHash" : "ae2986869f745c57"
       },
       "text" : "README atualizado quando muda algo documentado"
     }

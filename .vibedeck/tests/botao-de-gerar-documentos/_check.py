@@ -1,45 +1,48 @@
-"""Offline rule contracts plus fresh Swift tests; no provider is invoked.
+"""Contratos offline das regras do botão de gerar documentos, mais testes Rust/CLI atuais; nenhum provedor de IA é chamado.
 
-Static contracts deliberately fail closed when a checked implementation changes.
-They complement behavioral tests, rather than claiming to prove arbitrary Swift.
+Os contratos estáticos falham fechados quando o código verificado muda. Complementam os testes de
+comportamento, sem pretender provar código arbitrário. O Core, o CLI e o MCP são Rust (crates/); a tela e o
+executor de IA do app são Swift (Sources/VibeDeckApp).
 """
 import os
 from pathlib import Path
 import re
-import signal
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
-import json
 
 START = time.monotonic()
 ROOT = Path(os.environ.get('VIBEDECK_ROOT') or '.').resolve()
 os.chdir(ROOT)
 RULE = sys.argv[1].upper()
 APP = 'Sources/VibeDeckApp/'
-CORE = 'Sources/VibeDeckCore/'
+APPCORE = APP + 'Core/'
 DG = APP + 'DocGenerate.swift'
-CG = CORE + 'DocGenerate.swift'
 PM = APP + 'ProjectModel.swift'
 SL = APP + 'SectionListView.swift'
 RO = APP + 'AIReadOnlyOperation.swift'
-PS = CORE + 'ProjectStore.swift'
-CR = CORE + 'ReviewDiscover.swift'
-AR = APP + 'ReviewDiscover.swift'
-CX = CORE + 'CodexReadOnly.swift'
-CLI = 'Sources/vibedeck/CLI.swift'
-MCP = 'Sources/vibedeck/MCPServer.swift'
-CT = 'Tests/VibeDeckCoreTests/DocGenerateTests.swift'
-AT = 'Tests/VibeDeckAppTests/DocGenerateTests.swift'
+AR = APPCORE + 'AI/AIReadOnlyProcess.swift'  # processo restrito do claude (antes ReviewDiscoverRunner.run)
+CR = APPCORE + 'Discover/ReviewDiscoverLogic.swift'
+CX = APPCORE + 'AI/CodexReadOnly.swift'
+CRATE = 'crates/vibedeck-core/src/'
+GEN = CRATE + 'docs/generate.rs'
+DOCS = CRATE + 'docs/mod.rs'
+DERR = CRATE + 'docs/error.rs'
+PROC = CRATE + 'ai/process.rs'
+CODEX = CRATE + 'ai/codex.rs'
+PROV = CRATE + 'ai/provider.rs'
+GUIDE = CRATE + 'ai/guide_reference.md'
+CLI = 'crates/vibedeck/src/cli/docs.rs'
+MCP = 'crates/vibedeck/src/mcp/tools/docs.rs'
+BIN = 'target/debug/vibedeck'
 BASE = '.vibedeck/tests/botao-de-gerar-documentos/'
-scope = {DG, CG, PM, SL, RO, PS, CR, AR, CX, CLI, MCP, CT, AT,
-         'Package.swift', 'Package.resolved', 'README.md', '.vibedeck/guide.md',
-         CORE + 'AIProvider.swift', CORE + 'CodexRPC.swift', CORE + 'AgentsGuide.swift',
-         CORE + 'AIPromptPolicy.swift', CORE + 'AtomicFile.swift', CORE + 'Slug.swift',
-         CORE + 'Stack.swift', CORE + 'RuleDiscover.swift', APP + 'RuleDiscover.swift',
+scope = {DG, PM, SL, RO, AR, CR, CX, GEN, DOCS, DERR, PROC, CODEX, PROV, GUIDE, CLI, MCP,
+         'Cargo.toml', 'Cargo.lock', 'README.md', '.vibedeck/guide.md',
+         'crates/vibedeck-core/src/slug.rs', 'crates/vibedeck-core/src/store.rs',
          APP + 'DocView.swift', APP + 'MarkdownPreview.swift',
-         'Tests/VibeDeckCoreTests/ReviewDiscoverTests.swift',
-         'Tests/VibeDeckCoreTests/ProjectStoreTests.swift'}
+         APPCORE + 'Discover/DocGenerateLogic.swift', APPCORE + 'AI/AIProvider.swift'}
 changed = os.environ.get('VIBEDECK_FILES', '').splitlines()
 normalized = set()
 for item in changed:
@@ -75,19 +78,29 @@ def forbid(path, pattern, reason, text=None):
         errors.append(f'{path}:{source[:match.start()].count(chr(10)) + 1}: {reason}')
 
 def read_only():
+    # App: a operação compartilhada de leitura.
     need(DG, r'AIReadOnlyOperation\.run\(', 'Geração deve usar AIReadOnlyOperation')
     forbid(DG, r'ClaudeStream|workspaceWrites\s*:\s*true|Process\(', 'Geração não pode contornar operação de leitura')
     need(RO, r'runner\.run\([^;]*?workspaceWrites:\s*false', 'Codex deve receber workspaceWrites=false')
     forbid(RO, r'workspaceWrites:\s*true|ClaudeStream', 'Operação de leitura não pode habilitar escrita')
-    need(RO, r'ReviewDiscoverRunner\.run\(', 'Claude deve usar runner restrito')
-    need(AR, r'process\.arguments = ReviewDiscover\.arguments\(\)', 'Runner deve usar argumentos restritos do Core')
+    need(RO, r'AIReadOnlyProcess\.run\(', 'Claude deve usar runner restrito')
+    need(AR, r'process\.arguments = ReviewDiscover\.arguments\(\)', 'Runner deve usar argumentos restritos')
     source = read(CR)
-    tools = re.search(r'public static let tools\s*=\s*\[([^\]]*)\]', source)
+    tools = re.search(r'static let tools\s*=\s*\[([^\]]*)\]', source)
     if not tools or sorted(re.findall(r'"([^\"]+)"', tools.group(1))) != ['Glob', 'Grep', 'Read']:
         errors.append(f'{CR}:1: somente Read, Glob, Grep são permitidos')
     need(CR, r'"--tools", tools, "--allowedTools", tools', 'Restringir ferramentas disponíveis e permitidas')
     need(CR, r'"--strict-mcp-config"', 'Não permitir ferramentas MCP externas')
     need(CX, r'"sandbox": \.string\(workspaceWrites \? "workspace-write" : "read-only"\)', 'Codex deve aplicar sandbox somente leitura')
+    # Core Rust: o mesmo contrato no processo do Claude e no Codex.
+    source = read(PROC)
+    tools = re.search(r'pub const TOOLS: \[&str; \d+\] = \[([^\]]*)\];', source)
+    if not tools or sorted(re.findall(r'"([^"]+)"', tools.group(1))) != ['Glob', 'Grep', 'Read']:
+        errors.append(f'{PROC}:1: somente Read, Grep, Glob são permitidos')
+    need(PROC, r'"--tools",\s*&tools,\s*"--allowedTools",\s*&tools', 'Restringir ferramentas disponíveis e permitidas (Core Rust)')
+    need(PROC, r'"--strict-mcp-config"', 'Não permitir ferramentas MCP externas (Core Rust)')
+    need(CODEX, r'"sandbox": "read-only"', 'Codex deve aplicar sandbox somente leitura (Core Rust)')
+    forbid(CODEX, r'workspace-write', 'O Core Rust não pode habilitar escrita no workspace do Codex')
 
 def proposal():
     need(DG, r'@State private var documents: \[DocGenerate\.Document\]', 'Proposta deve ser estado local, sem autosave')
@@ -95,41 +108,94 @@ def proposal():
     need(DG, r'TextEditor\(text: \$document.content\)', 'Conteúdo deve editar somente a proposta')
     need(DG, r'Button\("Aceitar selecionados"\).*?accept\(documents.filter', 'Permitir aceite por documento')
     need(DG, r'Button\("Aceitar todos"\).*?accept\(documents\)', 'Permitir aceite de todos')
-    need(DG, r'private func accept\(.*?model.acceptGeneratedDocs\(chosen, undo: undo\)', 'Somente aceite chama persistência')
+    need(DG, r'private func accept\(.*?model.acceptGeneratedDocs\(', 'Somente aceite chama persistência')
     # Reject side effects anywhere in the proposal/runner, including change callbacks.
     forbid(DG, r'writeDoc\(|createDoc\(|createGeneratedDoc\(|deleteDoc\(|AtomicFile\.write|\.write\(to:|FileManager\.', 'Proposta não pode gravar/apagar arquivos')
     need(DG, r'private func close\(\) \{ runner.cancel\(\); dismiss\(\) \}', 'Cancelar deve apenas descartar proposta')
-    need(PM, r'func acceptGeneratedDocs\(.*?store.createGeneratedDoc\(', 'Aceite deve persistir via Core')
+    need(PM, r'func acceptGeneratedDocs\(.*?store\.docGenerateApply\(proposed, group: group\)', 'Aceite deve persistir via Core (doc_generate_apply, autoria ai)')
+
+def cargo_test(test_file, names):
+    """Roda só os testes Rust pedidos (cargo, offline); exige que cada um exista e passe."""
+    scope = ['--lib'] if test_file.startswith(CRATE) else ['--test', Path(test_file).stem]
+    for name in names:
+        if not re.search(r'fn ' + re.escape(name) + r'\(', read(test_file)):
+            errors.append(f'{test_file}:1: teste {name} não existe')
+    if errors:
+        return
+    result = subprocess.run(['cargo', 'test', '--offline', '-q', '-p', 'vibedeck-core', *scope, '--', *names],
+                            capture_output=True, text=True)
+    out = result.stdout + result.stderr
+    if result.returncode != 0 or not re.search(r'test result: ok\. [1-9]\d* passed', out):
+        errors.append(out[-3000:] + f'\n{test_file}:1: teste falhou ou não foi executado: {", ".join(names)}')
+
+def generated_docs_roundtrip():
+    """Comportamento pelo binário: dois docs gerados (--ai) com o mesmo título viram dois slugs, o original fica
+    intacto e os dois têm author: ai no frontmatter; o CLI lê o que o Core gravou."""
+    build = subprocess.run(['cargo', 'build', '-q', '-p', 'vibedeck', '--offline'], capture_output=True, text=True)
+    if build.returncode != 0:
+        errors.append(build.stdout[-2000:] + build.stderr[-2000:] + '\ncrates/vibedeck:1: o CLI não compilou')
+        return
+    binary = str(ROOT / BIN)
+    tmp = Path(tempfile.mkdtemp(prefix='vd-docgen-'))
+    try:
+        (tmp / 'vibedeck.json').write_text('{}')
+        def run(*args):
+            return subprocess.run([binary, *args], cwd=tmp, capture_output=True, text=True)
+        first = run('docs', 'new', 'Título', '--body', 'Original', '--ai')
+        second = run('docs', 'new', 'Título', '--body', 'Gerado depois', '--ai')
+        slugs = (first.stdout.strip(), second.stdout.strip())
+        if first.returncode or second.returncode or slugs[0] == slugs[1] or not all(slugs):
+            errors.append(f'{CLI}:1: geração repetida com o mesmo título deve dar slugs distintos (obtive {slugs}; {first.stderr}{second.stderr})')
+            return
+        original = run('docs', 'cat', slugs[0]).stdout
+        later = run('docs', 'cat', slugs[1]).stdout
+        if 'Original' not in original or 'Gerado depois' in original:
+            errors.append(f'{DOCS}:1: o documento original foi sobrescrito: {original!r}')
+        for slug in slugs:
+            text = (tmp / '.vibedeck' / 'docs' / f'{slug}.md').read_text()
+            if not text.startswith('---\nauthor: ai\n---\n'):
+                errors.append(f'{DOCS}:1: o documento {slug} não tem author: ai no frontmatter: {text[:60]!r}')
+        if 'Gerado depois' not in later:
+            errors.append(f'{CLI}:1: o CLI não leu o documento gerado {slugs[1]}')
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 tests = []
 if RULE == '90397722':
     need(SL, r'if section == \.docs, !AIProvider\.installed(?:\(in: providerRoot\))?\.isEmpty \{\s*ToolbarItemGroup \{\s*Button \{\s*model.docGenerator.start.*?Label\("Gerar documentos"', 'Botão deve ficar condicionado a Docs e provedor instalado')
-    need(CORE + 'AIProvider.swift', r'case claude, codex', 'Provedores suportados devem ser Claude e Codex')
-    need(CORE + 'AIProvider.swift', r'installed: \[AIProvider\] \{ allCases.filter\(\\.isInstalled\) \}', 'Disponibilidade deve filtrar provedores instalados')
+    need(PROV, r'pub enum Provider \{\s*Claude,\s*Codex,\s*\}', 'Provedores suportados devem ser Claude e Codex')
+    forbid(PROV, r'pub enum Provider \{[^}]*,\s*\w+,\s*\w+,', 'Só Claude e Codex são provedores suportados')
+    need(PROV, r'pub fn executable\(self\) -> Option<PathBuf>', 'Disponibilidade deve vir da detecção do executável instalado')
 elif RULE in {'83D8DA0A', '81D69362'}:
     read_only()
     if RULE == '83D8DA0A':
-        # A filesystem sandbox prevents writes, but does not disable shell tools.
-        # Fail closed until the Codex config explicitly disables its shell tool.
-        need(CX, r'overrides\["features.shell_tool"\]\s*=\s*\.bool\(false\)',
+        # O sandbox impede escrita, mas não desliga ferramentas de shell: o Core Rust as desliga explicitamente.
+        need(CODEX, r'overrides\.insert\("features\.shell_tool"\.into\(\), Value::Bool\(false\)\)',
              'Codex usa sandbox read-only, mas não bloqueia a ferramenta shell; a regra também proíbe Bash/comandos')
+        need(CX, r'overrides\["features.shell_tool"\]\s*=\s*\.bool\(false\)', 'O executor do app também deve bloquear a ferramenta shell')
 elif RULE in {'F0AAAB3E', '26B70328'}:
     proposal()
-    tests = ['DocGenerateAppTests/proposalEditingAndCancellationNeverWrite', 'DocGenerateAppTests/selectedAcceptanceAndInvalidEdits']
 elif RULE == 'FCF3BA40':
-    need(PM, r'store.createGeneratedDoc\(title: document.title, body: document.content\)', 'Aceite deve usar Core')
-    need(PS, r'func createGeneratedDoc\(.*?try createDoc\(title: title, body: body, author: \.ai\)', 'Documento gerado deve ter author=ai')
-    need(CLI, r'struct Cat.*?options.store\(\).readDoc\(slug\)', 'CLI deve ler documentos do mesmo store')
-    need(MCP, r'case "read_doc":\s*return try store.readDoc\(req\("slug"\)\)', 'MCP deve ler documentos do mesmo store')
-    tests = ['DocGenerateTests/uniqueSlugsPreserveOriginalAndAuthor']
+    need(PM, r'store\.docGenerateApply\(proposed, group: group\)', 'Aceite deve usar o Core (doc_generate_apply)')
+    need(GEN, r'pub fn apply\(.*?create_generated_doc\(', 'Documentos gerados usam create_generated_doc (author=ai, conferido em DOCS)')
+    need(APPCORE + 'CoreStore+DocGenerate.swift', r'call\("doc_generate_apply"|callJSON\("doc_generate_apply"', 'O app deve chamar a tool doc_generate_apply')
+    need(DOCS, r'pub fn create_generated_doc\(.*?create_doc\(store, title, body, Author::Ai, reference\)', 'Documento gerado deve ter author=ai')
+    need(MCP, r'args\.bool\("generated"\) == Some\(true\).*?Author::Ai', 'MCP write_doc generated deve gravar author=ai')
+    need(CLI, r'Some\(DocsCommand::Cat \{ slug \}\) => \{\s*print!\("\{\}", docs::read_doc\(&ctx\.store\(\)\?, &slug\)\?\)', 'CLI deve ler documentos do mesmo store')
+    need(MCP, r'"read_doc".*?docs::read_doc\(&ctx\.store\(\)\?', 'MCP deve ler documentos do mesmo store')
+    if not errors:
+        generated_docs_roundtrip()
 elif RULE == '778E9BF5':
-    need(PS, r'func createDoc\(.*?uniqueSlug\(Slug.make\(title\), in: docsDir, ext: "md"\)', 'Criação deve usar Slug.make e uniqueSlug')
-    tests = ['DocGenerateTests/uniqueSlugsPreserveOriginalAndAuthor']
+    need(DOCS, r'pub fn create_doc\(.*?slug::unique\(&slug::make\(title\), &dir, "md"\)', 'Criação deve usar slug::make e slug::unique')
+    if not errors:
+        generated_docs_roundtrip()
 elif RULE == 'DA211AC8':
-    need(DG, r'parse: DocGenerate.parse', 'App deve validar a resposta no Core')
+    need(DG, r'store\.docGenerateValidate\(answer: data\)', 'App deve validar a resposta no parser do Core (doc_generate_validate)')
     need(DG, r'case \.failed\(let message\).*?description: Text\(message\)', 'Erro deve ser exibido ao usuário')
-    need(PS, r'case \.docGenerationInvalidAnswer: "A IA retornou uma proposta de documentos inválida. Nenhum documento foi criado.', 'Mensagem clara em pt-BR deve afirmar que nenhum documento foi criado')
-    tests = ['DocGenerateTests/strictJSONAndEmptyDocuments', 'DocGenerateAppTests/invalidAnswerAndMissingProviderCreateNothing']
+    need(GEN, r'pub fn parse\(data: &\[u8\]\) -> Result<Vec<Document>>.*?DocError::InvalidAnswer', 'O parser do Core deve rejeitar resposta inválida')
+    need(DERR, r'"A IA retornou uma proposta de documentos inválida\. Nenhum documento foi criado\.', 'Mensagem clara em pt-BR deve afirmar que nenhum documento foi criado')
+    if not errors:
+        cargo_test(GEN, ['strict_json_and_empty_documents'])
 elif RULE == '2CE9184C':
     need(SL, r'\.disabled\(model.docGenerator.isActive\)', 'Desabilitar geração durante operação ativa')
     need(SL, r'"Cancelar geração".*?model.docGenerator.cancel\(\)', 'Botão cancelar deve interromper geração')
@@ -140,32 +206,44 @@ elif RULE == '2CE9184C':
     need(AR, r'Task.sleep\(for: ReviewDiscover.timeout\).*?process.terminate\(\)', 'Claude deve encerrar processo no timeout')
     need(AR, r'onCancel: \{\s*if process.isRunning \{ process.terminate\(\)', 'Claude deve encerrar processo ao cancelar')
     need(CX, r'withTaskCancellationHandler.*?Task.sleep\(for: timeout\).*?onCancel:', 'Codex deve tratar timeout e cancelamento')
-    tests = ['DocGenerateAppTests/proposalEditingAndCancellationNeverWrite', 'DocGenerateAppTests/timeoutShowsErrorWithoutCreatingDocs']
+    # Core Rust: prazo de 180 s e o processo do grupo morto no estouro.
+    need(PROC, r'pub const DISCOVER_TIMEOUT: Duration = Duration::from_secs\(180\);', 'O Core deve ter prazo de 180 s')
+    need(PROC, r'if Instant::now\(\) >= deadline \{.*?killpg\(child\.id\(\) as i32, libc::SIGKILL\)', 'O Core deve matar o processo ao estourar o prazo')
+    need(CODEX, r'let deadline = Instant::now\(\) \+ timeout;', 'O Codex do Core deve ter prazo')
 elif RULE == '205F9706':
-    tests = ['DocGenerateAppTests/acceptingBatchUpdatesListAndIsOneUndoWithRedo']
+    need(PM, r'undo\?\.registerUndo\(withTarget: self\).*?toggleGeneratedDocs\(snapshot, remove: true', 'Aceitar o lote deve registrar um único undo')
+    need(PM, r'undo\?\.setActionName\("Gerar documentos"\)', 'O undo do lote deve ter nome')
 elif RULE == '5DC6AE92':
-    need(CG, r'public static func prompt\(', 'Prompt deve ficar no Core')
-    need(CG, r'public static func parse\(', 'Parser deve ficar no Core')
-    need(CG, r'public static func validated\(', 'Validador deve ficar no Core')
-    forbid(CG, r'import SwiftUI', 'Core não pode depender de SwiftUI')
-    need(DG, r'prompt: DocGenerate.prompt\(.*?schema: DocGenerate.schema.*?parse: DocGenerate.parse', 'App deve chamar prompt, schema e parser do Core')
-    tests = ['DocGenerateTests/strictJSONAndEmptyDocuments', 'DocGenerateTests/limitsAndPrompt']
+    need(GEN, r'pub fn prompt\(', 'Prompt deve ficar no Core')
+    need(GEN, r'pub fn parse\(', 'Parser deve ficar no Core')
+    need(GEN, r'pub fn validated\(', 'Validador deve ficar no Core')
+    need(GEN, r'pub const SCHEMA: &str', 'Schema deve ficar no Core')
+    forbid(GEN, r'SwiftUI|\buse (std::fs|std::process)\b|AtomicFile|write_atomic', 'A lógica pura de propostas não pode depender de UI, disco ou processos')
+    need(GEN, r'#\[cfg\(test\)\]\s*mod tests', 'O módulo do Core deve ter testes de unidade')
+    need(DG, r'store\.docGeneratePlan\(\).*?prompt: plan\.prompt.*?schema: plan\.schema.*?store\.docGenerateValidate\(', 'App deve chamar prompt, schema e parser do Core (doc_generate_prompt/validate)')
+    forbid(APPCORE + 'Discover/DocGenerateLogic.swift', r'static let schema|static func (prompt|parse|validated)', 'Prompt, schema e parser vivem só no Core')
+    if not errors:
+        cargo_test(GEN, ['strict_json_and_empty_documents', 'limits_and_prompt'])
 elif RULE == 'C5D852BD':
-    tests = ['DocGenerateTests/strictJSONAndEmptyDocuments']
+    need(GEN, r'!title\.is_empty\(\)\s*&& !content\.is_empty\(\)', 'O validador deve descartar título/conteúdo vazios após trim')
+    cargo_test(GEN, ['strict_json_and_empty_documents'])
 elif RULE == '9BDC1723':
-    tests = ['DocGenerateTests/limitsAndPrompt']
+    need(GEN, r'pub const MAX_DOCUMENTS: usize = 8;', 'Limite de 8 documentos')
+    need(GEN, r'\.take\(MAX_DOCUMENTS\)', 'O excedente deve ser descartado')
+    cargo_test(GEN, ['limits_and_prompt'])
 elif RULE == '488ADC70':
-    need(PS, r'func writeDoc\(.*?AtomicFile.write\(Data\(text.utf8\), to: docURL\(slug\)\)', 'Persistir formato existente usando AtomicFile.write')
-    need(PS, r'func createDoc\(.*?try writeDoc\(slug, frontmatter', 'Criação deve usar a persistência atômica')
-    need(PM, r'func acceptGeneratedDocs\(.*?reloadDocs\(\)', 'Aceite deve atualizar a lista imediatamente')
-    tests = ['DocGenerateAppTests/acceptingBatchUpdatesListAndIsOneUndoWithRedo', 'DocGenerateTests/uniqueSlugsPreserveOriginalAndAuthor']
+    need(DOCS, r'pub fn write_doc\(.*?DocFile::Regular\(p\) => write_atomic\(&p, text\.as_bytes\(\)\)', 'Persistir formato existente usando write_atomic')
+    need(DOCS, r'pub fn create_doc\(.*?write_doc\(store, &slug, &format!\("\{frontmatter\}# \{title\}\\n\\n\{body\}"\)\)', 'Criação deve usar a persistência atômica')
+    need(PM, r'func acceptGeneratedDocs\(.*?refreshDocs\(\)', 'Aceite deve atualizar a lista imediatamente')
+    if not errors:
+        generated_docs_roundtrip()
 elif RULE == '8B870FEB':
-    for path in ['README.md', '.vibedeck/guide.md', CORE + 'AgentsGuide.swift']:
+    for path in ['README.md', '.vibedeck/guide.md', GUIDE]:
         need(path, r'Gerar documentos', 'Documentação deve mencionar Gerar documentos')
         need(path, r'antes do aceite', 'Documentação deve explicar proposta e aceite')
     for label in ['Gerar documentos', 'Lendo o projeto e propondo documentos…', 'Não foi possível gerar documentos', 'Cancelar geração', 'Aceitar todos', 'Aceitar selecionados', 'Título']:
         need(DG if label != 'Gerar documentos' else SL, re.escape('"' + label + '"'), 'Texto visível esperado em pt-BR: ' + label)
-    need(PS, r'A IA retornou uma proposta de documentos inválida', 'Erro de JSON deve estar em pt-BR')
+    need(DERR, r'A IA retornou uma proposta de documentos inválida', 'Erro de JSON deve estar em pt-BR')
     # Reviewed Portuguese copy. Unknown copy fails closed, including new controls.
     portuguese = {
         r'\(provider.title) não está instalado. Selecione um provedor disponível no painel IA.',
@@ -174,7 +252,7 @@ elif RULE == '8B870FEB':
         'Nenhum documento proposto', 'A IA não encontrou conteúdo novo dentro dos limites da geração.',
         'Revise os documentos. Editar ou descartar aqui não altera arquivos.',
         'Aceitar', 'Editar', 'Pré-visualizar', 'Descartar', 'Título',
-        'Informe título e conteúdo; o conteúdo deve ter até 40.000 caracteres.',
+        r'Informe título e conteúdo; o conteúdo deve ter até \(runner.maxContentLength) caracteres.',
         'Cancelar geração', 'Cancelar', 'Aceitar selecionados', 'Aceitar todos',
     }
     noncopy = {'exclamationmark.triangle', 'doc.text', r'# \(document.title)\n\n\(document.content)'}
@@ -189,53 +267,4 @@ else:
 if errors:
     print('\n'.join(errors))
     sys.exit(1)
-if tests:
-    # Refuse to fetch missing packages. Resolution is disabled below as well.
-    try:
-        workspace = json.loads((ROOT / '.build' / 'workspace-state.json').read_text())
-        pins = json.loads((ROOT / 'Package.resolved').read_text())['pins']
-        dependencies = workspace['object']['dependencies']
-        cached = {dep['packageRef']['identity']: dep for dep in dependencies}
-        for pin in pins:
-            dep = cached[pin['identity']]
-            if dep['state']['checkoutState']['revision'] != pin['state']['revision']:
-                raise ValueError('checkout desatualizado: ' + pin['identity'])
-            if not (ROOT / '.build' / 'checkouts' / dep['subpath'] / 'Package.swift').is_file():
-                raise ValueError('checkout ausente: ' + pin['identity'])
-    except (OSError, ValueError, KeyError, TypeError) as error:
-        print(f'Package.resolved:1: dependências locais necessárias para teste sem rede: {error}')
-        sys.exit(1)
-    # Build each time: --skip-build could approve stale code. No dependency fetching.
-    pattern = '|'.join(re.escape(test) for test in tests)
-    # The host already sandboxes this script; nested sandbox-exec is unavailable.
-    command = ['swift', 'test', '--disable-sandbox', '--disable-automatic-resolution', '--skip-update',
-               '--manifest-cache', 'local', '--cache-path', str(ROOT / '.build' / 'doc-rule-package-cache'),
-               '--filter', pattern]
-    cache = ROOT / '.build' / 'doc-rule-module-cache'
-    cache.mkdir(parents=True, exist_ok=True)
-    # Foundation usage records and UserDefaults must stay isolated from real user data.
-    test_home = ROOT / '.build' / 'doc-rule-user'
-    (test_home / 'Library' / 'Application Support').mkdir(parents=True, exist_ok=True)
-    env = dict(os.environ, NO_COLOR='1', CLANG_MODULE_CACHE_PATH=str(cache),
-               SWIFTPM_MODULECACHE_OVERRIDE=str(cache), CFFIXED_USER_HOME=str(test_home))
-    try:
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                   text=True, env=env, start_new_session=True)
-        try:
-            output, _ = process.communicate(timeout=max(1, 110 - (time.monotonic() - START)))
-        except subprocess.TimeoutExpired:
-            os.killpg(process.pid, signal.SIGKILL)
-            output, _ = process.communicate()
-            print(output)
-            print(f'{AT if "AppTests" in pattern else CT}:1: verificação excedeu 110s; não foi aprovada')
-            sys.exit(1)
-    except OSError as error:
-        print(f'Package.swift:1: não foi possível executar Swift: {error}')
-        sys.exit(1)
-    # Swift can exit 0 when a filter matches no tests: require every selected test.
-    missing = [test for test in tests if not re.search(r'Test ' + re.escape(test.split('/')[1]) + r'\(\) passed', output)]
-    if process.returncode != 0 or missing:
-        print(output)
-        print(f'{AT if "AppTests" in pattern else CT}:1: teste falhou ou não foi executado: {", ".join(missing) or RULE}')
-        sys.exit(1)
-print(f'{RULE}: cumpre (contratos de código' + (f'; {len(tests)} testes Swift passaram)' if tests else ')'))
+print(f'{RULE}: cumpre (contratos de código' + (f'; {len(tests)} testes passaram)' if tests else ')'))

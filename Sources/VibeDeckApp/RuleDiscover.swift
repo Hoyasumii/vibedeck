@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 /// Runs the rules "Descubra" for a topic or an idea: an optional opening context, a read-only call proposing globs,
 /// an interview (rounds of questions) that drafts rules, and last a rewritten description with suggested tags.
@@ -49,7 +48,7 @@ final class RuleDiscoverRunner {
     }
 
     /// Phase 1: globs. `context` is the opening text (may be empty).
-    func start(_ subject: RuleDiscover.Subject, context: String, topics: [RuleDiscover.KnownTopic], store: ProjectStore, provider: AIProvider) {
+    func start(_ subject: RuleDiscover.Subject, context: String, topics: [RuleDiscover.KnownTopic], store: CoreStore, provider: AIProvider) {
         self.context = context
         history = []
         round = 0
@@ -65,7 +64,7 @@ final class RuleDiscoverRunner {
     /// Phase 2: one interview round. `answers` are the replies to the questions on screen (nil = first round);
     /// `finish` asks for rules now. Past `maxRounds` the call always generates.
     func interview(_ subject: RuleDiscover.Subject, answers: [String]? = nil, finish: Bool = false,
-                   topics: [RuleDiscover.KnownTopic], store: ProjectStore, provider: AIProvider) {
+                   topics: [RuleDiscover.KnownTopic], store: CoreStore, provider: AIProvider) {
         if case .questions(let questions) = state, let answers {
             history += zip(questions, answers).map { .init(question: $0.text, answer: $1) }
         }
@@ -82,7 +81,7 @@ final class RuleDiscoverRunner {
     }
 
     /// Phase 3: the description rewritten and tags suggested with what was gathered.
-    func describe(_ subject: RuleDiscover.Subject, vocabulary: [String], topics: [RuleDiscover.KnownTopic], store: ProjectStore, provider: AIProvider) {
+    func describe(_ subject: RuleDiscover.Subject, vocabulary: [String], topics: [RuleDiscover.KnownTopic], store: CoreStore, provider: AIProvider) {
         let prompt = RuleDiscover.detailsPrompt(withContext(subject), vocabulary: vocabulary, topics: topics, history: history)
         run(subject, message: "Escrevendo a descrição e sugerindo tags…", provider: provider, store: store,
             prompt: prompt, schema: RuleDiscover.detailsSchema) { data in
@@ -93,7 +92,7 @@ final class RuleDiscoverRunner {
     }
 
     /// "Verificar": only the viability verdict of an idea, without scope, interview or description.
-    func assess(_ subject: RuleDiscover.Subject, topics: [RuleDiscover.KnownTopic], store: ProjectStore, provider: AIProvider) {
+    func assess(_ subject: RuleDiscover.Subject, topics: [RuleDiscover.KnownTopic], store: CoreStore, provider: AIProvider) {
         context = ""
         history = []
         round = 0
@@ -104,7 +103,7 @@ final class RuleDiscoverRunner {
         }
     }
 
-    private func run(_ subject: RuleDiscover.Subject, message: String, provider: AIProvider, store: ProjectStore,
+    private func run(_ subject: RuleDiscover.Subject, message: String, provider: AIProvider, store: CoreStore,
                      prompt: String, schema: String, parse: @escaping (Data) throws -> State) {
         guard RemoteExecution.available(provider, root: store.root) else { state = .failed("\(provider.title) não está instalado."); return }
         task?.cancel()
@@ -113,7 +112,7 @@ final class RuleDiscoverRunner {
         task = Task {
             do {
                 let next = try await AIReadOnlyOperation.run(root: store.root, provider: provider, operation: "Descubra regras",
-                                                             prompt: prompt, schema: schema, parse: parse)
+                                                             prompt: prompt, schema: schema, store: store, parse: parse)
                 guard !Task.isCancelled else { return }
                 complete(next, for: subject)
             } catch is CancellationError {
@@ -163,7 +162,7 @@ struct RuleDiscoverButton: View {
     let current: () -> RuleDiscover.Subject
     let vocabulary: [String]
     let topics: [RuleDiscover.KnownTopic]
-    let store: ProjectStore
+    let store: CoreStore
     let applyScope: (RuleDiscoverScope, Set<String>) -> Void
     let applyRules: (RuleDiscoverDrafts, Set<UUID>) -> Void
     /// The proposal, whether the new description was accepted (false keeps the current one) and the chosen tags.

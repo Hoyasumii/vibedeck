@@ -2,10 +2,12 @@
 set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
 applies
-forbid "$CAT" 'readOnly|locked|immutable|isLocked' "itens do catálogo não podem ser bloqueados"
-need "$INST" 'tags: \["kit"\]' "instalação deve marcar apenas com tag ordinária"
+# 953B1E7E: itens adicionados são ordinários (editáveis à mão e por IA), sem vínculo que bloqueie edição.
+forbid "$KITS" 'read_?only|locked|immutable|is_locked' "itens do catálogo não podem ser bloqueados"
+need "$KITS" 'tags: vec!\["kit"\.into\(\)\]' "instalação deve marcar apenas com tag ordinária"
 forbid "$PMODEL" 'catalog.*(revert|restore|reset)|(revert|reset).*[Kk]it' "catálogo não deve reverter edições"
-need "$CORET" 'updateAgent\(agent\.slug\)' "teste de edição após instalação ausente"
-need "$CORET" 'updateWorkflow\(workflow\.slug\)' "teste de edição de workflow ausente"
-need "$CORET" 'first\.map \{ try Data\(contentsOf: url' "teste de que a edição persiste ao readicionar ausente"
+forbid "$KITS" 'revert|restore|reset' "instalação não deve restaurar/reverter edições"
+# Registros instalados usam o mesmo tipo e o mesmo update dos demais.
+need "$KITS" 'persona::update::<Agent>' "item instalado deve ser atualizável como qualquer agente"
+need "$KITS" 'author,' "autor (human/ai) deve ser repassado, como nos itens criados à mão"
 finish

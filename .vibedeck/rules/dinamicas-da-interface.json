@@ -5,76 +5,77 @@
   "id" : "3A0D1BED-579F-40B2-B05E-E9958D237093",
   "paths" : [
     "Sources/**",
+    "crates/**",
     "schema/**"
   ],
   "rules" : [
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:33:31Z",
-      "details" : "Links, Docs, Revisões, Regras e Ideias. Clicar na seção abre a lista (filtro por texto e #tag); os filhos abrem o item no detalhe. Conceito novo ganha sua seção seguindo o mesmo padrão.\nVerificar: todas as seções aparecem e abrem lista filtrável.",
+      "details" : "V2: o trilho de espaços (Planejar, Automação, Qualidade, Projeto) substitui a barra lateral única. Cada conceito aparece na coluna de conteúdo do seu espaço com lista filtrável; os itens abrem no detalhe. Planejar: Ideias, Docs, Referências. Automação: Agentes, Comandos, Skills, Workflows. Qualidade: Regras, Revisões, Histórico (verificações). Projeto: Visão geral, Stack, Padrões, Grafo, Integrações, Consumo de IA. Conceito novo entra no espaço correspondente seguindo o mesmo padrão; o botão do projeto no rodapé do trilho mostra a logo.\nVerificar: todos os conceitos aparecem em algum espaço e abrem lista filtrável.",
       "id" : "3901FA3E-16BD-4E00-A844-DAB5A87BDFC1",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/dinamicas-da-interface/3901fa3e.sh",
-        "generatedAt" : "2026-10-09T01:26:45Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "script",
-        "ruleHash" : "6dd3d548beee1b4c"
+        "ruleHash" : "d273d28fbc861d80"
       },
-      "text" : "A sidebar tem uma seção por conceito, cada uma com lista filtrável"
+      "text" : "O trilho tem um espaço por área e cada conceito tem lista filtrável"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:33:31Z",
-      "details" : "O usuário edita no lugar (título, status, tipo, prioridade, texto, tags…). Cada mudança vai para o disco imediatamente e entra no undo (⌘Z / ⇧⌘Z). Exceção: diálogos de criação (Criar/Cancelar).\nVerificar: a ação nova não exige confirmação para salvar e pode ser desfeita.",
+      "details" : "O usuário edita no lugar (título, status, tipo, prioridade, texto, tags…). Cada mudança vai para o disco imediatamente e entra no undo (⌘Z / ⇧⌘Z); lotes que registram um passo único de undo no chamador marcam `// undo agrupado`. Exceção: diálogos de criação (Criar/Cancelar) e o assistente do início guiado (grava ao Concluir).\nVerificar: a ação nova não exige confirmação para salvar e pode ser desfeita.",
       "id" : "8D5FCA3B-9398-45CD-AF1E-03A04F22526C",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/dinamicas-da-interface/8d5fca3b.sh",
-        "generatedAt" : "2026-10-09T01:26:45Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "script",
-        "ruleHash" : "8711d6da3129a201"
+        "ruleHash" : "e6506b598bffeee8"
       },
       "text" : "Edição direta: sem botão Salvar, toda mudança é gravada na hora e pode ser desfeita"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:33:31Z",
-      "details" : "O que a IA, o CLI, o MCP ou um editor de texto mudam em .vibedeck/ ou vibedeck.json aparece no app sem reabrir, sem perder o que o usuário está digitando. Item apagado no disco some da tela e suas abas fecham.\nVerificar: com o app aberto, alterar via CLI e ver a tela atualizar.",
+      "details" : "O que a IA, o CLI, o MCP ou um editor de texto mudam em .vibedeck/ ou vibedeck.json aparece no app sem reabrir, sem perder o que o usuário está digitando. O eco das gravações do próprio app é reconhecido pela revisão do Core e ignorado. Item apagado no disco some da tela e suas abas fecham.\nVerificar: com o app aberto, alterar via CLI e ver a tela atualizar.",
       "id" : "9BBFB48C-17CC-4FD9-8D7C-F1FD71529D95",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/dinamicas-da-interface/9bbfb48c.sh",
-        "generatedAt" : "2026-10-09T01:26:45Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "script",
-        "ruleHash" : "5dcf28c934185de2"
+        "ruleHash" : "d3d4b7f911f01dfa"
       },
       "text" : "Mudanças feitas fora do app aparecem ao vivo"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:33:31Z",
-      "details" : "Revisões: painel do item selecionado (tipo, status, prioridade, alvo, regras ligadas). Ideias: regras rascunho e promoção. Regras: verificações registradas do tópico. ⌥⌘I mostra/oculta em todos.\nVerificar: ⌥⌘I alterna o painel em cada tipo de página.",
+      "details" : "V2: a coluna da direita é o painel de IA, alternado por ⇧⌘C em todos os espaços, e é o único .inspector da janela. O contexto do item (tipo, status, prioridade, alvo, regras ligadas; regras rascunho e promoção nas ideias; verificações do tópico nas regras; fluxo de agentes, comandos, skills e workflows) fica no detalhe do item (.detailContext, V2DetailContext), alternado por ⌥⌘I, não num inspector separado.\nVerificar: ⇧⌘C alterna o painel de IA em cada espaço e o contexto do item aparece no detalhe.",
       "id" : "34D2EA32-DD0D-4405-93F6-FDABEBA7CC1B",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/dinamicas-da-interface/34d2ea32.sh",
-        "generatedAt" : "2026-10-09T01:26:45Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "script",
-        "ruleHash" : "afb0fca9e5ffc77b"
+        "ruleHash" : "a742e3411a3e8069"
       },
-      "text" : "Detalhe + inspector: o painel lateral mostra o contexto do item (⌥⌘I)"
+      "text" : "Painel de IA à direita (⇧⌘C); contexto do item no detalhe"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:33:31Z",
-      "details" : "\"Abrir em Nova Aba\" no menu de contexto da sidebar e das listas; barra de abas só com mais de uma aba; clique do meio fecha; abas persistem entre aberturas.\nVerificar: abrir dois itens em abas, fechar e reabrir a janela.",
+      "details" : "\"Abrir em Nova Aba\" no menu de contexto das listas da coluna de conteúdo, das páginas e da tabela do detalhe; a barra de abas só aparece com mais de uma aba; clique do meio fecha; ⌘W fecha a aba ativa; abas e aba ativa persistem entre aberturas e abas de itens apagados fecham.\nVerificar: abrir dois itens em abas, fechar e reabrir a janela.",
       "id" : "3D22A05A-9E61-433B-A8E2-00BFA2A968EE",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/dinamicas-da-interface/3d22a05a.sh",
-        "generatedAt" : "2026-10-09T01:26:45Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "script",
-        "ruleHash" : "e791e7badabad5a1"
+        "ruleHash" : "de1c5df1a6d587f6"
       },
       "text" : "Qualquer item pode abrir em aba"
     },
@@ -86,7 +87,7 @@
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/dinamicas-da-interface/365080a7.sh",
-        "generatedAt" : "2026-10-09T01:26:45Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "script",
         "ruleHash" : "d0beb3e702e73e54"
       },

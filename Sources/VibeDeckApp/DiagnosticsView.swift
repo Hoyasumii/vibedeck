@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import VibeDeckCore
 
 /// Global window with the logs of every VibeDeck process (app, CLI, MCP): errors, failures and crashes.
 struct DiagnosticsView: View {
@@ -64,9 +63,8 @@ struct DiagnosticsView: View {
             }
         }
         .searchable(text: $search, prompt: "Procurar no evento, na mensagem ou no contexto")
-        .inspector(isPresented: $showInspector) {
+        .detailContext(isPresented: $showInspector) {
             detail
-                .inspectorColumnWidth(min: 260, ideal: 320, max: 440)
         }
         .toolbar { toolbar }
         .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)

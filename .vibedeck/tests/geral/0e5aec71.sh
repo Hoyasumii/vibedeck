@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Heurística: literais de texto visível ao usuário (UI, abstract/help, descrições MCP, errorDescription)
-# adicionados no diff não podem parecer inglês (>=2 stopwords em inglês e nenhuma em português).
+# Heurística: literais de texto visível ao usuário (mensagens de erro, about/help do clap, descrições de ferramentas MCP,
+# doc comments de comandos clap) adicionados no diff não podem parecer inglês (>=2 stopwords em inglês e nenhuma em português).
 set -euo pipefail
 cd "${VIBEDECK_ROOT:-.}"
 
-files=$(printf '%s\n' "${VIBEDECK_FILES:-}" | grep -E '^Sources/.*\.swift$' || true)
+files=$(printf '%s\n' "${VIBEDECK_FILES:-}" | grep -E '^crates/.*\.rs$|^crates/vibedeck-core/src/ai/guide_reference\.md$' || true)
 if [ -z "$files" ]; then
   [ -z "${VIBEDECK_FILES:-}" ] || exit 77
-  files=$(git diff --name-only HEAD -- 'Sources/*.swift' || true)
+  files=$(git diff --name-only HEAD -- 'crates/*.rs' 'crates/vibedeck-core/src/ai/guide_reference.md' || true)
   [ -n "$files" ] || exit 0
 fi
 
@@ -17,8 +17,8 @@ import re, subprocess, sys
 
 EN = set("the and to of is are for with from or an in on not this that be it as at by will can has have if when your you".split())
 PT = set("o a os as de do da dos das e em um uma para com por que não se é ao aos na no nas nos ou foi ser são já mais mas como pelo pela entre sem sobre".split())
-# contextos de texto visível: argumentos de ArgumentParser, Tool(...), UI SwiftUI, errorDescription/VibeDeckError
-CTX = re.compile(r'(abstract:|help:|discussion:|description:|Text\(|Label\(|Button\(|Section\(|\.help\(|navigationTitle\(|placeholder|prompt:|return\s+"|case\s+.*->\s*")')
+# contextos de texto visível: #[error], about/help/long_about do clap, descrição/props de ferramentas MCP, doc comments da CLI (viram help)
+CTX = re.compile(r'(#\[error\(|\babout\s*=|\blong_about\s*=|\bhelp\s*=|\bprop\(|Tool::new\(|ToolError::new\(|\bformat!\()')
 LIT = re.compile(r'"((?:[^"\\]|\\.)*)"')
 
 bad = 0
@@ -32,12 +32,20 @@ for f in sys.argv[1:]:
             line = int(m.group(1)); continue
         if l.startswith('+') and not l.startswith('+++'):
             added.append((line, l[1:])); line += 1
+    in_mcp = "/mcp/" in f
+    in_cli = "/cli/" in f
     for n, text in added:
         s = text.strip()
-        if s.startswith('//') or not CTX.search(s):
+        if in_cli and s.startswith("///"):          # doc comment de item clap = texto de --help
+            lits = [s[3:].strip()]
+        elif s.startswith('//') or f.endswith(".md") and False:
             continue
-        for lit in LIT.findall(s):
-            if '\\(' in lit and len(lit) < 12:
+        elif CTX.search(s) or (in_mcp and re.fullmatch(r'"(?:[^"\\]|\\.)*",?', s)):
+            lits = LIT.findall(s)
+        else:
+            continue
+        for lit in lits:
+            if '{' in lit and len(lit) < 12:
                 continue
             words = re.findall(r"[A-Za-zÀ-ÿ]+", lit.lower())
             en = sum(w in EN for w in words)

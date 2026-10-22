@@ -6,25 +6,24 @@
   "id" : "E3902493-9366-4E37-9216-7F31C3A770BF",
   "paths" : [
     "Sources/VibeDeckApp/IdeaView.swift",
-    "Sources/VibeDeckCore/Rules.swift",
-    "Sources/VibeDeckCore/RuleDiscover.swift",
-    "Tests/VibeDeckCoreTests/RuleDiscoverTests.swift",
     "Sources/VibeDeckApp/RuleDiscover.swift",
-    "Sources/VibeDeckCore/ProjectStore.swift",
-    "Tests/VibeDeckCoreTests/ProjectStoreTests.swift"
+    "Sources/VibeDeckApp/Core/Discover/RuleDiscoverLogic.swift",
+    "Sources/VibeDeckApp/Core/Model/Rules.swift",
+    "Tests/VibeDeckAppTests/RuleDiscoverVerdictTests.swift",
+    "crates/vibedeck-core/src/ideas.rs"
   ],
   "rules" : [
     {
       "author" : "ai",
       "createdAt" : "2026-10-13T17:27:12Z",
-      "details" : "Teste no Core: aplicar RuleDiscoverVerdict(viable: true) a uma ideia com regras e status new ou exploring resulta em status == .approved e readiness.viable == true.",
+      "details" : "Teste no app (Tests/VibeDeckAppTests/RuleDiscoverVerdictTests.swift): aplicar RuleDiscoverVerdict(viable: true) a uma ideia com regras e status new ou exploring resulta em status == .approved e readiness.viable == true.",
       "id" : "C7BD826F-983F-40CF-84E1-C509ECC8AE37",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/quando-a-ideia-for-aprovada-pela-ia-marcar-a-ideia-como-apro/c7bd826f.sh",
-        "generatedAt" : "2026-10-14T14:14:38Z",
+        "generatedAt" : "2026-10-22T18:42:58Z",
         "mode" : "script",
-        "ruleHash" : "f55755d93f79fda7"
+        "ruleHash" : "06939c996c131d24"
       },
       "text" : "Ao salvar a avaliação (Salvar avaliação) com veredito viável, a ideia passa para status approved."
     },
@@ -36,7 +35,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/quando-a-ideia-for-aprovada-pela-ia-marcar-a-ideia-como-apro/6a83084f.sh",
-        "generatedAt" : "2026-10-14T14:14:38Z",
+        "generatedAt" : "2026-10-22T18:42:58Z",
         "mode" : "script",
         "ruleHash" : "28634272595e874e"
       },
@@ -45,70 +44,70 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-13T17:27:12Z",
-      "details" : "Função em RuleDiscover.swift ou Rules.swift (ex.: aplicar o veredito a uma Idea) chamada por IdeaView; o app não decide o status por conta própria.",
+      "details" : "Função RuleDiscoverVerdict.apply(to:) em RuleDiscoverLogic.swift chamada por IdeaView; o app não decide o status por conta própria. O Core Rust apenas grava a ideia.",
       "id" : "C1525B3C-6844-48C1-89FA-34AE1D43958E",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/quando-a-ideia-for-aprovada-pela-ia-marcar-a-ideia-como-apro/c1525b3c.sh",
-        "generatedAt" : "2026-10-14T14:14:38Z",
+        "generatedAt" : "2026-10-22T18:42:58Z",
         "mode" : "script",
-        "ruleHash" : "f5b7908e8fbc9242"
+        "ruleHash" : "adf2d4ae4c598349"
       },
-      "text" : "A lógica que decide o novo status a partir do veredito fica no Core, sem depender de SwiftUI, e é usada pelo app."
+      "text" : "A lógica que decide o novo status a partir do veredito fica no código de domínio do app (Sources/VibeDeckApp/Core/Discover/RuleDiscoverLogic.swift), sem depender de SwiftUI, e é usada pela view; a view não decide o status por conta própria."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-13T17:27:12Z",
-      "details" : "Teste: veredito viável sobre ideia discarded ou done mantém o status; use IdeaStatus.isClosed.",
+      "details" : "Teste no app (Tests/VibeDeckAppTests/RuleDiscoverVerdictTests.swift): veredito viável sobre ideia discarded ou done mantém o status; use IdeaStatus.isClosed.",
       "id" : "FD139F97-0805-402A-A434-E5BF5B180697",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/quando-a-ideia-for-aprovada-pela-ia-marcar-a-ideia-como-apro/fd139f97.sh",
-        "generatedAt" : "2026-10-14T14:14:39Z",
+        "generatedAt" : "2026-10-22T18:42:58Z",
         "mode" : "script",
-        "ruleHash" : "eee81a85967bde91"
+        "ruleHash" : "bba947f2654e861f"
       },
       "text" : "Uma ideia com status discarded ou done nunca muda de status ao salvar a avaliação."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-13T17:27:12Z",
-      "details" : "readiness.viable fica false nesses casos (RuleDiscover.swift:576); teste confirma que o status permanece o mesmo.",
+      "details" : "readiness.viable fica false nesses casos (RuleDiscoverVerdict.readiness(for:) exige regras); teste confirma que o status permanece o mesmo.",
       "id" : "3D36EF16-3B24-4138-9155-D409AC41CB97",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/quando-a-ideia-for-aprovada-pela-ia-marcar-a-ideia-como-apro/3d36ef16.sh",
-        "generatedAt" : "2026-10-14T14:14:38Z",
+        "generatedAt" : "2026-10-22T18:42:58Z",
         "mode" : "script",
-        "ruleHash" : "8f07900e23d42142"
+        "ruleHash" : "f89726757fa36101"
       },
       "text" : "Veredito não viável, ou viável em ideia sem regras, não marca a ideia como approved."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-13T17:27:12Z",
-      "details" : "Teste: após aplicar o veredito viável, idea.promotedTopic == nil e o diretório de tópicos não muda.",
+      "details" : "Teste no app (Tests/VibeDeckAppTests/RuleDiscoverVerdictTests.swift): após aplicar o veredito viável, idea.promotedTopic == nil e apply(to:) só altera a ideia recebida (sem criar tópicos).",
       "id" : "C406A2E1-FAAC-4CD1-8B26-F4B3D12A9B2D",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/quando-a-ideia-for-aprovada-pela-ia-marcar-a-ideia-como-apro/c406a2e1.sh",
-        "generatedAt" : "2026-10-14T14:14:38Z",
+        "generatedAt" : "2026-10-22T18:42:58Z",
         "mode" : "script",
-        "ruleHash" : "74dadfb3e400d1b5"
+        "ruleHash" : "1d91d056624338bb"
       },
       "text" : "Salvar a avaliação não promove a ideia: promotedTopic continua vazio e nenhum tópico é criado."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-13T17:27:12Z",
-      "details" : "O status só é escrito dentro do closure applyVerdict (RuleDiscover.swift:327); nenhuma outra etapa da execução chama mutateIdea para status.",
+      "details" : "O status só é escrito dentro do closure applyVerdict (IdeaView) via RuleDiscoverVerdict.apply; nenhuma outra etapa da execução chama mutateIdea para status.",
       "id" : "5037F7FE-C153-4990-9512-C6CD4D80DD29",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/quando-a-ideia-for-aprovada-pela-ia-marcar-a-ideia-como-apro/5037f7fe.sh",
-        "generatedAt" : "2026-10-14T14:14:38Z",
+        "generatedAt" : "2026-10-22T18:42:58Z",
         "mode" : "script",
-        "ruleHash" : "0f9d2d82f3eb675d"
+        "ruleHash" : "13040447feb53b6c"
       },
       "text" : "A ideia só vira approved quando o usuário clica em Salvar avaliação; rodar Descubra ou Verificar sem salvar não altera o status."
     },
@@ -120,7 +119,7 @@
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/quando-a-ideia-for-aprovada-pela-ia-marcar-a-ideia-como-apro/724bcd1f.sh",
-        "generatedAt" : "2026-10-14T14:14:38Z",
+        "generatedAt" : "2026-10-22T18:42:58Z",
         "mode" : "script",
         "ruleHash" : "e2cf2adf6be960e7"
       },
@@ -129,56 +128,56 @@
     {
       "author" : "ai",
       "createdAt" : "2026-10-13T17:27:12Z",
-      "details" : "Rodar swift test e conferir os quatro casos.",
+      "details" : "Rodar swift test (CI macOS) e conferir os quatro casos.",
       "id" : "EC979504-BE27-4F99-BC0A-0D21CFF38F3F",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/quando-a-ideia-for-aprovada-pela-ia-marcar-a-ideia-como-apro/ec979504.sh",
-        "generatedAt" : "2026-10-14T14:14:39Z",
+        "generatedAt" : "2026-10-22T18:42:58Z",
         "mode" : "script",
-        "ruleHash" : "35b113c427844058"
+        "ruleHash" : "1c7640c793809c37"
       },
-      "text" : "O teste da regra de aprovação por avaliação fica em Tests/VibeDeckCoreTests/RuleDiscoverTests.swift e cobre: viável aprova, não viável não aprova, ideia fechada não muda e ideia sem regras não aprova."
+      "text" : "O teste da regra de aprovação por avaliação fica em Tests/VibeDeckAppTests/RuleDiscoverVerdictTests.swift e cobre: viável aprova, não viável não aprova, ideia fechada não muda e ideia sem regras não aprova."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-13T17:28:48Z",
-      "details" : "Teste no Core: partindo de new, exploring e approved, com veredito viável e regras, o status resultante é approved.",
+      "details" : "Teste no app (Tests/VibeDeckAppTests/RuleDiscoverVerdictTests.swift): partindo de new, exploring e approved, com veredito viável e regras, o status resultante é approved.",
       "id" : "E3F5E0D2-296A-442B-998A-2256422ED38E",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/quando-a-ideia-for-aprovada-pela-ia-marcar-a-ideia-como-apro/e3f5e0d2.sh",
-        "generatedAt" : "2026-10-14T14:14:38Z",
+        "generatedAt" : "2026-10-22T18:42:58Z",
         "mode" : "script",
-        "ruleHash" : "6fbf6e1039237dbe"
+        "ruleHash" : "9b295851c572c52b"
       },
       "text" : "Salvar a avaliação com veredito viável em ideia com status new ou exploring muda o status para approved; ideia que já está approved continua approved."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-13T17:28:48Z",
-      "details" : "Teste no Core: ideia approved + veredito não viável mantém approved e grava o readiness.",
+      "details" : "Teste no app (Tests/VibeDeckAppTests/RuleDiscoverVerdictTests.swift): ideia approved + veredito não viável mantém approved e grava o readiness.",
       "id" : "1470074F-0C18-4655-A29C-55BA9AB8CE2E",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/quando-a-ideia-for-aprovada-pela-ia-marcar-a-ideia-como-apro/1470074f.sh",
-        "generatedAt" : "2026-10-14T14:14:38Z",
+        "generatedAt" : "2026-10-22T18:42:58Z",
         "mode" : "script",
-        "ruleHash" : "7f04abda01f2be7b"
+        "ruleHash" : "80bb783cbc7d7ebc"
       },
       "text" : "Salvar avaliação com veredito não viável não altera o status da ideia, inclusive quando ela já está approved."
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-13T17:28:48Z",
-      "details" : "Teste no Core com ideia promovida: status e promotedTopic idênticos antes e depois.",
+      "details" : "Teste no app (Tests/VibeDeckAppTests/RuleDiscoverVerdictTests.swift): ideia promovida: status e promotedTopic idênticos antes e depois.",
       "id" : "3EEF4536-1AFA-4787-BFE9-1307C289979B",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/quando-a-ideia-for-aprovada-pela-ia-marcar-a-ideia-como-apro/3eef4536.sh",
-        "generatedAt" : "2026-10-14T14:14:38Z",
+        "generatedAt" : "2026-10-22T18:42:58Z",
         "mode" : "script",
-        "ruleHash" : "b07ddff96c075b33"
+        "ruleHash" : "7667ab38a325d9f2"
       },
       "text" : "Salvar avaliação em ideia já promovida (promotedTopic preenchido) não altera status nem promotedTopic."
     },
@@ -190,7 +189,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/quando-a-ideia-for-aprovada-pela-ia-marcar-a-ideia-como-apro/c55c68d9.sh",
-        "generatedAt" : "2026-10-14T14:14:38Z",
+        "generatedAt" : "2026-10-22T18:42:58Z",
         "mode" : "script",
         "ruleHash" : "446dc161220c8e05"
       },
@@ -204,11 +203,11 @@
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/quando-a-ideia-for-aprovada-pela-ia-marcar-a-ideia-como-apro/bb620e68.sh",
-        "generatedAt" : "2026-10-14T14:14:38Z",
+        "generatedAt" : "2026-10-22T18:42:58Z",
         "mode" : "script",
-        "ruleHash" : "0fee0b5e5376c006"
+        "ruleHash" : "91d1bf0c3ca4cea1"
       },
-      "text" : "O README e o .vibedeck/guide.md (e o texto do guia em AgentsGuide.swift) documentam, em pt-BR, que Salvar avaliação com veredito viável marca a ideia como approved."
+      "text" : "O README e o .vibedeck/guide.md (e o texto do guia embutido no Core Rust, crates/vibedeck-core/src/ai/guide_reference.md) documentam, em pt-BR, que Salvar avaliação com veredito viável marca a ideia como approved."
     }
   ],
   "sourceIdea" : "A76BAD83-046A-4B42-8E4E-F388005756A1",

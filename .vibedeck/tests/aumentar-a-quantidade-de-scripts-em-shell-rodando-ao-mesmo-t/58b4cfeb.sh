@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
-hasF $RE 'let lock = NSLock()' "o runner de teste deve proteger o contador com lock"
-hasF $RE 'lock.withLock { active += 1; peak = max(peak, active) }' "o runner deve incrementar e registrar o pico"
-hasF $RE 'lock.withLock { active -= 1;' "o runner deve decrementar o contador"
-hasF $RE 'concurrency: 2' "falta o limite 2"
-hasF $RE 'two.peak == min(2, cpu)' "o pico com limite 2 deve ser exatamente 2"
-hasF $RE 'for limit in [0, cpu + 10]' "faltam os limites 0 e activeProcessorCount+10"
-hasF $RE '(1...cpu).contains(peak.peak)' "o pico deve ficar entre 1 e activeProcessorCount"
+hasF $EXEC 'let current = Arc::new(AtomicUsize::new(0));' "o runner de teste deve usar um contador atômico"
+hasF $EXEC 'p.fetch_max(now, Ordering::SeqCst);' "o runner deve registrar o pico"
+hasF $EXEC 'c.fetch_sub(1, Ordering::SeqCst);' "o runner deve decrementar o contador"
+hasF $EXEC 'concurrency: Some(2)' "falta o limite 2"
+hasF $EXEC 'assert!((2..=2).contains(&observed)' "o pico com limite 2 deve ser exatamente 2"
+hasF $EXEC 'assert_eq!(script_concurrency(Some(0)), 1);' "falta o limite 0"
+hasF $EXEC 'assert_eq!(script_concurrency(Some(10_000)), cores);' "falta o limite acima do número de núcleos"
 finish

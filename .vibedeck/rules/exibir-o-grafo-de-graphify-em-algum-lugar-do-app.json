@@ -5,22 +5,23 @@
   "id" : "17540073-39B8-4230-8C05-0AC02133B3E8",
   "paths" : [
     "Sources/VibeDeckApp/GraphView.swift",
-    "Sources/VibeDeckApp/ProjectWindow.swift",
     "Sources/VibeDeckApp/TabBar.swift",
-    "Sources/VibeDeckCore/ProjectGraph.swift"
+    "crates/vibedeck-core/src/project/graph.rs",
+    "crates/vibedeck-core/assets/graph/**",
+    "Sources/VibeDeckApp/V2/**"
   ],
   "rules" : [
     {
       "author" : "ai",
       "createdAt" : "2026-10-09T02:21:34Z",
-      "details" : "Integrar abertura, fechamento e restauração ao contrato existente de abas; carregar somente o artefato do projeto ativo.",
+      "details" : "V2: Grafo é uma página de Projeto (coluna de conteúdo), abre GraphView (WKWebView) no detalhe e tem \"Abrir em Nova Aba\" no menu de contexto.",
       "id" : "E05FEE58-311A-4937-9741-8574628C146E",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/exibir-o-grafo-de-graphify-em-algum-lugar-do-app/e05fee58.sh",
-        "generatedAt" : "2026-10-09T14:18:11Z",
+        "generatedAt" : "2026-10-22T19:18:40Z",
         "mode" : "script",
-        "ruleHash" : "8a7af8b57f13c148"
+        "ruleHash" : "888d8aa3695b4025"
       },
       "text" : "A navegação do projeto oferece Grafo e abre a visualização HTML em uma aba."
     },
@@ -102,7 +103,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/exibir-o-grafo-de-graphify-em-algum-lugar-do-app/d4b23e74.sh",
-        "generatedAt" : "2026-10-09T14:18:11Z",
+        "generatedAt" : "2026-10-22T18:50:23Z",
         "mode" : "script",
         "ruleHash" : "cd760fcbfedc22aa"
       },

@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 private struct LogProjectKey: EnvironmentKey {
     static let defaultValue: URL? = nil

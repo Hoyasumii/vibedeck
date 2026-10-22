@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 /// Uma operação de IA por projeto por vez para criar/editar agentes, comandos, skills e workflows.
 /// Nunca grava: só `ProjectModel.acceptItemAI` grava, após o aceite do usuário.
@@ -27,7 +26,7 @@ final class ItemAIRunner {
     var isBusy: Bool { state == .running }
 
     /// `current` é a proposta atual (item editado ou proposta em refinamento); `isStale` é checado ao fim da chamada.
-    func start(owner: String, store: ProjectStore, kind: ItemDiscover.Kind, request: String, current: ItemDiscover.Proposal?,
+    func start(owner: String, store: CoreStore, kind: ItemDiscover.Kind, request: String, current: ItemDiscover.Proposal?,
                provider: AIProvider, isStale: @escaping () -> Bool = { false },
                available: (AIProvider) -> Bool = { $0.isInstalled },
                send: ((String, AIProviderSettings) async throws -> Data)? = nil) {
@@ -49,12 +48,13 @@ final class ItemAIRunner {
             do {
                 var refs: ItemDiscover.Refs?
                 var listing: [String: [ItemDiscover.Existing]] = [:]
-                if kind == .workflow { let found = try store.itemRefs(); refs = found.refs; listing = found.listing }
+                if kind == .workflow { let found = try await store.itemRefs(); refs = found.refs; listing = found.listing }
+                let existingItems = try await store.existingItems(kind)
                 let prompt = ItemDiscover.prompt(kind: kind, request: request, current: current,
-                                                 existing: try store.existingItems(kind), refs: listing)
+                                                 existing: existingItems, refs: listing)
                 let proposal = try await AIReadOnlyOperation.run(
                     root: store.root, provider: provider, operation: current == nil ? "Criar \(kind.title) com IA" : "Editar \(kind.title) com IA",
-                    prompt: prompt, schema: ItemDiscover.schema(kind), request: send,
+                    prompt: prompt, schema: ItemDiscover.schema(kind), request: send, store: store,
                     parse: { try ItemDiscover.parse(kind, $0, refs: refs) })
                 try Task.checkCancellation()
                 guard token == generation else { return }

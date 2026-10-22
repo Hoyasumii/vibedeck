@@ -1,4 +1,3 @@
-import VibeDeckCore
 import AppKit
 import SwiftUI
 

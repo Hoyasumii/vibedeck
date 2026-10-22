@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 extension SidebarSection {
     var groupedConcept: ItemConcept? {
@@ -21,6 +20,8 @@ struct GroupTreeView: View {
     let concept: ItemConcept
     let rows: [SectionRow]
     let filtering: Bool
+    /// Item aberto no detalhe: a linha fica destacada e os grupos que o contêm abrem.
+    var selected: SidebarItem? = nil
     let onOpen: (SidebarItem) -> Void
     let onOpenInNewTab: (SidebarItem) -> Void
     @Environment(ProjectModel.self) private var model
@@ -37,6 +38,29 @@ struct GroupTreeView: View {
         var item = false
         var id: String { path + String(rename) }
     }
+    private var expandedKey: String { "v2.tree.\(concept.rawValue).\(model.project.id.uuidString)" }
+
+    /// Grupos abertos persistidos por projeto e conceito (chevron só abre/fecha; vários podem ficar abertos).
+    private func loadExpanded() {
+        let saved = UserDefaults.standard.stringArray(forKey: expandedKey) ?? []
+        expanded.formUnion(saved)
+        revealSelected()
+    }
+
+    private func saveExpanded() {
+        UserDefaults.standard.set(expanded.sorted(), forKey: expandedKey)
+    }
+
+    /// Abre os grupos ancestrais do item selecionado, sem fechar os outros.
+    private func revealSelected() {
+        guard let reference = selected?.groupedReference else { return }
+        var path = CoreStore.groupPath(of: reference)
+        while !path.isEmpty {
+            expanded.insert(path)
+            path = CoreStore.groupPath(of: path)
+        }
+    }
+
     private var groups: [String] {
         let all = model.directoryGroups[concept] ?? []
         guard filtering else { return all }
@@ -54,9 +78,12 @@ struct GroupTreeView: View {
                 }
             branch("")
         }
+        .onAppear { loadExpanded() }
+        .onChange(of: selected) { _, _ in revealSelected() }
+        .onChange(of: expanded) { _, _ in saveExpanded() }
         .sheet(item: $prompt) { p in
             NamePromptSheet(title: p.item ? "Novo item" : p.rename ? "Renomear grupo" : "Novo grupo", placeholder: p.item ? "Título do item" : "Nome do grupo") { name in
-                let parent = p.rename ? ProjectStore.groupPath(of: p.path) : p.path
+                let parent = p.rename ? CoreStore.groupPath(of: p.path) : p.path
                 let target = (parent.isEmpty ? "" : parent + "/") + name
                 if p.item {
                     let ref = (p.path.isEmpty ? "" : p.path + "/") + Slug.make(name)
@@ -85,7 +112,7 @@ struct GroupTreeView: View {
 
     private func branch(_ parent: String) -> AnyView {
         AnyView(VStack(alignment: .leading, spacing: 3) {
-            ForEach(groups.filter { ProjectStore.groupPath(of: $0) == parent }, id: \.self) { group in
+            ForEach(groups.filter { CoreStore.groupPath(of: $0) == parent }, id: \.self) { group in
                 VStack(alignment: .leading, spacing: 3) {
                     let isExpanded = filtering || expanded.contains(group)
                     LoggedButton {
@@ -116,7 +143,7 @@ struct GroupTreeView: View {
                     if isExpanded { branch(group).padding(.leading, 16) }
                 }
             }
-            ForEach(rows.filter { ProjectStore.groupPath(of: $0.id.groupedReference ?? "") == parent }) { row in
+            ForEach(rows.filter { CoreStore.groupPath(of: $0.id.groupedReference ?? "") == parent }) { row in
                 LoggedButton { onOpen(row.id) } label: {
                     Label { HStack { Text(row.title).foregroundStyle(row.dimmed ? .secondary : .primary); if !row.count.isEmpty { Text(row.count).foregroundStyle(.secondary).font(.caption) } } } icon: { Image(systemName: row.symbol) }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -124,6 +151,7 @@ struct GroupTreeView: View {
                 }
                     .loggedControl(control: "group_tree.open", label: "Abrir item")
                     .buttonStyle(.borderless)
+                    .modifier(SelectedRowBackground(isSelected: row.id == selected))
                     .tag(row.id)
                     .help([row.detail, row.tags.map { "#" + $0 }.joined(separator: " ")].filter { !$0.isEmpty }.joined(separator: " · "))
                     .draggable("item:\(concept.rawValue):\(row.id.groupedReference ?? "")")
@@ -198,5 +226,19 @@ struct ItemGroupDestinationPicker: View {
             Text("Raiz").tag("")
             ForEach(model.directoryGroups[concept] ?? [], id: \.self) { Text($0).tag($0) }
         }
+    }
+}
+
+/// Destaque da linha do item aberto no detalhe.
+private struct SelectedRowBackground: ViewModifier {
+    let isSelected: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .background(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.sm, style: .continuous)
+                    .fill(isSelected ? DesignTokens.Colors.surface300 : Color.clear)
+            )
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

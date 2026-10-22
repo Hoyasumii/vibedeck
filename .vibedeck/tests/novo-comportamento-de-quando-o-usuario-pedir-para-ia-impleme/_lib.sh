@@ -1,25 +1,26 @@
 # Ajudantes comuns do tópico "modo de implementação de ideia aprovada". Rápido, sem rede.
 cd "${VIBEDECK_ROOT:-.}"
 bad=0
-RULES=Sources/VibeDeckCore/Rules.swift
-RUNS=Sources/VibeDeckCore/WorkflowRuns.swift
+RULES=Sources/VibeDeckApp/Core/Model/Rules.swift
+IDEAS_RS=crates/vibedeck-core/src/ideas.rs
+WFOPS=crates/vibedeck-core/src/workflows/ops.rs
+WFENGINE=crates/vibedeck-core/src/workflows/engine.rs
 MODEL=Sources/VibeDeckApp/ProjectModel.swift
 SESSION=Sources/VibeDeckApp/ClaudeSession.swift
 WFV=Sources/VibeDeckApp/WorkflowView.swift
 IDEAV=Sources/VibeDeckApp/IdeaView.swift
-WINDOW=Sources/VibeDeckApp/ProjectWindow.swift
-CLI=Sources/vibedeck/CLI.swift
-MCP=Sources/vibedeck/MCPServer.swift
-APPT=Tests/VibeDeckAppTests/IdeaEvaluationTests.swift
-COREDT=Tests/VibeDeckCoreTests/RuleDiscoverTests.swift
-RUNT=Tests/VibeDeckCoreTests/WorkflowRunsTests.swift
+WINDOW=Sources/VibeDeckApp/V2/V2ProjectWindow.swift
+CORESTORE=Sources/VibeDeckApp/Core/CoreStore+Items.swift
+CLI_DIR=crates/vibedeck/src/cli
+MCP_DIR=crates/vibedeck/src/mcp
+IDEAS_T=crates/vibedeck-core/tests/ideas_core.rs
 
 # applies REGEX: sai com 77 quando $VIBEDECK_FILES não está vazio e nenhum arquivo casa a regex (ERE).
 applies() {
   [ -z "${VIBEDECK_FILES:-}" ] && return 0
   printf '%s\n' "$VIBEDECK_FILES" | grep -Eq -e "$1" || exit 77
 }
-SCOPE='^(Sources/VibeDeck(App|Core)/|Tests/VibeDeck(App|Core)Tests/|Sources/vibedeck/)'
+SCOPE='^(Sources/VibeDeckApp/|Tests/VibeDeckAppTests/|crates/vibedeck-core/(src|tests)/(ideas|workflows)|crates/vibedeck/src/(cli|mcp)/)'
 
 # lbl FILE: nome exibido (o recorte temporário da folha aparece como WorkflowView.swift).
 lbl() { if [ "$1" = "${SHEET:-}" ]; then echo "$WFV (IdeaImplementationSheet)"; else echo "$1"; fi; }
@@ -49,14 +50,8 @@ inblock()    { local b; b=$(block "$1" "$2"); [ -n "$b" ] || { echo "$(lbl "$1")
 notinblock() { local b m; b=$(block "$1" "$2"); [ -n "$b" ] || { echo "$(lbl "$1"): bloco '$2' não encontrado"; bad=1; return; }
                if m=$(grep -nE -e "$3" <<<"$b"); then echo "$(lbl "$1") ($2): $4"; echo "$m"; bad=1; fi; }
 
-# tests FILTER NAME...: roda swift test com o filtro e exige que cada teste NAME passe.
-tests() {
-  local filter=$1; shift; local out
-  out=$(swift test --filter "$filter" 2>&1) || { echo "$out" | grep -E '✘|error:' | head -30; echo "swift test --filter '$filter' falhou"; bad=1; return; }
-  for n in "$@"; do
-    grep -Eq "✔ Test $n(\(\))? passed" <<<"$out" || { echo "teste $n ausente ou não passou"; bad=1; }
-  done
-}
+# rtest FILE NAME...: confere que o teste Rust existe (rodam em `cargo test`; aqui só a presença, para ser rápido).
+rtest() { local f=$1; shift; local n; for n in "$@"; do grep -qE "fn ${n}\(" "$f" || { echo "$f: teste '${n}' não existe"; bad=1; }; done; }
 finish() { exit $bad; }
 # SHEET: arquivo temporário com só o corpo de IdeaImplementationSheet (para buscar .task, confirm etc. sem colidir).
 SHEET=$(mktemp); trap 'rm -f "$SHEET"' EXIT

@@ -23,7 +23,7 @@ const document = {
   createElementNS: (_,tag) => new Element(tag)
 };
 const context = vm.createContext({document, fetch(){throw Error('Unexpected network access');}});
-const code = fs.readFileSync(path.join(root,'Sources/VibeDeckCore/GraphResources/graph.js'),'utf8');
+const code = fs.readFileSync(path.join(root,'Sources/VibeDeckApp/GraphResources/graph.js'),'utf8');
 const started = performance.now();
 vm.runInContext(code,context,{timeout:10000});
 function count(tag) { return elements.get('graph').children.filter(e => e.tag === tag).length; }

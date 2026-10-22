@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 struct DocView: View {
     let slug: String
@@ -10,9 +9,13 @@ struct DocView: View {
     @State private var loaded = false
     @State private var conflict: String?
     @State private var insertion: MarkdownInsertion?
+    @State private var confirmingUnlink = false
     @AppStorage("docViewMode") private var mode: MarkdownViewMode = .edit
 
     private var isDirty: Bool { text != savedText }
+
+    /// Registro do doc na lista (traz o vínculo com o Markdown da raiz, se houver).
+    private var info: DocInfo? { model.docs.first { $0.slug == slug } }
 
     var body: some View {
         content
@@ -24,26 +27,81 @@ struct DocView: View {
             }
             .markdownModeShortcut($mode)
             .safeAreaInset(edge: .top) {
-                if let conflict {
-                    ConflictBanner {
-                        text = conflict
-                        savedText = conflict
-                        self.conflict = nil
-                    } keep: {
-                        self.conflict = nil
-                        save()
+                VStack(spacing: 0) {
+                    linkBanner
+                    if let conflict {
+                        ConflictBanner {
+                            text = conflict
+                            savedText = conflict
+                            self.conflict = nil
+                        } keep: {
+                            self.conflict = nil
+                            save()
+                        }
                     }
                 }
             }
-            .onAppear(perform: load)
+            .confirmationDialog("Remover o vínculo?", isPresented: $confirmingUnlink) {
+                LoggedButton("Remover vínculo", role: .destructive) { model.deleteDoc(slug) }
+                    .loggedControl(control: "doc_view.unlink_confirm", label: "Remover vínculo")
+            } message: {
+                Text("Só o link em Docs é removido. \(info?.link?.target ?? "O arquivo") continua na raiz do projeto.")
+            }
+            .task(id: info?.isBroken == true) { await load() }
             .onChange(of: text) { _, _ in saveIfNeeded() }
             .onChange(of: model.externalDocChange[slug]) { _, _ in handleExternalChange() }
             .onDisappear(perform: flush)
             .onReceive(NotificationCenter.default.publisher(for: .vibedeckFlushPendingSaves)) { _ in flush() }
     }
 
+    // MARK: Doc vinculado (MUD-002, pranchas 35 e 36)
+
+    /// Selo "Vinculado" com a origem. Editar grava na origem (o link simbólico aponta para o arquivo da raiz).
+    @ViewBuilder
+    private var linkBanner: some View {
+        if let link = info?.link, !link.broken {
+            HStack(spacing: DesignTokens.Space.s3) {
+                VDBadge("Vinculado", icon: .link, tone: .brand)
+                Text("Origem: \(link.target). Editar grava na origem.")
+                    .font(DesignTokens.Typography.callout)
+                    .foregroundStyle(DesignTokens.Colors.inkMuted)
+                    .lineLimit(1)
+                Spacer()
+                LoggedButton("Remover vínculo") { confirmingUnlink = true }
+                    .loggedControl(control: "doc_view.unlink", label: "Remover vínculo")
+                    .buttonStyle(VDButtonStyle(kind: .secondary, size: .md))
+                    .disabled(model.isReadOnly)
+            }
+            .padding(.horizontal, DesignTokens.Space.s4)
+            .padding(.vertical, DesignTokens.Space.s2)
+        }
+    }
+
+    /// Vínculo quebrado: a origem sumiu. Não há texto para abrir; só dá para remover o vínculo.
+    private var brokenView: some View {
+        ContentUnavailableView {
+            Label("Vínculo quebrado", systemImage: "exclamationmark.triangle")
+        } description: {
+            Text("A origem \(info?.link?.target ?? "") não existe mais na raiz do projeto. Restaure o arquivo ou remova só o vínculo (o link em Docs).")
+        } actions: {
+            LoggedButton("Remover vínculo") { model.deleteDoc(slug) }
+                .loggedControl(control: "doc_view.unlink_broken", label: "Remover vínculo")
+                .buttonStyle(VDButtonStyle(kind: .primary, size: .md))
+                .disabled(model.isReadOnly)
+        }
+    }
+
     @ViewBuilder
     private var content: some View {
+        if info?.isBroken == true {
+            brokenView
+        } else {
+            editorModes
+        }
+    }
+
+    @ViewBuilder
+    private var editorModes: some View {
         switch mode {
         case .edit:
             editor
@@ -71,7 +129,7 @@ struct DocView: View {
     }
 
     private var preview: some View {
-        MarkdownPreview(text: ProjectStore.markdownForGroupedRecord(text, reference: slug), baseURL: model.store.docURL(slug).deletingLastPathComponent())
+        MarkdownPreview(text: CoreStore.markdownForGroupedRecord(text, reference: slug), baseURL: model.store.docURL(slug).deletingLastPathComponent())
     }
 
     /// Files from the "Anexar" button go in through the editor (so ⌘Z undoes them): at the cursor, or
@@ -86,10 +144,11 @@ struct DocView: View {
 
     // MARK: Persistence
 
-    private func load() {
-        guard !loaded else { return }
-        text = model.readDoc(slug)
-        savedText = text
+    private func load() async {
+        guard !loaded, info?.isBroken != true else { return }
+        let disk = await model.loadDoc(slug)
+        text = disk
+        savedText = disk
         loaded = true
     }
 

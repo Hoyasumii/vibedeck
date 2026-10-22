@@ -5,7 +5,7 @@ source "$(dirname "$0")/_lib.sh"
 applies "$LOG_SCOPE"
 fail=0
 bad() { echo "$1"; fail=1; }
-L=Sources/VibeDeckCore/Logging.swift
+L=$APPLOG
 region "$L" 'static func withAction' '^    }$' | grep  'info("ui.activated"' >/dev/null || bad "$L: withAction deve gravar info 'ui.activated'"
 region "$L" 'static func withAction' '^    }$' | grep  'component: .app' >/dev/null || bad "$L: withAction deve usar component .app"
 # Botões: nenhum Button/Menu cru fora de LoggedControls.swift.

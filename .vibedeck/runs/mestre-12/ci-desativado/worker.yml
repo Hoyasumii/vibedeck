@@ -1,0 +1,48 @@
+name: Worker
+
+on:
+  push:
+    branches: [main]
+    paths: ["worker/**", "schema/**", ".github/workflows/worker.yml"]
+  pull_request:
+    paths: ["worker/**", "schema/**", ".github/workflows/worker.yml"]
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: worker
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+      - run: npm ci
+      - run: npm run sync
+      - run: npm run typecheck
+
+  deploy:
+    needs: check
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    concurrency: worker-deploy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+      - run: npm ci
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          workingDirectory: worker
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          preCommands: npm run sync
+          command: deploy

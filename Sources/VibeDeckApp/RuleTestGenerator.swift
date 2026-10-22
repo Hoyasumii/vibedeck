@@ -1,5 +1,4 @@
 import Foundation
-import VibeDeckCore
 
 /// Runs one background `claude -p` job that writes and registers the test scripts of a topic's rules.
 /// Several run side by side (see `ProjectModel.generateAllTests`); the chat panel stays free.
@@ -10,7 +9,7 @@ enum RuleTestGenerator {
     }
 
     /// Runs the job to the end. Cancelling the task terminates the process.
-    @MainActor static func run(root: URL, prompt: String, provider: AIProvider = .claude, operation: String = "Gerar testes", topic: String? = nil, expectedRules: [Rule] = []) async throws {
+    @MainActor static func run(root: URL, store: CoreStore, prompt: String, provider: AIProvider = .claude, operation: String = "Gerar testes", topic: String? = nil, expectedRules: [Rule] = []) async throws {
         let settings = AIReadOnlyOperation.settings(provider)
         var usage = AIUsageRecord(operation: operation, provider: provider, model: settings.model, prompt: prompt)
         usage.status = "failed"
@@ -30,7 +29,7 @@ enum RuleTestGenerator {
                 schema: schema, timeout: .seconds(600), settings: settings, workspaceWrites: true, mcpCLI: ClaudeUsageView.cliPath)
             let answer = try JSONDecoder().decode(JSONValue.self, from: Data(output.utf8))
             guard answer["completed"]?.bool == true else { throw Failure(message: answer["summary"]?.string ?? AIPromptPolicy.incomplete) }
-            try validateGeneration(root: root, topic: topic, expected: expectedRules)
+            try await validateGeneration(root: root, store: store, topic: topic, expected: expectedRules)
             usage.status = "completed"
             return
         }
@@ -81,16 +80,15 @@ enum RuleTestGenerator {
             if status != 0 || result == nil {
                 throw Failure(message: "O Claude Code terminou com erro (\(status))." + (detail.isEmpty ? "" : "\n\(detail)"))
             }
-            try validateGeneration(root: root, topic: topic, expected: expectedRules)
+            try await validateGeneration(root: root, store: store, topic: topic, expected: expectedRules)
             usage.status = "completed"
         } onCancel: {
             if process.isRunning { process.terminate() }
         }
     }
-    static func validateGeneration(root: URL, topic: String?, expected: [Rule]) throws {
+    static func validateGeneration(root: URL, store: CoreStore, topic: String?, expected: [Rule]) async throws {
         guard let topic else { return }
-        let store = ProjectStore(root: root)
-        let updated = try store.loadTopic(topic)
+        let updated = try await store.loadTopic(topic)
         for original in expected {
             guard let rule = updated.rules.first(where: { $0.id == original.id }),
                   rule.contentHash == original.contentHash,
@@ -98,7 +96,7 @@ enum RuleTestGenerator {
                 throw Failure(message: "Regra alterada ou sem teste válido após a geração. " + AIPromptPolicy.incomplete)
             }
             if let command = rule.scriptCommand,
-               command.hasPrefix(".vibedeck/tests/"), !FileManager.default.isExecutableFile(atPath: root.appending(path: command).path) {
+               !store.isRemote, command.hasPrefix(".vibedeck/tests/"), !FileManager.default.isExecutableFile(atPath: root.appending(path: command).path) {
                 throw Failure(message: "Script registrado não existe ou não é executável: " + command)
             }
         }

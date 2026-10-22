@@ -12,7 +12,7 @@ import sys
 
 POLICY_MARKER = "Trabalhe por escopo"
 REQUIRED_IN_INSTRUCTIONS = ["rules_for", "submit_rule_check", "passed=true", "verify_manual", "AGENTS.md"]
-SAMPLE_FILES = ["Sources/VibeDeckCore/Rules.swift"]
+SAMPLE_FILES = ["crates/vibedeck-core/src/rules/mod.rs"]
 
 
 def call(binary):

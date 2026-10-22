@@ -7,18 +7,14 @@ applies() {
   printf '%s\n' "$VIBEDECK_FILES" | grep -E "$1" >/dev/null || exit 77
 }
 
-# run_tests <Suite/test>...: confere que os @Test existem e roda só eles (Swift Testing).
-run_tests() {
-  local args=() spec name
-  for spec in "$@"; do
-    name="${spec##*/}"
-    grep -rqE "func ${name}\(" Tests/VibeDeckCoreTests || { echo "Tests/VibeDeckCoreTests: teste '${name}' não existe mais (${spec})"; exit 1; }
-    args+=(--filter "${spec}")
+# cargo_tests <pacote> <teste>...: confere que as funções #[test] existem e roda só elas (filtro por nome).
+cargo_tests() {
+  local pkg="$1" name out; shift
+  for name in "$@"; do
+    grep -rqE "fn ${name}\(" crates/*/src crates/*/tests || { echo "crates: teste '${name}' não existe mais"; exit 1; }
   done
-  swift build --build-tests >/dev/null 2>&1 || { swift build --build-tests 2>&1 | tail -20; exit 1; }
-  local out
-  if ! out=$(swift test --skip-build "${args[@]}" 2>&1); then
+  if ! out=$(cargo test -p "$pkg" -- "$@" 2>&1); then
     printf '%s\n' "$out" | tail -40; exit 1
   fi
-  printf '%s\n' "$out" | grep  "Test run with [1-9][0-9]* test" >/dev/null || { echo "nenhum teste rodou para: $*"; printf '%s\n' "$out" | tail -10; exit 1; }
+  printf '%s\n' "$out" | grep -E 'test result: ok\. [1-9][0-9]* passed' >/dev/null || { echo "nenhum teste rodou para: $*"; printf '%s\n' "$out" | tail -10; exit 1; }
 }

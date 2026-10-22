@@ -8,5 +8,4 @@ in_body $SHEET 'private func connect\(\)' 'guard let port = Int\(port\)' "a port
 in_body $SHEET 'private func connect\(\)' 'SSHDestination\(host: host, port: port, user: user\)' "o destino manual deve usar servidor, porta e usuário informados"
 needF $CONN '"-p", String(destination.port)' "o ssh deve receber a porta do destino"
 needF $CONN '"-l", destination.user' "o ssh deve receber o usuário do destino"
-run_tests connectionArgumentsUsePortUserAliasAndStrictHostKeys destinationValidationAndIsolation
 finish

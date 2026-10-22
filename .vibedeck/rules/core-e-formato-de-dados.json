@@ -4,289 +4,289 @@
   "description" : "Contratos do ProjectStore, modelos e formato dos arquivos em .vibedeck/.",
   "id" : "3A4AA5AA-AE82-4FEB-8833-E0ED7688B217",
   "paths" : [
-    "Sources/VibeDeckCore/**",
+    "crates/vibedeck-core/**",
     "Tests/**"
   ],
   "rules" : [
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "Comentário em ProjectStore.swift: \"Stateless: every call reads/writes disk, so the app, the CLI, the MCP server and AI agents editing files by hand never diverge.\" Não adicione cache, propriedades mutáveis ou memoização ao ProjectStore (é um struct Sendable só com root).\nVerificar: o ProjectStore continua sem var de armazenamento além do que deriva de root.",
+      "details" : "Cada chamada do `Store` (crates/vibedeck-core/src/store.rs) lê/grava o disco, para o app, a CLI, o MCP e agentes que editam arquivos à mão nunca divergirem. Não adicione cache, campos mutáveis (RefCell/Mutex) nem métodos `&mut self` ao `Store` (struct clonável só com `root`).\nVerificar: o `Store` continua sem campo além de `root`.",
       "id" : "5FA116B6-6FBE-45F9-8C5D-29E7548F6C2F",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/5fa116b6.sh",
-        "generatedAt" : "2026-10-09T01:23:55Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
-        "ruleHash" : "8795636b04a3a28f"
+        "ruleHash" : "b7af2e18e723e954"
       },
-      "text" : "ProjectStore não guarda estado: toda operação lê e escreve no disco"
+      "text" : "Store não guarda estado: toda operação lê e escreve no disco"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "AtomicFile.write cria o diretório pai e grava com .atomic, para app, CLI e FSEvents nunca verem um arquivo pela metade.\nVerificar: nenhum Data.write(to:)/String.write direto no Core fora de AtomicFile.",
+      "details" : "`write_atomic` (store.rs) cria o diretório pai, grava num temp no mesmo diretório e faz `rename`, para app, CLI e FSEvents nunca verem um arquivo pela metade. Exceções conhecidas: log da máquina em append (project/logs.rs), mover pasta de docs (docs/groups.rs) e marcas de estado do hook (cli/rules.rs).\nVerificar: nenhum `fs::write`/`File::create` direto no código de produção fora de `write_atomic`.",
       "id" : "857149E6-8C34-46A8-9C30-439EBE78309D",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/857149e6.sh",
-        "generatedAt" : "2026-10-09T01:23:55Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
-        "ruleHash" : "eb0d1fbc9f8e1a8a"
+        "ruleHash" : "c2b3e92306b32fe0"
       },
-      "text" : "Toda escrita passa por AtomicFile.write"
+      "text" : "Toda escrita de registro passa por store::write_atomic"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "VDJSON.encoder usa .prettyPrinted, .sortedKeys, .withoutEscapingSlashes e ISO 8601; VDJSON.encode acrescenta \\n no fim; VDJSON.decoder aceita ISO 8601 com e sem frações de segundo. Isso deixa os diffs do git estáveis e legíveis.\nVerificar: nenhum JSONEncoder()/JSONDecoder() novo para arquivos do projeto.",
+      "details" : "`json::encode`/`to_vdjson` (crates/vibedeck-core/src/json.rs) emite 2 espaços, `\" : \"` entre chave e valor, chaves em ordem de bytes, `/` e não-ASCII crus e `\\n` no fim; datas em ISO 8601 UTC (`time::format_iso`, com milissegundos só no RuleCheck) e a leitura aceita com e sem frações. Isso deixa os diffs do git estáveis e legíveis.\nVerificar: nenhum `serde_json::to_string_pretty`/`to_vec_pretty` novo para arquivos do projeto.",
       "id" : "99BF0D79-2F65-419A-87DA-0B4F37E4FEF5",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/99bf0d79.sh",
-        "generatedAt" : "2026-10-09T01:23:55Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
-        "ruleHash" : "c85ab5ee2f0a2bc3"
+        "ruleHash" : "15def873caf4c2e7"
       },
-      "text" : "JSON passa por VDJSON"
+      "text" : "JSON dos arquivos passa por json::encode (VDJSON)"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "Todo modelo tem init(from:) manual em que só o essencial é obrigatório (title/name/url/text); o resto usa decodeIfPresent com default (UUID novo, .now, [], .open, .must, .human...). Campo novo segue o mesmo padrão. Teste de referência: lenientHandWrittenTopicAndIdea em RulesTests.swift.\nVerificar: campos novos são decodificados com `decodeIfPresent ?? default`.",
+      "details" : "Só o essencial é obrigatório (title/name/url/text e ids de catálogo); o resto usa `#[serde(default, deserialize_with = \"nd\")]` (`nd` = decodeIfPresent ?? default: `null` conta como ausente) ou o struct `*Wire` com `From`. Campo novo segue o mesmo padrão. Testes de referência: crates/vibedeck-core/tests/normalizations.rs (`null_counts_as_absent`, `project_children_defaults`...).\nVerificar: campos novos têm `default`/`nd`.",
       "id" : "5ED22D96-FE5F-4683-8611-E3D264113B67",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/5ed22d96.sh",
-        "generatedAt" : "2026-10-09T01:23:55Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
-        "ruleHash" : "bd7665e2f0a4cd64"
+        "ruleHash" : "bb7301f9b3b0de4e"
       },
       "text" : "Decoders tolerantes a arquivos escritos à mão"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "encode(to:) usa encodeIfPresent para opcionais e `if !x.isEmpty` para tags, paths, rules (do item) e target (que vira nil quando vazio no init). Mantém os arquivos enxutos e iguais aos que um humano escreveria.\nVerificar: campo novo opcional/coleção segue o padrão.",
+      "details" : "Opcionais usam `skip_serializing_if = \"Option::is_none\"` (ou `opt_str_empty`) e coleções opcionais (tags, paths, rules do item, target) usam `vec_empty`. Mantém os arquivos enxutos e iguais aos que um humano escreveria.\nVerificar: campo novo opcional/coleção segue o padrão.",
       "id" : "C6D79B9C-1F50-4AE3-8CD1-8CAE5C4F6B6F",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/c6d79b9c.sh",
-        "generatedAt" : "2026-10-09T01:23:55Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
-        "ruleHash" : "db42c2b3eef2b5bc"
+        "ruleHash" : "80ec252e8ca4fa90"
       },
-      "text" : "Campos opcionais ou vazios são omitidos ao codificar"
+      "text" : "Campos opcionais ou vazios são omitidos ao serializar"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "RuleCheck.encode grava createdAt com ISO8601FormatStyle(includingFractionalSeconds: true), para o \"último check\" de um item ser inequívoco quando o agente reenvia no mesmo segundo (verificationProblems usa o primeiro de listChecks, ordenado por data). O nome do arquivo é yyyyMMdd-HHmmss-<8 chars do id>.json em GMT.\nVerificar: o formato não mudou.",
+      "details" : "`RuleCheck.created_at` é `TimestampMs` (`time::format_iso_millis`, 3 dígitos), para o \"último check\" de um item ser inequívoco quando o agente reenvia no mesmo segundo (`Store::checks` ordena do mais novo ao mais antigo por esse campo). O nome do arquivo é `yyyyMMdd-HHmmss-<8 chars do id em minúsculas>.json` em GMT (`RuleCheck::file_name`).\nVerificar: o formato não mudou.",
       "id" : "57ADA275-8A0F-42BA-9E14-BA3B34AB8235",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/57ada275.sh",
-        "generatedAt" : "2026-10-09T01:23:55Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
-        "ruleHash" : "ad08cb2479ba93c6"
+        "ruleHash" : "6ffa584ec958741c"
       },
-      "text" : "RuleCheck.createdAt mantém frações de segundo"
+      "text" : "RuleCheck.created_at mantém frações de segundo"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "Alterar campos de Project, ReviewGroup/ReviewItem, RuleTopic/Rule, Idea ou RuleCheck exige atualizar o schema/v1/*.schema.json correspondente e, se o agente precisar saber, AgentsGuide.swift (seções Estrutura, Itens de revisão, Tópicos de regras, Ideias).\nVerificar: o diff de Models.swift/Rules.swift tem um diff correspondente em schema/v1.",
+      "details" : "Alterar campos de Project, ReviewGroup/ReviewItem, RuleTopic/Rule, Idea, RuleCheck ou workflows em crates/vibedeck-core/src/model/ exige atualizar o schema/v1/*.schema.json correspondente e, se o agente precisar saber, crates/vibedeck-core/src/ai/guide_reference.md (seções Estrutura, Itens de revisão, Tópicos de regras, Ideias; gera .vibedeck/guide.md e AGENTS.md).\nVerificar: o diff de model/*.rs tem um diff correspondente em schema/v1.",
       "id" : "4133C155-F789-428E-9ED5-5EAC37C19700",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/4133c155.sh",
-        "generatedAt" : "2026-10-09T01:23:55Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
-        "ruleHash" : "796cb44fa6f6e272"
+        "ruleHash" : "8b1c73ed4f65f672"
       },
       "text" : "Mudança de modelo atualiza schema e guia"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "resolveSlug aceita slug exato, UUID completo, título sem diferenciar maiúsculas, Slug.make(ref) e prefixo de UUID único com >= 4 chars; findItem/matchRule também aceitam prefixo >= 4 e lançam ambiguousItem/ambiguousRule quando há mais de um. Arquivo que não decodifica é devolvido pelo slug, para o erro real de decodificação aparecer.\nVerificar: novas buscas reutilizam esses helpers em vez de reimplementar.",
+      "details" : "`slug::resolve` (via `Store::resolve`/`find`) aceita slug exato, UUID completo, título sem diferenciar maiúsculas, `slug::make(ref)` e prefixo de UUID único com >= 4 chars; `rules::match_rule`, `rules::find_review_item` e `reviews::find_item` também aceitam prefixo >= 4 e devolvem AmbiguousRule/AmbiguousItem quando há mais de um. Arquivo que não decodifica é devolvido pelo slug, para o erro real de decodificação aparecer.\nVerificar: novas buscas reutilizam esses helpers em vez de reimplementar.",
       "id" : "B0277971-459D-4CCB-9E9D-5990F1574F5B",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/b0277971.sh",
-        "generatedAt" : "2026-10-09T01:23:55Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
-        "ruleHash" : "e280a8375e8bebef"
+        "ruleHash" : "24d15283ebfd5e75"
       },
       "text" : "Referências resolvem por slug, UUID, prefixo ou título"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "Slug.make remove acentos, deixa só ASCII alfanumérico em minúsculas separado por -, corta em 60 chars e usa \"untitled\" se vazio; uniqueSlug acrescenta -2, -3... se o arquivo existir. Criação de doc/grupo/tópico/ideia usa os dois.\nVerificar: nenhum slug montado à mão.",
+      "details" : "`slug::make` remove acentos, deixa só ASCII alfanumérico em minúsculas separado por -, corta em 60 chars e usa \"untitled\" se vazio; `slug::unique` acrescenta -2, -3... se o arquivo existir. A criação de doc/grupo/tópico/ideia/workflow usa os dois (`Store::new_slug`/`create`).\nVerificar: nenhum slug montado à mão.",
       "id" : "7F7C6B09-EBCB-4CA0-BAAF-6B18D36F15C1",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/7f7c6b09.sh",
-        "generatedAt" : "2026-10-09T01:23:55Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
-        "ruleHash" : "cfc2839aa2f0fdb2"
+        "ruleHash" : "1fa80cbd9eeaf1fe"
       },
-      "text" : "Slugs via Slug.make + uniqueSlug"
+      "text" : "Slugs via slug::make + slug::unique"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "submitCheck lança incompleteCheck listando as regras sem resposta; passed = true só se nenhuma regra must tiver fail; regras should com fail vão para warnings, as must para failures; na conta como respondida.\nVerificar: testes de RulesTests cobrindo check continuam passando.",
+      "details" : "`rules::submit_check` roda os scripts das regras de script (respostas a elas são ignoradas) e, com `verify_manual`, lança `RuleError::IncompleteCheck` listando as manuais sem resposta (sem `verify_manual` ficam `pending`); `passed` = nenhuma regra must com fail; should com fail vão para `warnings`, must para `failures`; `na` conta como respondida.\nVerificar: os testes de check (rules_cli `check_runs_scripts_and_records`, rules_mcp) continuam passando.",
       "id" : "BC028BE5-D7E0-4DA3-BB5C-E8A628EBFA8A",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/bc028be5.sh",
-        "generatedAt" : "2026-10-09T01:23:55Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
-        "ruleHash" : "5faa9616333459e0"
+        "ruleHash" : "6296a91fa2e43ffa"
       },
-      "text" : "Check exige resposta para toda regra aplicável"
+      "text" : "Check: scripts decidem sozinhos; manuais exigem resposta; só must em fail reprova"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "verificationProblems exige que o check mais recente com reviewItem == item.id tenha passed e responda todas as regras ATUAIS dos tópicos exigidos (regra criada depois do check bloqueia de novo: \"Regra nova desde o último check\"). Item sem regras aplicáveis não é bloqueado. ensureVerified é o ponto de entrada.\nVerificar: o contrato e as mensagens continuam iguais.",
+      "details" : "`rules::verification_problems` exige que o check mais recente com `review_item == item.id` tenha `passed` e responda todas as regras ATUAIS dos tópicos exigidos (regra criada depois do check bloqueia de novo: \"Regra nova desde o último check\"). Item sem regras aplicáveis não é bloqueado. `ensure_verified` (chamado por `reviews::gate`) é o ponto de entrada.\nVerificar: o contrato e as mensagens continuam iguais.",
       "id" : "64E65B59-8D5B-40DE-B381-CAF2B1BDC785",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/64e65b59.sh",
-        "generatedAt" : "2026-10-09T01:23:55Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
-        "ruleHash" : "0276dddc09d274c7"
+        "ruleHash" : "fe8742a1d03f4a46"
       },
       "text" : "Item de revisão com regras só vai para done com check aprovado"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "applicableTopics converte caminhos absolutos dentro do projeto em relativos (relativePath) antes do glob; inclui tópicos sem paths, os que casam com algum arquivo e os nomeados (slug/id/título). requiredTopics(for:) usa target.file e rules do item.\nVerificar: teste applicableTopics passa.",
+      "details" : "`rules::applicable_topics` converte caminhos absolutos dentro do projeto em relativos (`relative_path`) antes do glob; inclui tópicos sem paths, os que casam com algum arquivo e os nomeados (slug/id/título). `required_topics` usa `target.file` e `rules` do item.\nVerificar: o teste `applicable_topics_by_scope` passa.",
       "id" : "8D874A06-515D-41B5-A094-DC8B83BB40B6",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/8d874a06.sh",
-        "generatedAt" : "2026-10-09T01:23:55Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
-        "ruleHash" : "23e9441d0111659c"
+        "ruleHash" : "f87b1f1f62d996cc"
       },
       "text" : "Tópicos aplicáveis = globais + os que casam com os arquivos + explícitos"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "Se a ideia já tem promotedTopic e o tópico existe, só acrescenta as regras cujo id ainda não está lá; senão cria um tópico com o título da ideia, descrição \"Regras vindas da ideia ...\" e sourceIdea. Depois grava promotedTopic e muda o status para approved, a menos que esteja discarded/done.\nVerificar: repromover não cria <slug>-2.",
+      "details" : "Se a ideia já tem `promoted_topic` e o tópico existe, só acrescenta as regras cujo id ainda não está lá; senão cria um tópico com o título da ideia, descrição \"Regras vindas da ideia ...\" e `source_idea`. Depois grava `promoted_topic` e muda o status para approved, a menos que esteja discarded/done.\nVerificar: repromover não cria <slug>-2.",
       "id" : "35D8D7C3-1224-45CC-8A80-66D0B6291C33",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/35d8d7c3.sh",
-        "generatedAt" : "2026-10-09T01:23:55Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
-        "ruleHash" : "b747ad072acd16c1"
+        "ruleHash" : "592b10751273e92b"
       },
-      "text" : "promoteIdea sincroniza sem duplicar"
+      "text" : "promote_idea sincroniza sem duplicar"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "Glob.matches: padrão sem / casa o nome do arquivo em qualquer profundidade; / no começo ancora na raiz; / no fim casa tudo abaixo; ./ é ignorado; * não cruza /, ? é um char, **/ é qualquer profundidade (inclusive zero). Teste de referência: globs em RulesTests.swift.\nVerificar: mudança no glob vem com casos novos no teste.",
+      "details" : "`rules::glob::matches`: padrão sem / casa o nome do arquivo em qualquer profundidade; / no começo ancora na raiz; / no fim casa tudo abaixo; ./ é ignorado; * não cruza /, ? é um char, **/ é qualquer profundidade (inclusive zero). Teste de referência: `globs` em crates/vibedeck-core/src/rules/glob.rs.\nVerificar: mudança no glob vem com casos novos no teste.",
       "id" : "64334D9C-327B-4811-B088-8B785EF4E0FE",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/64334d9c.sh",
-        "generatedAt" : "2026-10-09T01:23:55Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
-        "ruleHash" : "0d56c4fda2ce2c02"
+        "ruleHash" : "d1a13395c536c498"
       },
       "text" : "A semântica de glob é preservada"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "Erro novo vira um case de VibeDeckError com errorDescription em português, dizendo o que fazer (como em notAProject: \"Rode `vibedeck init`\"). Não use fatalError/NSError para erro de usuário.\nVerificar: o diff não tem strings de erro soltas.",
+      "details" : "Erro novo vira uma variante de `Error` (error.rs) ou do enum do módulo (`RuleError`, `DocError`...) com `#[error(\"...\")]` em português, dizendo o que fazer (como em `NotAProject`: \"Rode `vibedeck init`\"). Não use `panic!`/`todo!` para erro de usuário.\nVerificar: o diff não tem mensagens de erro soltas ou em inglês.",
       "id" : "EA5E6F7D-1587-4FC5-87D9-51CE6F130C7B",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/ea5e6f7d.sh",
-        "generatedAt" : "2026-10-09T01:23:55Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
-        "ruleHash" : "298bd5328715cab1"
+        "ruleHash" : "faca32817d60349e"
       },
-      "text" : "Erros via VibeDeckError, em pt-BR"
+      "text" : "Erros via enums thiserror, em pt-BR"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "Com Xcode completo, `swift test`; só com Command Line Tools, `scripts/test.sh` (compila só VibeDeckCoreTests com o SDK padrão). Usa Swift Testing (@Suite, @Test, #expect) com projeto temporário via newStore().\nVerificar: rodar e anexar o resultado na nota do check.",
+      "details" : "`scripts/test.sh --rust` (= `cargo test --workspace`) roda o Core e a CLI/MCP; os testes de integração ficam em crates/*/tests (projetos temporários via `tempfile`).\nVerificar: rodar e anexar o resultado na nota do check.",
       "id" : "97510532-2FCF-44BD-9D01-75086E554EB9",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/97510532.sh",
-        "generatedAt" : "2026-10-09T01:23:55Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
-        "ruleHash" : "7fc126ea061a13cc"
+        "ruleHash" : "d736fa88e32b420c"
       },
-      "text" : "swift test passa"
+      "text" : "cargo test passa"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "Arquivos em Tests/VibeDeckCoreTests/ (ProjectStoreTests.swift, RulesTests.swift), no mesmo estilo: store temporário, #expect.\nVerificar: há @Test cobrindo o caso novo.",
+      "details" : "Testes em crates/vibedeck-core/tests/ (integração: ideas_core.rs, reviews_flow.rs, normalizations.rs...) e `#[cfg(test)]` nos módulos, no mesmo estilo: projeto temporário (`tempfile`), `assert_eq!`; CLI/MCP em crates/vibedeck/tests/.\nVerificar: há `#[test]` cobrindo o caso novo.",
       "id" : "91774D06-91B5-4945-9EC6-CDEFC57332FA",
       "severity" : "should",
       "test" : {
-        "generatedAt" : "2026-10-09T01:23:55Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "manual",
         "reason" : "Depende de julgamento: saber se o comportamento é novo e se o @Test o cobre não é decidível por script.",
-        "ruleHash" : "e9738985d5128515"
+        "ruleHash" : "7c227c722a526de3"
       },
       "text" : "Comportamento novo no Core vem com teste"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:15:16Z",
-      "details" : "SchemaURL.base em Models.swift é a fonte; o script troca a URL antiga em Sources, schema e README.md de uma vez. Editar só um lugar deixa $schema e $id inconsistentes.\nVerificar: `grep -r workers.dev Sources schema README.md` mostra uma única base.",
+      "details" : "`SCHEMA_BASE` (crates/vibedeck-core/src/model/project.rs) é a fonte; o app (`SchemaURL.base`), schema/v1/*.schema.json (`$id`), README.md e o guia gerado repetem a mesma base. Editar só um lugar deixa `$schema` e `$id` inconsistentes.\nVerificar: `grep -r workers.dev crates Sources schema README.md` mostra uma única base.",
       "id" : "DFE3361B-6AFE-4ED3-A741-4FC0818D197D",
       "severity" : "should",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/dfe3361b.sh",
-        "generatedAt" : "2026-10-09T01:23:55Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
-        "ruleHash" : "2190673106859c38"
+        "ruleHash" : "fd35416db1305d95"
       },
       "text" : "URL dos schemas só muda via scripts/set-schema-url.sh"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:24:39Z",
-      "details" : "deleteTopic chama releaseOrphanedIdeas: toda ideia cujo promotedTopic não resolve mais perde o vínculo; se estava approved volta para exploring; outros status (new, exploring, discarded, done) ficam. Remover uma regra solta de dentro do tópico NÃO despromove.\nVerificar: teste unpromote em RulesTests passa.",
+      "details" : "`rules::delete_topic` chama `release_orphaned_ideas`: toda ideia cujo `promoted_topic` não resolve mais perde o vínculo; se estava approved volta para exploring; outros status (new, exploring, discarded, done) ficam. Remover uma regra solta de dentro do tópico NÃO despromove.\nVerificar: o teste `orphaned_ideas_are_released_when_topic_disappears` passa.",
       "id" : "B659FD25-792B-4C0E-BD08-6082ACFCC80A",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/b659fd25.sh",
-        "generatedAt" : "2026-10-09T01:23:55Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
-        "ruleHash" : "c01b2b905826a23b"
+        "ruleHash" : "1447b12d59c12d5c"
       },
       "text" : "Apagar um tópico vindo de ideia despromove a ideia"
     },
     {
       "author" : "ai",
       "createdAt" : "2026-10-08T03:24:39Z",
-      "details" : "ProjectStore.unpromoteIdea apaga o arquivo do tópico vinculado (se existir), zera promotedTopic, muda approved para exploring e mantém idea.rules intacto (para poder promover de novo). Ideia não promovida fica igual. releaseOrphanedIdeas é idempotente.\nVerificar: teste unpromote em RulesTests.",
+      "details" : "`Store::unpromote_idea` apaga o arquivo do tópico vinculado (se existir), zera `promoted_topic`, muda approved para exploring e mantém `idea.rules` intacto (para poder promover de novo). Ideia não promovida fica igual. `release_orphaned_ideas` é idempotente.\nVerificar: o teste `promote_creates_topic_syncs_and_unpromotes` passa.",
       "id" : "A2B13B15-C59E-4189-8905-3A309C89DF28",
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/core-e-formato-de-dados/a2b13b15.sh",
-        "generatedAt" : "2026-10-09T01:23:55Z",
+        "generatedAt" : "2026-10-22T18:57:24Z",
         "mode" : "script",
-        "ruleHash" : "dcef600815e9d1fd"
+        "ruleHash" : "4eedb3c2d3824ffa"
       },
-      "text" : "unpromoteIdea apaga o tópico e solta a ideia, mantendo as regras rascunho"
+      "text" : "unpromote_idea apaga o tópico e solta a ideia, mantendo as regras rascunho"
     }
   ],
   "tags" : [

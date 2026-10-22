@@ -1,0 +1,87 @@
+name: Rust
+
+on:
+  push:
+    branches: [main]
+    paths: ["crates/**", "Cargo.*", "schema/**", "scripts/**", "Tests/Fixtures/**", ".vibedeck/**", "vibedeck.json", "Sources/**", ".github/workflows/rust.yml"]
+  pull_request:
+    paths: ["crates/**", "Cargo.*", "schema/**", "scripts/**", "Tests/Fixtures/**", ".vibedeck/**", "vibedeck.json", "Sources/**", ".github/workflows/rust.yml"]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test --all-targets --no-fail-fast
+
+  # Regras do projeto rodadas pelo runner Rust (scripts que exigem macOS só fazem análise estática aqui).
+  rules:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release -p vibedeck
+      - run: python3 -I scripts/mcp-contract.py target/release/vibedeck check Tests/Fixtures
+      - run: ./target/release/vibedeck rules test
+
+  # Prebuilt binaries: kept as workflow artifacts only; publishing a release needs explicit approval.
+  build-linux:
+    needs: check
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [x86_64-unknown-linux-musl, aarch64-unknown-linux-musl]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - uses: mlugg/setup-zig@v2
+      - run: cargo install cargo-zigbuild --locked
+      - run: cargo zigbuild --release --target ${{ matrix.target }} -p vibedeck
+      - run: tar -C target/${{ matrix.target }}/release -czf vibedeck-${{ matrix.target }}.tar.gz vibedeck
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vibedeck-${{ matrix.target }}
+          path: vibedeck-${{ matrix.target }}.tar.gz
+
+  build-macos:
+    needs: check
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release -p vibedeck --target aarch64-apple-darwin
+      - run: cargo build --release -p vibedeck --target x86_64-apple-darwin
+      - run: |
+          lipo -create -output vibedeck target/aarch64-apple-darwin/release/vibedeck target/x86_64-apple-darwin/release/vibedeck
+          lipo -info vibedeck
+          tar -czf vibedeck-universal-apple-darwin.tar.gz vibedeck
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vibedeck-universal-apple-darwin
+          path: vibedeck-universal-apple-darwin.tar.gz

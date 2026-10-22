@@ -1,5 +1,4 @@
 import SwiftUI
-import VibeDeckCore
 
 /// The code patterns the project follows (TDD, hexagonal, DDD…): what the AI reads (list_patterns /
 /// `vibedeck patterns`) before implementing, each one enforced by its own rule topic.
@@ -59,7 +58,7 @@ struct PatternsView: View {
             "Remover o padrão \"\(removing?.name ?? "")\"?", isPresented: Binding { removing != nil } set: { if !$0 { removing = nil } }
         ) {
             LoggedButton("Remover", role: .destructive) {
-                if let id = removing?.id { model.changePatterns("Remover padrão", undo: undo) { try $0.removePatterns([id]) } }
+                if let id = removing?.id { model.changePatterns("Remover padrão", undo: undo) { _ = try await $0.removePatterns([id]) } }
                 removing = nil
             }.loggedControl(control: "patterns_view.button_3", label: "Remover")
         } message: {
@@ -147,6 +146,8 @@ private struct PatternPicker: View {
     @State private var rules = ""
     @State private var note = ""
     @State private var paths = ""
+    @State private var entries: [PatternCatalogEntry] = []
+    @State private var catalogError: String?
 
     private var current: Set<String> { Set(model.project.patterns.map(\.id)) }
 
@@ -165,6 +166,7 @@ private struct PatternPicker: View {
                 if custom { customForm } else { catalog }
             }
             .frame(width: 640, height: 440)
+            .task { await loadCatalog() }
             Divider()
             HStack {
                 Text(custom ? "Cada linha de regras vira uma regra obrigatória." : "\(picked.count) selecionado(s) · cada padrão cria um tópico de regras")
@@ -182,11 +184,14 @@ private struct PatternPicker: View {
 
     private var catalog: some View {
         List {
+            if let catalogError = catalogError {
+                Text(catalogError).font(.caption).foregroundStyle(.red)
+            }
             ForEach(PatternCategory.all.filter { category in
-                PatternCatalog.all.contains { $0.category == category }
+                entries.contains { $0.category == category }
             }, id: \.self) { category in
                 Section(PatternCategory.label(category)) {
-                    ForEach(PatternCatalog.all.filter { $0.category == category }) { row($0) }
+                    ForEach(entries.filter { $0.category == category }) { row($0) }
                 }
             }
             Section("Escopo e nota (opcionais, valem para os selecionados)") {
@@ -197,7 +202,7 @@ private struct PatternPicker: View {
         }
     }
 
-    private func row(_ template: PatternTemplate) -> some View {
+    private func row(_ template: PatternCatalogEntry) -> some View {
         let added = current.contains(template.id)
         let isPicked = added || picked.contains(template.id)
         return LoggedButton {
@@ -220,7 +225,7 @@ private struct PatternPicker: View {
         }.loggedControl(control: "patterns_view.button_10", label: "Ativar controle")
         .buttonStyle(.plain)
         .disabled(added)
-        .help(template.rules.map { "• " + $0.text }.joined(separator: "\n"))
+        .help(template.rules.map { "• " + $0 }.joined(separator: "\n"))
     }
 
     private var customForm: some View {
@@ -240,20 +245,32 @@ private struct PatternPicker: View {
         .formStyle(.grouped)
     }
 
+    private func loadCatalog() async {
+        do {
+            entries = try await model.store.patternCatalog()
+            catalogError = nil
+        } catch {
+            catalogError = error.localizedDescription
+        }
+    }
+
     private var parseRules: [String] {
         rules.split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
     }
 
     private func add() {
         let scope = parsePaths(paths)
-        let ok: Void? = if custom {
+        let name = self.name, summary = self.summary, note = self.note, rules = parseRules, picked = self.picked
+        if custom {
             model.changePatterns("Adicionar padrão", undo: undo) {
-                _ = try $0.addCustomPattern(name: name, summary: summary, rules: parseRules, note: note, paths: scope, author: .human)
+                _ = try await $0.addCustomPattern(name: name, summary: summary, rules: rules, note: note, paths: scope, author: .human)
             }
         } else {
-            model.changePatterns("Adicionar padrões", undo: undo) { _ = try $0.addPatterns(picked, note: note.isEmpty ? nil : note, paths: scope, author: .human) }
+            model.changePatterns("Adicionar padrões", undo: undo) {
+                _ = try await $0.addPatterns(Array(picked), note: note.isEmpty ? nil : note, paths: scope, author: .human)
+            }
         }
-        if ok != nil { dismiss() }
+        dismiss()
     }
 }
 
@@ -288,7 +305,7 @@ private struct PatternEditor: View {
             Text("A nota vai para a descrição do tópico de regras; o escopo define em quais arquivos as regras são cobradas.")
                 .font(.caption).foregroundStyle(.secondary)
             TagsField(tags: model.project.patterns.first { $0.id == pattern.id }?.tags ?? pattern.tags) { tags in
-                model.changePatterns("Editar tags do padrão", undo: undo) { try $0.setPatternTags(pattern.id, tags) }
+                model.changePatterns("Editar tags do padrão", undo: undo) { try await $0.setPatternTags(pattern.id, tags) }
             }
         }
         .formStyle(.grouped)
@@ -311,11 +328,12 @@ private struct PatternEditor: View {
     private func commitNote() {
         let value = note.trimmingCharacters(in: .whitespacesAndNewlines)
         guard value != (model.project.patterns.first { $0.id == pattern.id }?.note ?? "") else { return }
-        model.changePatterns("Editar nota do padrão", undo: undo) { try $0.setPatternNote(pattern.id, value) }
+        model.changePatterns("Editar nota do padrão", undo: undo) { _ = try await $0.setPatternNote(pattern.id, value) }
     }
 
     private func commitPaths() {
         guard pattern.topic != nil, parsePaths(paths) != parsePaths(currentPaths) else { return }
-        model.changePatterns("Editar escopo do padrão", undo: undo) { try $0.setPatternPaths(pattern.id, parsePaths(paths)) }
+        let newPaths = parsePaths(paths)
+        model.changePatterns("Editar escopo do padrão", undo: undo) { _ = try await $0.setPatternPaths(pattern.id, newPaths) }
     }
 }

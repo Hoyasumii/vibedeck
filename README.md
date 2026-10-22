@@ -8,6 +8,12 @@ App macOS nativo (SwiftUI + Liquid Glass) para gerenciar projetos feitos com vib
 links, docs Markdown, **pontos de revisão** ("inativar esse botão", "isso não precisa aparecer agora")
 agrupados por tema, **regras** que a IA precisa cumprir antes de dar uma tarefa como concluída e **ideias** futuras. Tudo fica em arquivos dentro do próprio repositório, para a IA ler e escrever também.
 
+## Arquitetura
+
+- **Core, CLI e MCP em Rust**: `crates/vibedeck-core` (biblioteca) e `crates/vibedeck` (binário `vibedeck`, que traz o CLI e o servidor MCP). Compilam em Linux e macOS.
+- **App macOS 26 em SwiftUI** (`Sources/VibeDeckApp`): não tem Core próprio, fala com o binário via MCP (`vibedeck mcp --app`), localmente ou por SSH.
+- **Worker** (`worker/`): serve apenas os schemas JSON (`schema/v1/`).
+
 ## Formato no seu projeto
 
 ```
@@ -16,7 +22,7 @@ agrupados por tema, **regras** que a IA precisa cumprir antes de dar uma tarefa 
   .vibedeck/
     AGENTS.md                # guia inicial compacto para IA (gerado)
     guide.md                 # referência completa, consultada por seção (gerada)
-    docs/<slug>.md
+    docs/<slug>.md           # ou symlink para um .md da raiz do repositório (Docs vinculados)
     reviews/<slug>.json      # um grupo/tema por arquivo
     rules/<slug>.json        # um tópico de regras por arquivo (paths = globs de escopo)
     ideas/<slug>.json        # uma ideia por arquivo, com regras rascunho e globs sugeridos
@@ -106,10 +112,10 @@ outra. Remover o padrão apaga o tópico; apagar o tópico retira o padrão.
 ```sh
 vibedeck patterns                   # lista (--json para a IA)
 vibedeck patterns catalog [texto]   # catálogo embutido
-vibedeck patterns add tdd hexagonal --path 'Sources/Core/**' --note "..."
+vibedeck patterns add tdd hexagonal --path 'crates/vibedeck-core/**' --note "..."
 vibedeck patterns add --custom "Feature folders" --rule "Uma pasta por feature"
-vibedeck patterns note tdd "Swift Testing"
-vibedeck patterns paths hexagonal 'Sources/Core/**'
+vibedeck patterns note tdd "cargo test"
+vibedeck patterns paths hexagonal 'crates/vibedeck-core/**'
 vibedeck patterns remove tdd
 ```
 
@@ -277,6 +283,14 @@ no Codex, scripts de regras rodam pelo MCP do VibeDeck, fora do terminal do agen
   `viabilizador`, `explorador`, `planejador`, `critico`, `implementador`, `verificador` e `revisor-pr`, e a skill
   `status-no-github-project`. Requer `gh auth refresh -s project`.
 - **Gerar documentos**: No app, a lista de **Docs** oferece **Gerar documentos** quando há Claude Code ou Codex instalado. A geração usa o provedor ativo somente para leitura, com cancelamento e timeout de 180 segundos por chamada. A proposta permite editar título e conteúdo, pré-visualizar Markdown, descartar documentos e aceitar todos ou apenas os selecionados. Nada em `.vibedeck/docs` é gravado antes do aceite. São propostos até 8 documentos; campos vazios e conteúdos acima de 40.000 caracteres são descartados. O prompt exige referências aos arquivos de origem. O aceite cria Markdown com `author: ai` no frontmatter e slugs únicos, atualiza a lista e é um único passo de undo. Os documentos podem ser lidos por `vibedeck docs cat` e MCP `read_doc`; criação com autoria também está disponível em `vibedeck docs new "Título" --body "Conteúdo" --ai` e MCP `write_doc` (`title`, `content`, `generated: true`).
+- **Docs vinculados**: todo `.md` da raiz do repositório (como `README.md`) aparece em **Docs** como um symlink
+  relativo em `.vibedeck/docs/`; editar o doc edita o arquivo de origem. Um vínculo quebrado vira aviso e, se o
+  slug colidir com outro doc, o vinculado ganha o sufixo `-raiz`. `vibedeck docs unlink <slug>` remove só o vínculo
+  (a origem nunca é tocada) e `vibedeck docs link <arquivo>` vincula de novo.
+- **Início guiado**: ao abrir uma pasta sem `vibedeck.json` (ou ao criar um projeto novo), o app oferece a stack, os
+  padrões e os agentes, comandos e skills já existentes em `.claude/` e `.codex/`. Nada é cadastrado sem sua
+  escolha, e **Pular** é retomável. CLI: `vibedeck onboarding` (estado), `onboarding skip`, `onboarding complete`
+  e `onboarding import <tipo>:<nome>` (`agent`, `command` ou `skill`).
 - **Tags**: docs (frontmatter `tags: [a, b]`), revisões, regras, ideias, agentes, comandos, skills e workflows. Cada seção da sidebar abre
   uma lista filtrável por texto e por `#tag`.
   A sidebar também tem um campo de busca por texto e `#tag` para os filhos de todas as seções;
@@ -316,18 +330,27 @@ Schemas: `schema/v1/` (servidos pelo Worker em `worker/`).
 
 ## Build
 
-Requer macOS 26+ e Xcode 27 (SDK do macOS 27):
+CLI e MCP (Linux ou macOS) só precisam do Rust:
+
+```sh
+cargo build --release -p vibedeck    # target/release/vibedeck
+scripts/test.sh --rust               # cargo test --workspace
+```
+
+O app requer macOS 26+ e Xcode 27 (SDK do macOS 27):
 
 ```sh
 scripts/build-app.sh --install-cli   # build/VibeDeck.app + build/VibeDeck-<versão>.dmg + ~/.local/bin/vibedeck
 CONFIG=debug scripts/build-app.sh --no-dmg # desenvolvimento local: app e CLI, sem gerar instalador
+VIBEDECK_BIN=/caminho/vibedeck scripts/build-app.sh   # usa um binário Rust já compilado (ex.: universal, de CI)
 open build/VibeDeck.app              # ou: open -a build/VibeDeck.app <pasta-do-projeto>
-swift test                           # testes do Core
+scripts/test.sh                      # Rust + testes do app (o app só no macOS)
+scripts/test.sh --app                # só os testes do app
 ```
 
-O script compila app e CLI em uma única chamada ao SwiftPM, reutilizando o cache em `.build`.
-O modo padrão continua sendo release com DMG; `--no-dmg` pula apenas a geração do instalador
-e pode ser combinado com `--install-cli` em qualquer ordem.
+O script compila o Core Rust (`cargo build`) e o app (SwiftPM), reutilizando os caches. O modo padrão
+continua sendo release com DMG; `--no-dmg` pula apenas a geração do instalador e pode ser combinado com
+`--install-cli` em qualquer ordem. `CONFIG=debug|release` escolhe o perfil.
 
 > Sem o Xcode (só Command Line Tools), o SDK 27 não compila SwiftUI: `@State` virou macro e o
 > plugin `SwiftUIMacros` só vem no Xcode. Nesse caso `scripts/env.sh` cai para o SDK 26.x e os
@@ -359,9 +382,9 @@ vibedeck review add "Tela de login" "Esconder link de cadastro" --kind hide --fi
 vibedeck review set <id-ou-prefixo> --status done
 vibedeck rules new "Interface" --path "Sources/VibeDeckApp/**"
 vibedeck rules add interface "Nunca usar minWidth no root da janela"
-vibedeck rules for Sources/VibeDeckApp/ProjectWindow.swift --json
+vibedeck rules for crates/vibedeck/src/main.rs --json
 echo '[{"ruleId":"<prefixo>","verdict":"pass","note":"..."}]' | vibedeck rules check --task "..." --item <id>
-vibedeck rules test Sources/VibeDeckApp/ProjectWindow.swift   # roda os scripts das regras aplicáveis
+vibedeck rules test crates/vibedeck/src/main.rs   # roda os scripts das regras aplicáveis
 vibedeck rules set-test <regra> --command .vibedeck/tests/geral/ab12cd34.sh   # ou --manual --reason "..." / --clear
 vibedeck hook install                        # liga o hook Stop (portão de regras) neste projeto
 vibedeck hook install --agent codex          # o mesmo no Codex (.codex/hooks.json)
@@ -396,8 +419,9 @@ vibedeck tag review tela-de-login ui mvp     # substitui as tags (doc | review |
 vibedeck mcp install                         # registra o servidor MCP no Claude Code (--scope local/project/user)
 vibedeck usage install                       # liga a statusline do Claude Code ao VibeDeck (mantém a atual encadeada)
 vibedeck usage [--json]                      # limite da sessão (5h) e da semana, com horário de reset
-vibedeck cloud check [--json]                # a main local é igual à do GitHub?
-vibedeck cloud start "Corrigir o login" [--allow-dirty]   # cria uma sessão do Claude Code na nuvem
+vibedeck onboarding                          # início guiado: mostra o estado e os recursos detectados (--json)
+vibedeck docs unlink readme                  # desfaz o vínculo de um doc com um .md da raiz (a origem não é tocada)
+vibedeck docs link README.md                 # vincula de novo
 ```
 
 ### Codex: configuração e registros
@@ -415,27 +439,31 @@ vibedeck skills import --provider codex
 vibedeck agents set revisor --provider codex --model <modelo> --effort high
 vibedeck runs start revisar --provider codex --input "feature" --prompt
 vibedeck usage --provider codex --json
-vibedeck cloud start "Corrigir o login" --provider codex --env <ambiente>
 ```
 
-O instalador inclui o adaptador de compatibilidade com o SDK Swift MCP 0.12; requer Python 3 e preserva
-as demais configurações. `--force` substitui apenas um registro gerenciado pelo VibeDeck.
+O instalador preserva as demais configurações. `--force` substitui apenas um registro gerenciado pelo VibeDeck.
 Os agentes nativos importam `name`, `description`, `model`, `model_reasoning_effort` e
 `developer_instructions` de TOML. Outras configurações nativas continuam no arquivo original.
 Arquivos inválidos são reportados; registros existentes são preservados salvo `--overwrite`.
 As tools MCP de importação e `workflow_run_start` também aceitam `provider: "codex"`.
 
-### Sessões na nuvem
+### Servidor MCP
 
-O botão de nuvem no painel IA (ou `vibedeck cloud start`, ou a tool MCP `start_cloud_session`) cria uma
-sessão do provedor selecionado sobre o repositório no GitHub e abre o link no navegador. Claude usa
-`claude --cloud`; Codex usa `codex cloud exec --env <ambiente> --branch <branch>`. O ID do ambiente
-Codex Cloud pode ser salvo em `codexCloudEnvironment` no projeto ou informado pela CLI com `--env`.
-A nuvem só vê o GitHub, então antes o VibeDeck dá `git fetch` e compara a branch padrão local com a da `origin`:
-se uma estiver atrás da outra (ou se divergirem), ele para e avisa que as branches precisam ser iguais.
-Alterações não commitadas só geram um aviso, que precisa ser confirmado (`--allow-dirty` / `allow_dirty`).
+`vibedeck mcp` inicia o servidor MCP por stdio (`vibedeck mcp serve` é equivalente; `-C <dir>` escolhe o projeto).
+O projeto traz um `.mcp.json` com esse servidor; para registrá-lo em outros clientes:
 
-O projeto traz um `.mcp.json` com o servidor `vibedeck mcp`. A VM da nuvem é Linux, então o CLI e o MCP (`swift build -c release --product vibedeck`, sem o app SwiftUI) compilam em Linux; o binário precisa estar no `PATH` da VM (por exemplo, pelo script de setup do ambiente).
+```sh
+vibedeck mcp install                              # Claude Code, escopo local
+vibedeck mcp install -s project                   # grava .mcp.json do projeto (versionável)
+vibedeck mcp install -s user --provider claude    # todos os projetos do usuário
+vibedeck mcp install --provider codex             # Codex (veja a seção abaixo)
+vibedeck mcp uninstall
+ssh servidor vibedeck mcp -C /caminho/do/projeto  # o mesmo servidor, remoto, por SSH
+vibedeck hook install                             # hook Stop (portão de regras)
+```
+
+O modo `--app` (`vibedeck mcp --app`) é o usado pelo app macOS: acrescenta tools extras e avisos de mudança
+em `.vibedeck/`. O CLI e o MCP funcionam em Linux e macOS; o binário precisa estar no `PATH`.
 
 ### Limites de uso
 
@@ -453,7 +481,7 @@ hooks novos do Codex precisam ser aprovados com `/hooks` no terminal do Codex.
 
 ## Logs e diagnóstico
 
-O app, o CLI e o MCP registram erros, falhas e crashes em `~/Library/Application Support/VibeDeck/logs/`, um
+O app, o CLI e o MCP registram erros, falhas e crashes em `~/Library/Application Support/VibeDeck/logs/` (no Linux, `$XDG_DATA_HOME/VibeDeck/logs`), um
 arquivo JSON Lines por dia (fora do projeto e do git, mantido por 14 dias). Só entram nomes, ids, códigos e
 tamanhos, nunca o conteúdo de prompts, docs ou ideias. Se o app fechar de forma inesperada, ele avisa na próxima
 abertura e associa o relatório de crash do macOS. Para ver os logs no app, use **Ajuda › Diagnóstico…**, que tem
@@ -547,17 +575,16 @@ Modelos e esforços explícitos indisponíveis interrompem a operação. A prece
 
 | Recursos | Claude | Codex | Evidência automatizada |
 | --- | --- | --- | --- |
-| Chat, eventos e interrupção | Transporte Claude | Transporte app-server | `AIParityTests`, `ClaudeStreamTests`, `CodexTests` |
-| Planejamento | Aprovação nativa | Aprovação pelo VibeDeck | `AIParityTests`, persistência de plano |
-| Workflows e perguntas | Motor VibeDeck | Motor VibeDeck | `AIParityTests`, `WorkflowRunsTests` |
-| Descubra, documentos, grafo e verificação | Leitura restrita | Leitura restrita | `AIRecoveryTests`, `DocGenerateTests`, `GraphRunnerTests`, `RuleDiscoverTests`, `CodexReadToolsTests` |
-| Geração de testes | Escrita autorizada | Escrita autorizada | `AIRecoveryTests`, validação de registros |
-| Importação, CLI/MCP e hooks | Formatos nativos | Formatos nativos | `CodexTests`, `WorkflowsTests`, `StopGateTests`, contrato MCP |
-| Nuvem | Serviço Claude | Serviço Codex com ambiente explícito | `CloudSessionTests`; lançamento remoto requer conta configurada |
-| Consumo | Tokens/custo informados | Tokens/limites informados | `AIEfficiencyTests`, `ClaudeUsageTests`, `CodexTests` |
-| Coleção de artefatos do Claude | Links do Claude | Recurso exclusivo do Claude | `ClaudeItemsTests`, `ClaudeCollectionTests` |
+| Chat, eventos e interrupção | Transporte Claude | Transporte app-server | testes do app (`Tests/VibeDeckAppTests`) |
+| Planejamento | Aprovação nativa | Aprovação pelo VibeDeck | testes do app |
+| Workflows e perguntas | Motor VibeDeck | Motor VibeDeck | `workflows_core`, `workflows_cli` (Rust) |
+| Descubra, documentos, grafo e verificação | Leitura restrita | Leitura restrita | `AIRecoveryTests`, `GraphRunnerTests`, `RuleDiscoverVerdictTests` (app) |
+| Geração de testes | Escrita autorizada | Escrita autorizada | `AIRecoveryTests` (app), `rules_cli` (Rust) |
+| Importação, CLI/MCP e hooks | Formatos nativos | Formatos nativos | `ai_mcp_install`, `workflows_cli`, `rules_cli`, `mcp_stdio` (Rust), contrato MCP |
+| Consumo | Tokens/custo informados | Tokens/limites informados | `ai_cli` (Rust), `scripts/test-ai-efficiency.sh` |
+| Coleção de artefatos do Claude | Links do Claude | Recurso exclusivo do Claude | `project_cli`, `project_mcp` (Rust) |
 
-Smoke tests reais: `VIBEDECK_AI_PARITY_SMOKE=1 swift test --filter AIParityTests.liveProviderSmokeWhenRequested` faz uma chamada curta em somente leitura por provedor. `VIBEDECK_CODEX_SMOKE=1 swift test --filter CodexTests.liveCodexSmokeWhenRequested` também verifica o catálogo e uma chamada MCP real. Esses testes exigem CLIs instalados, autenticação e rede; as demais verificações não consomem IA. O catálogo de capacidades descreve a integração; erros de versão, autenticação ou conta são apresentados pelo adaptador, sem mudar de provedor.
+O catálogo de capacidades descreve a integração; erros de versão, autenticação ou conta são apresentados pelo adaptador, sem mudar de provedor. Não há smoke tests automatizados contra os provedores reais: as verificações automatizadas não consomem IA.
 
 ### Grupos de itens
 
@@ -601,10 +628,8 @@ proposta e aceite são strings JSON. Analisar e validar nunca aplicam ações au
 
 Na tela inicial, **Conectar via SSH…** permite escolher um alias de `~/.ssh/config` ou informar servidor, porta e usuário. A conexão usa OpenSSH, chaves/agente SSH ou senha; guardar a senha no Chaves do macOS é opcional. Confirme a impressão digital do servidor na primeira conexão. Uma mudança da chave conhecida bloqueia o acesso até verificar a identidade.
 
-Navegue pelas pastas ou digite um caminho. Uma pasta sem `vibedeck.json` só é inicializada depois de confirmar **Inicializar projeto**. O servidor precisa oferecer SSH e os utilitários de arquivos do sistema; não precisa ter VibeDeck instalado.
+O app conversa direto com o servidor: ele executa o `vibedeck mcp` remoto por SSH (o equivalente a `ssh servidor vibedeck mcp -C <pasta>`), então o **binário `vibedeck` precisa estar instalado no servidor**, no `PATH`. Navegue pelas pastas ou digite um caminho; uma pasta sem `vibedeck.json` só é inicializada depois de confirmar **Inicializar projeto**.
 
-Os dados de `vibedeck.json`, `.vibedeck/` e o README ficam em um cache local por servidor, porta, usuário e diretório. Cada edição confirmada fica no disco, inclusive exclusões e alterações feitas com undo. O app compara o cache com a última versão confirmada no servidor, recupera pendências ao reabrir offline e tenta reconectar automaticamente, com intervalos crescentes de até 60 segundos. O painel SSH oferece reconexão manual e entrada de senha.
+Se a conexão cair, o app tenta reconectar sozinho, com intervalos crescentes (1, 2, 4, 8… até 60 segundos); o painel SSH também oferece reconexão manual e entrada de senha. Enquanto estiver offline, o projeto fica em **somente leitura**: o app mostra a última leitura guardada em cache no Mac, sem edição offline e sem conflitos de sincronização. Ao reconectar, os dados são recarregados do servidor.
 
-A sincronização verifica a versão remota antes do envio e confirma a gravação antes de retirar a pendência. Conflitos permitem inspecionar e preservar a versão local ou remota; **Decidir depois** preserva ambas. Um arquivo editado offline e apagado no servidor é recriado com a edição local, desde que não tenha um conflito já registrado.
-
-O terminal abre no servidor e no diretório do projeto. Scripts de regras, chat, Descubra, gerações e workflows também executam remotamente. **Claude Code ou Codex deve estar instalado e autenticado no servidor**; a instalação no Mac não substitui esse requisito. O app não instala nem troca provedores automaticamente. Use **Terminal SSH** para autenticar o provedor. Novas ações de IA e regras aguardam sincronização e resolução dos conflitos; o terminal continua disponível.
+O terminal abre no servidor e no diretório do projeto. Scripts de regras, chat, Descubra, gerações e workflows também executam remotamente. **Claude Code ou Codex deve estar instalado e autenticado no servidor**; a instalação no Mac não substitui esse requisito. O app não instala nem troca provedores automaticamente. Use **Terminal SSH** para autenticar o provedor.

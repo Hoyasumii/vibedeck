@@ -44,7 +44,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/visualizador-de-links-para-links/e91d194a.sh",
-        "generatedAt" : "2026-10-21T15:10:06Z",
+        "generatedAt" : "2026-10-22T19:26:09Z",
         "mode" : "script",
         "ruleHash" : "7c3cad10564db30a"
       },
@@ -58,7 +58,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/visualizador-de-links-para-links/6a9a61c1.sh",
-        "generatedAt" : "2026-10-21T15:10:06Z",
+        "generatedAt" : "2026-10-22T19:26:09Z",
         "mode" : "script",
         "ruleHash" : "3ac724d605d24204"
       },
@@ -72,7 +72,7 @@
       "severity" : "must",
       "test" : {
         "command" : ".vibedeck/tests/visualizador-de-links-para-links/255d84f4.sh",
-        "generatedAt" : "2026-10-21T15:10:06Z",
+        "generatedAt" : "2026-10-22T19:26:09Z",
         "mode" : "script",
         "ruleHash" : "8b9c3755e0b70fbd"
       },

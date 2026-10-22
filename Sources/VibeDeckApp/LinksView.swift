@@ -1,7 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import WebKit
-import VibeDeckCore
 
 struct LinksView: View {
     @Environment(\.logProject) private var logProject
