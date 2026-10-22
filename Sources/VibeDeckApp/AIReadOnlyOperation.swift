@@ -12,7 +12,8 @@ import Foundation
     static func run<T>(root: URL, provider: AIProvider, operation: String, prompt: String, schema: String,
                        request: ((String, AIProviderSettings) async throws -> Data)? = nil,
                        recover: (Error) -> Bool = { _ in true },
-                       parse: (Data) throws -> T) async throws -> T {
+                       store: CoreStore? = nil,
+                       parse: (Data) async throws -> T) async throws -> T {
         let started = Date.now
         VDLog.info("ai.request_started", "Chamada de IA iniciada", project: root, component: .ai, context: ["provider": provider.rawValue, "operation": operation])
         defer { VDLog.info("ai.request_finished", "Chamada de IA encerrada", project: root, component: .ai,
@@ -62,15 +63,17 @@ import Foundation
             let result: T
             do {
                 try Task.checkCancellation()
-                result = try parse(reply)
+                result = try await parse(reply)
             } catch is CancellationError {
                 usage.finish("cancelled"); try? AIUsageStore(root: root).save(usage)
                 throw CancellationError()
             } catch {
                 usage.finish("invalid-answer"); try AIUsageStore(root: root).save(usage)
                 guard recover(error) else { throw error }
-                guard attempt == 1 else { throw VibeDeckError.discoverFailed(AIPromptPolicy.incomplete) }
-                nextPrompt = AIPromptPolicy.recovery(prompt, diagnosis: error.localizedDescription)
+                // A recuperação vem do Core (ai_recovery_prompt); sem Core (testes) vale a cópia local de AIPromptPolicy.
+                let plan = try? await store?.aiRecoveryPrompt(original: prompt, diagnosis: error.localizedDescription)
+                guard attempt == 1 else { throw VibeDeckError.discoverFailed(plan?.incomplete ?? AIPromptPolicy.incomplete) }
+                nextPrompt = plan?.prompt ?? AIPromptPolicy.recovery(prompt, diagnosis: error.localizedDescription)
                 continue
             }
             usage.finish("completed")
